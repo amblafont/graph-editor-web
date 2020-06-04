@@ -242,7 +242,10 @@ newArrow_mayFocus step =
    _ -> focusLabelInput
 
 initialise_NewArrow : Model -> (Model, Cmd Msg)
-initialise_NewArrow = switch_NewArrow { edgeLabel = "", nodeLabel = "", step = EditEdge }
+initialise_NewArrow m =
+    case m.activeObj of
+        ONode _ -> switch_NewArrow { edgeLabel = "", nodeLabel = "", step = EditEdge } m
+        _ -> switch_Default m
 
 switch_RenameMode : Model -> (Model, Cmd Msg)
 switch_RenameMode model =
