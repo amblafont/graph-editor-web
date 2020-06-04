@@ -1,0 +1,62 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Main</title>
+        <script src="elm.js"></script>
+    </head>
+
+    <body>
+        <h1>Graph editor</h1>
+        <p>
+        The code is available on
+        <a href="https://github.com/amblafont/graph-editor-web">github</a>.
+        Do not hesitate to create issues for feature requests or bug fixes.
+        </p>
+        <button onclick="loadGraph()" >Load graph</button>
+        <div id="myapp"></div>
+        <script>
+         var app = Elm.GraphEditor.init({
+             node: document.getElementById('myapp')
+         });
+         // load a json graph file, send it to the elm component
+         function loadGraph() {
+             var input = document.createElement('input');
+             input.type = 'file';
+             input.accept = ".json";
+             input.onchange = e => {
+                 var file = e.target.files[0];
+                 var fr=new FileReader();
+                 fr.onload=function(){
+                     var json = JSON.parse (fr.result);
+                     app.ports.loadedGraph.send(json);
+                 }
+                 fr.readAsText(file);
+             }
+
+             input.click();
+         };
+         // this event handler computes the relative position
+         // of the mouse with respect to the current target
+         // (the one to which the event is attached)
+         app.ports.onMouseMove.subscribe(function(e) {
+             if ( e.currentTarget) {
+                 var rect = e.currentTarget.getBoundingClientRect();
+                 var x = e.clientX - rect.left; //x position within the element.
+                 var y = e.clientY - rect.top;  //y position within the element.
+                 app.ports.onMouseMoveFromJS.send([x, y]);
+             }
+         });
+         // asks the user to download some file, generated from content
+         function download(content, fileName, contentType) {
+             var a = document.createElement("a");
+             var file = new Blob([content], {type: contentType});
+             a.href = URL.createObjectURL(file);
+             a.download = fileName;
+             a.click();
+         }
+         app.ports.saveGraph.subscribe(function(d) {
+             download(JSON.stringify(d), 'graph.json', 'application/json');
+         });
+        </script>
+    </body>
+</html>
