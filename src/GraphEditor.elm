@@ -496,14 +496,16 @@ arrow c from to =
     let
         delta =  minusP to from
         -- pos = to
-        offset = 10
-        pos = minusP to <| normaliseP offset delta
+        offset = 15
+        offsetP = normaliseP offset delta
+        pos = minusP to offsetP
+        fromOffset = addP from offsetP
     in
       Collage.group
          [ triangle 10
         |> filled (uniform c)
            |> rotate (pointToAngle <| flip <| orthogonalP delta)
-              |> shift pos, segment from pos
+              |> shift pos, segment fromOffset pos
                |> traced (solid thin (uniform c))
          ]
 
