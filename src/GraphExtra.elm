@@ -75,6 +75,7 @@ nextId g =
         Nothing -> 1
         Just (_, max) -> max + 1
 
+
 newNode : Graph n e -> n -> (Graph n e, NodeId)
 newNode g n =
     let id = nextId g in
@@ -92,3 +93,8 @@ edgesWithNodes : Graph n e -> List (EdgeNodes n e)
 edgesWithNodes g =
     Graph.edges g
         |> List.filterMap (edgeToEdgeWithNodes g)
+
+ 
+filterNodes : Graph n e -> (n -> Bool) -> List (Node n)
+filterNodes g f =
+    Graph.nodes g |> List.filter (f << .label) --|> List.map .id
