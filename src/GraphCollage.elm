@@ -13,7 +13,6 @@ import Collage.Text exposing (fromString)
 import Collage.Layout
 import Msg exposing (..)
 import Color exposing (..)
-import Tuple
 
 -- id of the text input when the user labels an edge or a node
 curIdInput : String

@@ -1,7 +1,6 @@
 module CollageExtra exposing (..)
 
 import Collage exposing (..)
-import Collage.Events exposing (onClick)
 import Collage.Layout exposing (..)
 import Color exposing (..)
 
@@ -141,7 +140,7 @@ intersection ro rd aabb =
 
 distance : List Float -> List Float -> (List Float, List Float) -> Maybe Float
 distance ro rd (aa,bb) =
-    let f = (\ x roi rdi -> (x - roi) / rdi) in
+    let f x roi rdi = (x - roi) / rdi in
     let dimLo = List.map3 f aa ro rd in
     let dimHi = List.map3 f bb ro rd in
     let dimLo2 = List.map2 min dimLo dimHi in
@@ -153,4 +152,6 @@ distance ro rd (aa,bb) =
                else
                    Just maxLo
            _ -> Nothing
+
+
 

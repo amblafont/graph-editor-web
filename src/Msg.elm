@@ -2,7 +2,7 @@ module Msg exposing (..)
 
 import Collage exposing (Point)
 import Graph exposing (Graph, NodeId)
-import GraphExtra as Graph exposing (EdgeId)
+import GraphExtra exposing (EdgeId)
 import Json.Decode as D
 -- From https://github.com/elm/browser/blob/1.0.2/notes/keyboard.md
 -- useful for keyboard events
@@ -22,14 +22,16 @@ toKey string =
     _ -> Control string
 
 keyDecoder : D.Decoder Key
-keyDecoder = (D.field "key" D.string)
+keyDecoder = D.field "key" D.string
              |> D.map toKey
+
 
 type alias EdgeLabel = String
 type alias NodeLabel = { pos : Point , label : String}
 
 setPos : Point -> NodeLabel -> NodeLabel
 setPos p l = { l | pos = p}
+
 
 type Msg
   = -- call some js function

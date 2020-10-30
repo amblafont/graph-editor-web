@@ -1,6 +1,6 @@
 module QuickInput exposing (..)
 
-import Parser exposing (Parser, variable, map, (|.), (|=), succeed, symbol, float, spaces, loop, oneOf, end, lazy, andThen, backtrackable)
+import Parser exposing (Parser, variable, map, (|.), (|=), succeed, symbol, spaces, oneOf, end, lazy, andThen, backtrackable)
 
 import Set
 
