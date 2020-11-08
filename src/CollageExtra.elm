@@ -4,6 +4,8 @@ import Collage exposing (..)
 import Collage.Layout exposing (..)
 import Color exposing (..)
 
+type alias CollageDims msg = { collage : Collage msg, dims : Maybe Point}
+
 -- get the radius of a pont
 radius : Point -> Float
 radius (x, y) = sqrt (x * x + y * y) 
@@ -60,14 +62,27 @@ arrow c from to =
                |> traced (solid thin (uniform c))
          ]
 
-collageToRect : Collage a -> (Point, Point)
-collageToRect c = (Collage.Layout.bottomLeft c, Collage.Layout.topRight c)
+collageToRect : CollageDims a -> (Point, Point)
+collageToRect c =
+    case c.dims of
+        Just dims ->
+            let pc = Collage.Layout.base c.collage
+                d = resizeP 0.5 dims
+            in
+                (minusP pc d, addP pc d)
+        Nothing ->
+            (Collage.Layout.bottomLeft c.collage,
+                 Collage.Layout.topRight c.collage)
 
 -- arrow between two collages
-arrowCollage : Color.Color -> Collage a -> Collage a -> Collage a
+-- with their dimensions, if they are available
+arrowCollage : Color.Color ->
+               CollageDims a ->
+               CollageDims a ->
+               Collage a
 arrowCollage c from to =
-    let pfrom = Collage.Layout.base from
-        pto = Collage.Layout.base to
+    let pfrom = Collage.Layout.base from.collage
+        pto = Collage.Layout.base to.collage
     in
     let (end, start) = case (rayTraceP_rect pfrom pto (collageToRect to),
                              rayTraceP_rect pto pfrom (collageToRect from)) of

@@ -10,6 +10,7 @@ import GraphExtra as Graph exposing (EdgeId)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
 import Task
+import Dict exposing (Dict)
 
 
 
@@ -27,7 +28,8 @@ type alias Model =
     , -- unnamedFlag : Bool,
       quickInput : String
     , mode : Mode
-
+    -- real dimensions of nodes
+    , dimNodes : Dict NodeId Point
     -- quickInput : Maybe NonEmptyChain
     -- mouseOnCanvas : Bool
     -- blitzFlag : Bool
@@ -90,6 +92,7 @@ createModel g =
     , mousePos = ( 0, 0 )
     , mousePointOver = ONothing
     , activeObj = ONothing
+    , dimNodes = Dict.empty
 
     -- unnamedFlag = False
     -- mouseOnCanvas = False,
@@ -257,6 +260,7 @@ make_defaultNodeCollageLabel model n =
     make_nodeCollageLabel
         { editable = False
         , isActive = n.id == activeNode model
+        , dims = Dict.get n.id model.dimNodes
         }
         n.label
 

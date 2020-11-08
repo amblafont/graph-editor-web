@@ -13,6 +13,7 @@ import Collage.Text exposing (fromString)
 import Collage.Layout
 import Msg exposing (..)
 import Color exposing (..)
+import Tuple
 
 -- id of the text input when the user labels an edge or a node
 curIdInput : String
@@ -20,16 +21,20 @@ curIdInput = "edited_label"
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias EdgeCollageLabel = { label : String, editable : Bool, isActive : Bool }
-type alias NodeCollageLabel = { pos : Point, label : String, editable : Bool, isActive : Bool }
+type alias NodeCollageLabel =
+    { pos : Point, label : String, editable : Bool, isActive : Bool,
+          dims : Maybe Point
+    }
 
 make_edgeCollageLabel : {editable : Bool, isActive : Bool} 
                       -> EdgeLabel-> EdgeCollageLabel
 make_edgeCollageLabel {editable, isActive} label =
     { label = label, editable = editable, isActive = isActive}
 
-make_nodeCollageLabel : {editable : Bool, isActive : Bool} -> NodeLabel ->  NodeCollageLabel
-make_nodeCollageLabel {editable, isActive} {label, pos} =
-    { label = label, pos = pos, editable = editable, isActive = isActive }
+make_nodeCollageLabel : {editable : Bool, isActive : Bool, dims : Maybe Point} -> NodeLabel ->  NodeCollageLabel
+make_nodeCollageLabel {editable, isActive, dims} {label, pos} =
+    { label = label, pos = pos, editable = editable, isActive = isActive,
+    dims = dims}
 
 
 -- create an input with id curIdInput
@@ -37,7 +42,8 @@ make_input : String -> (String -> a) -> Collage a
 make_input label onChange =
          Html.input ([ Html.Attributes.value label ,
                        Html.Events.onInput onChange,
-                       Html.Attributes.id curIdInput
+                       Html.Attributes.id curIdInput,
+                       Html.Attributes.autofocus True
                     ] ) []
              |> Collage.html (100,50)
 
@@ -55,7 +61,10 @@ nodeLabelCollage node =
          else
              (Collage.Text.fromString n.label
              |> Collage.Text.color color
-             |> rendered)
+             |> rendered
+             |> Collage.Events.on "create" (newsizeDecoder id)
+             |> Collage.Events.on "remove" (nosizeDecoder id)
+             )
         ) |> shift n.pos
 
 nodeCollage : Node NodeCollageLabel -> Collage Msg
@@ -67,12 +76,15 @@ nodeCollage n =
 
 
 
-segmentLabel : Graph.EdgeNodes (Collage Msg) EdgeCollageLabel -> Collage Msg
+segmentLabel : Graph.EdgeNodes (CollageDims Msg) EdgeCollageLabel -> Collage Msg
 segmentLabel {from, to, label} =
+    let fromCollage = from.label.collage
+        toCollage = to.label.collage
+    in
     let
         edgeId = (from.id, to.id)
-        fromP = Collage.Layout.base from.label
-        toP = Collage.Layout.base to.label
+        fromP = Collage.Layout.base fromCollage
+        toP = Collage.Layout.base toCollage
         delta = minusP toP fromP
         middle = middleP fromP toP
         coef  = 10
@@ -87,22 +99,23 @@ segmentLabel {from, to, label} =
         ) |> shift labelpos
 
 
-edgeCollage : Graph.EdgeNodes (Collage Msg) EdgeCollageLabel -> Collage Msg
+edgeCollage : Graph.EdgeNodes (CollageDims Msg) EdgeCollageLabel -> Collage Msg
 edgeCollage ({from, to , label} as e) =
     let c = if label.isActive then red else black in
     let edgeId = (from.id, to.id) in
     Collage.group [
-         arrowCollage c from.label to.label,
-                       segmentLabel e]
+         arrowCollage c from.label to.label, segmentLabel e]
         |>  Collage.Events.onClick (EdgeClick edgeId)
 
 
 graphCollage : Graph NodeCollageLabel EdgeCollageLabel -> Collage Msg
 graphCollage g0 =
-      let g = Graph.mapNodeEdges nodeCollage .label g0 in
+      let g = Graph.mapNodeEdges
+              (\n -> { collage = nodeCollage n, dims = n.label.dims } )
+              .label g0 in
       let nodes = Graph.nodes g
           edges = Graph.edgesWithNodes g
       in
-          List.map .label nodes ++
+          List.map (.label >> .collage) nodes ++
           List.map edgeCollage edges |>
           Collage.group

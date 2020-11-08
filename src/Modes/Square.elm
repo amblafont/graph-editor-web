@@ -10,6 +10,7 @@ import IntDict
 import Maybe exposing (withDefault)
 import Model exposing (..)
 import Msg exposing (..)
+import Tuple
 
 
 mayFocus : SquareStep -> Cmd Msg
@@ -104,6 +105,10 @@ initialise m =
     m.activeObj
         |> objToNode
         |> Maybe.map (square_updatePossibility m 0)
+        |> Maybe.map
+        -- prevent bugs (if the mouse is thought
+        -- to be kept on a point)
+           (Tuple.mapFirst (\model -> { model | mousePointOver = ONothing}))
         |> Maybe.withDefault (noCmd m)
 
 

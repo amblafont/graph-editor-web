@@ -15,8 +15,42 @@
         <button onclick="loadGraph()" >Load graph</button>
         <div id="myapp"></div>
         <script>
+         var appDiv = document.getElementById('myapp');
+
+         // newsize event handlers
+         // Fonction callback à éxécuter quand une mutation est observée
+         var callbackMutation = function(mutationsList) {
+             for(var mutation of mutationsList) {
+	               for(var node of mutation.addedNodes) {
+                     if (node.getBoundingClientRect != null)
+                     {
+                         // could be optimized by having an additionnal
+                         // attribute that tells whether it has
+                         // a listener, so that we don't need
+                         // to get the bounding rectangle
+                         var rect = node.getBoundingClientRect();
+
+                         node.dispatchEvent(new CustomEvent("create", { detail : rect } ));
+                     }
+                 }
+	               for(var node of mutation.removedNodes) {
+                     if (node.getBoundingClientRect != null)
+                     {
+                         node.dispatchEvent(new CustomEvent("remove"));
+                     }
+                 }
+             }
+         };
+
+         // Créé une instance de l'observateur lié à la fonction de callback
+         var observer = new MutationObserver(callbackMutation);
+         observer.observe(appDiv, 
+	                        { subtree: true, childList: true }); 
+
+         // initialisation de Elm
+
          var app = Elm.GraphEditor.init({
-             node: document.getElementById('myapp')
+             node: appDiv
          });
          // load a json graph file, send it to the elm component
          function loadGraph() {

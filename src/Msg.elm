@@ -4,6 +4,7 @@ import Collage exposing (Point)
 import Graph exposing (Graph, NodeId)
 import GraphExtra exposing (EdgeId)
 import Json.Decode as D
+import Tuple
 -- From https://github.com/elm/browser/blob/1.0.2/notes/keyboard.md
 -- useful for keyboard events
 type Key
@@ -47,6 +48,20 @@ type Msg
   | NodeLabelEdit NodeId String
   | Loaded (Graph NodeLabel EdgeLabel)
   | QuickInput String
+  | SizeChanged NodeId (Maybe Point)
 
 noOp : Msg
 noOp = Do (Cmd.none)
+
+
+newsizeDecoder : NodeId -> D.Decoder Msg
+newsizeDecoder n = 
+    D.field "detail" <|
+    D.map (SizeChanged n) <|
+    D.map Just <|
+    D.map2 Tuple.pair 
+        (D.field "width" D.float)
+        (D.field "height" D.float)
+
+nosizeDecoder : NodeId -> D.Decoder Msg
+nosizeDecoder n = D.succeed (SizeChanged n Nothing)

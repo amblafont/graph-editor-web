@@ -43,6 +43,9 @@ import Maybe exposing (withDefault)
 import Modes.Square
 import Modes.NewArrow 
 
+import Dict
+import DictExtra as Dict
+
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -169,6 +172,10 @@ update msg model =
             -- NodeClick n -> {model | statusMsg = "point " }
             NodeEnter n -> { model | mousePointOver = ONode n}
             NodeLeave n -> { model | mousePointOver = ONothing}
+            SizeChanged n dims ->
+                { model | statusMsg = "newsize " ++ Debug.toString (n, dims)
+                      , dimNodes = Dict.insertOrRemove n dims model.dimNodes
+                }
             _ -> model
     in
     case msg of
@@ -284,7 +291,9 @@ update_NewNode msg m =
     case msg of
        MouseClick ->
          let (newGraph, newId) = Graph.newNode m.graph {pos = m.mousePos, label = ""}
-             newModel = {m | graph = newGraph, activeObj = ONode newId}
+             newModel = {m | graph = newGraph,
+                             activeObj = ONode newId
+                        }
          in
          -- if m.unnamedFlag then
          --   switch_Default newModel

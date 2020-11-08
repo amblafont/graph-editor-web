@@ -18,10 +18,17 @@ initialise m =
         |> Maybe.map
             (\chosenNode ->
                 { m
-                    | mode =
-                        NewArrow
+                    | mode = NewArrow
+
                             { step = NewArrowMoveNode, chosenNode = chosenNode }
+                             -- prevent bugs (if the mouse is thought
+                             -- to be kept on a point)
+                      , mousePointOver = ONothing
                 }
+
+
+
+                 
             )
         |> Maybe.withDefault m
         |> noCmd
