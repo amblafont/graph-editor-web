@@ -1,15 +1,15 @@
 module Model exposing (..)
 
 import Browser.Dom as Dom
-import Collage exposing (..)
-import Collage.Layout exposing (..)
+
 import Color exposing (..)
 import Graph exposing (..)
-import GraphCollage exposing (..)
+import GraphDrawing exposing (..)
 import GraphExtra as Graph exposing (EdgeId)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
 import Task
+import Point exposing (Point)
 import Dict exposing (Dict)
 
 
@@ -151,7 +151,7 @@ graphRenameObj g o s =
             g
 
 
-graphMakeEditable : Obj -> Graph NodeCollageLabel EdgeCollageLabel -> Graph NodeCollageLabel EdgeCollageLabel
+graphMakeEditable : Obj -> Graph NodeDrawingLabel EdgeDrawingLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphMakeEditable o g =
     case o of
         ONode id ->
@@ -164,7 +164,7 @@ graphMakeEditable o g =
             g
 
 
-graphMakeActive : Obj -> Graph NodeCollageLabel EdgeCollageLabel -> Graph NodeCollageLabel EdgeCollageLabel
+graphMakeActive : Obj -> Graph NodeDrawingLabel EdgeDrawingLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphMakeActive o g =
     case o of
         ONode id ->
@@ -255,9 +255,9 @@ switch_Default m =
     noCmd { m | mode = DefaultMode }
 
 
-make_defaultNodeCollageLabel : Model -> Node NodeLabel -> NodeCollageLabel
-make_defaultNodeCollageLabel model n =
-    make_nodeCollageLabel
+make_defaultNodeDrawingLabel : Model -> Node NodeLabel -> NodeDrawingLabel
+make_defaultNodeDrawingLabel model n =
+    make_nodeDrawingLabel
         { editable = False
         , isActive = n.id == activeNode model
         , dims = Dict.get n.id model.dimNodes
@@ -265,13 +265,13 @@ make_defaultNodeCollageLabel model n =
         n.label
 
 
-collageGraphFromGraph : Model -> Graph NodeLabel EdgeLabel -> Graph NodeCollageLabel EdgeCollageLabel
+collageGraphFromGraph : Model -> Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
 collageGraphFromGraph model =
     Graph.mapNodeEdges
-        (make_defaultNodeCollageLabel model)
+        (make_defaultNodeDrawingLabel model)
         (\e ->
             e.label
-                |> make_edgeCollageLabel
+                |> make_edgeDrawingLabel
                     { editable = False, isActive = ( e.from, e.to ) == (model.activeObj |> obj_EdgeId) }
         )
 

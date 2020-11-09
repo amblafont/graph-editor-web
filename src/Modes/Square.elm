@@ -1,10 +1,9 @@
-module Modes.Square exposing (graphCollage, initialise, update)
+module Modes.Square exposing (graphDrawing, initialise, update)
 
-import Collage exposing (..)
-import Collage.Layout exposing (..)
+
 import Color exposing (..)
 import Graph exposing (..)
-import GraphCollage exposing (..)
+import GraphDrawing exposing (..)
 import GraphExtra as Graph exposing (EdgeId, make_EdgeId)
 import IntDict
 import Maybe exposing (withDefault)
@@ -298,12 +297,12 @@ stateInfo m s =
             defaultView movedNode
 
 
-graphCollageFromInfo :
+graphDrawingFromInfo :
     Edges
     -> SquareStep
-    -> Graph NodeCollageLabel EdgeCollageLabel
-    -> Graph NodeCollageLabel EdgeCollageLabel
-graphCollageFromInfo info step g =
+    -> Graph NodeDrawingLabel EdgeDrawingLabel
+    -> Graph NodeDrawingLabel EdgeDrawingLabel
+graphDrawingFromInfo info step g =
     let
         g2 =
             g |> graphMakeEditable (renamable step info)
@@ -311,14 +310,14 @@ graphCollageFromInfo info step g =
     List.foldl graphMakeActive g2 (squareMode_activeObj info)
 
 
-graphCollage : Model -> SquareState -> Graph NodeCollageLabel EdgeCollageLabel
-graphCollage m state =
+graphDrawing : Model -> SquareState -> Graph NodeDrawingLabel EdgeDrawingLabel
+graphDrawing m state =
     let
         info =
             stateInfo m state
     in
     collageGraphFromGraph m info.graph
-        |> graphCollageFromInfo info.edges state.step
+        |> graphDrawingFromInfo info.edges state.step
 
 
 update : SquareState -> Msg -> Model -> ( Model, Cmd Msg )

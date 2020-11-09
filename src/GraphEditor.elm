@@ -13,16 +13,9 @@ import Json.Encode as JE
 import Graph exposing (..)
 import GraphExtra as Graph
 
-import Collage exposing (..)
+import Drawing 
 
-import Collage.Events exposing (onClick)
-
-
-import Collage.Layout exposing (..)
-import Collage.Render exposing (svgExplicit)
-
-
-import CollageExtra exposing (flipY, addP, resizeP)
+import Point exposing (Point)
 
 import Color exposing (..)
 import Html exposing (Html)
@@ -34,7 +27,7 @@ import Parser exposing ((|.), (|=), Parser)
 import Set
 import QuickInput exposing (chainParser, NonEmptyChain, orientToPoint)
 
-import GraphCollage exposing (..)
+import GraphDrawing exposing (..)
 import Msg exposing (..)
 
 import Tuple
@@ -165,7 +158,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     let
        m = case msg of
-            MouseMove p -> { model | mousePos = flipY p} -- , mouseOnCanvas = True}
+            MouseMove p -> { model | mousePos = Point.flipY p} -- , mouseOnCanvas = True}
             QuickInput s -> { model | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                     -- {model | mousePos = (x, y), statusMsg = "mouse " ++ Debug.toString (x, y)}
             -- KeyChanged False s -> {model | statusMsg = keyToString s}
@@ -199,7 +192,7 @@ update_QuickInput ch msg model =
     case msg of
         KeyChanged False (Control "Escape") -> switch_Default model
         KeyChanged False (Control "Enter") ->
-            switch_Default {model | graph = graphCollageChain model.graph ch, quickInput = ""}
+            switch_Default {model | graph = graphDrawingChain model.graph ch, quickInput = ""}
         QuickInput s ->
                 let (statusMsg, chain) =
                         case Parser.run chainParser s of
@@ -312,12 +305,12 @@ update_NewNode msg m =
 
 
 
-graphCollageFromModel : Model -> Graph NodeCollageLabel EdgeCollageLabel
-graphCollageFromModel m =
+graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
+graphDrawingFromModel m =
     case m.mode of
         DefaultMode -> collageGraphFromGraph m m.graph
         NewNode -> collageGraphFromGraph m m.graph
-        QuickInputMode ch -> collageGraphFromGraph m <| graphCollageChain m.graph ch
+        QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
         MoveNode -> graph_MoveNode m |> 
             collageGraphFromGraph m 
         RenameMode l ->
@@ -328,18 +321,18 @@ graphCollageFromModel m =
             m.graph |> collageGraphFromGraph m 
                 |> Graph.mapNodeEdges
                    (\n -> let l = n.label in {l | label = String.fromInt n.id}) .label
-        NewArrow astate -> Modes.NewArrow.graphCollage m astate
+        NewArrow astate -> Modes.NewArrow.graphDrawing m astate
         SquareMode state ->
-            Modes.Square.graphCollage m state
+            Modes.Square.graphDrawing m state
 
 
-graphCollageChain : Graph NodeLabel EdgeLabel -> Maybe NonEmptyChain -> Graph NodeLabel EdgeLabel
-graphCollageChain g ch = 
+graphDrawingChain : Graph NodeLabel EdgeLabel -> Maybe NonEmptyChain -> Graph NodeLabel EdgeLabel
+graphDrawingChain g ch = 
     case ch of
         Nothing -> g
         Just nonEmptyCh ->
             let iniP = (100, -100) in
-            Tuple.first <| graphCollageNonEmptyChain g nonEmptyCh iniP -- QuickInput.Right
+            Tuple.first <| graphDrawingNonEmptyChain g nonEmptyCh iniP -- QuickInput.Right
 
 createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)
@@ -358,9 +351,9 @@ getNodeLabelOrCreate g s p =
             [] -> createNodeLabel g s p
             t :: _ -> (g , t.id, t.label.pos)
 
-graphCollageNonEmptyChain : Graph NodeLabel EdgeLabel -> NonEmptyChain -> Point -- -> QuickInput.Orient
+graphDrawingNonEmptyChain : Graph NodeLabel EdgeLabel -> NonEmptyChain -> Point -- -> QuickInput.Orient
                     -> (Graph NodeLabel EdgeLabel, NodeId)
-graphCollageNonEmptyChain g ch loc -- defOrient
+graphDrawingNonEmptyChain g ch loc -- defOrient
     =
     case ch of
         QuickInput.Singleton v -> let (g2, source, _ ) = getNodeLabelOrCreate g v loc in
@@ -371,8 +364,8 @@ graphCollageNonEmptyChain g ch loc -- defOrient
             let orient = withDefault defOrient oorient in
             -- length of arrows
             let offset = 200 in
-            let newPoint = addP source_pos <| resizeP offset <| (orientToPoint orient) in
-            let (g3, target) = graphCollageNonEmptyChain g2 tail newPoint -- orient
+            let newPoint = Point.add source_pos <| Point.resize offset <| (orientToPoint orient) in
+            let (g3, target) = graphDrawingNonEmptyChain g2 tail newPoint -- orient
             in
             let label = withDefault "" olabel in
 
@@ -482,9 +475,9 @@ view model =
          Html.p [] 
          [(helpMsg model)
          ],
-    graphCollage (graphCollageFromModel model)
+    graphDrawing (graphDrawingFromModel model)
     -- |> debug
-    |> svgExplicit [
+    |> Drawing.svg [
                    Html.Attributes.style "width" "100%",
                    Html.Attributes.height 2000,
                    Html.Attributes.style "border-style" "solid",

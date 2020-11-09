@@ -1,10 +1,9 @@
-module Modes.NewArrow exposing (graphCollage, initialise, update)
+module Modes.NewArrow exposing (graphDrawing, initialise, update)
 
-import Collage exposing (..)
-import Collage.Layout exposing (..)
+
 import Color exposing (..)
 import Graph exposing (..)
-import GraphCollage exposing (..)
+import GraphDrawing exposing (..)
 import GraphExtra as Graph
 import Maybe exposing (withDefault)
 import Model exposing (..)
@@ -173,8 +172,8 @@ renamableFromState state =
             ONothing
 
 
-graphCollage : Model -> NewArrowState -> Graph NodeCollageLabel EdgeCollageLabel
-graphCollage m astate =
+graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
+graphDrawing m astate =
     let
         g =
             makeGraph m astate
