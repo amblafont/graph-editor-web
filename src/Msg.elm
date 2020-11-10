@@ -5,6 +5,9 @@ import Graph exposing (Graph, NodeId)
 import GraphExtra exposing (EdgeId)
 import Json.Decode as D
 import Tuple
+import Task
+
+import Browser.Dom as Dom
 -- From https://github.com/elm/browser/blob/1.0.2/notes/keyboard.md
 -- useful for keyboard events
 type Key
@@ -65,3 +68,20 @@ newsizeDecoder n =
 
 nosizeDecoder : NodeId -> D.Decoder Msg
 nosizeDecoder n = D.succeed (SizeChanged n Nothing)
+
+
+focusId : String -> Cmd Msg
+focusId s =
+    Task.attempt (\_ -> noOp) (Dom.focus s)
+
+
+
+-- Focus on the input
+
+-- id of the text input when the user labels an edge or a node
+curIdInput : String
+curIdInput = "edited_label"
+
+focusLabelInput : Cmd Msg
+focusLabelInput =
+    focusId curIdInput

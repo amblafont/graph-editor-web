@@ -6,13 +6,14 @@ import GraphExtra as Graph
 import Html 
 import Html.Attributes
 import Html.Events
-import Drawing exposing (Drawing, DrawingDims)
+import Drawing exposing (Drawing)
 import Point exposing (Point)
 import Msg exposing (..)
 import Color exposing (..)
--- id of the text input when the user labels an edge or a node
-curIdInput : String
-curIdInput = "edited_label"
+import Json.Decode as D
+import Geometry
+
+
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias EdgeDrawingLabel = { label : String, editable : Bool, isActive : Bool }
@@ -33,20 +34,22 @@ make_nodeDrawingLabel {editable, isActive, dims} {label, pos} =
 
 
 -- create an input with id curIdInput
-make_input : Point -> String -> (String -> a) -> Drawing a
+make_input : Point -> String -> (String -> Msg) -> Drawing Msg
 make_input pos label onChange =
-         Html.input ([ Html.Attributes.value label ,
+         Html.input [ Html.Attributes.value label ,
                        Html.Events.onInput onChange,
                        Html.Attributes.id curIdInput,
-                       Html.Attributes.autofocus True
-                    ] ) []
+                       Html.Attributes.autofocus True,
+                       Html.Events.on "create" (D.succeed (Do focusLabelInput)),
+                       Html.Attributes.class "lifecycle"
+                    ]  []
              |> Drawing.html pos (100,50)
 
 nodeLabelDrawing : List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
 nodeLabelDrawing attrs node =
     let n = node.label in
     let id = node.id in
-    let color = if n.isActive then red else black in
+    let color = if n.isActive then Drawing.red else Drawing.black in
     (
      if n.editable then
          make_input n.pos n.label (NodeLabelEdit id)
@@ -57,7 +60,9 @@ nodeLabelDrawing attrs node =
              Drawing.fromString 
              ([ Drawing.color color,
              Drawing.on "create" (newsizeDecoder id),
-             Drawing.on "remove" (nosizeDecoder id)]
+             Drawing.on "remove" (nosizeDecoder id),
+             Drawing.class "lifecycle"
+             ]
              ++ attrs)
              n.pos n.label 
              
@@ -75,15 +80,13 @@ nodeDrawing n =
 
 
 
-segmentLabel : Graph.EdgeNodes (DrawingDims Msg) EdgeDrawingLabel -> Drawing Msg
-segmentLabel {from, to, label} =
-    let fromDrawing = from.label.drawing
-        toDrawing = to.label.drawing
-    in
+segmentLabel : Point -> Point -> Graph.EdgeId -> EdgeDrawingLabel -> Drawing Msg
+segmentLabel fromP toP edgeId label =
+
     let
-        edgeId = (from.id, to.id)
-        fromP = Drawing.base fromDrawing
-        toP = Drawing.base toDrawing
+        
+      --  fromP = from.label.pos
+      --  toP = to.label.pos
         delta = Point.subtract toP fromP
         middle = Point.middle fromP toP
         coef  = 10
@@ -100,20 +103,36 @@ segmentLabel {from, to, label} =
 
 
 edgeDrawing : Graph.EdgeNodes (DrawingDims Msg) EdgeDrawingLabel -> Drawing Msg
-edgeDrawing ({from, to , label} as e) =
-    let c = if label.isActive then red else black in
+edgeDrawing ({from, to , label}) =
+    let c = if label.isActive then Drawing.red else Drawing.black in
     let edgeId = (from.id, to.id) in
+    let (fromP, toP) = Geometry.segmentRect from.label.posDims to.label.posDims in
     Drawing.group [
-         Drawing.arrowDrawing 
+         Drawing.arrow 
           [Drawing.color c, Drawing.onClick (EdgeClick edgeId)] 
-         from.label to.label, 
-          segmentLabel e]
+         fromP toP, 
+          segmentLabel fromP toP edgeId label]
+
+type alias DrawingDims msg =
+    { drawing : Drawing msg
+    , posDims : Geometry.PosDims    
+    }
 
 
 graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 graphDrawing g0 =
+      let height = 16 in
+      let padding = 5 in
       let g = Graph.mapNodeEdges
-              (\n -> { drawing = nodeDrawing n, dims = n.label.dims } )
+              (\n -> { drawing = nodeDrawing n, 
+                      posDims = {
+                      dims = 
+                      -- copied from source code of collage
+                      Maybe.withDefault (height / 2 * toFloat (String.length n.label.label), height)
+                         n.label.dims, 
+                      pos = n.label.pos
+                      } |> Geometry.pad padding
+                       } )
               .label g0 in
       let nodes = Graph.nodes g
           edges = Graph.edgesWithNodes g

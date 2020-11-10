@@ -33,14 +33,6 @@ initialise m =
         |> noCmd
 
 
-mayFocus : NewArrowStep -> Cmd Msg
-mayFocus step =
-    case step of
-        NewArrowMoveNode ->
-            Cmd.none
-
-        _ ->
-            focusLabelInput
 
 
 nextStep : Model -> Bool -> NewArrowState -> ( Model, Cmd Msg )
@@ -115,13 +107,7 @@ update state msg model =
         NodeLabelEdit n s ->
             noCmd { model | graph = graphRenameObj model.graph (ONode n) s }
 
-        -- I don't know why this is necessary, but I may need to refocus
-        NodeLeave _ ->
-            ( model, mayFocus state.step )
-
-        NodeEnter _ ->
-            ( model, mayFocus state.step )
-
+   
         _ ->
             noCmd model
 

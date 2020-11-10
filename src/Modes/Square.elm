@@ -12,15 +12,6 @@ import Msg exposing (..)
 import Tuple
 
 
-mayFocus : SquareStep -> Cmd Msg
-mayFocus step =
-    case step of
-        SquareMoveNode _ ->
-            Cmd.none
-
-        _ ->
-            focusLabelInput
-
 
 possibleSquareStates : NodeContext a b -> List SquareModeData
 possibleSquareStates nc =
@@ -346,12 +337,6 @@ update state msg model =
                 _ ->
                     noCmd model
 
-        -- I don't know why this is necessary, but I may need to refocus
-        NodeLeave _ ->
-            ( model, mayFocus state.step )
-
-        NodeEnter _ ->
-            ( model, mayFocus state.step )
-
+      
         _ ->
             noCmd model

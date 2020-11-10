@@ -151,14 +151,14 @@ switch_RenameMode model =
     in
     case label of
         Nothing -> noCmd model
-        Just l -> ( {model | mode = RenameMode l}, focusLabelInput)
+        Just l -> ( {model | mode = RenameMode l}, Cmd.none {- focusLabelInput -})
 
 -- Now, deal with incoming messages
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     let
        m = case msg of
-            MouseMove p -> { model | mousePos = Point.flipY p} -- , mouseOnCanvas = True}
+            MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
             QuickInput s -> { model | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                     -- {model | mousePos = (x, y), statusMsg = "mouse " ++ Debug.toString (x, y)}
             -- KeyChanged False s -> {model | statusMsg = keyToString s}
@@ -331,7 +331,7 @@ graphDrawingChain g ch =
     case ch of
         Nothing -> g
         Just nonEmptyCh ->
-            let iniP = (100, -100) in
+            let iniP = (100, 100) in
             Tuple.first <| graphDrawingNonEmptyChain g nonEmptyCh iniP -- QuickInput.Right
 
 createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,

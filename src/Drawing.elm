@@ -1,57 +1,52 @@
-module Drawing exposing (Drawing, arrowDrawing, DrawingDims, 
-  fromString, circle, base, html, group,
+module Drawing exposing (Drawing,   
+  fromString, circle, html, group, arrow,
   Attribute, on, onClick, onMouseEnter, onMouseLeave, color,
-  svg
+  svg, Color, red, black, class
   )
 
-import Collage
-import Collage.Layout
-import Collage.Text
-import Collage.Events
-import Collage.Render
-import Color
+import Svg exposing (Svg)
+import Svg.Attributes as Svg
+import Svg.Events
 import Point exposing (Point)
 import Html
 import Json.Decode as D
 
-
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
 svg l d =
-  d |> drawingToCollage |> Collage.Render.svgExplicit l
+  d |> drawingToSvg |> List.singleton |> Svg.svg l
 
+
+attrToSvgAttr : (String -> Svg.Attribute a) -> Attribute a -> Maybe (Svg.Attribute a)
+attrToSvgAttr col a =
+  case a of
+     Color c -> c |> colorToString |> col |> Just
+     On e d -> Svg.Events.on e d |> Just
+     Class s -> Svg.class s |> Just
+
+attrsToSvgAttrs : (String -> Svg.Attribute a) -> List (Attribute a) -> List (Svg.Attribute a)
+attrsToSvgAttrs f = List.filterMap (attrToSvgAttr f)
 
 type Attribute msg =
     On String (D.Decoder msg)
-    | Color Color.Color
+    | Color Color
+    | Class String
 
-attrColor : Attribute msg -> Maybe Color.Color
-attrColor a = case a of
-   Color c -> Just c
-   _ -> Nothing
+type Color = Black | Red
 
-attrsColor : List (Attribute msg) -> Maybe Color.Color
-attrsColor l =  List.filterMap attrColor l
-    |> List.head 
+colorToString : Color -> String
+colorToString c = case c of
+  Black -> "black"
+  Red -> "red"
 
-applyEvent : Attribute msg -> Collage.Collage msg -> Collage.Collage msg
-applyEvent a =
-   case a of
-      On s d -> Collage.Events.on s d
-      _ -> identity
+black : Color
+black = Black
 
-attrFillStyle : List (Attribute msg) -> Collage.FillStyle
-attrFillStyle l =
-    attrsColor l
-    |> Maybe.map Collage.uniform
-    |> Maybe.withDefault Collage.transparent
+red : Color
+red = Red
 
-      
-applyColorText : Attribute msg -> Collage.Text.Text -> Collage.Text.Text
-applyColorText a =
-   case a of
-      Color c -> Collage.Text.color c
-      _ -> identity
-      
+class : String -> Attribute msg
+class = Class
+
 
 on : String -> D.Decoder msg -> Attribute msg
 on = On
@@ -68,127 +63,113 @@ onMouseEnter = simpleOn "mouseenter"
 onMouseLeave : msg -> Attribute msg
 onMouseLeave = simpleOn "mouseleave" 
 
--- onCreate : msg -> Attribute msg
--- onCreate = simpleOn "create" 
-
--- onRemove : msg -> Attribute msg
--- onRemove = simpleOn "remove" 
-
-
-
-color : Color.Color -> Attribute msg
+color : Color -> Attribute msg
 color = Color
 
 type Drawing a
-    = Drawing (Collage.Collage a)
+    = Drawing (Svg a)
 
 
-drawingToCollage : Drawing a -> Collage.Collage a
-drawingToCollage d = case d of 
+drawingToSvg : Drawing a -> Svg a
+drawingToSvg d = case d of 
     Drawing c -> c
 
 
-type alias DrawingDims msg =
-    { drawing : Drawing msg
-    , dims : Maybe Point
-    }
 
 
-
-
--- specific to Collage
 
 
 arrow : List (Attribute a) -> Point -> Point -> Drawing a
 arrow attrs from to =
     let
-        c = attrsColor attrs |> Maybe.withDefault Color.black
+    --    c = attrsColor attrs |> Maybe.withDefault Color.black
         delta = Point.subtract to from
 
         -- pos = to
-        offset = 15
+        offset = 0 -- 15
 
         offsetP = Point.normalise offset delta
 
         pos = Point.subtract to offsetP
 
         fromOffset = Point.add from offsetP
+
+        tailHeadWidth = 9.764
+        tailHeadHeight = 13
+        -- from GridCellArrow
+        
+
     in
-    Collage.group
-        [ Collage.triangle 10
-            |> Collage.filled (Collage.uniform c)
-            |> Collage.rotate (Point.pointToAngle <| Point.flip <| Point.orthogonal delta)
-            |> Collage.shift pos
-        , Collage.segment fromOffset pos
-            |> Collage.traced (Collage.solid Collage.thin (Collage.uniform c))
-        ]
-        |> fold applyEvent attrs
+    
+    let (x2, y2) = pos
+        (x1, y1) = fromOffset
+        (xa, ya) = (x2 - tailHeadHeight / 2, y2 - tailHeadHeight / 2)
+        f = String.fromFloat        
+    in
+    let angle = f <| (\ a -> a * 180 / pi) <| Point.pointToAngle <| delta in
+    Svg.g [] [
+    Svg.line ([Svg.x1 <| f x1, Svg.x2 <| f x2, Svg.y1 <| f y1, Svg.y2 <| f y2] ++ 
+                attrsToSvgAttrs Svg.stroke attrs) [],
+                Svg.image
+                [Svg.xlinkHref "img/arrow/default.svg",
+                Svg.x <| f xa,
+                Svg.y <| f ya,
+                Svg.width <| f tailHeadWidth,
+                Svg.height <| f tailHeadHeight,
+                Svg.transform <| 
+                    -- "translate(" ++ f (tailHeadWidth / 2) ++ ", " ++ f (tailHeadHeight / 2) ++ ")" ++
+                    " rotate(" ++ angle 
+                      ++ " " ++ f x2
+                      ++ " " ++ f y2 ++ ")"
+                ] []
+    ]
+
         |> Drawing
 
 
--- arrow between two collages
--- with their dimensions, if they are available
-arrowDrawing : List (Attribute a) ->
-               DrawingDims a ->
-               DrawingDims a ->
-               Drawing a
-arrowDrawing attrs from to =
-    let pfrom = Collage.Layout.base (drawingToCollage from.drawing)
-        pto = Collage.Layout.base (drawingToCollage to.drawing)
-    in
-    let (end, start) = case (Point.raytraceRect pfrom pto (drawingToRect to),
-                             Point.raytraceRect pto pfrom (drawingToRect from)) of
-            (Just e, Just s) -> (e, s)
-            _ -> (pto, pfrom)
-    in
-        arrow attrs start end
 
 
 
 
 
-drawingToRect : DrawingDims a -> (Point, Point)
-drawingToRect dr =
-    let c = drawingToCollage dr.drawing in
-    case dr.dims of
-        Just dims ->
-            let pc = Collage.Layout.base c
-                d = Point.resize 0.5 dims
-            in
-                (Point.subtract pc d, Point.add pc d)
-        Nothing ->
-            (Collage.Layout.bottomLeft c,
-                 Collage.Layout.topRight c)
+    
 
 
 
-fold : (a -> b -> b) -> List a -> b -> b 
-fold f l a = List.foldl f a l
 
 
 
 fromString : List (Attribute msg) -> Point -> String-> Drawing msg
-fromString attrs pos str = 
+fromString attrs (x,y) str = 
    
-  let text = Collage.Text.fromString str in
-  text |> fold applyColorText attrs
-       |> Collage.rendered
-       |> Collage.shift pos
-       |> fold applyEvent attrs
+  let f = String.fromFloat in
+   Svg.text_ 
+     ([Svg.x <| f x, Svg.y <| f y, Svg.textAnchor "middle",
+      Svg.dominantBaseline "middle"
+     ] ++ attrsToSvgAttrs Svg.fill attrs)
+     [Svg.text str]      
        |> Drawing
 
 circle : List (Attribute msg) ->  Point -> Float -> Drawing msg
-circle attrs pos n = Collage.circle n 
-    |> Collage.filled (attrFillStyle attrs)
-    |> fold applyEvent attrs
-    |> Collage.shift pos |> Drawing
+circle attrs (cx, cy) n = 
+  
+  let f = String.fromFloat in
+  Svg.circle ([Svg.cx <| f cx, Svg.cy <| f cy, Svg.r <| f n ] ++ attrsToSvgAttrs Svg.fill attrs) 
+  []
+     |> Drawing
 
-base : Drawing a -> Point
-base d = d |> drawingToCollage |> Collage.Layout.base
 
 html : Point -> Point -> Html.Html a -> Drawing a
-html pos dim h = Collage.html dim h |> Collage.shift pos |> Drawing
+html (x1, y1) (width, height) h = 
+  let f = String.fromFloat in
+  let x = x1 - width / 2
+      y = y1 - height / 2
+  in
+   Svg.foreignObject 
+   [Svg.x <| f x, Svg.y <| f y, Svg.width <| f width, Svg.height <| f height]
+   [h]
+    |> Drawing
 
 group : List (Drawing a) -> Drawing a
 group l =
-  Collage.group (List.map drawingToCollage l) |> Drawing
+  Svg.g [] (List.map drawingToSvg l) |> Drawing

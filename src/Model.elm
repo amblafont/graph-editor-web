@@ -1,6 +1,5 @@
 module Model exposing (..)
 
-import Browser.Dom as Dom
 
 import Color exposing (..)
 import Graph exposing (..)
@@ -8,7 +7,7 @@ import GraphDrawing exposing (..)
 import GraphExtra as Graph exposing (EdgeId)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
-import Task
+
 import Point exposing (Point)
 import Dict exposing (Dict)
 
@@ -276,15 +275,4 @@ collageGraphFromGraph model =
         )
 
 
-focusId : String -> Cmd Msg
-focusId s =
-    Task.attempt (\_ -> noOp) (Dom.focus s)
 
-
-
--- Focus on the input
-
-
-focusLabelInput : Cmd Msg
-focusLabelInput =
-    focusId curIdInput
