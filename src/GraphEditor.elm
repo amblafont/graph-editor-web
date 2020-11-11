@@ -459,7 +459,6 @@ helpMsg model =
                 Html.p [] [
                      msg <| " Syntax: v1 -> v2 - edgeLabel >@d v3 vr |down arrow v X | \"uparrow \" ^ end yo."
                     ++ " [RET] to accept the current chain"       
-                    ++ ", alternative possible [s]quare"
                     ++ ", [ESC] to cancel and comeback to the default mode."]
                 ]
         NewArrow {step} -> "Mode NewArrow. [ESC] to cancel and come back to the default"
@@ -467,6 +466,12 @@ helpMsg model =
             (case step of
                 NewArrowMoveNode _ -> " [(,=,-,>]: alternate between different arrow styles."
                 _ -> "") |> Html.text
+        SquareMode {step} -> "Mode Commutative square. [ESC] to cancel and come back to the default."
+                             ++
+            (case step of
+                SquareMoveNode _ -> " Alternative possible [s]quares."
+                _ -> "") |> Html.text
+
 
         _ -> "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"
              ++ " mode."
