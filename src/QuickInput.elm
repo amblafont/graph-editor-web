@@ -19,8 +19,8 @@ type NonEmptyChain = Singleton Vertex
 orientToPoint : Orient -> (Float, Float)
 orientToPoint o =
     case o of
-        Up   -> (0, 1)
-        Down -> (0, -1)
+        Up   -> (0, -1)
+        Down -> (0, 1)
         Left -> (-1, 0)
         Right -> (1, 0)
 

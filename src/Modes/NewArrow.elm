@@ -9,6 +9,11 @@ import Maybe exposing (withDefault)
 import Model exposing (..)
 import Msg exposing (..)
 
+import ArrowStyle
+
+updateStep : Model -> NewArrowState -> NewArrowStep -> Model
+updateStep m state step = {m | mode = NewArrow { state | step = step }}
+
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
@@ -19,7 +24,7 @@ initialise m =
                 { m
                     | mode = NewArrow
 
-                            { step = NewArrowMoveNode, chosenNode = chosenNode }
+                            { step = NewArrowMoveNode ArrowStyle.empty, chosenNode = chosenNode }
                              -- prevent bugs (if the mouse is thought
                              -- to be kept on a point)
                       , mousePointOver = ONothing
@@ -50,34 +55,26 @@ nextStep model validate state =
             noCmd { m | graph = graph }
     in
     let
-        renamableNextStep step =
-            renamableNextMode { model | mode = NewArrow { state | step = step } }
+        renamableNextStep step = updateStep model state step
+            |> renamableNextMode            
     in
     case state.step of
-        NewArrowMoveNode ->
+        NewArrowMoveNode style ->
             if not validate then
                 switch_Default model
 
             else
                 let
-                    info =
-                        moveNodeInfo model state
+                    info = moveNodeInfo model state style
+                    step = if info.created then
+                             NewArrowEditNode info.movedNode
+                           else
+                              NewArrowEditEdge info.movedNode
                 in
-                noCmd
-                    { model
-                        | graph = info.graph
-                        , mode =
-                            NewArrow <|
-                                { state
-                                    | step =
-                                        if info.created then
-                                            NewArrowEditNode info.movedNode
+                updateStep { model | graph = info.graph } state step
+                |> noCmd
 
-                                        else
-                                            NewArrowEditEdge info.movedNode
-                                }
-                    }
-
+                
         NewArrowEditNode movedNode ->
             renamableNextStep <| NewArrowEditEdge movedNode
 
@@ -107,25 +104,37 @@ update state msg model =
         NodeLabelEdit n s ->
             noCmd { model | graph = graphRenameObj model.graph (ONode n) s }
 
-   
+        
+            
         _ ->
-            noCmd model
+            case state.step of
+                NewArrowMoveNode style ->
+                    style 
+                     |> msgUpdateArrowStyle msg           
+                     |> NewArrowMoveNode
+                     |> updateStep model state 
+                     |> noCmd
+                  
+                _ -> noCmd model
+            
 
 
 moveNodeInfo :
     Model
     -> NewArrowState
+    -> ArrowStyle.Style
     ->
         { graph : Graph NodeLabel EdgeLabel
         , movedNode : NodeId
         , created : Bool
         }
-moveNodeInfo m state =
+moveNodeInfo m state style =
     let
         ( ( graph, movedNode ), created ) =
             mayCreateTargetNode m ""
     in
-    { graph = Graph.addEdge graph ( state.chosenNode, movedNode ) ""
+    { graph = Graph.addEdge graph ( state.chosenNode, movedNode ) 
+       {label = "", style = style }
     , movedNode = movedNode
     , created = created
     }
@@ -135,8 +144,8 @@ makeGraph : Model -> NewArrowState -> Graph NodeLabel EdgeLabel
 makeGraph m s =
     -- let defaultView movedNode = m.graph{ graph = m.graph, movedNode = movedNode}  in
     case s.step of
-        NewArrowMoveNode ->
-            (moveNodeInfo m s).graph
+        NewArrowMoveNode style ->
+            (moveNodeInfo m s style).graph
 
         NewArrowEditNode _ ->
             m.graph
@@ -154,7 +163,7 @@ renamableFromState state =
         NewArrowEditEdge m ->
             OEdge ( state.chosenNode, m )
 
-        NewArrowMoveNode ->
+        NewArrowMoveNode _ ->
             ONothing
 
 

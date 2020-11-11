@@ -38,6 +38,7 @@ import Modes.NewArrow
 
 import Dict
 import DictExtra as Dict
+import ArrowStyle
 
 
 -- we tell js about some mouse move event
@@ -49,10 +50,9 @@ port onMouseMove : JE.Value -> Cmd a
 port onMouseMoveFromJS : (Point -> a) -> Sub a
 
 -- tell js to save the graph
-port saveGraph : (List (Node NodeLabel) , List (Edge EdgeLabel)) -> Cmd a
+port saveGraph : (List (Node NodeLabel) , List (Edge EdgeLabelJs)) -> Cmd a
 -- js tells us to load the graph
-port loadedGraph : ((List (Node NodeLabel) , List (Edge EdgeLabel)) -> a) -> Sub a
-
+port loadedGraph : ((List (Node NodeLabel) , List (Edge EdgeLabelJs)) -> a) -> Sub a
 
 
 
@@ -72,7 +72,10 @@ subscriptions : Model -> Sub Msg
 subscriptions m = Sub.batch 
     [
       -- upload a graph (triggered by js)
-      loadedGraph (\ (n,e) -> Graph.fromNodesAndEdges n e |> Loaded),
+      
+      loadedGraph (\ (ns,es) -> Graph.fromNodesAndEdges ns es
+                       |> Graph.mapEdges edgeLabelFromJs
+                       |> Loaded),
       E.onClick (D.succeed MouseClick),
       E.onKeyUp (D.map (KeyChanged False) keyDecoder),
       onMouseMoveFromJS MouseMove
@@ -96,7 +99,10 @@ iniModel = createModel <| fromNodesAndEdges [] []
 
 
 save : Model -> Msg
-save model = Do (saveGraph (Graph.nodes model.graph, Graph.edges model.graph))
+save model = 
+   Do (saveGraph (Graph.nodes model.graph,
+                      Graph.edges
+                      (Graph.mapEdges edgeLabelToJs model.graph)))
 
 -- Model -----------------------------------------------------------------------
 
@@ -147,7 +153,7 @@ switch_RenameMode model =
         label = case model.activeObj of
               ONothing -> Nothing
               ONode id -> Graph.getNode id model.graph |> Maybe.map .label
-              OEdge id -> Graph.getEdge id model.graph
+              OEdge id -> Graph.getEdge id model.graph |> Maybe.map .label
     in
     case label of
         Nothing -> noCmd model
@@ -271,7 +277,17 @@ update_DefaultMode msg model =
             noCmd <| { model | activeObj = ONode n} 
         EdgeClick n ->
             noCmd <| { model | activeObj = OEdge n}
-        _ -> noCmd model
+        _ ->
+            case objToEdge model.activeObj of
+              Nothing -> noCmd model
+              Just id -> noCmd 
+                { model | graph =
+                  Graph.updateEdge id 
+                    (\e -> {e | style = msgUpdateArrowStyle msg e.style})
+                    model.graph
+                }
+               
+                 
 
 update_DebugMode : Msg -> Model -> (Model, Cmd Msg)
 update_DebugMode msg model =
@@ -369,7 +385,8 @@ graphDrawingNonEmptyChain g ch loc -- defOrient
             in
             let label = withDefault "" olabel in
 
-            (Graph.addEdge g3 (source, target) label, source)
+            (Graph.addEdge g3 (source, target) { label = label, style = ArrowStyle.empty }
+            , source)
 
 
 type HelpStrType = Bold | Plain
@@ -426,6 +443,10 @@ helpMsg model =
                 ++ ", [r]ename selected object" 
                 ++ ", [g] move selected object" 
                 ++ "."
+                ++ case model.activeObj of
+                     OEdge _ ->
+                       " [(,=,-,>]: alternate between different arrow styles."
+                     _ -> ""
                       -- b "b",
                       -- Html.text "litz flag (no labelling on point creation)."
              -- "[r]ename selected object, move selected point [g], [d]ebug mode"
@@ -441,6 +462,12 @@ helpMsg model =
                     ++ ", alternative possible [s]quare"
                     ++ ", [ESC] to cancel and comeback to the default mode."]
                 ]
+        NewArrow {step} -> "Mode NewArrow. [ESC] to cancel and come back to the default"
+                           ++
+            (case step of
+                NewArrowMoveNode _ -> " [(,=,-,>]: alternate between different arrow styles."
+                _ -> "") |> Html.text
+
         _ -> "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"
              ++ " mode."
                  |> Html.text

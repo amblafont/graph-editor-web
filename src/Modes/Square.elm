@@ -10,7 +10,11 @@ import Maybe exposing (withDefault)
 import Model exposing (..)
 import Msg exposing (..)
 import Tuple
+import ArrowStyle
 
+-- TODO: factor with newArrow
+updateStep : Model -> SquareState -> SquareStep -> Model
+updateStep m state step = {m | mode = SquareMode { state | step = step }}
 
 
 possibleSquareStates : NodeContext a b -> List SquareModeData
@@ -118,7 +122,7 @@ nextStep model validate state =
     in
     let
         renamableNextStep step =
-            renamableNextMode { model | mode = SquareMode { state | step = step } }
+            renamableNextMode (updateStep model state step)
     in
     case state.step of
         SquareMoveNode _ ->
@@ -130,20 +134,13 @@ nextStep model validate state =
                     ( info, movedNode, created ) =
                         moveNodeViewInfo model state.data
                 in
-                noCmd
-                    { model
-                        | graph = info.graph
-                        , mode =
-                            SquareMode <|
-                                { state
-                                    | step =
-                                        if created then
-                                            SquareEditNode movedNode
-
-                                        else
-                                            SquareEditEdge1 movedNode
-                                }
-                    }
+                noCmd <| updateStep
+                    { model | graph = info.graph } state 
+                        <| if created then
+                                SquareEditNode movedNode
+                           else
+                                SquareEditEdge1 movedNode
+                               
 
         SquareEditNode mn ->
             renamableNextStep <| SquareEditEdge1 mn
@@ -239,7 +236,10 @@ moveNodeViewInfo m data =
     in
     let
         g2 =
-            Graph.addEdge (Graph.addEdge g edges.ne1 "") edges.ne2 ""
+            Graph.addEdge (Graph.addEdge g edges.ne1 
+            {label = "", style = ArrowStyle.empty}
+            ) edges.ne2 
+            {label = "", style = ArrowStyle.empty}
     in
     ( { graph = g2, edges = edges }, n, created )
 

@@ -7,6 +7,7 @@ import Html
 import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
+import ArrowStyle
 import Point exposing (Point)
 import Msg exposing (..)
 import Color exposing (..)
@@ -16,7 +17,9 @@ import Geometry
 
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
-type alias EdgeDrawingLabel = { label : String, editable : Bool, isActive : Bool }
+type alias EdgeDrawingLabel = 
+   { label : String, editable : Bool, isActive : Bool, 
+   style : ArrowStyle.Style }
 type alias NodeDrawingLabel =
     { pos : Point, label : String, editable : Bool, isActive : Bool,
           dims : Maybe Point
@@ -24,8 +27,8 @@ type alias NodeDrawingLabel =
 
 make_edgeDrawingLabel : {editable : Bool, isActive : Bool} 
                       -> EdgeLabel-> EdgeDrawingLabel
-make_edgeDrawingLabel {editable, isActive} label =
-    { label = label, editable = editable, isActive = isActive}
+make_edgeDrawingLabel {editable, isActive} {label, style} =
+    { label = label, editable = editable, isActive = isActive, style = style}
 
 make_nodeDrawingLabel : {editable : Bool, isActive : Bool, dims : Maybe Point} -> NodeLabel ->  NodeDrawingLabel
 make_nodeDrawingLabel {editable, isActive, dims} {label, pos} =
@@ -103,13 +106,14 @@ segmentLabel fromP toP edgeId label =
 
 
 edgeDrawing : Graph.EdgeNodes (DrawingDims Msg) EdgeDrawingLabel -> Drawing Msg
-edgeDrawing ({from, to , label}) =
+edgeDrawing {from, to , label } =
     let c = if label.isActive then Drawing.red else Drawing.black in
     let edgeId = (from.id, to.id) in
     let (fromP, toP) = Geometry.segmentRect from.label.posDims to.label.posDims in
     Drawing.group [
          Drawing.arrow 
           [Drawing.color c, Drawing.onClick (EdgeClick edgeId)] 
+          label.style
          fromP toP, 
           segmentLabel fromP toP edgeId label]
 
@@ -127,8 +131,12 @@ graphDrawing g0 =
               (\n -> { drawing = nodeDrawing n, 
                       posDims = {
                       dims = 
-                      -- copied from source code of collage
-                      Maybe.withDefault (height / 2 * toFloat (String.length n.label.label), height)
+                      
+                      Maybe.withDefault 
+                      (if n.label.editable then 0 else
+                      -- copied from source code of Collage
+                          height / 2 * toFloat (String.length n.label.label), height
+                          )
                          n.label.dims, 
                       pos = n.label.pos
                       } |> Geometry.pad padding

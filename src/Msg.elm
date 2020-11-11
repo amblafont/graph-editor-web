@@ -8,6 +8,7 @@ import Tuple
 import Task
 
 import Browser.Dom as Dom
+import ArrowStyle  
 -- From https://github.com/elm/browser/blob/1.0.2/notes/keyboard.md
 -- useful for keyboard events
 type Key
@@ -30,8 +31,17 @@ keyDecoder = D.field "key" D.string
              |> D.map toKey
 
 
-type alias EdgeLabel = String
+type alias EdgeLabel = { label : String, style : ArrowStyle.Style}
 type alias NodeLabel = { pos : Point , label : String}
+
+type alias EdgeLabelJs = { label : String, style : ArrowStyle.JsStyle}
+
+edgeLabelToJs : EdgeLabel -> EdgeLabelJs
+edgeLabelToJs {label, style} = {label = label, style = ArrowStyle.toJsStyle style}
+
+edgeLabelFromJs : EdgeLabelJs -> EdgeLabel
+edgeLabelFromJs {label, style} = {label = label, style = ArrowStyle.fromJsStyle style}
+
 
 setPos : Point -> NodeLabel -> NodeLabel
 setPos p l = { l | pos = p}
@@ -85,3 +95,19 @@ curIdInput = "edited_label"
 focusLabelInput : Cmd Msg
 focusLabelInput =
     focusId curIdInput
+
+keyUpdateArrowStyle : Key -> ArrowStyle.Style -> ArrowStyle.Style
+keyUpdateArrowStyle k style =
+   case k of 
+        Character '>' -> ArrowStyle.toggleHead style
+        Character '(' -> ArrowStyle.toggleHook style
+        Character '=' -> ArrowStyle.toggleDouble style
+        Character '-' -> ArrowStyle.toggleDashed style
+        _ -> style
+
+msgUpdateArrowStyle : Msg -> ArrowStyle.Style -> ArrowStyle.Style
+msgUpdateArrowStyle m style =
+   case m of 
+      KeyChanged False k -> keyUpdateArrowStyle k style
+      _ -> style
+        

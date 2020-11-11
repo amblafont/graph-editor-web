@@ -10,10 +10,12 @@ import Svg.Events
 import Point exposing (Point)
 import Html
 import Json.Decode as D
+import Html 
+import ArrowStyle
 
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
 svg l d =
-  d |> drawingToSvg |> List.singleton |> Svg.svg l
+  d |> drawingToSvgs |> Svg.svg l
 
 
 attrToSvgAttr : (String -> Svg.Attribute a) -> Attribute a -> Maybe (Svg.Attribute a)
@@ -67,64 +69,48 @@ color : Color -> Attribute msg
 color = Color
 
 type Drawing a
-    = Drawing (Svg a)
+    = Drawing (List (Svg a))
 
+ofSvg : Svg a -> Drawing a
+ofSvg s = Drawing [ s ]
 
-drawingToSvg : Drawing a -> Svg a
-drawingToSvg d = case d of 
+drawingToSvgs : Drawing a -> List (Svg a)
+drawingToSvgs d = case d of 
     Drawing c -> c
 
 
-
-
-
-
-arrow : List (Attribute a) -> Point -> Point -> Drawing a
-arrow attrs from to =
-    let
-    --    c = attrsColor attrs |> Maybe.withDefault Color.black
-        delta = Point.subtract to from
-
-        -- pos = to
-        offset = 0 -- 15
-
-        offsetP = Point.normalise offset delta
-
-        pos = Point.subtract to offsetP
-
-        fromOffset = Point.add from offsetP
-
-        tailHeadWidth = 9.764
-        tailHeadHeight = 13
-        -- from GridCellArrow
-        
-
-    in
+mkLine : Bool -> List (Attribute a) -> Point -> Point -> Svg a
+mkLine dashed attrs (x1, y1) (x2, y2) =
+  let f = String.fromFloat in
     
-    let (x2, y2) = pos
-        (x1, y1) = fromOffset
-        (xa, ya) = (x2 - tailHeadHeight / 2, y2 - tailHeadHeight / 2)
-        f = String.fromFloat        
-    in
-    let angle = f <| (\ a -> a * 180 / pi) <| Point.pointToAngle <| delta in
-    Svg.g [] [
-    Svg.line ([Svg.x1 <| f x1, Svg.x2 <| f x2, Svg.y1 <| f y1, Svg.y2 <| f y2] ++ 
-                attrsToSvgAttrs Svg.stroke attrs) [],
-                Svg.image
-                [Svg.xlinkHref "img/arrow/default.svg",
-                Svg.x <| f xa,
-                Svg.y <| f ya,
-                Svg.width <| f tailHeadWidth,
-                Svg.height <| f tailHeadHeight,
-                Svg.transform <| 
-                    -- "translate(" ++ f (tailHeadWidth / 2) ++ ", " ++ f (tailHeadHeight / 2) ++ ")" ++
-                    " rotate(" ++ angle 
-                      ++ " " ++ f x2
-                      ++ " " ++ f y2 ++ ")"
-                ] []
-    ]
+    Svg.line ([Svg.x1 <| f x1, Svg.x2 <| f x2, Svg.y1 <| f y1, Svg.y2 <| f y2] 
+                ++ 
+                attrsToSvgAttrs Svg.stroke attrs
+                ++
+            if dashed then
+              [ Svg.strokeDasharray ArrowStyle.dashedStr]
+            else 
+              []
+              ) []
+                
 
-        |> Drawing
+arrow : List (Attribute a) -> ArrowStyle.Style -> Point -> Point -> Drawing a
+arrow attrs style from to =
+    let imgs = ArrowStyle.makeHeadTailImgs from to style in    
+    let mkl = mkLine style.dashed attrs in
+    let lines = if ArrowStyle.isDouble style then
+                let delta = Point.subtract to from 
+                            |> Point.orthogonal
+                            |> Point.normalise ArrowStyle.doubleSize
+                in
+              
+                [ mkl (Point.add from delta) (Point.add to delta),
+                  mkl (Point.subtract from delta) (Point.subtract to delta)
+                ]
+        
+                else
+                    [ mkl from to ]
+    in lines ++ imgs |> Drawing
 
 
 
@@ -148,7 +134,7 @@ fromString attrs (x,y) str =
       Svg.dominantBaseline "middle"
      ] ++ attrsToSvgAttrs Svg.fill attrs)
      [Svg.text str]      
-       |> Drawing
+       |> ofSvg
 
 circle : List (Attribute msg) ->  Point -> Float -> Drawing msg
 circle attrs (cx, cy) n = 
@@ -156,7 +142,7 @@ circle attrs (cx, cy) n =
   let f = String.fromFloat in
   Svg.circle ([Svg.cx <| f cx, Svg.cy <| f cy, Svg.r <| f n ] ++ attrsToSvgAttrs Svg.fill attrs) 
   []
-     |> Drawing
+     |> ofSvg
 
 
 html : Point -> Point -> Html.Html a -> Drawing a
@@ -168,8 +154,8 @@ html (x1, y1) (width, height) h =
    Svg.foreignObject 
    [Svg.x <| f x, Svg.y <| f y, Svg.width <| f width, Svg.height <| f height]
    [h]
-    |> Drawing
+    |> ofSvg
 
 group : List (Drawing a) -> Drawing a
 group l =
-  Svg.g [] (List.map drawingToSvg l) |> Drawing
+  (List.map drawingToSvgs l) |> List.concat |> Drawing

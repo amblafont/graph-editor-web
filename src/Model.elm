@@ -10,6 +10,7 @@ import QuickInput exposing (NonEmptyChain)
 
 import Point exposing (Point)
 import Dict exposing (Dict)
+import ArrowStyle
 
 
 
@@ -51,7 +52,7 @@ type alias NewArrowState =
 
 
 type NewArrowStep
-    = NewArrowMoveNode
+    = NewArrowMoveNode ArrowStyle.Style
       -- the moved node
     | NewArrowEditNode NodeId
     | NewArrowEditEdge NodeId
@@ -117,12 +118,36 @@ type Obj
 objToNode : Obj -> Maybe NodeId
 objToNode o =
     case o of
-        ONode n ->
-            Just n
+        ONode n -> Just n
+        _ -> Nothing
+
+objToEdge : Obj -> Maybe EdgeId
+objToEdge o =
+    case o of
+       OEdge n -> Just n
+       _ -> Nothing
+
+obj_NodeId : Obj -> NodeId
+obj_NodeId x =
+    case x of
+        ONode id ->
+            id
 
         _ ->
-            Nothing
+            0
 
+
+obj_EdgeId : Obj -> EdgeId
+obj_EdgeId x =
+    case x of
+        OEdge id ->
+            id
+
+        _ ->
+            ( 0, 0 )
+activeNode : Model -> NodeId
+activeNode m =
+    obj_NodeId m.activeObj
 
 graphRemoveObj : Obj -> Graph a b -> Graph a b
 graphRemoveObj o g =
@@ -144,7 +169,7 @@ graphRenameObj g o s =
             Graph.updateNode id (\nl -> { nl | label = s }) g
 
         OEdge id ->
-            Graph.updateEdge id (\_ -> s) g
+            Graph.updateEdge id (\e -> { e | label = s}) g
 
         ONothing ->
             g
@@ -176,29 +201,9 @@ graphMakeActive o g =
             g
 
 
-activeNode : Model -> NodeId
-activeNode m =
-    obj_NodeId m.activeObj
 
 
-obj_NodeId : Obj -> NodeId
-obj_NodeId x =
-    case x of
-        ONode id ->
-            id
 
-        _ ->
-            0
-
-
-obj_EdgeId : Obj -> EdgeId
-obj_EdgeId x =
-    case x of
-        OEdge id ->
-            id
-
-        _ ->
-            ( 0, 0 )
 
 
 
