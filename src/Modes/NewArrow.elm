@@ -27,12 +27,8 @@ initialise m =
                             { step = NewArrowMoveNode ArrowStyle.empty, chosenNode = chosenNode }
                              -- prevent bugs (if the mouse is thought
                              -- to be kept on a point)
-                      , mousePointOver = ONothing
-                }
-
-
-
-                 
+                      -- , mousePointOver = ONothing
+                }                 
             )
         |> Maybe.withDefault m
         |> noCmd
@@ -131,6 +127,7 @@ moveNodeInfo :
 moveNodeInfo m state style =
     let
         ( ( graph, movedNode ), created ) =
+           -- Model.getTargetNodes |> List.filter (\i ->)
             mayCreateTargetNode m ""
     in
     { graph = Graph.addEdge graph ( state.chosenNode, movedNode ) 
@@ -140,18 +137,23 @@ moveNodeInfo m state style =
     }
 
 
-makeGraph : Model -> NewArrowState -> Graph NodeLabel EdgeLabel
-makeGraph m s =
+graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
+graphDrawing m s =
     -- let defaultView movedNode = m.graph{ graph = m.graph, movedNode = movedNode}  in
+    graphMakeEditable (renamableFromState s) <|
+    collageGraphFromGraph m <|
     case s.step of
         NewArrowMoveNode style ->
-            (moveNodeInfo m s style).graph
+            let info = moveNodeInfo m s style in
+             info.graph 
+            --  |> collageGraphFromGraph m
+            {-  |> if info.created then 
+                Graph.updateNode info.movedNode
+                 (\n -> {n | watchEnterLeave = False })
+                else identity -}
+        _ ->
+            m.graph -- |> collageGraphFromGraph m
 
-        NewArrowEditNode _ ->
-            m.graph
-
-        NewArrowEditEdge _ ->
-            m.graph
 
 
 renamableFromState : NewArrowState -> Obj
@@ -167,11 +169,3 @@ renamableFromState state =
             ONothing
 
 
-graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
-graphDrawing m astate =
-    let
-        g =
-            makeGraph m astate
-    in
-    collageGraphFromGraph m g
-        |> graphMakeEditable (renamableFromState astate)

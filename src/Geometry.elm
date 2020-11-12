@@ -1,6 +1,8 @@
-module Geometry exposing (raytraceRect, PosDims, Rect, pad, segmentRect)
+module Geometry exposing (raytraceRect, PosDims, Rect, pad, 
+   segmentRect, isInRect, isInPosDims)
 
 import Point exposing (Point)
+
 
 type alias PosDims = { pos : Point, dims : Point }
 type alias Rect = { topLeft : Point, bottomRight : Point }
@@ -11,6 +13,16 @@ rectFromPosDims { pos, dims } =
    Rect 
    (Point.subtract pos dims2)
    (Point.add pos dims2)
+
+isInRect : Rect -> Point -> Bool 
+isInRect {topLeft , bottomRight} (x, y) =
+  let (x1, y1) = topLeft
+      (x2, y2) = bottomRight
+   in
+     x1 < x && x < x2 &&  y1 < y && y  < y2
+
+isInPosDims : PosDims -> Point -> Bool
+isInPosDims dims p = isInRect (rectFromPosDims dims) p
 
 pad : Float -> PosDims -> PosDims 
 pad n {pos , dims } = 

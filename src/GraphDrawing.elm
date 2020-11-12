@@ -16,13 +16,18 @@ import Geometry
 
 
 
+
+
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias EdgeDrawingLabel = 
    { label : String, editable : Bool, isActive : Bool, 
    style : ArrowStyle.Style }
 type alias NodeDrawingLabel =
     { pos : Point, label : String, editable : Bool, isActive : Bool,
-          dims : Maybe Point
+          dims : Point 
+          -- whether I should watch entering and leaving 
+          -- node
+          -- watchEnterLeave : Bool
     }
 
 make_edgeDrawingLabel : {editable : Bool, isActive : Bool} 
@@ -30,10 +35,10 @@ make_edgeDrawingLabel : {editable : Bool, isActive : Bool}
 make_edgeDrawingLabel {editable, isActive} {label, style} =
     { label = label, editable = editable, isActive = isActive, style = style}
 
-make_nodeDrawingLabel : {editable : Bool, isActive : Bool, dims : Maybe Point} -> NodeLabel ->  NodeDrawingLabel
+make_nodeDrawingLabel : {editable : Bool, isActive : Bool, dims : Point} -> NodeLabel ->  NodeDrawingLabel
 make_nodeDrawingLabel {editable, isActive, dims} {label, pos} =
     { label = label, pos = pos, editable = editable, isActive = isActive,
-    dims = dims}
+    dims = dims{- , watchEnterLeave = True -}}
 
 
 -- create an input with id curIdInput
@@ -73,11 +78,14 @@ nodeLabelDrawing attrs node =
 
 nodeDrawing : Node NodeDrawingLabel -> Drawing Msg
 nodeDrawing n =
+  {-  let watch = if n.label.watchEnterLeave then
+        [Drawing.onMouseEnter (NodeEnter n.id),
+         Drawing.onMouseLeave (NodeLeave n.id) ]
+         else []
+   in  -}
     nodeLabelDrawing
-    [Drawing.onClick (NodeClick n.id),
-    Drawing.onMouseEnter (NodeEnter n.id),
-    Drawing.onMouseLeave (NodeLeave n.id)
-    ]
+    [Drawing.onClick (NodeClick n.id)]
+    
      n
         
 
@@ -125,18 +133,15 @@ type alias DrawingDims msg =
 
 graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 graphDrawing g0 =
-      let height = 16 in
+     
       let padding = 5 in
       let g = Graph.mapNodeEdges
               (\n -> { drawing = nodeDrawing n, 
                       posDims = {
                       dims = 
                       
-                      Maybe.withDefault 
-                      (if n.label.editable then 0 else
-                      -- copied from source code of Collage
-                          height / 2 * toFloat (String.length n.label.label), height
-                          )
+                      if n.label.editable then (0, 0) else
+                      -- copied from source code of Collage                         
                          n.label.dims, 
                       pos = n.label.pos
                       } |> Geometry.pad padding

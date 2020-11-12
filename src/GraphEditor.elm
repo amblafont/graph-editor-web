@@ -3,6 +3,7 @@ port module GraphEditor exposing (main)
 
 
 
+-- TODO: autoriser la selection de plusieurs objets
 import Model exposing (..)
 import Browser
 import Browser.Events as E
@@ -39,7 +40,7 @@ import Modes.NewArrow
 import Dict
 import DictExtra as Dict
 import ArrowStyle
-
+import Point
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -169,8 +170,10 @@ update msg model =
                     -- {model | mousePos = (x, y), statusMsg = "mouse " ++ Debug.toString (x, y)}
             -- KeyChanged False s -> {model | statusMsg = keyToString s}
             -- NodeClick n -> {model | statusMsg = "point " }
-            NodeEnter n -> { model | mousePointOver = ONode n}
-            NodeLeave n -> { model | mousePointOver = ONothing}
+            -- NodeEnter n -> 
+            --    let _ = Debug.log "ici" n in
+            --   { model | mousePointOver = ONode n}
+            -- NodeLeave n -> { model | mousePointOver = ONothing}
             SizeChanged n dims ->
                 { model | statusMsg = "newsize " ++ Debug.toString (n, dims)
                       , dimNodes = Dict.insertOrRemove n dims model.dimNodes
@@ -236,22 +239,7 @@ finalise_RenameMode label model =
     let g = graph_RenameMode label model in
     switch_Default {model | graph = g}
 
--- type ChangeModel =
---     ChangeState State
---   | ChangeModel Model
---   | { model | mode = Mode }
---   | NoChange
 
--- changeModel : Model -> ChangeModel -> Model
--- changeModel ({state} as m) c =
---     case c of
---         ChangeState st -> {m | state = st }
---         ChangeModel m2 -> m2
---         { model | mode = mode } -> { m | mode = mode}
---         NoChange -> m
-
--- changeModelStuff : Model -> (ChangeModel, a)  -> (Model, a)
--- changeModelStuff m (c, x) = (changeModel m c, x)
 
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
@@ -435,7 +423,7 @@ helpMsg model =
             msg <| "Default mode. Commands: [click] for point/edge selection" 
                 ++ ", new [a]rrow from selected point"
                 ++ ", new [p]oint"
-                ++ ", new (commutative) [s]quare on selected point"
+                ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
                 ++ ", [del]ete selected object (also [x])"
                 ++ ", [q]ickInput mode" 
                 ++ ", [d]ebug mode" 
@@ -461,7 +449,8 @@ helpMsg model =
                     ++ " [RET] to accept the current chain"       
                     ++ ", [ESC] to cancel and comeback to the default mode."]
                 ]
-        NewArrow {step} -> "Mode NewArrow. [ESC] to cancel and come back to the default"
+        NewArrow {step} -> "Mode NewArrow. [ESC] to cancel and come back to the default. "
+                          -- ++ Debug.toString model 
                            ++
             (case step of
                 NewArrowMoveNode _ -> " [(,=,-,>]: alternate between different arrow styles."

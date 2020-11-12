@@ -53,8 +53,8 @@ type Msg
   | KeyChanged Bool Key
   | MouseMove Point
   | MouseClick 
-  | NodeEnter NodeId
-  | NodeLeave NodeId
+  -- | NodeEnter NodeId
+  -- | NodeLeave NodeId
   | NodeClick NodeId
   | EdgeClick EdgeId
   | EdgeLabelEdit EdgeId String

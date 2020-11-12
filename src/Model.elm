@@ -11,6 +11,7 @@ import QuickInput exposing (NonEmptyChain)
 import Point exposing (Point)
 import Dict exposing (Dict)
 import ArrowStyle
+import Geometry
 
 
 
@@ -22,8 +23,8 @@ type alias Model =
     { graph : Graph NodeLabel EdgeLabel
     , activeObj : Obj
     , mousePos : Point
-    , -- if the mouse is over some node or edge
-      mousePointOver : Obj
+    -- , -- if the mouse is over some node or edge
+    --  mousePointOver : Obj
     , statusMsg : String
     , -- unnamedFlag : Bool,
       quickInput : String
@@ -90,7 +91,7 @@ createModel g =
       --                        pointToAngle (-1, 0.01)]),
       quickInput = ""
     , mousePos = ( 0, 0 )
-    , mousePointOver = ONothing
+   -- , mousePointOver = ONothing
     , activeObj = ONothing
     , dimNodes = Dict.empty
 
@@ -216,11 +217,23 @@ graphMakeActive o g =
 -- returns the target node of the new arrow, if it already exists.
 
 
+getNodesAt : Model -> Point -> List NodeId
+getNodesAt m p =
+  Graph.filterNodesId m.graph 
+    (\n -> Geometry.isInPosDims { pos = n.label.pos, 
+                                  dims = getNodeDims m n} p)
+  |> List.map .id
+
+getTargetNodes : Model -> List NodeId
+getTargetNodes m = getNodesAt m m.mousePos
+  -- List.head |> Maybe.map .id
+
+-- not very reliable, let us use getNodeAt
 getTargetNode : Model -> Maybe NodeId
 getTargetNode m =
     -- if the mouse is over a node, that is the target node
-    case m.mousePointOver of
-        ONode i ->
+    case getTargetNodes m of
+        i :: _ ->
             if Graph.member i m.graph then
                 Just i
 
@@ -229,6 +242,17 @@ getTargetNode m =
 
         _ ->
             Nothing
+
+getNodeDims : Model -> Node NodeLabel -> Point
+getNodeDims m n =
+    case  Dict.get n.id m.dimNodes of
+        Nothing ->
+         let height = 16 in
+         let size = max 1 (String.length n.label.label) in
+         -- copied from source code of Collage
+         (height / 2 * toFloat size, height)
+        Just p -> p
+
 
 
 
@@ -264,7 +288,7 @@ make_defaultNodeDrawingLabel model n =
     make_nodeDrawingLabel
         { editable = False
         , isActive = n.id == activeNode model
-        , dims = Dict.get n.id model.dimNodes
+        , dims =  getNodeDims model n  
         }
         n.label
 

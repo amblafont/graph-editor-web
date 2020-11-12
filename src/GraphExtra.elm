@@ -139,10 +139,12 @@ edgesWithNodes g =
 
 
 filterNodes : Graph n e -> (n -> Bool) -> List (Node n)
-filterNodes g f =
-    Graph.nodes g |> List.filter (f << .label)
+filterNodes g f = filterNodesId g (f << .label)
 
 
+filterNodesId : Graph n e -> (Node n -> Bool) -> List (Node n)
+filterNodesId g f =
+    Graph.nodes g |> List.filter f
 
 --|> List.map .id
 

@@ -8,7 +8,6 @@ import Svg exposing (Svg)
 import Svg.Attributes as Svg
 import Svg.Events
 import Point exposing (Point)
-import Html
 import Json.Decode as D
 import Html 
 import ArrowStyle

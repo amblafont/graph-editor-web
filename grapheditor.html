@@ -16,11 +16,10 @@
         <div id="myapp"></div>
         <script>
          var appDiv = document.getElementById('myapp');
-        var idFocus = "edited_label";
+        
         var classLifecycle = "lifecycle";
          
-        function dispatchCreate(node) {
-            console.log("added node: " + node.tagName);
+        function dispatchCreate(node) {            
             if (node.getBoundingClientRect != null)
                      {
                          // could be optimized by having an additionnal
@@ -38,12 +37,9 @@
          var callbackMutation = function(mutationsList) {
              for(var mutation of mutationsList) {
 	               for(var node of mutation.addedNodes) {
-                     //console.log("added node: " + node.tagName);
-                     //console.log(node.innerHTML);
-                     /* console.log(node.id); */
+             
                      dispatchCreate(node);
-                     if (node.getElementsByClassName == null) {
-                         console.log("no getElementsByClassName");
+                     if (node.getElementsByClassName == null) {                         
                          continue;
                      }
 
@@ -51,17 +47,10 @@
                      for (var i = 0; i < children.length; ++i) {
                           dispatchCreate(children[i]);
                       }                 
-                     // Y en a marre que ca focuse pas
-                     // ca ne marche pas!!
-                     /*if (node.id == "edited_label") {
-                         console.log("coucou");
-                         node.addEventListener("focus", function () { console.log("edited_label: focus"); });
-
-                         node.focus();
-                     }*/
+            
 
                  }
-                 // TODO utiliser slotchange on custom elements
+                
 	               for(var node of mutation.removedNodes) {
                      if (node.getBoundingClientRect != null)
                      {
