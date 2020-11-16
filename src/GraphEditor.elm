@@ -8,6 +8,9 @@ import Model exposing (..)
 import Browser
 import Browser.Events as E
 
+import Task
+import Browser.Dom as Dom
+
 
 import Json.Decode as D
 import Json.Encode as JE
@@ -16,7 +19,7 @@ import GraphExtra as Graph
 
 import Drawing 
 
-import Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 
 import Color exposing (..)
 import Html exposing (Html)
@@ -40,7 +43,7 @@ import Modes.NewArrow
 import Dict
 import DictExtra as Dict
 import ArrowStyle
-import Point
+import Geometry.Point
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -199,7 +202,9 @@ update msg model =
 update_QuickInput : Maybe NonEmptyChain -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
     case msg of
-        KeyChanged False (Control "Escape") -> switch_Default model
+        KeyChanged False (Control "Escape") ->
+            ({model | mode = DefaultMode}, 
+                 Task.attempt (\_ -> noOp) (Dom.blur quickInputId))
         KeyChanged False (Control "Enter") ->
             switch_Default {model | graph = graphDrawingChain model.graph ch, quickInput = ""}
         QuickInput s ->
@@ -373,7 +378,8 @@ graphDrawingNonEmptyChain g ch loc -- defOrient
             in
             let label = withDefault "" olabel in
 
-            (Graph.addEdge g3 (source, target) { label = label, style = ArrowStyle.empty }
+            (Graph.addEdge g3 (source, target) 
+              { label = label, style = emptyArrowStyle }
             , source)
 
 
@@ -433,7 +439,7 @@ helpMsg model =
                 ++ "."
                 ++ case model.activeObj of
                      OEdge _ ->
-                       " [(,=,-,>]: alternate between different arrow styles."
+                       " [(,=,b,B,-,>]: alternate between different arrow styles."
                      _ -> ""
                       -- b "b",
                       -- Html.text "litz flag (no labelling on point creation)."
@@ -453,7 +459,7 @@ helpMsg model =
                           -- ++ Debug.toString model 
                            ++
             (case step of
-                NewArrowMoveNode _ -> " [(,=,-,>]: alternate between different arrow styles."
+                NewArrowMoveNode _ -> " [(,=,b,B,-,>]: alternate between different arrow styles."
                 _ -> "") |> Html.text
         SquareMode {step} -> "Mode Commutative square. [ESC] to cancel and come back to the default."
                              ++

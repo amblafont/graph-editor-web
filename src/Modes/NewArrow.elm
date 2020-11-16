@@ -24,7 +24,8 @@ initialise m =
                 { m
                     | mode = NewArrow
 
-                            { step = NewArrowMoveNode ArrowStyle.empty, chosenNode = chosenNode }
+                            { step = NewArrowMoveNode emptyArrowStyle,
+                             chosenNode = chosenNode }
                              -- prevent bugs (if the mouse is thought
                              -- to be kept on a point)
                       -- , mousePointOver = ONothing
@@ -55,7 +56,7 @@ nextStep model validate state =
             |> renamableNextMode            
     in
     case state.step of
-        NewArrowMoveNode style ->
+        NewArrowMoveNode style  ->
             if not validate then
                 switch_Default model
 
@@ -118,7 +119,7 @@ update state msg model =
 moveNodeInfo :
     Model
     -> NewArrowState
-    -> ArrowStyle.Style
+    -> ArrowStyle
     ->
         { graph : Graph NodeLabel EdgeLabel
         , movedNode : NodeId

@@ -8,7 +8,7 @@ import GraphExtra as Graph exposing (EdgeId)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
 
-import Point exposing (Point)
+import Geometry.Point exposing (Point)
 import Dict exposing (Dict)
 import ArrowStyle
 import Geometry
@@ -53,7 +53,7 @@ type alias NewArrowState =
 
 
 type NewArrowStep
-    = NewArrowMoveNode ArrowStyle.Style
+    = NewArrowMoveNode ArrowStyle
       -- the moved node
     | NewArrowEditNode NodeId
     | NewArrowEditEdge NodeId

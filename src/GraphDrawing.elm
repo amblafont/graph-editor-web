@@ -8,11 +8,12 @@ import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
 import ArrowStyle
-import Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 import Msg exposing (..)
 import Color exposing (..)
 import Json.Decode as D
-import Geometry
+import Geometry 
+import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 
 
 
@@ -21,7 +22,7 @@ import Geometry
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias EdgeDrawingLabel = 
    { label : String, editable : Bool, isActive : Bool, 
-   style : ArrowStyle.Style }
+   style : ArrowStyle }
 type alias NodeDrawingLabel =
     { pos : Point, label : String, editable : Bool, isActive : Bool,
           dims : Point 
@@ -91,18 +92,21 @@ nodeDrawing n =
 
 
 
-segmentLabel : Point -> Point -> Graph.EdgeId -> EdgeDrawingLabel -> Drawing Msg
-segmentLabel fromP toP edgeId label =
+segmentLabel : QuadraticBezier -> Graph.EdgeId -> EdgeDrawingLabel -> Drawing Msg
+segmentLabel q edgeId label =
 
     let
-        
-      --  fromP = from.label.pos
-      --  toP = to.label.pos
-        delta = Point.subtract toP fromP
-        middle = Point.middle fromP toP
-        coef  = 10
-        orth = Point.normalise coef <| Point.orthogonal delta
-        labelpos = Point.add middle orth
+        offset = 10 + (if ArrowStyle.isDouble label.style.s then ArrowStyle.doubleSize else 0)
+        labelpos =
+           if Bez.isLine q then
+              Point.diamondPx q.from q.to offset
+              
+            else 
+              let m = Bez.middle q in
+              Point.add m <|
+              Point.normalise offset <|        
+               Point.subtract q.controlPoint <| m
+      
     in
         if label.editable then
              make_input labelpos label.label
@@ -117,13 +121,16 @@ edgeDrawing : Graph.EdgeNodes (DrawingDims Msg) EdgeDrawingLabel -> Drawing Msg
 edgeDrawing {from, to , label } =
     let c = if label.isActive then Drawing.red else Drawing.black in
     let edgeId = (from.id, to.id) in
-    let (fromP, toP) = Geometry.segmentRect from.label.posDims to.label.posDims in
+    
+    let q = Geometry.segmentRectBent from.label.posDims to.label.posDims 
+             label.style.bend
+    in
     Drawing.group [
          Drawing.arrow 
           [Drawing.color c, Drawing.onClick (EdgeClick edgeId)] 
-          label.style
-         fromP toP, 
-          segmentLabel fromP toP edgeId label]
+          label.style.s
+         q, 
+          segmentLabel q edgeId label]
 
 type alias DrawingDims msg =
     { drawing : Drawing msg

@@ -1,7 +1,11 @@
 module Geometry exposing (raytraceRect, PosDims, Rect, pad, 
-   segmentRect, isInRect, isInPosDims)
+   -- segmentRect, 
+   segmentRectBent, isInRect, isInPosDims -- , diamondPointPx
+  )
 
-import Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
+import Geometry.QuadraticBezier exposing (QuadraticBezier)
+
 
 
 type alias PosDims = { pos : Point, dims : Point }
@@ -30,16 +34,33 @@ pad n {pos , dims } =
   { pos = pos, dims = Point.add dims (n2, n2) }
 
 
-segmentRect : PosDims -> PosDims -> (Point, Point)
-segmentRect r1 r2 = 
+
+
+
+pxFromRatio : Point -> Point -> Float -> Float
+pxFromRatio p1 p2 r =
+  r * Point.radius (Point.subtract p2 p1)
+
+  
+
+
+
+
+
+segmentRectBent : PosDims -> PosDims -> Float -> QuadraticBezier
+segmentRectBent r1 r2 bent = 
+    let controlPoint = Point.diamondPx r1.pos r2.pos 
+                        <| pxFromRatio r1.pos r2.pos bent 
+    in
+   
     let p1 =
-             raytraceRect r2.pos r1.pos (rectFromPosDims r1) |>
+             raytraceRect controlPoint r1.pos (rectFromPosDims r1) |>
              Maybe.withDefault r1.pos
         p2 =
-             raytraceRect r1.pos r2.pos (rectFromPosDims r2) |>
+             raytraceRect controlPoint r2.pos (rectFromPosDims r2) |>
              Maybe.withDefault r2.pos 
     in
-        (p1, p2)
+        { from = p1, to = p2, controlPoint = controlPoint }
 
 
 raytraceRect : Point -> Point -> Rect -> Maybe Point

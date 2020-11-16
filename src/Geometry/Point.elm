@@ -1,4 +1,5 @@
-module Point exposing (Point, radius, normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList)
+module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
+  normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList)
 
 
 type alias Point = (Float, Float)
@@ -25,6 +26,17 @@ normalise len ( x, y ) =
 orthogonal : Point -> Point
 orthogonal ( x, y ) =
     ( 0 - y, x )
+
+orthoVectPx : Point -> Point -> Float -> Point
+orthoVectPx from to px =
+  subtract to from 
+   |> orthogonal
+   |> normalise px 
+
+diamondPx : Point -> Point -> Float -> Point
+diamondPx p1 p2 d =
+  let mid = middle p1 p2 in
+  add mid <| orthoVectPx p1 p2 d
 
 
 flip : Point -> Point

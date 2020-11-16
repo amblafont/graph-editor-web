@@ -30,17 +30,24 @@ keyDecoder : D.Decoder Key
 keyDecoder = D.field "key" D.string
              |> D.map toKey
 
+type alias ArrowStyle = { s : ArrowStyle.Style, bend : Float }
 
-type alias EdgeLabel = { label : String, style : ArrowStyle.Style}
+emptyArrowStyle : ArrowStyle
+emptyArrowStyle = ArrowStyle ArrowStyle.empty 0
+
+type alias EdgeLabel = { label : String, style : ArrowStyle}
 type alias NodeLabel = { pos : Point , label : String}
 
-type alias EdgeLabelJs = { label : String, style : ArrowStyle.JsStyle}
+type alias EdgeLabelJs = { label : String, style : ArrowStyle.JsStyle, bend : Float}
 
 edgeLabelToJs : EdgeLabel -> EdgeLabelJs
-edgeLabelToJs {label, style} = {label = label, style = ArrowStyle.toJsStyle style}
+edgeLabelToJs {label, style} = 
+  {label = label, style = ArrowStyle.toJsStyle style.s, bend = style.bend}
 
 edgeLabelFromJs : EdgeLabelJs -> EdgeLabel
-edgeLabelFromJs {label, style} = {label = label, style = ArrowStyle.fromJsStyle style}
+edgeLabelFromJs {label, style, bend } = 
+  EdgeLabel label <| ArrowStyle (ArrowStyle.fromJsStyle style) bend
+
 
 
 setPos : Point -> NodeLabel -> NodeLabel
@@ -105,9 +112,19 @@ keyUpdateArrowStyle k style =
         Character '-' -> ArrowStyle.toggleDashed style
         _ -> style
 
-msgUpdateArrowStyle : Msg -> ArrowStyle.Style -> ArrowStyle.Style
+keyUpdateBend : Key -> Float -> Float
+keyUpdateBend k bend =
+  case k of
+     Character 'b' -> bend + 0.1
+     Character 'B' -> bend - 0.1
+     _ -> bend
+
+msgUpdateArrowStyle : Msg -> ArrowStyle -> ArrowStyle
 msgUpdateArrowStyle m style =
    case m of 
-      KeyChanged False k -> keyUpdateArrowStyle k style
+      KeyChanged False k ->
+         {s = keyUpdateArrowStyle k style.s, 
+          bend = keyUpdateBend k style.bend }
+         
       _ -> style
         

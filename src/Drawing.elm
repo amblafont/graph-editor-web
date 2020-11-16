@@ -6,11 +6,15 @@ module Drawing exposing (Drawing,
 
 import Svg exposing (Svg)
 import Svg.Attributes as Svg
+import Svg as SvgElts
 import Svg.Events
-import Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 import Json.Decode as D
 import Html 
 import ArrowStyle
+import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
+import Geometry
+import Svg
 
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
 svg l d =
@@ -77,38 +81,62 @@ drawingToSvgs : Drawing a -> List (Svg a)
 drawingToSvgs d = case d of 
     Drawing c -> c
 
+dashedToAttrs : Bool -> List (Svg.Attribute a)
+dashedToAttrs dashed =  
+            if dashed then
+              [ Svg.strokeDasharray ArrowStyle.dashedStr]
+            else 
+              []
 
 mkLine : Bool -> List (Attribute a) -> Point -> Point -> Svg a
 mkLine dashed attrs (x1, y1) (x2, y2) =
+  
   let f = String.fromFloat in
     
     Svg.line ([Svg.x1 <| f x1, Svg.x2 <| f x2, Svg.y1 <| f y1, Svg.y2 <| f y2] 
                 ++ 
                 attrsToSvgAttrs Svg.stroke attrs
                 ++
-            if dashed then
-              [ Svg.strokeDasharray ArrowStyle.dashedStr]
-            else 
-              []
+                dashedToAttrs dashed
               ) []
-                
 
-arrow : List (Attribute a) -> ArrowStyle.Style -> Point -> Point -> Drawing a
-arrow attrs style from to =
-    let imgs = ArrowStyle.makeHeadTailImgs from to style in    
-    let mkl = mkLine style.dashed attrs in
+quadraticBezierToAttr : QuadraticBezier -> Svg.Attribute a 
+quadraticBezierToAttr  {from, to, controlPoint } =
+  let f = String.fromFloat in
+  let p (x1, x2) = f x1 ++ " " ++ f x2 in    
+    Svg.d  <|
+    "M" ++ p from 
+    ++ " Q " ++ p controlPoint
+    ++ ", " ++ p to
+
+mkPath : Bool -> List (Attribute a) -> QuadraticBezier -> Svg a
+mkPath dashed attrs q =
+  SvgElts.path 
+  ( quadraticBezierToAttr q ::
+    Svg.fill "transparent" ::   
+      attrsToSvgAttrs Svg.stroke attrs
+      ++
+      dashedToAttrs dashed
+  )
+  []        
+
+
+arrow : List (Attribute a) -> ArrowStyle.Style -> QuadraticBezier -> Drawing a
+arrow attrs style q =
+    let imgs = ArrowStyle.makeHeadTailImgs q style in    
+    let mkl = mkPath style.dashed attrs in
     let lines = if ArrowStyle.isDouble style then
-                let delta = Point.subtract to from 
-                            |> Point.orthogonal
-                            |> Point.normalise ArrowStyle.doubleSize
-                in
+                -- let delta = Point.subtract q.to q.controlPoint 
+                --             |> Point.orthogonal
+                --             |> Point.normalise ArrowStyle.doubleSize
+                -- in
               
-                [ mkl (Point.add from delta) (Point.add to delta),
-                  mkl (Point.subtract from delta) (Point.subtract to delta)
+                [ mkl (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
+                  mkl (Bez.orthoVectPx ArrowStyle.doubleSize q)
                 ]
         
                 else
-                    [ mkl from to ]
+                    [ mkl q ]
     in lines ++ imgs |> Drawing
 
 

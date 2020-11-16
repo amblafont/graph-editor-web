@@ -2,9 +2,10 @@ module ArrowStyle exposing (Style, JsStyle, toJsStyle, fromJsStyle, empty, toggl
                                  makeHeadTailImgs, isDouble, doubleSize,
                                  toggleDashed, dashedStr)
 
-import Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 import Svg exposing (Svg)
 import Svg.Attributes as Svg
+import Geometry.QuadraticBezier exposing (QuadraticBezier)
 
 imgDir : String
 imgDir = "img/arrow/"
@@ -145,10 +146,13 @@ makeImg dashed (x,y) angle file =
           )
            []
 
-makeHeadTailImgs : Point -> Point -> Style -> List (Svg a)
-makeHeadTailImgs from to style =
-    let delta = Point.subtract to from in
-    let angle = (\ a -> a * 180 / pi) <| Point.pointToAngle <| delta in
+makeHeadTailImgs : QuadraticBezier -> Style -> List (Svg a)
+makeHeadTailImgs {from, to, controlPoint} style =
+   
+    let angle delta =  (Point.pointToAngle delta) * 180 / pi in
+     
     -- let mkImg = makeImg from to angle in
-    [ makeImg style.dashed to   angle <| headFileName style,
-      makeImg style.dashed from angle <| tailFileName style ]
+    [ makeImg style.dashed to   (angle <| Point.subtract to controlPoint) 
+       <| headFileName style,
+      makeImg style.dashed from (angle <| Point.subtract controlPoint from) 
+       <| tailFileName style ]
