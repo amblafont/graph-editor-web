@@ -10,7 +10,7 @@ import QuickInput exposing (NonEmptyChain)
 
 import Geometry.Point exposing (Point)
 import Dict exposing (Dict)
-import ArrowStyle
+
 import Geometry
 
 

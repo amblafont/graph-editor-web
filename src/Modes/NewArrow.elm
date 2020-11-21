@@ -9,7 +9,7 @@ import Maybe exposing (withDefault)
 import Model exposing (..)
 import Msg exposing (..)
 
-import ArrowStyle
+
 
 updateStep : Model -> NewArrowState -> NewArrowStep -> Model
 updateStep m state step = {m | mode = NewArrow { state | step = step }}
