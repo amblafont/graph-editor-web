@@ -8,9 +8,10 @@ import GraphExtra as Graph exposing (EdgeId, make_EdgeId)
 import IntDict
 import Maybe exposing (withDefault)
 import Model exposing (..)
-import Msg exposing (..)
-import Tuple
+import Msg exposing (Msg(..))
 import ArrowStyle
+import HtmlDefs exposing (Key(..))
+import GraphDefs exposing (NodeLabel, EdgeLabel)
 
 -- TODO: factor with newArrow
 updateStep : Model -> SquareState -> SquareStep -> Model
@@ -237,9 +238,9 @@ moveNodeViewInfo m data =
     let
         g2 =
             Graph.addEdge (Graph.addEdge g edges.ne1 
-            {label = "", style = emptyArrowStyle}
+            {label = "", style = ArrowStyle.empty}
             ) edges.ne2 
-            {label = "", style = emptyArrowStyle}
+            {label = "", style = ArrowStyle.empty}
     in
     ( { graph = g2, edges = edges }, n, created )
 

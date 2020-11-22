@@ -7,15 +7,15 @@ import Html
 import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
-import ArrowStyle
+import ArrowStyle exposing (ArrowStyle)
+import ArrowStyle.Core as ArrowStyle
 import Geometry.Point as Point exposing (Point)
-import Msg exposing (..)
+import Msg exposing (Msg(..))
 import Color exposing (..)
-import Json.Decode as D
+import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Geometry 
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
-
-
+import HtmlDefs
 
 
 
@@ -45,14 +45,15 @@ make_nodeDrawingLabel {editable, isActive, dims} {label, pos} =
 -- create an input with id curIdInput
 make_input : Point -> String -> (String -> Msg) -> Drawing Msg
 make_input pos label onChange =
-         Html.input [ Html.Attributes.value label ,
+         Html.input ([ Html.Attributes.value label ,
                        Html.Events.onInput onChange,
-                       Html.Attributes.id curIdInput,
-                       Html.Attributes.autofocus True,
-                       Html.Events.on "create" (D.succeed (Do focusLabelInput)),
-                       Html.Attributes.class "lifecycle"
-                    ]  []
-             |> Drawing.html pos (100,50)
+                       Html.Attributes.id HtmlDefs.idInput,
+                       Html.Attributes.autofocus True
+                    ] ++ 
+                    HtmlDefs.onRendered (always <| Do <| Msg.focusId HtmlDefs.idInput ))
+                      []
+             |> Drawing.html pos (100,16)
+
 
 nodeLabelDrawing : List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
 nodeLabelDrawing attrs node =
@@ -65,15 +66,26 @@ nodeLabelDrawing attrs node =
      else
          if  n.label == "" then
              (Drawing.circle (Drawing.color color :: attrs ) n.pos 5)
-         else
-             Drawing.fromString 
+         else 
+            Drawing.html n.pos n.dims
+            <| HtmlDefs.makeLatex
+            ([   Html.Events.onClick (NodeClick id)            
+            ] ++ 
+            (if n.isActive then [Html.Attributes.class "active-label" ] else [])
+            ++
+            HtmlDefs.onRendered (Just >> Msg.SizeChanged id)
+            )
+             n.label
+                
+
+             {- Drawing.fromString 
              ([ Drawing.color color,
              Drawing.on "create" (newsizeDecoder id),
              Drawing.on "remove" (nosizeDecoder id),
              Drawing.class "lifecycle"
              ]
              ++ attrs)
-             n.pos n.label 
+             n.pos n.label  -}
              
         ) 
 

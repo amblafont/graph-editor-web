@@ -1,52 +1,100 @@
+<!DOCTYPE html>
 <html>
     <head>
         <meta charset="UTF-8">
         <title>Main</title>
+        <script>
+            const renderedClass = "rendered-callback";
+            const renderedEvent = "rendered";
+        </script>
         <script src="elm.js"></script>
+        
+        <!-- The loading of KaTeX is deferred to speed up page rendering -->
+        <script src="js/katex.min.css.js"></script>
+        <script src="js/katex-custom-element.js"></script>
+    <script onLoad="initKatex()" 
+             defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+
+       
+
+             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+
+        
+        <!-- Make foreignobject in svg visible -->
+         <style>
+          foreignObject { overflow:visible} 
+         .active-label { 
+             border-color: red;
+             border-style: solid;
+             border-width: 1px;
+             /* the outline is nice because it does not
+             affect the width and height. Unfortunately,
+             it does not behave nicely with \int_x */
+             /* outline-style: solid; outline-color: red; */
+             }             
+        </style> 
     </head>
 
-    <body>
+    <body>       
         <h1>Graph editor</h1>
+   
+     
         <p>
-            A graph editor, with labelled nodes and edges.
+            A graph editor, with              
+            (latex) labelled nodes and edges, tested with Firefox and Chrome.
         The code is available on
         <a href="https://github.com/amblafont/graph-editor-web">github</a>.
         </p>
         <button onclick="loadGraph()" >Load graph</button>
+    <!--     <button onclick="dispatchRenderedChildren(document)">
+            Recompute the layer
+        </button> -->
+        
+        <!-- first use of katex element. It seems it should be done
+        beforehand, otherwise dispatchRendered on the first labelled point  
+        gets wrong dimensions.
+        -->
+        <math-latex> </math-latex>
         <div id="myapp"></div>
         <script>
          var appDiv = document.getElementById('myapp');
         
-        var classLifecycle = "lifecycle";
+        
          
-        function dispatchCreate(node) {            
-            if (node.getBoundingClientRect != null)
+        function dispatchRendered(node) {            
+            if (node.clientWidth != null)
                      {
                          // could be optimized by having an additionnal
                          // attribute that tells whether it has
-                         // a listener, so that we don't need
-                         // to get the bounding rectangle
-                         var rect = node.getBoundingClientRect();
-
-                         node.dispatchEvent(new CustomEvent("create", { detail : rect } ));
+                         // a listener
+                         var rect = { width : node.clientWidth , height : node.clientHeight }
+                         /* if (node.tagName = "MATH-LATEX") {
+                            console.log (rect);
+                            console.log (node.getBoundingClientRect());
+                         } */
+                         node.dispatchEvent(new CustomEvent(renderedEvent, { detail : rect } ));
                      }
         };
 
-         // newsize event handlers
+        function dispatchRenderedChildren(node) {
+            children = node.getElementsByClassName(renderedClass);
+                     for (var i = 0; i < children.length; ++i) {
+                          dispatchRendered(children[i]);
+                      }        
+        }
+
+         // rendered event handlers
          // Fonction callback à éxécuter quand une mutation est observée
          var callbackMutation = function(mutationsList) {
              for(var mutation of mutationsList) {
 	               for(var node of mutation.addedNodes) {
              
-                     dispatchCreate(node);
+                     dispatchRendered(node);
                      if (node.getElementsByClassName == null) {                         
                          continue;
                      }
 
-                     children = node.getElementsByClassName(classLifecycle);
-                     for (var i = 0; i < children.length; ++i) {
-                          dispatchCreate(children[i]);
-                      }                 
+                     dispatchRenderedChildren(node);         
             
 
                  }
@@ -67,7 +115,7 @@
 
          // initialisation de Elm
 
-         var app = Elm.GraphEditor.init({
+         var app = Elm.Main.init({
              node: appDiv
          });
          // load a json graph file, send it to the elm component

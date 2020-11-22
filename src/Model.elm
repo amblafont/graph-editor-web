@@ -7,9 +7,10 @@ import GraphDrawing exposing (..)
 import GraphExtra as Graph exposing (EdgeId)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
-
+import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Geometry.Point exposing (Point)
 import Dict exposing (Dict)
+import ArrowStyle exposing (ArrowStyle)
 
 import Geometry
 

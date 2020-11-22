@@ -1,4 +1,4 @@
-port module GraphEditor exposing (main)
+port module Main exposing (main)
 -- TODO: avoir mode dans Model, et separer le fichier state de Square
 
 
@@ -32,7 +32,7 @@ import Set
 import QuickInput exposing (chainParser, NonEmptyChain, orientToPoint)
 
 import GraphDrawing exposing (..)
-import Msg exposing (..)
+import Msg exposing (Msg(..))
 
 import Tuple
 import Maybe exposing (withDefault)
@@ -43,7 +43,9 @@ import Modes.NewArrow
 import Dict
 import DictExtra as Dict
 import ArrowStyle
-import Geometry.Point
+
+import HtmlDefs exposing (quickInputId, Key(..))
+import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -61,8 +63,7 @@ port loadedGraph : ((List (Node NodeLabel) , List (Edge EdgeLabelJs)) -> a) -> S
 
 
 
-quickInputId : String
-quickInputId = "quickinput"
+
 
 
 
@@ -78,10 +79,10 @@ subscriptions m = Sub.batch
       -- upload a graph (triggered by js)
       
       loadedGraph (\ (ns,es) -> Graph.fromNodesAndEdges ns es
-                       |> Graph.mapEdges edgeLabelFromJs
+                       |> Graph.mapEdges GraphDefs.edgeLabelFromJs
                        |> Loaded),
       E.onClick (D.succeed MouseClick),
-      E.onKeyUp (D.map (KeyChanged False) keyDecoder),
+      E.onKeyUp (D.map (KeyChanged False) HtmlDefs.keyDecoder),
       onMouseMoveFromJS MouseMove
     ]
   -- ++
@@ -106,24 +107,12 @@ save : Model -> Msg
 save model = 
    Do (saveGraph (Graph.nodes model.graph,
                       Graph.edges
-                      (Graph.mapEdges edgeLabelToJs model.graph)))
+                      (Graph.mapEdges GraphDefs.edgeLabelToJs model.graph)))
 
 -- Model -----------------------------------------------------------------------
 
 
 
-
-
-
--- captureKeyboard : Model -> Bool
--- captureKeyboard m =
---     case m.mode of
---         QuickInputMode _ -> False
---         _ -> True
-
-
-
-  -- | Modes.Square SquareState
 
 
 -- The graphs are updated according to the current mode
@@ -137,18 +126,13 @@ graph_RenameMode s m = graphRenameObj m.graph m.activeObj s
 
 graph_MoveNode : Model -> Graph NodeLabel EdgeLabel
 graph_MoveNode model =
-    Graph.updateNode (activeNode model) (setPos model.mousePos) model.graph
+    Graph.updateNode (activeNode model) 
+    (\n -> { n | pos = model.mousePos})
+     model.graph
 
 
 
 
-
--- rightInOut : InOut -> InOut -> (InOut, InOut)
--- rightInOut i1 i2 = 
---     case (i1, i2) of
---         (In, In) -> (Out, Out)
---         (Out, Out) -> (In, In)
---         p -> p
 
 
 switch_RenameMode : Model -> (Model, Cmd Msg)
@@ -178,8 +162,9 @@ update msg model =
             --   { model | mousePointOver = ONode n}
             -- NodeLeave n -> { model | mousePointOver = ONothing}
             SizeChanged n dims ->
+                -- let _ = Debug.log "nouvelle dims !" (n, dims) in
                 { model | statusMsg = "newsize " ++ Debug.toString (n, dims)
-                      , dimNodes = Dict.insertOrRemove n dims model.dimNodes
+                      , dimNodes = Dict.insertOrRemove n (Maybe.map ( Point.resize 1) dims) model.dimNodes
                 }
             _ -> model
     in
@@ -204,7 +189,7 @@ update_QuickInput ch msg model =
     case msg of
         KeyChanged False (Control "Escape") ->
             ({model | mode = DefaultMode}, 
-                 Task.attempt (\_ -> noOp) (Dom.blur quickInputId))
+                 Task.attempt (\_ -> Msg.noOp) (Dom.blur quickInputId))
         KeyChanged False (Control "Enter") ->
             switch_Default {model | graph = graphDrawingChain model.graph ch, quickInput = ""}
         QuickInput s ->
@@ -255,7 +240,7 @@ update_DefaultMode msg model =
         KeyChanged False (Character 'r') -> switch_RenameMode model
         KeyChanged False (Character 'p') -> noCmd <| { model | mode = NewNode }
         KeyChanged False (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
-                                                 focusId quickInputId)
+                                                 Msg.focusId quickInputId)
         -- KeyChanged False (Character 'u') ->
         --     noCmd {model | unnamedFlag = not model.unnamedFlag} 
         -- KeyChanged False (Character 'b') -> ({model | blitzFlag = not model.blitzFlag}, Cmd.none)
@@ -276,7 +261,7 @@ update_DefaultMode msg model =
               Just id -> noCmd 
                 { model | graph =
                   Graph.updateEdge id 
-                    (\e -> {e | style = msgUpdateArrowStyle msg e.style})
+                    (\e -> {e | style = Msg.updateArrowStyle msg e.style})
                     model.graph
                 }
                
@@ -379,7 +364,7 @@ graphDrawingNonEmptyChain g ch loc -- defOrient
             let label = withDefault "" olabel in
 
             (Graph.addEdge g3 (source, target) 
-              { label = label, style = emptyArrowStyle }
+              { label = label, style = ArrowStyle.empty }
             , source)
 
 

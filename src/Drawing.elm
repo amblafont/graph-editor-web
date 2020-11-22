@@ -8,12 +8,12 @@ import Svg exposing (Svg)
 import Svg.Attributes as Svg
 import Svg as SvgElts
 import Svg.Events
-import Geometry.Point as Point exposing (Point)
+import Geometry.Point exposing (Point)
 import Json.Decode as D
 import Html 
-import ArrowStyle
+import ArrowStyle.Core as ArrowStyle
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
-import Geometry
+-- import Geometry
 import Svg
 
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
@@ -88,7 +88,8 @@ dashedToAttrs dashed =
             else 
               []
 
-mkLine : Bool -> List (Attribute a) -> Point -> Point -> Svg a
+
+{- mkLine : Bool -> List (Attribute a) -> Point -> Point -> Svg a
 mkLine dashed attrs (x1, y1) (x2, y2) =
   
   let f = String.fromFloat in
@@ -99,7 +100,7 @@ mkLine dashed attrs (x1, y1) (x2, y2) =
                 ++
                 dashedToAttrs dashed
               ) []
-
+ -}
 quadraticBezierToAttr : QuadraticBezier -> Svg.Attribute a 
 quadraticBezierToAttr  {from, to, controlPoint } =
   let f = String.fromFloat in
@@ -179,7 +180,12 @@ html (x1, y1) (width, height) h =
       y = y1 - height / 2
   in
    Svg.foreignObject 
-   [Svg.x <| f x, Svg.y <| f y, Svg.width <| f width, Svg.height <| f height]
+   [Svg.x <| f x, Svg.y <| f y
+   -- otherwise, katex breaks lines
+     , Svg.width <| "100%"
+     , Svg.height <| f height
+     -- , Svg.width <| f width, Svg.height <| f height
+     ]
    [h]
     |> ofSvg
 

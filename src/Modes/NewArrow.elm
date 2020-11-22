@@ -7,7 +7,10 @@ import GraphDrawing exposing (..)
 import GraphExtra as Graph
 import Maybe exposing (withDefault)
 import Model exposing (..)
-import Msg exposing (..)
+import Msg exposing (Msg(..))
+import ArrowStyle exposing (ArrowStyle)
+import HtmlDefs exposing (Key(..))
+import GraphDefs exposing (NodeLabel, EdgeLabel)
 
 
 
@@ -24,7 +27,7 @@ initialise m =
                 { m
                     | mode = NewArrow
 
-                            { step = NewArrowMoveNode emptyArrowStyle,
+                            { step = NewArrowMoveNode ArrowStyle.empty,
                              chosenNode = chosenNode }
                              -- prevent bugs (if the mouse is thought
                              -- to be kept on a point)
@@ -107,7 +110,7 @@ update state msg model =
             case state.step of
                 NewArrowMoveNode style ->
                     style 
-                     |> msgUpdateArrowStyle msg           
+                     |> Msg.updateArrowStyle msg           
                      |> NewArrowMoveNode
                      |> updateStep model state 
                      |> noCmd
