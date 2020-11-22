@@ -73,7 +73,7 @@ nodeLabelDrawing attrs node =
             ] ++ 
             (if n.isActive then [Html.Attributes.class "active-label" ] else [])
             ++
-            HtmlDefs.onRendered (Just >> Msg.SizeChanged id)
+            HtmlDefs.onRendered (Msg.SizeChanged id)
             )
              n.label
                 
@@ -154,7 +154,7 @@ graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 graphDrawing g0 =
      
       let padding = 5 in
-      let g = Graph.mapNodeEdges
+      let g = Graph.mapNodesEdges
               (\n -> { drawing = nodeDrawing n, 
                       posDims = {
                       dims = 

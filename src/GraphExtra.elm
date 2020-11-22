@@ -43,8 +43,8 @@ setNodeLabel n l =
     { id = n.id, label = l }
 
 
-mapNodeEdges : (Node n1 -> n2) -> (Edge e1 -> e2) -> Graph n1 e1 -> Graph n2 e2
-mapNodeEdges nmap edgemap g =
+mapNodesEdges : (Node n1 -> n2) -> (Edge e1 -> e2) -> Graph n1 e1 -> Graph n2 e2
+mapNodesEdges nmap edgemap g =
     Graph.mapContexts
         (\nc ->
             { node = setNodeLabel nc.node (nmap nc.node)
@@ -139,12 +139,12 @@ edgesWithNodes g =
 
 
 filterNodes : Graph n e -> (n -> Bool) -> List (Node n)
-filterNodes g f = filterNodesId g (f << .label)
+filterNodes g f = Graph.nodes g |> List.filter (f << .label)
 
 
-filterNodesId : Graph n e -> (Node n -> Bool) -> List (Node n)
-filterNodesId g f =
-    Graph.nodes g |> List.filter f
+-- filterNodesId : Graph n e -> (Node n -> Bool) -> List (Node n)
+-- filterNodesId g f =
+--     Graph.nodes g |> List.filter f
 
 --|> List.map .id
 

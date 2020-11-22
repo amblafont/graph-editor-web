@@ -29,7 +29,7 @@ type Msg
   | NodeLabelEdit NodeId String
   | Loaded (Graph NodeLabel EdgeLabel)
   | QuickInput String
-  | SizeChanged NodeId (Maybe Point)
+  | SizeChanged NodeId Point
 
 noOp : Msg
 noOp = Do Cmd.none

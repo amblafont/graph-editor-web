@@ -7,12 +7,12 @@ import GraphDrawing exposing (..)
 import GraphExtra as Graph exposing (EdgeId)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
-import GraphDefs exposing (NodeLabel, EdgeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
 import Geometry.Point exposing (Point)
-import Dict exposing (Dict)
 import ArrowStyle exposing (ArrowStyle)
 
 import Geometry
+import GraphDefs exposing (getNodeDims)
 
 
 
@@ -31,7 +31,7 @@ type alias Model =
       quickInput : String
     , mode : Mode
     -- real dimensions of nodes
-    , dimNodes : Dict NodeId Point
+    -- , dimNodes : Dict NodeId Point
     -- quickInput : Maybe NonEmptyChain
     -- mouseOnCanvas : Bool
     -- blitzFlag : Bool
@@ -94,7 +94,7 @@ createModel g =
     , mousePos = ( 0, 0 )
    -- , mousePointOver = ONothing
     , activeObj = ONothing
-    , dimNodes = Dict.empty
+    -- , dimNodes = Dict.empty
 
     -- unnamedFlag = False
     -- mouseOnCanvas = False,
@@ -220,9 +220,9 @@ graphMakeActive o g =
 
 getNodesAt : Model -> Point -> List NodeId
 getNodesAt m p =
-  Graph.filterNodesId m.graph 
-    (\n -> Geometry.isInPosDims { pos = n.label.pos, 
-                                  dims = getNodeDims m n} p)
+  Graph.filterNodes m.graph 
+    (\n -> Geometry.isInPosDims { pos = n.pos, 
+                                  dims = getNodeDims n} p)
   |> List.map .id
 
 getTargetNodes : Model -> List NodeId
@@ -244,15 +244,7 @@ getTargetNode m =
         _ ->
             Nothing
 
-getNodeDims : Model -> Node NodeLabel -> Point
-getNodeDims m n =
-    case  Dict.get n.id m.dimNodes of
-        Nothing ->
-         let height = 16 in
-         let size = max 1 (String.length n.label.label) in
-         -- copied from source code of Collage
-         (height / 2 * toFloat size, height)
-        Just p -> p
+
 
 
 
@@ -267,7 +259,9 @@ mayCreateTargetNode m s =
             ( ( m.graph, n ), False )
 
         Nothing ->
-            ( Graph.newNode m.graph { label = s, pos = m.mousePos }, True )
+            ( Graph.newNode m.graph 
+              <| newNodeLabel m.mousePos s
+            , True )
 
 
 
@@ -289,14 +283,14 @@ make_defaultNodeDrawingLabel model n =
     make_nodeDrawingLabel
         { editable = False
         , isActive = n.id == activeNode model
-        , dims =  getNodeDims model n  
+        , dims =  getNodeDims n.label  
         }
         n.label
 
 
 collageGraphFromGraph : Model -> Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
 collageGraphFromGraph model =
-    Graph.mapNodeEdges
+    Graph.mapNodesEdges
         (make_defaultNodeDrawingLabel model)
         (\e ->
             e.label

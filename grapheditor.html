@@ -90,21 +90,17 @@
 	               for(var node of mutation.addedNodes) {
              
                      dispatchRendered(node);
-                     if (node.getElementsByClassName == null) {                         
-                         continue;
+                     if (node.getElementsByClassName != null) {                                                  
+                         dispatchRenderedChildren(node);  
                      }
-
-                     dispatchRenderedChildren(node);         
-            
-
                  }
                 
-	               for(var node of mutation.removedNodes) {
+	            /*    for(var node of mutation.removedNodes) {
                      if (node.getBoundingClientRect != null)
                      {
                          node.dispatchEvent(new CustomEvent("remove"));
                      }
-                 }
+                 } */
              }
          };
 

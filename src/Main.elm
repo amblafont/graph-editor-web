@@ -40,12 +40,12 @@ import Maybe exposing (withDefault)
 import Modes.Square
 import Modes.NewArrow 
 
-import Dict
-import DictExtra as Dict
 import ArrowStyle
 
 import HtmlDefs exposing (quickInputId, Key(..))
-import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs)
+import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs, NodeLabelJs)
+import GraphDefs exposing (newNodeLabel)
+import GraphDefs exposing (getNodeLabelOrCreate)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -56,9 +56,9 @@ port onMouseMove : JE.Value -> Cmd a
 port onMouseMoveFromJS : (Point -> a) -> Sub a
 
 -- tell js to save the graph
-port saveGraph : (List (Node NodeLabel) , List (Edge EdgeLabelJs)) -> Cmd a
+port saveGraph : (List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> Cmd a
 -- js tells us to load the graph
-port loadedGraph : ((List (Node NodeLabel) , List (Edge EdgeLabelJs)) -> a) -> Sub a
+port loadedGraph : ((List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> a) -> Sub a
 
 
 
@@ -80,6 +80,7 @@ subscriptions m = Sub.batch
       
       loadedGraph (\ (ns,es) -> Graph.fromNodesAndEdges ns es
                        |> Graph.mapEdges GraphDefs.edgeLabelFromJs
+                       |> Graph.mapNodes GraphDefs.nodeLabelFromJs
                        |> Loaded),
       E.onClick (D.succeed MouseClick),
       E.onKeyUp (D.map (KeyChanged False) HtmlDefs.keyDecoder),
@@ -105,9 +106,14 @@ iniModel = createModel <| fromNodesAndEdges [] []
 
 save : Model -> Msg
 save model = 
-   Do (saveGraph (Graph.nodes model.graph,
-                      Graph.edges
-                      (Graph.mapEdges GraphDefs.edgeLabelToJs model.graph)))
+   let g =  model.graph 
+            |> Graph.mapNodes GraphDefs.nodeLabelToJs
+            |> Graph.mapEdges GraphDefs.edgeLabelToJs            
+   in
+   let nodes = Graph.nodes g
+       edges = Graph.edges g
+    in
+   Do (saveGraph (nodes, edges))
 
 -- Model -----------------------------------------------------------------------
 
@@ -164,7 +170,8 @@ update msg model =
             SizeChanged n dims ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
                 { model | statusMsg = "newsize " ++ Debug.toString (n, dims)
-                      , dimNodes = Dict.insertOrRemove n (Maybe.map ( Point.resize 1) dims) model.dimNodes
+                      , graph = 
+                      Graph.updateNode n (\l -> {l | dims = Just dims }) model.graph                      
                 }
             _ -> model
     in
@@ -277,7 +284,8 @@ update_NewNode : Msg -> Model -> (Model, Cmd Msg)
 update_NewNode msg m =
     case msg of
        MouseClick ->
-         let (newGraph, newId) = Graph.newNode m.graph {pos = m.mousePos, label = ""}
+         let (newGraph, newId) = Graph.newNode m.graph 
+               (newNodeLabel m.mousePos "")
              newModel = {m | graph = newGraph,
                              activeObj = ONode newId
                         }
@@ -313,7 +321,7 @@ graphDrawingFromModel m =
                 |> graphMakeEditable m.activeObj
         DebugMode ->
             m.graph |> collageGraphFromGraph m 
-                |> Graph.mapNodeEdges
+                |> Graph.mapNodesEdges
                    (\n -> let l = n.label in {l | label = String.fromInt n.id}) .label
         NewArrow astate -> Modes.NewArrow.graphDrawing m astate
         SquareMode state ->
@@ -328,22 +336,6 @@ graphDrawingChain g ch =
             let iniP = (100, 100) in
             Tuple.first <| graphDrawingNonEmptyChain g nonEmptyCh iniP -- QuickInput.Right
 
-createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
-                                                                       NodeId, Point)
-createNodeLabel g s p =
-    let label = { pos = p, label = s} in
-    let (g2, id) = Graph.newNode g label in
-     (g2, id, p)
-
-getNodeLabelOrCreate : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
-                                                                       NodeId, Point)
-getNodeLabelOrCreate g s p =
-    if s == "" then
-       createNodeLabel g s p
-    else
-        case Graph.filterNodes g (\ l -> l.label == s) of
-            [] -> createNodeLabel g s p
-            t :: _ -> (g , t.id, t.label.pos)
 
 graphDrawingNonEmptyChain : Graph NodeLabel EdgeLabel -> NonEmptyChain -> Point -- -> QuickInput.Orient
                     -> (Graph NodeLabel EdgeLabel, NodeId)
