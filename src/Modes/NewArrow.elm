@@ -37,10 +37,10 @@ initialise m =
         |> Maybe.withDefault m
         |> noCmd
 
-type Suite = Next | Finish
 
 type Action =
-    Validate Suite
+    ValidateNext
+  | ValidateFinish
   | Cancel
 
 
@@ -52,8 +52,8 @@ nextStep model action state =
         renamableNextMode m =
             case action of
                Cancel -> switch_Default { m | graph = graphRenameObj m.graph (renamableFromState state) ""}
-               Validate Next -> noCmd m
-               Validate Finish -> switch_Default m            
+               ValidateNext -> noCmd m
+               ValidateFinish -> switch_Default m            
     in
     let
         renamableNextStep step = updateStep model state step
@@ -95,10 +95,10 @@ keyToAction k step =
        KeyChanged False (Control "Escape") -> Just Cancel
        MouseClick ->
            case step of
-              NewArrowMoveNode _ -> Just <| Validate Next
+              NewArrowMoveNode _ -> Just <| ValidateNext
               _ -> Nothing
-       KeyChanged False (Control "Enter") -> Just <| Validate Finish     
-       TabInput -> Just <| Validate Next
+       KeyChanged False (Control "Enter") -> Just <| ValidateFinish     
+       TabInput -> Just <| ValidateNext
        _ -> Nothing
             
 

@@ -443,11 +443,8 @@ helpMsg model =
         NewArrow {step} -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
                            ++  Modes.NewArrow.help step |> Html.text
-        SquareMode {step} -> "Mode Commutative square. [ESC] to cancel and come back to the default."
-                             ++
-            (case step of
-                SquareMoveNode _ -> " Alternative possible [s]quares."
-                _ -> "") |> Html.text
+        SquareMode {step} -> "Mode Commutative square. "
+                             ++ Modes.Square.help step |> Html.text
 
 
         _ -> "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"

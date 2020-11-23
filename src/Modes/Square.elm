@@ -1,4 +1,4 @@
-module Modes.Square exposing (graphDrawing, initialise, update)
+module Modes.Square exposing (help, graphDrawing, initialise, update)
 
 
 import Color exposing (..)
@@ -9,7 +9,6 @@ import IntDict
 import Maybe exposing (withDefault)
 import Model exposing (..)
 import Msg exposing (Msg(..))
-import ArrowStyle
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 
@@ -107,40 +106,52 @@ initialise m =
         |> Maybe.withDefault (noCmd m)
 
 
-nextStep : Model -> Bool -> SquareState -> ( Model, Cmd Msg )
-nextStep model validate state =
+type Action =
+    ValidateFinish
+  | ValidateNext
+  | Cancel
+
+
+keyToAction : Msg -> SquareStep -> Maybe Action
+keyToAction k step =
+   case k of 
+       KeyChanged False (Control "Escape") -> Just Cancel
+       MouseClick ->
+           case step of
+              SquareMoveNode _ -> Just <| ValidateNext
+              _ -> Nothing
+       KeyChanged False (Control "Enter") -> Just <| ValidateFinish     
+       TabInput -> Just <| ValidateNext
+       _ -> Nothing
+
+
+
+
+nextStep : Model -> Action -> SquareState -> ( Model, Cmd Msg )
+nextStep model action state =
     let
         renamableNextMode m =
-            let
-                graph =
-                    if validate then
-                        m.graph
-
-                    else
-                        graphRenameObj m.graph (renamableFromState state) ""
-            in
-            noCmd { m | graph = graph }
-    in
+          case action of
+               Cancel -> switch_Default { m | graph = graphRenameObj m.graph (renamableFromState state) ""}
+               ValidateNext -> noCmd m
+               ValidateFinish -> switch_Default m            
+    in        
     let
         renamableNextStep step =
             renamableNextMode (updateStep model state step)
     in
     case state.step of
-        SquareMoveNode _ ->
-            if not validate then
-                switch_Default model
-
-            else
-                let
-                    ( info, movedNode, created ) =
-                        moveNodeViewInfo model state.data
-                in
-                noCmd <| updateStep
-                    { model | graph = info.graph } state 
-                        <| if created then
-                                SquareEditNode movedNode
-                           else
-                                SquareEditEdge1 movedNode
+        SquareMoveNode _ ->          
+            let
+                ( info, movedNode, created ) =
+                    moveNodeViewInfo model state.data
+            in
+            renamableNextMode <| updateStep
+                { model | graph = info.graph } state 
+                    <| if created then
+                            SquareEditNode movedNode
+                       else
+                            SquareEditEdge1 movedNode
                                
 
         SquareEditNode mn ->
@@ -315,17 +326,7 @@ graphDrawing m state =
 
 update : SquareState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
-    case msg of
-        KeyChanged False (Control "Escape") ->
-            nextStep model False state
-
-        KeyChanged False (Control "Enter") ->
-            nextStep model True state
-
-        MouseClick ->
-            case state.step of
-               SquareMoveNode _ -> nextStep model True state
-               _ -> noCmd model
+    case msg of   
 
         EdgeLabelEdit e s ->
             noCmd { model | graph = graphRenameObj model.graph (OEdge e) s }
@@ -343,4 +344,26 @@ update state msg model =
 
       
         _ ->
-            noCmd model
+            case keyToAction msg state.step of
+              Just action -> nextStep model action state
+              Nothing -> noCmd model
+
+help : SquareStep -> String
+help s =
+ case s of
+        SquareMoveNode _ ->
+            "[ESC] cancel, [click] name the point (if new), "
+             ++ "[RET] terminate the square creation, "
+             ++ " alternative possible [s]quares."
+             
+        SquareEditNode _ ->
+            "[ESC] empty label, [RET] confirm the label, "
+            ++ "[TAB] edit the first edge label."
+
+        SquareEditEdge1 _ ->
+             "[ESC] empty label, [RET] confirm the label, "
+              ++ "[TAB] edit the other edge label."
+        SquareEditEdge2 _ ->
+             "[ESC] empty label, [RET] confirm the label."
+
+               
