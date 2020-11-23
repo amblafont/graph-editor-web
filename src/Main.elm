@@ -301,6 +301,7 @@ update_NewNode msg m =
          --   switch_Default newModel
          -- else
            switch_RenameMode newModel
+       KeyChanged False (Control "Escape") -> switch_Default m
        _ -> noCmd m
 
 
