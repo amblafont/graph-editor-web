@@ -22,7 +22,13 @@
         
         <!-- Make foreignobject in svg visible -->
          <style>
-          foreignObject { overflow:visible} 
+          foreignObject { overflow:visible;
+          /* to allow clicking through the overflow */
+            pointer-events: none
+          } 
+          foreignObject * { 
+              pointer-events: all;
+          }
          .active-label { 
              border-color: red;
              border-style: solid;
