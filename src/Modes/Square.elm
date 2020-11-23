@@ -323,7 +323,9 @@ update state msg model =
             nextStep model True state
 
         MouseClick ->
-            nextStep model True state
+            case state.step of
+               SquareMoveNode _ -> nextStep model True state
+               _ -> noCmd model
 
         EdgeLabelEdit e s ->
             noCmd { model | graph = graphRenameObj model.graph (OEdge e) s }

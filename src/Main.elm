@@ -170,14 +170,14 @@ update msg model =
             -- NodeLeave n -> { model | mousePointOver = ONothing}
             NodeRendered n dims ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
-                { model | statusMsg = "newsize " ++ Debug.toString (n, dims)
-                      , graph = 
+                { model | -- statusMsg = "newsize " ++ Debug.toString (n, dims),
+                      graph = 
                       Graph.updateNode n (\l -> {l | dims = Just dims }) model.graph                      
                 }
             EdgeRendered e dims ->
-                let _ = Debug.log "nouvelle dims !" (e, dims) in
-                { model | statusMsg = "newsize " ++ Debug.toString (e, dims)
-                      , graph = 
+                -- let _ = Debug.log "nouvelle dims !" (e, dims) in
+                { model | -- statusMsg = "newsize " ++ Debug.toString (e, dims),
+                      graph = 
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
             _ -> model
@@ -364,7 +364,7 @@ graphDrawingNonEmptyChain g ch loc -- defOrient
             let label = withDefault "" olabel in
 
             (Graph.addEdge g3 (source, target) 
-               <| GraphDefs.newEdgeLabel label              
+               <| GraphDefs.newEdgeLabel label ArrowStyle.empty            
             , source)
 
 
@@ -440,12 +440,9 @@ helpMsg model =
                     ++ " [RET] to accept the current chain"       
                     ++ ", [ESC] to cancel and comeback to the default mode."]
                 ]
-        NewArrow {step} -> "Mode NewArrow. [ESC] to cancel and come back to the default. "
+        NewArrow {step} -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
-                           ++
-            (case step of
-                NewArrowMoveNode _ -> " [(,=,b,B,-,>]: alternate between different arrow styles."
-                _ -> "") |> Html.text
+                           ++  Modes.NewArrow.help step |> Html.text
         SquareMode {step} -> "Mode Commutative square. [ESC] to cancel and come back to the default."
                              ++
             (case step of

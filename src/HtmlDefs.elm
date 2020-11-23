@@ -1,4 +1,4 @@
-module HtmlDefs exposing (onRendered, quickInputId, idInput, Key(..), keyDecoder, makeLatex)
+module HtmlDefs exposing (onRendered, tabDecoder, quickInputId, idInput, Key(..), keyDecoder, makeLatex)
 import Html
 import Html.Attributes
 import Html.Events
@@ -49,6 +49,13 @@ keyDecoder : D.Decoder Key
 keyDecoder = D.field "key" D.string
              |> D.map toKey
 
+-- is it a tab?
+tabDecoder : D.Decoder Bool
+tabDecoder = keyDecoder |>
+ D.map 
+ (\ k -> case k of 
+          Control "Tab" -> True 
+          _ -> False )
 
 makeLatex : List (Html.Attribute a) -> String -> Html.Html a
 makeLatex attrs s = 

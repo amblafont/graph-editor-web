@@ -31,6 +31,8 @@ type Msg
   | QuickInput String
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
+  -- pressing tab when editing the input text
+  | TabInput
 
 noOp : Msg
 noOp = Do Cmd.none

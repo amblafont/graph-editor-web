@@ -20,11 +20,11 @@ type alias NodeLabelJs = { pos : Point , label : String}
 newNodeLabel : Point -> String -> NodeLabel
 newNodeLabel p s = NodeLabel p s Nothing
 
-newEdgeLabel : String -> EdgeLabel
-newEdgeLabel s = { label = s, style = ArrowStyle.empty, dims = Nothing}
+newEdgeLabel : String -> ArrowStyle -> EdgeLabel
+newEdgeLabel s style = { label = s, style = style, dims = Nothing}
 
 emptyEdge : EdgeLabel
-emptyEdge = newEdgeLabel ""
+emptyEdge = newEdgeLabel "" ArrowStyle.empty
 
 
 nodeLabelToJs : NodeLabel -> NodeLabelJs

@@ -1,4 +1,4 @@
-module Modes.NewArrow exposing (graphDrawing, initialise, update)
+module Modes.NewArrow exposing (graphDrawing, initialise, update, help)
 
 
 import Color exposing (..)
@@ -37,22 +37,23 @@ initialise m =
         |> Maybe.withDefault m
         |> noCmd
 
+type Suite = Next | Finish
+
+type Action =
+    Validate Suite
+  | Cancel
 
 
 
-nextStep : Model -> Bool -> NewArrowState -> ( Model, Cmd Msg )
-nextStep model validate state =
+nextStep : Model -> Action -> NewArrowState -> ( Model, Cmd Msg )
+nextStep model action state =
+    
     let
         renamableNextMode m =
-            let
-                graph =
-                    if validate then
-                        m.graph
-
-                    else
-                        graphRenameObj m.graph (renamableFromState state) ""
-            in
-            noCmd { m | graph = graph }
+            case action of
+               Cancel -> switch_Default { m | graph = graphRenameObj m.graph (renamableFromState state) ""}
+               Validate Next -> noCmd m
+               Validate Finish -> switch_Default m            
     in
     let
         renamableNextStep step = updateStep model state step
@@ -60,19 +61,21 @@ nextStep model validate state =
     in
     case state.step of
         NewArrowMoveNode style  ->
-            if not validate then
-                switch_Default model
-
-            else
-                let
-                    info = moveNodeInfo model state style
-                    step = if info.created then
-                             NewArrowEditNode info.movedNode
-                           else
-                              NewArrowEditEdge info.movedNode
+                     
+                let info = moveNodeInfo model state style in
+          
+                let step = if info.created then
+                       NewArrowEditNode info.movedNode
+                     else
+                        NewArrowEditEdge info.movedNode
                 in
-                updateStep { model | graph = info.graph } state step
-                |> noCmd
+                renamableNextMode <| 
+                updateStep { model | graph = info.graph,
+                                     activeObj = ONode info.movedNode } 
+                        state step
+                
+
+                
 
                 
         NewArrowEditNode movedNode ->
@@ -81,22 +84,28 @@ nextStep model validate state =
         NewArrowEditEdge movedNode ->
             renamableNextMode
                 { model
-                    | activeObj = ONode movedNode
-                    , mode = DefaultMode
+                    | -- activeObj = ONode movedNode
+                    -- , 
+                    mode = DefaultMode
                 }
 
+keyToAction : Msg -> NewArrowStep -> Maybe Action
+keyToAction k step =
+   case k of 
+       KeyChanged False (Control "Escape") -> Just Cancel
+       MouseClick ->
+           case step of
+              NewArrowMoveNode _ -> Just <| Validate Next
+              _ -> Nothing
+       KeyChanged False (Control "Enter") -> Just <| Validate Finish     
+       TabInput -> Just <| Validate Next
+       _ -> Nothing
+            
 
 update : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     case msg of
-        KeyChanged False (Control "Escape") ->
-            nextStep model False state
-
-        KeyChanged False (Control "Enter") ->
-            nextStep model True state
-
-        MouseClick ->
-            nextStep model True state
+      
 
         EdgeLabelEdit e s ->
             noCmd { model | graph = graphRenameObj model.graph (OEdge e) s }
@@ -107,7 +116,10 @@ update state msg model =
         
             
         _ ->
-            case state.step of
+            case keyToAction msg state.step of
+              Just action -> nextStep model action state
+              Nothing ->              
+                case state.step of
                 NewArrowMoveNode style ->
                     style 
                      |> Msg.updateArrowStyle msg           
@@ -135,7 +147,7 @@ moveNodeInfo m state style =
             mayCreateTargetNode m ""
     in
     { graph = Graph.addEdge graph ( state.chosenNode, movedNode ) 
-       GraphDefs.emptyEdge
+       (GraphDefs.newEdgeLabel "" style)
     , movedNode = movedNode
     , created = created
     }
@@ -172,4 +184,20 @@ renamableFromState state =
         NewArrowMoveNode _ ->
             ONothing
 
+help : NewArrowStep -> String
+help s =
+ case s of
+        NewArrowMoveNode _ ->
+            "[ESC] cancel, [click] name the point (if new), "
+             ++ "[RET] terminate the arrow creation, "
+             ++ "[(,=,b,B,-,>] alternate between different arrow styles."
+        NewArrowEditNode m ->
+            "[ESC] empty label, [RET] confirm the label, "
+            ++ "[TAB] edit the edge label."
 
+        NewArrowEditEdge m ->
+             "[ESC] empty label, [RET] confirm the label."
+            
+
+
+  
