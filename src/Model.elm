@@ -12,7 +12,7 @@ import Geometry.Point exposing (Point)
 import ArrowStyle exposing (ArrowStyle)
 
 import Geometry
-import GraphDefs exposing (getNodeDims)
+import GraphDefs
 
 
 
@@ -222,7 +222,7 @@ getNodesAt : Model -> Point -> List NodeId
 getNodesAt m p =
   Graph.filterNodes m.graph 
     (\n -> Geometry.isInPosDims { pos = n.pos, 
-                                  dims = getNodeDims n} p)
+                                  dims = GraphDefs.getNodeDims n} p)
   |> List.map .id
 
 getTargetNodes : Model -> List NodeId
@@ -283,7 +283,7 @@ make_defaultNodeDrawingLabel model n =
     make_nodeDrawingLabel
         { editable = False
         , isActive = n.id == activeNode model
-        , dims =  getNodeDims n.label  
+       -- , dims =  getNodeDims n.label  
         }
         n.label
 
@@ -295,7 +295,9 @@ collageGraphFromGraph model =
         (\e ->
             e.label
                 |> make_edgeDrawingLabel
-                    { editable = False, isActive = ( e.from, e.to ) == (model.activeObj |> obj_EdgeId) }
+                    { editable = False, 
+                      isActive = ( e.from, e.to ) == (model.activeObj |> obj_EdgeId) 
+                      }
         )
 
 

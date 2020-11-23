@@ -46,6 +46,7 @@ import HtmlDefs exposing (quickInputId, Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs, NodeLabelJs)
 import GraphDefs exposing (newNodeLabel)
 import GraphDefs exposing (getNodeLabelOrCreate)
+import GraphDefs exposing (newEdgeLabel)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -167,11 +168,17 @@ update msg model =
             --    let _ = Debug.log "ici" n in
             --   { model | mousePointOver = ONode n}
             -- NodeLeave n -> { model | mousePointOver = ONothing}
-            SizeChanged n dims ->
+            NodeRendered n dims ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
                 { model | statusMsg = "newsize " ++ Debug.toString (n, dims)
                       , graph = 
                       Graph.updateNode n (\l -> {l | dims = Just dims }) model.graph                      
+                }
+            EdgeRendered e dims ->
+                let _ = Debug.log "nouvelle dims !" (e, dims) in
+                { model | statusMsg = "newsize " ++ Debug.toString (e, dims)
+                      , graph = 
+                      Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
             _ -> model
     in
@@ -356,7 +363,7 @@ graphDrawingNonEmptyChain g ch loc -- defOrient
             let label = withDefault "" olabel in
 
             (Graph.addEdge g3 (source, target) 
-              { label = label, style = ArrowStyle.empty }
+               <| GraphDefs.newEdgeLabel label              
             , source)
 
 

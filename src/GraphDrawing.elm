@@ -22,7 +22,7 @@ import HtmlDefs
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias EdgeDrawingLabel = 
    { label : String, editable : Bool, isActive : Bool, 
-   style : ArrowStyle }
+   style : ArrowStyle, dims : Point }
 type alias NodeDrawingLabel =
     { pos : Point, label : String, editable : Bool, isActive : Bool,
           dims : Point 
@@ -33,13 +33,15 @@ type alias NodeDrawingLabel =
 
 make_edgeDrawingLabel : {editable : Bool, isActive : Bool} 
                       -> EdgeLabel-> EdgeDrawingLabel
-make_edgeDrawingLabel {editable, isActive} {label, style} =
-    { label = label, editable = editable, isActive = isActive, style = style}
+make_edgeDrawingLabel {editable, isActive} ({label, style} as l) =
+    { label = label, editable = editable, isActive = isActive, style = style,
+      dims = GraphDefs.getEdgeDims l
+    }
 
-make_nodeDrawingLabel : {editable : Bool, isActive : Bool, dims : Point} -> NodeLabel ->  NodeDrawingLabel
-make_nodeDrawingLabel {editable, isActive, dims} {label, pos} =
+make_nodeDrawingLabel : {editable : Bool, isActive : Bool} -> NodeLabel ->  NodeDrawingLabel
+make_nodeDrawingLabel {editable, isActive} ({label, pos} as l) =
     { label = label, pos = pos, editable = editable, isActive = isActive,
-    dims = dims{- , watchEnterLeave = True -}}
+    dims = GraphDefs.getNodeDims l }
 
 
 -- create an input with id curIdInput
@@ -73,7 +75,7 @@ nodeLabelDrawing attrs node =
             ] ++ 
             (if n.isActive then [Html.Attributes.class "active-label" ] else [])
             ++
-            HtmlDefs.onRendered (Msg.SizeChanged id)
+            HtmlDefs.onRendered (Msg.NodeRendered id)
             )
              n.label
                 
@@ -124,8 +126,20 @@ segmentLabel q edgeId label =
              make_input labelpos label.label
              (EdgeLabelEdit edgeId)
         else
-            Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
-              labelpos label.label 
+         if  label.label == "" then
+             Drawing.empty
+         else 
+            Drawing.html labelpos label.dims -- n.dims
+            <| HtmlDefs.makeLatex
+            ([   Html.Events.onClick (EdgeClick edgeId)            
+            ] ++ 
+            (if label.isActive then [Html.Attributes.class "active-label" ] else [])
+             ++
+             HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
+            )
+             label.label
+            {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
+              labelpos label.label  -}
          
 
 

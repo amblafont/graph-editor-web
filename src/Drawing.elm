@@ -1,7 +1,7 @@
 module Drawing exposing (Drawing,   
   fromString, circle, html, group, arrow,
   Attribute, on, onClick, onMouseEnter, onMouseLeave, color,
-  svg, Color, red, black, class
+  svg, Color, red, black, class, empty
   )
 
 import Svg exposing (Svg)
@@ -73,6 +73,9 @@ color = Color
 
 type Drawing a
     = Drawing (List (Svg a))
+
+empty : Drawing a
+empty = Drawing []
 
 ofSvg : Svg a -> Drawing a
 ofSvg s = Drawing [ s ]

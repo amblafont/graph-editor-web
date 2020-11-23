@@ -237,10 +237,11 @@ moveNodeViewInfo m data =
     in
     let
         g2 =
-            Graph.addEdge (Graph.addEdge g edges.ne1 
-            {label = "", style = ArrowStyle.empty}
-            ) edges.ne2 
-            {label = "", style = ArrowStyle.empty}
+            Graph.addEdge 
+            (Graph.addEdge g edges.ne1 GraphDefs.emptyEdge)
+            edges.ne2 
+            GraphDefs.emptyEdge
+            
     in
     ( { graph = g2, edges = edges }, n, created )
 

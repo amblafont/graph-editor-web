@@ -135,7 +135,7 @@ moveNodeInfo m state style =
             mayCreateTargetNode m ""
     in
     { graph = Graph.addEdge graph ( state.chosenNode, movedNode ) 
-       {label = "", style = style }
+       GraphDefs.emptyEdge
     , movedNode = movedNode
     , created = created
     }
