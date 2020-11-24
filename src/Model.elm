@@ -22,7 +22,7 @@ import GraphDefs
 
 type alias Model =
     { graph : Graph NodeLabel EdgeLabel
-    , activeObj : Obj
+    , selectedObjs : List Obj
     , mousePos : Point
     -- , -- if the mouse is over some node or edge
     --  mousePointOver : Obj
@@ -47,6 +47,7 @@ type Mode
     | NewNode
     | QuickInputMode (Maybe NonEmptyChain)
     | SquareMode SquareState
+    | RectSelect Point
 
 
 type alias NewArrowState =
@@ -93,7 +94,7 @@ createModel g =
       quickInput = ""
     , mousePos = ( 0, 0 )
    -- , mousePointOver = ONothing
-    , activeObj = ONothing
+    , selectedObjs = []
     -- , dimNodes = Dict.empty
 
     -- unnamedFlag = False
@@ -103,6 +104,20 @@ createModel g =
     }
 
 
+allSelectedNodesId : Model -> List NodeId
+allSelectedNodesId m =
+  List.concatMap 
+    (\ o ->  case  o of
+               ONothing -> []
+               ONode id -> [ id ]
+               OEdge (id1, id2) -> [ id1, id2 ]
+    )
+    m.selectedObjs
+
+allSelectedNodes : Model -> List (Node NodeLabel)
+allSelectedNodes m =
+  allSelectedNodesId m
+  |> List.filterMap (\ id -> Graph.get id m.graph |> Maybe.map .node)
 
 -- captureKeyboard : State -> Bool
 -- captureKeyboard m =
@@ -147,9 +162,15 @@ obj_EdgeId x =
 
         _ ->
             ( 0, 0 )
+
+activeObj : Model -> Obj
+activeObj m =
+   case m.selectedObjs of
+      [ o ] -> o
+      _ -> ONothing
 activeNode : Model -> NodeId
 activeNode m =
-    obj_NodeId m.activeObj
+    obj_NodeId <| activeObj m
 
 graphRemoveObj : Obj -> Graph a b -> Graph a b
 graphRemoveObj o g =
@@ -225,6 +246,12 @@ getNodesAt m p =
                                   dims = GraphDefs.getNodeDims n} p)
   |> List.map .id
 
+getNodesInRect : Model -> Geometry.Rect -> List NodeId
+getNodesInRect m r =
+    Graph.filterNodes m.graph 
+    (\n -> Geometry.isInRect r n.pos)
+  |> List.map .id
+
 getTargetNodes : Model -> List NodeId
 getTargetNodes m = getNodesAt m m.mousePos
   -- List.head |> Maybe.map .id
@@ -277,12 +304,17 @@ switch_Default : Model -> ( Model, Cmd Msg )
 switch_Default m =
     noCmd { m | mode = DefaultMode }
 
+isSelectedObj : Model -> Obj -> Bool
+isSelectedObj m o = 
+   case o of 
+      ONothing -> False
+      _ -> List.member o m.selectedObjs
 
 make_defaultNodeDrawingLabel : Model -> Node NodeLabel -> NodeDrawingLabel
 make_defaultNodeDrawingLabel model n =
     make_nodeDrawingLabel
         { editable = False
-        , isActive = n.id == activeNode model
+        , isActive = isSelectedObj model (ONode n.id)
        -- , dims =  getNodeDims n.label  
         }
         n.label
@@ -296,7 +328,7 @@ collageGraphFromGraph model =
             e.label
                 |> make_edgeDrawingLabel
                     { editable = False, 
-                      isActive = ( e.from, e.to ) == (model.activeObj |> obj_EdgeId) 
+                      isActive = isSelectedObj model <| OEdge ( e.from, e.to )  
                       }
         )
 

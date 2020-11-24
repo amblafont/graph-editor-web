@@ -20,7 +20,7 @@ updateStep m state step = {m | mode = NewArrow { state | step = step }}
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    m.activeObj
+    activeObj m
         |> objToNode
         |> Maybe.map
             (\chosenNode ->
@@ -71,7 +71,7 @@ nextStep model action state =
                 in
                 renamableNextMode <| 
                 updateStep { model | graph = info.graph,
-                                     activeObj = ONode info.movedNode } 
+                                     selectedObjs = [ ONode info.movedNode ] } 
                         state step
                 
 

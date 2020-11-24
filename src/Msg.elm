@@ -21,6 +21,8 @@ type Msg
   | KeyChanged Bool Key
   | MouseMove Point
   | MouseClick 
+  | MouseDown
+  | MouseUp
   -- | NodeEnter NodeId
   -- | NodeLeave NodeId
   | NodeClick NodeId

@@ -1,5 +1,5 @@
 module Drawing exposing (Drawing,   
-  fromString, circle, html, group, arrow,
+  fromString, circle, html, group, arrow, rect,
   Attribute, on, onClick, onMouseEnter, onMouseLeave, color,
   svg, Color, red, black, class, empty
   )
@@ -9,12 +9,14 @@ import Svg.Attributes as Svg
 import Svg as SvgElts
 import Svg.Events
 import Geometry.Point exposing (Point)
+import Geometry
 import Json.Decode as D
 import Html 
 import ArrowStyle.Core as ArrowStyle
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
 import Svg
+import Collage.Layout exposing (bottomRight)
 
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
 svg l d =
@@ -145,7 +147,21 @@ arrow attrs style q =
 
 
 
-
+rect : Geometry.Rect -> Drawing a
+rect { topLeft, bottomRight } =
+   let (fromx, fromy) = topLeft
+       (tox, toy) = bottomRight
+       f = String.fromFloat 
+   in
+   Svg.rect 
+      [Svg.x <| f <| fromx,
+       Svg.y <| f <| fromy,
+       Svg.width <| f  <| (tox - fromx),
+       Svg.height <| f <| (toy - fromy),
+       Svg.class "rect-select"
+       ]
+       [] 
+       |> ofSvg
 
 
 

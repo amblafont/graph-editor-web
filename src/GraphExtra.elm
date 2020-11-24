@@ -65,6 +65,9 @@ updateNode id f =
     Graph.update id
         (Maybe.map (\nc -> { nc | node = Node nc.node.id (f nc.node.label) }))
 
+updateNodes : List NodeId -> (a -> a) -> Graph a b -> Graph a b
+updateNodes l f g =
+  List.foldl (\ id g2 -> updateNode id f g2) g l
 
 getEdge : EdgeId -> Graph a b -> Maybe b
 getEdge ( from, to ) g =

@@ -96,7 +96,7 @@ square_updatePossibility m idx node =
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    m.activeObj
+    activeObj m
         |> objToNode
         |> Maybe.map (square_updatePossibility m 0)
         -- |> Maybe.map
@@ -163,7 +163,7 @@ nextStep model action state =
         SquareEditEdge2 mn ->
             renamableNextMode
                 { model
-                    | activeObj = ONode mn
+                    | selectedObjs = [ ONode mn ]
                     , mode = DefaultMode
                 }
 

@@ -17,7 +17,7 @@ import Json.Encode as JE
 import Graph exposing (..)
 import GraphExtra as Graph
 
-import Drawing 
+import Drawing exposing (Drawing)
 
 import Geometry.Point as Point exposing (Point)
 
@@ -47,6 +47,9 @@ import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs, NodeLabelJs)
 import GraphDefs exposing (newNodeLabel)
 import GraphDefs exposing (getNodeLabelOrCreate)
 import GraphDefs exposing (newEdgeLabel)
+import Html exposing (a)
+import Geometry exposing (Rect)
+import Geometry exposing (rectEnveloppe)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -129,12 +132,20 @@ save model =
 
 
 graph_RenameMode : String -> Model -> Graph NodeLabel EdgeLabel
-graph_RenameMode s m = graphRenameObj m.graph m.activeObj s
+graph_RenameMode s m = graphRenameObj m.graph (activeObj m) s
 
 graph_MoveNode : Model -> Graph NodeLabel EdgeLabel
 graph_MoveNode model =
-    Graph.updateNode (activeNode model) 
-    (\n -> { n | pos = model.mousePos})
+    let nodes = allSelectedNodes model in
+    let center = nodes
+         |> List.map (.label >> .pos)
+         |> Geometry.rectEnveloppe 
+         |> Geometry.centerRect
+    in
+    let delta = Point.subtract model.mousePos center in
+    (nodes |> List.map .id
+           |> Graph.updateNodes) 
+           ( \n -> { n | pos = Point.add n.pos delta })
      model.graph
 
 
@@ -145,7 +156,7 @@ graph_MoveNode model =
 switch_RenameMode : Model -> (Model, Cmd Msg)
 switch_RenameMode model =
     let label : Maybe String
-        label = case model.activeObj of
+        label = case activeObj model of
               ONothing -> Nothing
               ONode id -> Graph.getNode id model.graph |> Maybe.map .label
               OEdge id -> Graph.getEdge id model.graph |> Maybe.map .label
@@ -189,6 +200,7 @@ update msg model =
       case model.mode of
         QuickInputMode c -> update_QuickInput c msg m 
         DefaultMode -> update_DefaultMode msg m
+        RectSelect orig -> update_RectSelect msg orig m
         NewArrow astate -> Modes.NewArrow.update astate msg m
             -- update_Modes.NewArrow astate msg m
         RenameMode l -> update_RenameMode l msg m
@@ -243,12 +255,24 @@ finalise_RenameMode label model =
     let g = graph_RenameMode label model in
     switch_Default {model | graph = g}
 
-
+update_RectSelect : Msg -> Point -> Model -> (Model, Cmd Msg)
+update_RectSelect msg orig model =
+   case msg of
+      KeyChanged False (Control "Escape") -> switch_Default model
+      MouseUp -> switch_Default 
+                  { model | selectedObjs = 
+                      Model.getNodesInRect model (Geometry.makeRect orig model.mousePos)
+                      |> List.map ONode }
+      -- au cas ou le click n'a pas eu le temps de s'enregistrer
+    --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
+    --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
+      _ -> noCmd model
 
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     -- Tuples.mapFirst (changeModel model) <|
     case msg of
+        MouseDown -> noCmd <| { model | mode = RectSelect model.mousePos }
         KeyChanged False (Character 'a') -> Modes.NewArrow.initialise model
         KeyChanged False (Character 's') -> Modes.Square.initialise model 
         KeyChanged False (Character 'r') -> switch_RenameMode model
@@ -260,17 +284,24 @@ update_DefaultMode msg model =
         -- KeyChanged False (Character 'b') -> ({model | blitzFlag = not model.blitzFlag}, Cmd.none)
         KeyChanged False (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
-        KeyChanged False (Character 'g') -> noCmd <| { model | mode = MoveNode }
+        KeyChanged False (Character 'g') -> 
+            noCmd <| { model | mode = 
+                       if allSelectedNodes model |> List.isEmpty
+                        then
+                          -- Nothing is selected
+                          DefaultMode
+                        else MoveNode
+                     }
         KeyChanged False (Control "Delete") ->
-            noCmd <| { model | graph = graphRemoveObj model.activeObj model.graph}
+            noCmd <| { model | graph = graphRemoveObj (activeObj model) model.graph}
         KeyChanged False (Character 'x') ->
-            noCmd <| { model | graph = graphRemoveObj model.activeObj model.graph} 
+            noCmd <| { model | graph = graphRemoveObj (activeObj model) model.graph} 
         NodeClick n ->
-            noCmd <| { model | activeObj = ONode n} 
+            noCmd <| { model | selectedObjs = [ONode n]} 
         EdgeClick n ->
-            noCmd <| { model | activeObj = OEdge n}
+            noCmd <| { model | selectedObjs = [OEdge n]}
         _ ->
-            case objToEdge model.activeObj of
+            case objToEdge <| activeObj model of
               Nothing -> noCmd model
               Just id -> noCmd 
                 { model | graph =
@@ -294,7 +325,7 @@ update_NewNode msg m =
          let (newGraph, newId) = Graph.newNode m.graph 
                (newNodeLabel m.mousePos "")
              newModel = {m | graph = newGraph,
-                             activeObj = ONode newId
+                             selectedObjs = [ ONode newId ]
                         }
          in
          -- if m.unnamedFlag then
@@ -319,6 +350,7 @@ graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
     case m.mode of
         DefaultMode -> collageGraphFromGraph m m.graph
+        RectSelect _ -> collageGraphFromGraph m m.graph
         NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
         MoveNode -> graph_MoveNode m |> 
@@ -326,7 +358,7 @@ graphDrawingFromModel m =
         RenameMode l ->
             let g = graph_RenameMode l m in
             collageGraphFromGraph m g
-                |> graphMakeEditable m.activeObj
+                |> graphMakeEditable (activeObj m)
         DebugMode ->
             m.graph |> collageGraphFromGraph m 
                 |> Graph.mapNodesEdges
@@ -341,7 +373,7 @@ graphDrawingChain g ch =
     case ch of
         Nothing -> g
         Just nonEmptyCh ->
-            let iniP = (100, 100) in
+            let iniP = (400, 200) in
             Tuple.first <| graphDrawingNonEmptyChain g nonEmptyCh iniP -- QuickInput.Right
 
 
@@ -400,10 +432,12 @@ helpStr_collage (s , h) =
 
 helpMsg : Model -> Html Msg
 helpMsg model =
+    let cl = Html.Attributes.class "help-div" in
+    let makeHelpDiv l = Html.div [ cl ] l in
     let msg = \ s -> s |>
                   Parser.run helpMsgParser |>
                   Result.withDefault [("Parsing help msg error", Plain)] |>
-                  List.map helpStr_collage |> Html.div []
+                  List.map helpStr_collage |> makeHelpDiv
     in
     -- let b = \ s -> Html.span [] [Html.text "[", Html.b [] [Html.text s], Html.text"]"]
     -- in
@@ -411,7 +445,7 @@ helpMsg model =
     case model.mode of
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
-            msg <| "Default mode. Commands: [click] for point/edge selection" 
+            msg <| "Default mode. Commands: [click] for point/edge selection (hold for selection rectangle)" 
                 ++ ", new [a]rrow from selected point"
                 ++ ", new [p]oint"
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
@@ -420,9 +454,9 @@ helpMsg model =
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [r]ename selected object" 
-                ++ ", [g] move selected object" 
+                ++ ", [g] move selected objects" 
                 ++ "."
-                ++ case model.activeObj of
+                ++ case activeObj model of
                      OEdge _ ->
                        " [(,=,b,B,-,>]: alternate between different arrow styles."
                      _ -> ""
@@ -431,9 +465,9 @@ helpMsg model =
              -- "[r]ename selected object, move selected point [g], [d]ebug mode"
         DebugMode ->
             "Debug Mode. [ESC] to cancel and come back to the default mode. " ++
-              Debug.toString model |> Html.text
+              Debug.toString model |> Html.text |> List.singleton |> makeHelpDiv
         QuickInputMode ch ->
-            Html.div [] [
+            makeHelpDiv [
             "Mode: QuickInput" ++ Debug.toString model.mode ++ "." |> Html.text,
                 Html.p [] [
                      msg <| " Syntax: v1 -> v2 - edgeLabel >@d v3 vr |down arrow v X | \"uparrow \" ^ end yo."
@@ -442,14 +476,15 @@ helpMsg model =
                 ]
         NewArrow {step} -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
-                           ++  Modes.NewArrow.help step |> Html.text
+                           ++  Modes.NewArrow.help step |> msg
         SquareMode {step} -> "Mode Commutative square. "
-                             ++ Modes.Square.help step |> Html.text
+                             ++ Modes.Square.help step |> msg
 
 
-        _ -> "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"
-             ++ " mode."
-                 |> Html.text
+        _ -> let txt = "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"
+                   ++ " mode."
+             in
+                makeHelpDiv [ Html.text txt ]
 
 quickInputView : Model -> Html Msg
 quickInputView m = 
@@ -468,27 +503,36 @@ quickInputView m =
                           --     _ -> [Html.Attributes.value ""]
                      []]
 
+additionnalDrawing : Model -> Drawing a
+additionnalDrawing m = 
+   case m.mode of
+      RectSelect orig -> Drawing.rect (Geometry.makeRect orig m.mousePos)
+      _ -> Drawing.empty
 
 view : Model -> Html Msg
 view model =
     Html.div [] [
          Html.button [Html.Events.onClick (save model)
-              ] [Html.text "Save"],
-             quickInputView model,
+              ] [Html.text "Save"],             
              Html.text model.statusMsg,
          -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
          -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
          Html.p [] 
-         [(helpMsg model)
+         [(helpMsg model),
+          quickInputView model
          ],
-    graphDrawing (graphDrawingFromModel model)
+    Drawing.group [graphDrawing (graphDrawingFromModel model),
+       additionnalDrawing model
+    ]
     -- |> debug
     |> Drawing.svg [
                    Html.Attributes.style "width" "100%",
                    Html.Attributes.height 2000,
                    Html.Attributes.style "border-style" "solid",
                    Html.Events.on "mousemove"
-                   (D.map (Do << onMouseMove) D.value)
+                   (D.map (Do << onMouseMove) D.value),
+                   Html.Events.onMouseDown MouseDown,
+                   Html.Events.onMouseUp MouseUp
              ]
              ]
 

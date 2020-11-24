@@ -1,15 +1,33 @@
-module Geometry exposing (raytraceRect, PosDims, Rect, pad, 
+module Geometry exposing (raytraceRect, PosDims, Rect, pad, makeRect,
+    centerRect, 
+    rectEnveloppe,
    -- segmentRect, 
    segmentRectBent, isInRect, isInPosDims -- , diamondPointPx
   )
 
 import Geometry.Point as Point exposing (Point)
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
-
+import Collage.Layout exposing (bottomRight)
+import Collage.Layout exposing (topLeft)
 
 
 type alias PosDims = { pos : Point, dims : Point }
 type alias Rect = { topLeft : Point, bottomRight : Point }
+
+rectEnveloppe : List Point -> Rect
+rectEnveloppe l =
+   let (xs, ys) = List.unzip l in
+   let lmin = List.minimum >> Maybe.withDefault 0
+       lmax = List.maximum >> Maybe.withDefault 0
+   in
+   { topLeft = (lmin xs, lmin ys), bottomRight = (lmax xs, lmax ys) }
+
+makeRect : Point -> Point -> Rect
+makeRect p1 p2  =
+   rectEnveloppe [ p1, p2 ]   
+
+centerRect : Rect -> Point
+centerRect { bottomRight, topLeft} = Point.middle bottomRight topLeft
 
 rectFromPosDims : PosDims -> Rect
 rectFromPosDims { pos, dims } =
