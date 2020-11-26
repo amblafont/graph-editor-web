@@ -70,8 +70,10 @@ nextStep model action state =
                         NewArrowEditEdge info.movedNode
                 in
                 renamableNextMode <| 
-                updateStep { model | graph = info.graph,
-                                     selectedObjs = [ ONode info.movedNode ] } 
+                updateStep 
+                (addOrSetSel True (ONode info.movedNode)
+                  { model | graph = info.graph  }
+                  ) 
                         state step
                 
 

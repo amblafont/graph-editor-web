@@ -134,6 +134,8 @@ edgeToEdgeWithNodes g { from, to, label } =
         _ ->
             Nothing
 
+edgeWithNodesId : EdgeNodes n e -> EdgeId
+edgeWithNodesId {from, to} = (from.id, to.id)
 
 edgesWithNodes : Graph n e -> List (EdgeNodes n e)
 edgesWithNodes g =

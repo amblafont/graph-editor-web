@@ -10,7 +10,7 @@ import Task
 import Browser.Dom as Dom
 import ArrowStyle exposing (ArrowStyle)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-
+import Html.Events.Extra.Mouse as MouseEvents
 
 
 
@@ -21,12 +21,12 @@ type Msg
   | KeyChanged Bool Key
   | MouseMove Point
   | MouseClick 
-  | MouseDown
+  | MouseDown MouseEvents.Event -- is Shift selected?
   | MouseUp
   -- | NodeEnter NodeId
   -- | NodeLeave NodeId
-  | NodeClick NodeId
-  | EdgeClick EdgeId
+  | NodeClick NodeId MouseEvents.Event
+  | EdgeClick EdgeId MouseEvents.Event
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
   | Loaded (Graph NodeLabel EdgeLabel)

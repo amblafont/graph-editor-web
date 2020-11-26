@@ -11,6 +11,7 @@ import Model exposing (..)
 import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
+import List.Extra exposing (uniquePairs)
 
 -- TODO: factor with newArrow
 updateStep : Model -> SquareState -> SquareStep -> Model
@@ -45,17 +46,6 @@ possibleSquareStates nc =
 
 
 
--- from ListExtra package
-
-
-uniquePairs : List a -> List ( a, a )
-uniquePairs xs =
-    case xs of
-        [] ->
-            []
-
-        x :: xs_ ->
-            List.map (\y -> ( x, y )) xs_ ++ uniquePairs xs_
 
 
 getAt : Int -> List a -> Maybe a
@@ -162,10 +152,9 @@ nextStep model action state =
 
         SquareEditEdge2 mn ->
             renamableNextMode
-                { model
-                    | selectedObjs = [ ONode mn ]
-                    , mode = DefaultMode
-                }
+              <|   addOrSetSel True (ONode mn)
+                  { model | mode = DefaultMode }
+               
 
 
 

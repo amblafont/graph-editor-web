@@ -17,6 +17,7 @@ import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
 import Svg
 import Collage.Layout exposing (bottomRight)
+import Html.Events.Extra.Mouse as MouseEvents
 
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
 svg l d =
@@ -26,9 +27,10 @@ svg l d =
 attrToSvgAttr : (String -> Svg.Attribute a) -> Attribute a -> Maybe (Svg.Attribute a)
 attrToSvgAttr col a =
   case a of
-     Color c -> c |> colorToString |> col |> Just
-     On e d -> Svg.Events.on e d |> Just
+     Color c -> c |> colorToString |> col |> Just     
      Class s -> Svg.class s |> Just
+     On e d -> Svg.Events.on e d |> Just
+     OnClick f -> MouseEvents.onClick f |> Just
 
 attrsToSvgAttrs : (String -> Svg.Attribute a) -> List (Attribute a) -> List (Svg.Attribute a)
 attrsToSvgAttrs f = List.filterMap (attrToSvgAttr f)
@@ -37,6 +39,7 @@ type Attribute msg =
     On String (D.Decoder msg)
     | Color Color
     | Class String
+    | OnClick (MouseEvents.Event -> msg)
 
 type Color = Black | Red
 
@@ -61,8 +64,8 @@ on = On
 simpleOn : String -> msg -> Attribute msg
 simpleOn s m = on s (D.succeed m)
 
-onClick : msg -> Attribute msg
-onClick = simpleOn "click" 
+onClick : (MouseEvents.Event -> msg) -> Attribute msg
+onClick = OnClick 
 
 onMouseEnter : msg -> Attribute msg
 onMouseEnter = simpleOn "mouseenter" 

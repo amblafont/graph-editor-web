@@ -2,7 +2,8 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    newNodeLabel, newEdgeLabel, emptyEdge,
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
-   getNodeLabelOrCreate, getNodeDims, getEdgeDims
+   getNodeLabelOrCreate, getNodeDims, getEdgeDims,
+   setNodesSelection, clearSelection
    )
 
 import Geometry.Point exposing (Point)
@@ -11,17 +12,17 @@ import ArrowStyle exposing (ArrowStyle)
 import Graph exposing (Graph, NodeId)
 import GraphExtra as Graph
 
-type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point}
-type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point}
+type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
+type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool}
 
 type alias EdgeLabelJs = { label : String, style : ArrowStyle.Core.JsStyle, bend : Float}
 type alias NodeLabelJs = { pos : Point , label : String}
 
 newNodeLabel : Point -> String -> NodeLabel
-newNodeLabel p s = NodeLabel p s Nothing
+newNodeLabel p s = NodeLabel p s Nothing False
 
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
-newEdgeLabel s style = { label = s, style = style, dims = Nothing}
+newEdgeLabel s style = { label = s, style = style, dims = Nothing, selected = False}
 
 emptyEdge : EdgeLabel
 emptyEdge = newEdgeLabel "" ArrowStyle.empty
@@ -31,7 +32,7 @@ nodeLabelToJs : NodeLabel -> NodeLabelJs
 nodeLabelToJs {pos, label} = NodeLabelJs pos label
 
 nodeLabelFromJs : NodeLabelJs -> NodeLabel
-nodeLabelFromJs {pos, label} = NodeLabel pos label Nothing
+nodeLabelFromJs {pos, label} = NodeLabel pos label Nothing False
 
 
 edgeLabelToJs : EdgeLabel -> EdgeLabelJs
@@ -42,12 +43,12 @@ edgeLabelFromJs : EdgeLabelJs -> EdgeLabel
 edgeLabelFromJs {label, style, bend } = 
   EdgeLabel label 
      (ArrowStyle (ArrowStyle.Core.fromJsStyle style) bend)
-     Nothing
+     Nothing False
 
 createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)
 createNodeLabel g s p =
-    let label = { pos = p, label = s, dims = Nothing} in
+    let label = { pos = p, label = s, dims = Nothing, selected = False} in
     let (g2, id) = Graph.newNode g label in
      (g2, id, p)
 
@@ -82,3 +83,14 @@ getEdgeDims n =
         Just p -> p
 
 
+setNodesSelection : Graph NodeLabel e -> (NodeLabel -> Bool) -> Graph NodeLabel e
+setNodesSelection g f =
+    Graph.mapNodes 
+        (\n -> { n | selected = f n }) g
+   
+
+clearSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+clearSelection g =
+  Graph.mapNodes (\n -> {n | selected = False}) <|
+               Graph.mapEdges (\n -> {n | selected = False}) <|
+               g

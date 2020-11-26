@@ -2,8 +2,12 @@ port module Main exposing (main)
 -- TODO: avoir mode dans Model, et separer le fichier state de Square
 
 
+-- https://package.elm-lang.org/packages/mpizenberg/elm-pointer-events/4.0.2/Html-Events-Extra-Mouse
+-- autoriser shift pour selectionner d'autres objets
+-- afficher dans la selection les points en cours de selection
 
--- TODO: autoriser la selection de plusieurs objets
+import Html.Events.Extra.Mouse as MouseEvents
+
 import Model exposing (..)
 import Browser
 import Browser.Events as E
@@ -141,7 +145,7 @@ graph_MoveNode model =
          |> List.map (.label >> .pos)
          |> Geometry.rectEnveloppe 
          |> Geometry.centerRect
-    in
+    in    
     let delta = Point.subtract model.mousePos center in
     (nodes |> List.map .id
            |> Graph.updateNodes) 
@@ -200,7 +204,7 @@ update msg model =
       case model.mode of
         QuickInputMode c -> update_QuickInput c msg m 
         DefaultMode -> update_DefaultMode msg m
-        RectSelect orig -> update_RectSelect msg orig m
+        RectSelect orig keep -> update_RectSelect msg orig keep m
         NewArrow astate -> Modes.NewArrow.update astate msg m
             -- update_Modes.NewArrow astate msg m
         RenameMode l -> update_RenameMode l msg m
@@ -255,14 +259,12 @@ finalise_RenameMode label model =
     let g = graph_RenameMode label model in
     switch_Default {model | graph = g}
 
-update_RectSelect : Msg -> Point -> Model -> (Model, Cmd Msg)
-update_RectSelect msg orig model =
+update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
+update_RectSelect msg orig keep model =
    case msg of
       KeyChanged False (Control "Escape") -> switch_Default model
       MouseUp -> switch_Default 
-                  { model | selectedObjs = 
-                      Model.getNodesInRect model (Geometry.makeRect orig model.mousePos)
-                      |> List.map ONode }
+                  { model | graph = selectGraph model orig keep }
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
     --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
     --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
@@ -272,7 +274,7 @@ update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     -- Tuples.mapFirst (changeModel model) <|
     case msg of
-        MouseDown -> noCmd <| { model | mode = RectSelect model.mousePos }
+        MouseDown e -> noCmd <| { model | mode = RectSelect model.mousePos e.keys.shift }
         KeyChanged False (Character 'a') -> Modes.NewArrow.initialise model
         KeyChanged False (Character 's') -> Modes.Square.initialise model 
         KeyChanged False (Character 'r') -> switch_RenameMode model
@@ -296,10 +298,10 @@ update_DefaultMode msg model =
             noCmd <| { model | graph = graphRemoveObj (activeObj model) model.graph}
         KeyChanged False (Character 'x') ->
             noCmd <| { model | graph = graphRemoveObj (activeObj model) model.graph} 
-        NodeClick n ->
-            noCmd <| { model | selectedObjs = [ONode n]} 
-        EdgeClick n ->
-            noCmd <| { model | selectedObjs = [OEdge n]}
+        NodeClick n e ->
+            noCmd <| addOrSetSel e.keys.shift (ONode n) model
+        EdgeClick n e ->
+             noCmd <| addOrSetSel e.keys.shift (OEdge n) model            
         _ ->
             case objToEdge <| activeObj model of
               Nothing -> noCmd model
@@ -324,9 +326,8 @@ update_NewNode msg m =
        MouseClick ->
          let (newGraph, newId) = Graph.newNode m.graph 
                (newNodeLabel m.mousePos "")
-             newModel = {m | graph = newGraph,
-                             selectedObjs = [ ONode newId ]
-                        }
+             newModel = addOrSetSel True (ONode newId)
+                    {m | graph = newGraph  }
          in
          -- if m.unnamedFlag then
          --   switch_Default newModel
@@ -344,13 +345,19 @@ update_NewNode msg m =
 -- about the display, based on the mode
 
 
+selectGraph : Model -> Point -> Bool -> Graph NodeLabel EdgeLabel
+selectGraph m orig keep = 
+   let selRect = (Geometry.makeRect orig m.mousePos) in
+   let isSel n = Geometry.isInRect selRect n.pos || (n.selected && keep) in
+   GraphDefs.setNodesSelection m.graph isSel
+   
 
 
 graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
     case m.mode of
         DefaultMode -> collageGraphFromGraph m m.graph
-        RectSelect _ -> collageGraphFromGraph m m.graph
+        RectSelect p r -> collageGraphFromGraph m <| selectGraph m p r
         NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
         MoveNode -> graph_MoveNode m |> 
@@ -445,7 +452,8 @@ helpMsg model =
     case model.mode of
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
-            msg <| "Default mode. Commands: [click] for point/edge selection (hold for selection rectangle)" 
+            msg <| "Default mode. Commands: [click] for point/edge selection (hold for selection rectangle, "
+                ++ "[shift] to keep previous selection)" 
                 ++ ", new [a]rrow from selected point"
                 ++ ", new [p]oint"
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
@@ -506,7 +514,7 @@ quickInputView m =
 additionnalDrawing : Model -> Drawing a
 additionnalDrawing m = 
    case m.mode of
-      RectSelect orig -> Drawing.rect (Geometry.makeRect orig m.mousePos)
+      RectSelect orig _ -> Drawing.rect (Geometry.makeRect orig m.mousePos)
       _ -> Drawing.empty
 
 view : Model -> Html Msg
@@ -531,7 +539,8 @@ view model =
                    Html.Attributes.style "border-style" "solid",
                    Html.Events.on "mousemove"
                    (D.map (Do << onMouseMove) D.value),
-                   Html.Events.onMouseDown MouseDown,
+                   
+                   MouseEvents.onDown MouseDown,
                    Html.Events.onMouseUp MouseUp
              ]
              ]

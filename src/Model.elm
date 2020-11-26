@@ -4,13 +4,13 @@ module Model exposing (..)
 import Color exposing (..)
 import Graph exposing (..)
 import GraphDrawing exposing (..)
-import GraphExtra as Graph exposing (EdgeId)
+import GraphExtra as Graph exposing (EdgeId, EdgeNodes)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
 import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
 import Geometry.Point exposing (Point)
 import ArrowStyle exposing (ArrowStyle)
-
+import List.Extra
 import Geometry
 import GraphDefs
 
@@ -22,7 +22,7 @@ import GraphDefs
 
 type alias Model =
     { graph : Graph NodeLabel EdgeLabel
-    , selectedObjs : List Obj
+    -- , selectedObjs : List Obj
     , mousePos : Point
     -- , -- if the mouse is over some node or edge
     --  mousePointOver : Obj
@@ -47,7 +47,7 @@ type Mode
     | NewNode
     | QuickInputMode (Maybe NonEmptyChain)
     | SquareMode SquareState
-    | RectSelect Point
+    | RectSelect Point Bool -- keep previous selection?
 
 
 type alias NewArrowState =
@@ -94,7 +94,7 @@ createModel g =
       quickInput = ""
     , mousePos = ( 0, 0 )
    -- , mousePointOver = ONothing
-    , selectedObjs = []
+  --  , selectedObjs = []
     -- , dimNodes = Dict.empty
 
     -- unnamedFlag = False
@@ -104,7 +104,22 @@ createModel g =
     }
 
 
-allSelectedNodesId : Model -> List NodeId
+
+addOrSetSel : Bool -> Obj -> Model -> Model
+addOrSetSel keep o m =
+
+    let g = if keep then m.graph else GraphDefs.clearSelection m.graph in
+    let g2 
+         = case o of
+          ONothing -> g
+          ONode id -> Graph.updateNode id (\n -> {n | selected = True}) g
+          OEdge id -> Graph.updateEdge id (\n -> {n | selected = True}) g
+    in
+   {m | graph = g2 }
+        
+      
+
+{- allSelectedNodesId : Model -> List NodeId
 allSelectedNodesId m =
   List.concatMap 
     (\ o ->  case  o of
@@ -112,12 +127,22 @@ allSelectedNodesId m =
                ONode id -> [ id ]
                OEdge (id1, id2) -> [ id1, id2 ]
     )
-    m.selectedObjs
+    m.selectedObjs -}
+
+selectedNodes : Model -> List (Node NodeLabel)
+selectedNodes m = Graph.nodes m.graph |> List.filter (.label >> .selected)
+
+selectedEdges : Model -> List (EdgeNodes NodeLabel EdgeLabel)
+selectedEdges m = Graph.edgesWithNodes m.graph |> List.filter (.label >> .selected)
 
 allSelectedNodes : Model -> List (Node NodeLabel)
-allSelectedNodes m =
-  allSelectedNodesId m
-  |> List.filterMap (\ id -> Graph.get id m.graph |> Maybe.map .node)
+allSelectedNodes m = 
+    let (l1, l2) = selectedEdges m
+           |> List.map (\e -> (e.from, e.to)) |> List.unzip
+    in
+   selectedNodes m ++ l1 ++ l2 |> List.Extra.uniqueBy .id
+     
+--   |> List.filterMap (\ id -> Graph.get id m.graph |> Maybe.map .node)
 
 -- captureKeyboard : State -> Bool
 -- captureKeyboard m =
@@ -163,9 +188,16 @@ obj_EdgeId x =
         _ ->
             ( 0, 0 )
 
+selectedObjs : Model -> List Obj
+selectedObjs m =
+    let edges = selectedEdges m |> List.map (Graph.edgeWithNodesId >> OEdge)
+        nodes = selectedNodes m |> List.map (.id >> ONode)
+    in
+    edges ++ nodes 
+
 activeObj : Model -> Obj
 activeObj m =
-   case m.selectedObjs of
+    case selectedObjs m of
       [ o ] -> o
       _ -> ONothing
 activeNode : Model -> NodeId
@@ -246,12 +278,14 @@ getNodesAt m p =
                                   dims = GraphDefs.getNodeDims n} p)
   |> List.map .id
 
-getNodesInRect : Model -> Geometry.Rect -> List NodeId
+
+
+{- getNodesInRect : Model -> Geometry.Rect -> List NodeId
 getNodesInRect m r =
     Graph.filterNodes m.graph 
     (\n -> Geometry.isInRect r n.pos)
   |> List.map .id
-
+ -}
 getTargetNodes : Model -> List NodeId
 getTargetNodes m = getNodesAt m m.mousePos
   -- List.head |> Maybe.map .id
@@ -308,13 +342,14 @@ isSelectedObj : Model -> Obj -> Bool
 isSelectedObj m o = 
    case o of 
       ONothing -> False
-      _ -> List.member o m.selectedObjs
+      _ -> List.member o (selectedObjs m)
 
 make_defaultNodeDrawingLabel : Model -> Node NodeLabel -> NodeDrawingLabel
 make_defaultNodeDrawingLabel model n =
     make_nodeDrawingLabel
         { editable = False
-        , isActive = isSelectedObj model (ONode n.id)
+        , isActive = n.label.selected
+        -- isSelectedObj model (ONode n.id)
        -- , dims =  getNodeDims n.label  
         }
         n.label
@@ -328,7 +363,8 @@ collageGraphFromGraph model =
             e.label
                 |> make_edgeDrawingLabel
                     { editable = False, 
-                      isActive = isSelectedObj model <| OEdge ( e.from, e.to )  
+                      isActive = e.label.selected
+                      -- isSelectedObj model <| OEdge ( e.from, e.to )  
                       }
         )
 

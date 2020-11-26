@@ -17,7 +17,7 @@ import Geometry
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import HtmlDefs
 import Json.Decode as D
-
+import Html.Events.Extra.Mouse as MouseEvents
 
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
@@ -81,7 +81,7 @@ nodeLabelDrawing attrs node =
          else 
             Drawing.html n.pos n.dims
             <| HtmlDefs.makeLatex
-            ([   Html.Events.onClick (NodeClick id)            
+            ([   MouseEvents.onClick (NodeClick id)            
             ] ++ 
             (if n.isActive then [Html.Attributes.class "active-label" ] else [])
             ++
@@ -141,7 +141,7 @@ segmentLabel q edgeId label =
          else 
             Drawing.html labelpos label.dims -- n.dims
             <| HtmlDefs.makeLatex
-            ([   Html.Events.onClick (EdgeClick edgeId)            
+            ([   MouseEvents.onClick (EdgeClick edgeId)            
             ] ++ 
             (if label.isActive then [Html.Attributes.class "active-label" ] else [])
              ++
