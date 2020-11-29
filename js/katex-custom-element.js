@@ -37,6 +37,9 @@ class KatexExprElement extends HTMLElement {
         this._container = shadowRoot.querySelector('#container');
         this._slot = shadowRoot.querySelector('slot');
         this._slot.addEventListener('slotchange', () => this._render());
+        // slotchange is not enough
+        observer =  new MutationObserver( () => this._render());
+        observer.observe(this, { characterData : true, subtree : true }); 
         this._styleTag = shadowRoot.querySelector('style');
     }
     get macros() {

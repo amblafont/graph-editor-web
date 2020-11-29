@@ -122,7 +122,10 @@ nextStep model action state =
     let
         renamableNextMode m =
           case action of
-               Cancel -> switch_Default { m | graph = graphRenameObj m.graph (renamableFromState state) ""}
+               Cancel ->
+                  case state.step of
+                      SquareMoveNode _ -> switch_Default model
+                      _ -> switch_Default { m | graph = graphRenameObj m.graph (renamableFromState state) ""}
                ValidateNext -> noCmd m
                ValidateFinish -> switch_Default m            
     in        
@@ -152,7 +155,7 @@ nextStep model action state =
 
         SquareEditEdge2 mn ->
             renamableNextMode
-              <|   addOrSetSel True (ONode mn)
+              <|   addOrSetSel False (ONode mn)
                   { model | mode = DefaultMode }
                
 

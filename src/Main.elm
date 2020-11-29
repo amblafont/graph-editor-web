@@ -249,7 +249,7 @@ update_RenameMode label msg model =
     case msg of
       KeyChanged False (Control "Escape") -> switch_Default model
       KeyChanged False (Control "Enter") -> finalise_RenameMode label model
-      MouseClick -> finalise_RenameMode label model
+    --   MouseClick -> finalise_RenameMode label model
       NodeLabelEdit _ s -> noCmd {model | mode = RenameMode s}
       EdgeLabelEdit _ s -> noCmd {model | mode = RenameMode s}
       _ -> noCmd model
@@ -348,8 +348,9 @@ update_NewNode msg m =
 selectGraph : Model -> Point -> Bool -> Graph NodeLabel EdgeLabel
 selectGraph m orig keep = 
    let selRect = (Geometry.makeRect orig m.mousePos) in
+   let g = if keep then m.graph else GraphDefs.clearSelection m.graph in
    let isSel n = Geometry.isInRect selRect n.pos || (n.selected && keep) in
-   GraphDefs.setNodesSelection m.graph isSel
+   GraphDefs.setNodesSelection g isSel
    
 
 

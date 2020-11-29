@@ -51,7 +51,10 @@ nextStep model action state =
     let
         renamableNextMode m =
             case action of
-               Cancel -> switch_Default { m | graph = graphRenameObj m.graph (renamableFromState state) ""}
+               Cancel -> 
+                  case state.step of
+                     NewArrowMoveNode _ -> switch_Default model
+                     _ ->  switch_Default { m | graph = graphRenameObj m.graph (renamableFromState state) ""}
                ValidateNext -> noCmd m
                ValidateFinish -> switch_Default m            
     in
@@ -71,9 +74,8 @@ nextStep model action state =
                 in
                 renamableNextMode <| 
                 updateStep 
-                (addOrSetSel True (ONode info.movedNode)
-                  { model | graph = info.graph  }
-                  ) 
+                (addOrSetSel False (ONode info.movedNode)
+                  { model | graph = info.graph }) 
                         state step
                 
 
