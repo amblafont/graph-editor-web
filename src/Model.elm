@@ -2,15 +2,13 @@ module Model exposing (..)
 
 
 import Color exposing (..)
-import Graph exposing (..)
 import GraphDrawing exposing (..)
-import GraphExtra as Graph exposing (EdgeId, EdgeNodes)
+import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
 import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
 import Geometry.Point exposing (Point)
 import ArrowStyle exposing (ArrowStyle)
-import List.Extra
 import Geometry
 import GraphDefs
 
@@ -57,8 +55,8 @@ type alias NewArrowState =
 type NewArrowStep
     = NewArrowMoveNode ArrowStyle
       -- the moved node
-    | NewArrowEditNode NodeId
-    | NewArrowEditEdge NodeId
+    | NewArrowEditNode NodeId EdgeId
+    | NewArrowEditEdge NodeId EdgeId
 
 
 type alias SquareState =
@@ -69,17 +67,19 @@ type SquareStep
     = -- the argument is the next possibility of square to be tested
       SquareMoveNode Int
       -- the moved node
-    | SquareEditNode NodeId
-    | SquareEditEdge1 NodeId
-    | SquareEditEdge2 NodeId
+    | SquareEditNode NodeId EdgeId EdgeId
+    | SquareEditEdge1 NodeId EdgeId EdgeId
+    | SquareEditEdge2 NodeId EdgeId EdgeId
 
 
 type alias SquareModeData =
     { chosenNode : NodeId
     , n1 : NodeId
     , n1ToChosen : Bool
+    , e1 : EdgeId
     , n2 : NodeId
     , n2ToChosen : Bool
+    , e2 : EdgeId
     }
 
 
@@ -129,18 +129,21 @@ allSelectedNodesId m =
     )
     m.selectedObjs -}
 
-selectedNodes : Model -> List (Node NodeLabel)
-selectedNodes m = Graph.nodes m.graph |> List.filter (.label >> .selected)
+-- selectedNodes : Model -> List (Node NodeLabel)
+-- selectedNodes m = Graph.nodes m.graph |> List.filter (.label >> .selected)
 
-selectedEdges : Model -> List (EdgeNodes NodeLabel EdgeLabel)
-selectedEdges m = Graph.edgesWithNodes m.graph |> List.filter (.label >> .selected)
+-- selectedEdges : Model -> List (EdgeNodes NodeLabel EdgeLabel)
+-- selectedEdges m = Graph.edgesWithNodes m.graph |> List.filter (.label >> .selected)
 
 allSelectedNodes : Model -> List (Node NodeLabel)
 allSelectedNodes m = 
-    let (l1, l2) = selectedEdges m
-           |> List.map (\e -> (e.from, e.to)) |> List.unzip
-    in
-   selectedNodes m ++ l1 ++ l2 |> List.Extra.uniqueBy .id
+    m.graph |> GraphDefs.selectedGraph
+    |> Graph.nodes
+    
+--     let (l1, l2) = selectedEdges m
+--            |> List.map (\e -> (e.from, e.to)) |> List.unzip
+--     in
+--    selectedNodes m ++ l1 ++ l2 |> List.Extra.uniqueBy .id
      
 --   |> List.filterMap (\ id -> Graph.get id m.graph |> Maybe.map .node)
 
@@ -186,12 +189,13 @@ obj_EdgeId x =
             id
 
         _ ->
-            ( 0, 0 )
+            0
 
 selectedObjs : Model -> List Obj
 selectedObjs m =
-    let edges = selectedEdges m |> List.map (Graph.edgeWithNodesId >> OEdge)
-        nodes = selectedNodes m |> List.map (.id >> ONode)
+    let edges = Graph.edges m.graph |> List.filter (.label >> .selected) |> List.map (.id >> OEdge)
+        nodes = Graph.nodes m.graph |> List.filter (.label >> .selected) |> List.map (.id >> ONode)
+        
     in
     edges ++ nodes 
 
@@ -211,7 +215,7 @@ graphRemoveObj o g =
             g
 
         ONode id ->
-            Graph.remove id g
+            Graph.removeNode id g
 
         OEdge id ->
             Graph.removeEdge id g
@@ -296,11 +300,8 @@ getTargetNode m =
     -- if the mouse is over a node, that is the target node
     case getTargetNodes m of
         i :: _ ->
-            if Graph.member i m.graph then
-                Just i
-
-            else
-                Nothing
+             Graph.getNode i m.graph 
+             |> Maybe.map (\_ -> i)             
 
         _ ->
             Nothing
@@ -344,26 +345,26 @@ isSelectedObj m o =
       ONothing -> False
       _ -> List.member o (selectedObjs m)
 
-make_defaultNodeDrawingLabel : Model -> Node NodeLabel -> NodeDrawingLabel
+make_defaultNodeDrawingLabel : Model -> NodeLabel -> NodeDrawingLabel
 make_defaultNodeDrawingLabel model n =
     make_nodeDrawingLabel
         { editable = False
-        , isActive = n.label.selected
+        , isActive = n.selected
         -- isSelectedObj model (ONode n.id)
        -- , dims =  getNodeDims n.label  
         }
-        n.label
+        n
 
 
 collageGraphFromGraph : Model -> Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
 collageGraphFromGraph model =
-    Graph.mapNodesEdges
-        (make_defaultNodeDrawingLabel model)
-        (\e ->
-            e.label
+    Graph.map
+        (\ _ -> make_defaultNodeDrawingLabel model)
+        (\ _ e ->
+            e
                 |> make_edgeDrawingLabel
                     { editable = False, 
-                      isActive = e.label.selected
+                      isActive = e.selected
                       -- isSelectedObj model <| OEdge ( e.from, e.to )  
                       }
         )

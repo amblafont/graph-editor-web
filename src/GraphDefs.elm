@@ -3,14 +3,13 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
-   setNodesSelection, clearSelection
+   setNodesSelection, clearSelection, selectedGraph
    )
 
 import Geometry.Point exposing (Point)
 import ArrowStyle.Core
 import ArrowStyle exposing (ArrowStyle)
-import Graph exposing (Graph, NodeId)
-import GraphExtra as Graph
+import Polygraph as Graph exposing (Graph, NodeId)
 
 type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool}
@@ -85,12 +84,13 @@ getEdgeDims n =
 
 setNodesSelection : Graph NodeLabel e -> (NodeLabel -> Bool) -> Graph NodeLabel e
 setNodesSelection g f =
-    Graph.mapNodes 
-        (\n -> { n | selected = f n }) g
-   
+    Graph.map 
+        (\_ n -> { n | selected = f n })(\_ -> identity) g
+
+selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+selectedGraph = Graph.filter .selected .selected
 
 clearSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 clearSelection g =
-  Graph.mapNodes (\n -> {n | selected = False}) <|
-               Graph.mapEdges (\n -> {n | selected = False}) <|
-               g
+  Graph.map (\_ n -> {n | selected = False})
+            (\_ e -> {e | selected = False}) g

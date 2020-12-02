@@ -1,8 +1,9 @@
 module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId)
 
 import Collage exposing (Point)
-import Graph exposing (Graph, NodeId)
-import GraphExtra exposing (EdgeId)
+-- import Graph exposing (Graph, NodeId)
+-- import GraphExtra exposing (EdgeId)
+import Polygraph exposing (EdgeId, NodeId, Graph)
 
 import HtmlDefs exposing (Key)
 import Task

@@ -1,8 +1,7 @@
 
 module GraphDrawing exposing(..)
 
-import Graph exposing (..)
-import GraphExtra as Graph
+import Polygraph as Graph exposing (Graph, Node, Edge)
 import Html 
 import Html.Attributes
 import Html.Events
@@ -153,12 +152,13 @@ segmentLabel q edgeId label =
          
 
 
-edgeDrawing : Graph.EdgeNodes (DrawingDims Msg) EdgeDrawingLabel -> Drawing Msg
-edgeDrawing {from, to , label } =
+edgeDrawing : Graph.EdgeId -> Geometry.PosDims -> Geometry.PosDims
+     -> EdgeDrawingLabel -> Drawing Msg
+edgeDrawing edgeId from to label =
     let c = if label.isActive then Drawing.red else Drawing.black in
-    let edgeId = (from.id, to.id) in
     
-    let q = Geometry.segmentRectBent from.label.posDims to.label.posDims 
+    
+    let q = Geometry.segmentRectBent from to 
              label.style.bend
     in
     Drawing.group [
@@ -168,31 +168,43 @@ edgeDrawing {from, to , label } =
          q, 
           segmentLabel q edgeId label]
 
-type alias DrawingDims msg =
+{- type alias DrawingDims msg =
     { drawing : Drawing msg
     , posDims : Geometry.PosDims    
-    }
+    } -}
 
 
-graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
+graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> (Drawing Msg, List (Edge EdgeDrawingLabel))
 graphDrawing g0 =
      
       let padding = 5 in
-      let g = Graph.mapNodesEdges
-              (\n -> { drawing = nodeDrawing n, 
+      let (g, missing) = Graph.mapRec           
+              (\id n -> { drawing = nodeDrawing (Node id n), 
                       posDims = {
                       dims = 
                       
-                      if n.label.editable then (0, 0) else
+                      if n.editable then (0, 0) else
                       -- copied from source code of Collage                         
-                         n.label.dims, 
-                      pos = n.label.pos
+                         n.dims, 
+                      pos = n.pos
                       } |> Geometry.pad padding
                        } )
-              .label g0 in
-      let nodes = Graph.nodes g
-          edges = Graph.edgesWithNodes g
+               (\id n1 n2 e -> 
+                   { drawing = edgeDrawing id n1.posDims n2.posDims e,
+                    -- TODO
+                     posDims = {
+                         pos = Point.middle n1.posDims.pos n2.posDims.pos,
+                         dims = (padding, padding)
+
+                     }
+                   }
+               )
+              g0 in
+      let nodes = Graph.nodes g |> List.map (.label >> .drawing)
+          edges = Graph.edges g |> List.map (.label >> .drawing)
       in
-          List.map (.label >> .drawing) nodes ++
-          List.map edgeDrawing edges |>
-          Drawing.group
+      let
+          drawings = nodes ++ edges
+      in
+          (
+          Drawing.group drawings, missing)

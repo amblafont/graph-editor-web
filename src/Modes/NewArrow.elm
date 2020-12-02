@@ -2,9 +2,8 @@ module Modes.NewArrow exposing (graphDrawing, initialise, update, help)
 
 
 import Color exposing (..)
-import Graph exposing (..)
 import GraphDrawing exposing (..)
-import GraphExtra as Graph
+import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe exposing (withDefault)
 import Model exposing (..)
 import Msg exposing (Msg(..))
@@ -23,7 +22,7 @@ initialise m =
     activeObj m
         |> objToNode
         |> Maybe.map
-            (\chosenNode ->
+            (\chosenNode ->               
                 { m
                     | mode = NewArrow
 
@@ -68,9 +67,9 @@ nextStep model action state =
                 let info = moveNodeInfo model state style in
           
                 let step = if info.created then
-                       NewArrowEditNode info.movedNode
+                        NewArrowEditNode info.movedNode info.edgeId
                      else
-                        NewArrowEditEdge info.movedNode
+                        NewArrowEditEdge info.movedNode info.edgeId
                 in
                 renamableNextMode <| 
                 updateStep 
@@ -82,11 +81,12 @@ nextStep model action state =
                 
 
                 
-        NewArrowEditNode movedNode ->
-            renamableNextStep <| NewArrowEditEdge movedNode
+        NewArrowEditNode movedNode e1 ->
+            renamableNextStep <| NewArrowEditEdge movedNode e1
 
-        NewArrowEditEdge movedNode ->
-            renamableNextMode
+        NewArrowEditEdge movedNode _ ->
+            renamableNextMode <|
+            addOrSetSel False (ONode movedNode)
                 { model
                     | -- activeObj = ONode movedNode
                     -- , 
@@ -142,6 +142,7 @@ moveNodeInfo :
     ->
         { graph : Graph NodeLabel EdgeLabel
         , movedNode : NodeId
+        , edgeId : EdgeId
         , created : Bool
         }
 moveNodeInfo m state style =
@@ -150,10 +151,13 @@ moveNodeInfo m state style =
            -- Model.getTargetNodes |> List.filter (\i ->)
             mayCreateTargetNode m ""
     in
-    { graph = Graph.addEdge graph ( state.chosenNode, movedNode ) 
-       (GraphDefs.newEdgeLabel "" style)
+    let (g, edgeId) =  Graph.newEdge graph state.chosenNode movedNode 
+           (GraphDefs.newEdgeLabel "" style)
+    in
+     { graph = g
     , movedNode = movedNode
     , created = created
+    , edgeId = edgeId
     }
 
 
@@ -179,11 +183,11 @@ graphDrawing m s =
 renamableFromState : NewArrowState -> Obj
 renamableFromState state =
     case state.step of
-        NewArrowEditNode m ->
+        NewArrowEditNode m _ ->
             ONode m
 
-        NewArrowEditEdge m ->
-            OEdge ( state.chosenNode, m )
+        NewArrowEditEdge _ m ->
+            OEdge m
 
         NewArrowMoveNode _ ->
             ONothing
@@ -195,11 +199,11 @@ help s =
             "[ESC] cancel, [click] name the point (if new), "
              ++ "[RET] terminate the arrow creation, "
              ++ "[(,=,b,B,-,>] alternate between different arrow styles."
-        NewArrowEditNode m ->
+        NewArrowEditNode _ _ ->
             "[ESC] empty label, [RET] confirm the label, "
             ++ "[TAB] edit the edge label."
 
-        NewArrowEditEdge m ->
+        NewArrowEditEdge _ _ ->
              "[ESC] empty label, [RET] confirm the label."
             
 

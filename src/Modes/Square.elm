@@ -2,9 +2,9 @@ module Modes.Square exposing (help, graphDrawing, initialise, update)
 
 
 import Color exposing (..)
-import Graph exposing (..)
+-- import Graph exposing (..)
 import GraphDrawing exposing (..)
-import GraphExtra as Graph exposing (EdgeId, make_EdgeId)
+import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import IntDict
 import Maybe exposing (withDefault)
 import Model exposing (..)
@@ -18,27 +18,31 @@ updateStep : Model -> SquareState -> SquareStep -> Model
 updateStep m state step = {m | mode = SquareMode { state | step = step }}
 
 
-possibleSquareStates : NodeContext a b -> List SquareModeData
-possibleSquareStates nc =
+possibleSquareStates : Graph n e -> Graph.NodeId {- NodeContext a b -} -> List SquareModeData
+possibleSquareStates g id =
     -- Boolean: is it going to the node?
     let
-        ins =
-            IntDict.keys nc.incoming |> List.map (\x -> ( x, True ))
+        ins = Graph.incomings id g
+            -- IntDict.keys nc.incoming
+             |> List.map (\x -> ( x, x.from, True ))
 
-        outs =
-            IntDict.keys nc.outgoing |> List.map (\x -> ( x, False ))
+        outs = Graph.outgoings id g
+            -- IntDict.keys nc.outgoing 
+            |> List.map (\x -> ( x, x.to, False ))
     in
     ins
         ++ outs
         |> uniquePairs
         |> List.map
-            (\( ( n1, i1 ), ( n2, i2 ) ) ->
-                { chosenNode = nc.node.id
+            (\( ( e1, n1, i1 ), ( e2, n2, i2 ) ) ->
+                { chosenNode = id
 
                 --   -- we don't care
                 -- , movedNode = 0
                 , n1 = n1
                 , n2 = n2
+                , e1 = e1.id
+                , e2 = e2.id
                 , n1ToChosen = i1
                 , n2ToChosen = i2
                 }
@@ -55,11 +59,10 @@ getAt idx xs =
 
 square_setPossibility : Int -> Graph a b -> NodeId -> Maybe SquareState
 square_setPossibility idx g chosenNode =
-    Graph.get chosenNode g
-        |> Maybe.map possibleSquareStates
-        |> Maybe.andThen
-            (\possibilities ->
-                possibilities
+    -- Graph.get chosenNode g
+    --     |> Maybe.map 
+    let possibilities = possibleSquareStates g chosenNode in
+    possibilities 
                     |> getAt idx
                     |> Maybe.map
                         (\s ->
@@ -69,7 +72,7 @@ square_setPossibility idx g chosenNode =
                                     (modBy (List.length possibilities) (idx + 1))
                             }
                         )
-            )
+            
 
 
 square_updatePossibility : Model -> Int -> NodeId -> ( Model, Cmd Msg )
@@ -142,20 +145,20 @@ nextStep model action state =
             renamableNextMode <| updateStep
                 { model | graph = info.graph } state 
                     <| if created then
-                            SquareEditNode movedNode
+                            SquareEditNode movedNode info.edges.ne1 info.edges.ne2
                        else
-                            SquareEditEdge1 movedNode
+                            SquareEditEdge1 movedNode info.edges.ne1 info.edges.ne2
                                
 
-        SquareEditNode mn ->
-            renamableNextStep <| SquareEditEdge1 mn
+        SquareEditNode n e1 e2 ->
+            renamableNextStep <| SquareEditEdge1 n e1 e2
 
-        SquareEditEdge1 mn ->
-            renamableNextStep <| SquareEditEdge2 mn
+        SquareEditEdge1 n e1 e2 ->
+            renamableNextStep <| SquareEditEdge2 n e1 e2
 
-        SquareEditEdge2 mn ->
+        SquareEditEdge2 n _ _ ->
             renamableNextMode
-              <|   addOrSetSel False (ONode mn)
+              <|   addOrSetSel False (ONode n)
                   { model | mode = DefaultMode }
                
 
@@ -181,13 +184,13 @@ type alias ViewInfo =
 renamable : SquareStep -> Edges -> Obj
 renamable step info =
     case step of
-        SquareEditNode movedNode ->
+        SquareEditNode movedNode _ _ ->
             ONode movedNode
 
-        SquareEditEdge1 _ ->
+        SquareEditEdge1 _ _ _ ->
             OEdge <| info.ne1
 
-        SquareEditEdge2 _ ->
+        SquareEditEdge2 _ _ _  ->
             OEdge <| info.ne2
 
         _ ->
@@ -196,20 +199,20 @@ renamable step info =
 
 renamableFromState : SquareState -> Obj
 renamableFromState state =
-    let
+{-     let
         renamableMoved =
             makeEdges state.data
                 >> renamable state.step
-    in
+    in -}
     case state.step of
-        SquareEditNode m ->
-            renamableMoved m
+        SquareEditNode m _ _->
+            ONode m
 
-        SquareEditEdge1 m ->
-            renamableMoved m
+        SquareEditEdge1 _ m _ ->
+            OEdge m
 
-        SquareEditEdge2 m ->
-            renamableMoved m
+        SquareEditEdge2 _ m _ ->
+            OEdge m
 
         SquareMoveNode _ ->
             ONothing
@@ -234,18 +237,28 @@ moveNodeViewInfo m data =
         ( ( g, n ), created ) =
             mayCreateTargetNode m ""
     in
-    let
+    {- let
         edges =
             makeEdges data n
+    in -}
+    let make_EdgeId n1 n2 isTo =
+           if isTo then
+               ( n1, n2 )
+           else
+               ( n2, n1 )
     in
-    let
-        g2 =
-            Graph.addEdge 
-            (Graph.addEdge g edges.ne1 GraphDefs.emptyEdge)
+    let (e1n1, e1n2) = make_EdgeId data.n1 n <| nToMoved data.n1ToChosen data.n2ToChosen in
+    let (e2n1, e2n2) = make_EdgeId data.n2 n <| nToMoved data.n2ToChosen data.n1ToChosen in
+    let (g1, ne1) = (Graph.newEdge g e1n1 e1n2 GraphDefs.emptyEdge) in
+    let (g2, ne2) = (Graph.newEdge g1 e2n1 e2n2 GraphDefs.emptyEdge) in
+        
+            {- Graph.newEdge 
+            (Graph.newEdge g edges.ne1 GraphDefs.emptyEdge)
             edges.ne2 
             GraphDefs.emptyEdge
-            
-    in
+             -}
+    
+    let edges = makeEdges data ne1 ne2 in
     ( { graph = g2, edges = edges }, n, created )
 
 
@@ -258,7 +271,7 @@ nToMoved nToChosen otherNToChosen =
         nToChosen
 
 
-makeEdges : SquareModeData -> NodeId -> Edges
+{- makeEdges : SquareModeData -> NodeId -> Edges
 makeEdges data movedNode =
     { e1 = make_EdgeId data.n1 data.chosenNode data.n1ToChosen
     , e2 = make_EdgeId data.n2 data.chosenNode data.n2ToChosen
@@ -267,13 +280,23 @@ makeEdges data movedNode =
 
     -- movedNode = movedNode
     }
+ -}
+makeEdges : SquareModeData -> EdgeId -> EdgeId -> Edges
+makeEdges data ne1 ne2 =
+    { e1 = data.e1
+    , e2 = data.e2
+    , ne1 = ne1
+    , ne2 = ne2
+
+    -- movedNode = movedNode
+    }
 
 
 stateInfo : Model -> SquareState -> ViewInfo
 stateInfo m s =
     let
-        defaultView movedNode =
-            { graph = m.graph, edges = makeEdges s.data movedNode }
+        defaultView ne1 ne2 =
+            { graph = m.graph, edges = makeEdges s.data ne1 ne2 }
     in
     case s.step of
         SquareMoveNode _ ->
@@ -283,14 +306,14 @@ stateInfo m s =
             in
             info
 
-        SquareEditNode movedNode ->
-            defaultView movedNode
+        SquareEditNode _ ne1 ne2 ->
+            defaultView ne1 ne2
 
-        SquareEditEdge1 movedNode ->
-            defaultView movedNode
+        SquareEditEdge1 _ ne1 ne2 ->
+            defaultView ne1 ne2
 
-        SquareEditEdge2 movedNode ->
-            defaultView movedNode
+        SquareEditEdge2 _ ne1 ne2 ->
+            defaultView ne1 ne2
 
 
 graphDrawingFromInfo :
@@ -348,14 +371,14 @@ help s =
              ++ "[RET] terminate the square creation, "
              ++ " alternative possible [s]quares."
              
-        SquareEditNode _ ->
+        SquareEditNode _ _ _ ->
             "[ESC] empty label, [RET] confirm the label, "
             ++ "[TAB] edit the first edge label."
 
-        SquareEditEdge1 _ ->
+        SquareEditEdge1 _ _ _ ->
              "[ESC] empty label, [RET] confirm the label, "
               ++ "[TAB] edit the other edge label."
-        SquareEditEdge2 _ ->
+        SquareEditEdge2 _ _ _ ->
              "[ESC] empty label, [RET] confirm the label."
 
                

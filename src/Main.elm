@@ -18,8 +18,7 @@ import Browser.Dom as Dom
 
 import Json.Decode as D
 import Json.Encode as JE
-import Graph exposing (..)
-import GraphExtra as Graph
+import Polygraph as Graph exposing (Graph, NodeId, Node, Edge)
 
 import Drawing exposing (Drawing)
 
@@ -51,7 +50,7 @@ import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs, NodeLabelJs)
 import GraphDefs exposing (newNodeLabel)
 import GraphDefs exposing (getNodeLabelOrCreate)
 import GraphDefs exposing (newEdgeLabel)
-import Html exposing (a)
+import Html
 import Geometry exposing (Rect)
 import Geometry exposing (rectEnveloppe)
 
@@ -87,8 +86,9 @@ subscriptions m = Sub.batch
       -- upload a graph (triggered by js)
       
       loadedGraph (\ (ns,es) -> Graph.fromNodesAndEdges ns es
-                       |> Graph.mapEdges GraphDefs.edgeLabelFromJs
-                       |> Graph.mapNodes GraphDefs.nodeLabelFromJs
+                       |> Graph.map 
+                          (\_ -> GraphDefs.nodeLabelFromJs)
+                          (\_ -> GraphDefs.edgeLabelFromJs)
                        |> Loaded),
       E.onClick (D.succeed MouseClick),
       E.onKeyUp (D.map (KeyChanged False) HtmlDefs.keyDecoder),
@@ -108,15 +108,16 @@ subscriptions m = Sub.batch
 
 
 iniModel : Model
-iniModel = createModel <| fromNodesAndEdges [] []
+iniModel = createModel <| Graph.empty
 
 
 
 save : Model -> Msg
 save model = 
    let g =  model.graph 
-            |> Graph.mapNodes GraphDefs.nodeLabelToJs
-            |> Graph.mapEdges GraphDefs.edgeLabelToJs            
+            |> Graph.map 
+             (\_ -> GraphDefs.nodeLabelToJs)
+             (\_ -> GraphDefs.edgeLabelToJs)            
    in
    let nodes = Graph.nodes g
        edges = Graph.edges g
@@ -163,7 +164,7 @@ switch_RenameMode model =
         label = case activeObj model of
               ONothing -> Nothing
               ONode id -> Graph.getNode id model.graph |> Maybe.map .label
-              OEdge id -> Graph.getEdge id model.graph |> Maybe.map .label
+              OEdge id -> Graph.getEdge id model.graph |> Maybe.map (\ (_, _, e) -> e.label)
     in
     case label of
         Nothing -> noCmd model
@@ -369,8 +370,9 @@ graphDrawingFromModel m =
                 |> graphMakeEditable (activeObj m)
         DebugMode ->
             m.graph |> collageGraphFromGraph m 
-                |> Graph.mapNodesEdges
-                   (\n -> let l = n.label in {l | label = String.fromInt n.id}) .label
+                |> Graph.map
+                   (\id n ->  {n | label = String.fromInt id}) 
+                   (\_ -> identity)
         NewArrow astate -> Modes.NewArrow.graphDrawing m astate
         SquareMode state ->
             Modes.Square.graphDrawing m state
@@ -403,7 +405,7 @@ graphDrawingNonEmptyChain g ch loc -- defOrient
             in
             let label = withDefault "" olabel in
 
-            (Graph.addEdge g3 (source, target) 
+            (Tuple.first <| Graph.newEdge g3 source target
                <| GraphDefs.newEdgeLabel label ArrowStyle.empty            
             , source)
 
@@ -520,6 +522,8 @@ additionnalDrawing m =
 
 view : Model -> Html Msg
 view model =
+    let (drawings, missings) = graphDrawing (graphDrawingFromModel model) in
+    let nmissings = List.length missings in
     Html.div [] [
          Html.button [Html.Events.onClick (save model)
               ] [Html.text "Save"],             
@@ -530,7 +534,11 @@ view model =
          [(helpMsg model),
           quickInputView model
          ],
-    Drawing.group [graphDrawing (graphDrawingFromModel model),
+         Html.p [] [ Html.text <| if nmissings > 0 then 
+            String.fromInt nmissings ++ " nodes or edges could not be rendered."
+            else "" ]
+         ,
+    Drawing.group [drawings,
        additionnalDrawing model
     ]
     -- |> debug
