@@ -122,7 +122,7 @@ mkPath : Bool -> List (Attribute a) -> QuadraticBezier -> Svg a
 mkPath dashed attrs q =
   SvgElts.path 
   ( quadraticBezierToAttr q ::
-    Svg.fill "transparent" ::   
+    Svg.fill "none" ::   
       attrsToSvgAttrs Svg.stroke attrs
       ++
       dashedToAttrs dashed

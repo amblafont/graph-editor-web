@@ -114,7 +114,7 @@ keyToAction k step =
               SquareMoveNode _ -> Just <| ValidateNext
               _ -> Nothing
        KeyChanged False (Control "Enter") -> Just <| ValidateFinish     
-       TabInput -> Just <| ValidateNext
+       KeyChanged False (Control "Tab") -> Just <| ValidateNext
        _ -> Nothing
 
 
@@ -235,7 +235,7 @@ moveNodeViewInfo : Model -> SquareModeData -> ( ViewInfo, NodeId, Bool )
 moveNodeViewInfo m data =
     let
         ( ( g, n ), created ) =
-            mayCreateTargetNode m ""
+            mayCreateTargetNode True m ""
     in
     {- let
         edges =

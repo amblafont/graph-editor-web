@@ -87,10 +87,24 @@ newEdge : Graph n e -> Id -> Id -> e -> (Graph n e, EdgeId)
 newEdge g i1 i2 e = newObject g <| EdgeObj i1 i2 e
 
 
+removeList : List Id -> Graph n e -> Graph n e
+removeList l (Graph g) =
+   case l of 
+     [] -> Graph g
+     t :: q ->
+         let gt = IntDict.remove t g in
+         let newl =
+              IntDict.filter (\ _ o -> case o of
+                 EdgeObj i1 i2 _ -> i1 == t || i2 == t
+                 _ -> False
+              ) gt |> IntDict.keys
+         in
+           removeList (newl ++ q) (Graph gt)
+           
 
 
 remove : Id -> Graph n e -> Graph n e
-remove id (Graph g) = Graph <| IntDict.remove id g
+remove id = removeList [id]
 
 -- TODO check that it is an edge
 removeEdge :  EdgeId -> Graph n e ->Graph n e

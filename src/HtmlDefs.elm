@@ -1,4 +1,6 @@
-module HtmlDefs exposing (onRendered, tabDecoder, quickInputId, idInput, Key(..), keyDecoder, makeLatex)
+module HtmlDefs exposing (onRendered, tabDecoder, quickInputId, idInput, 
+   Key(..), keyDecoder, makeLatex,
+   onTab)
 import Html
 import Html.Attributes
 import Html.Events
@@ -56,6 +58,19 @@ tabDecoder = keyDecoder |>
  (\ k -> case k of 
           Control "Tab" -> True 
           _ -> False )
+
+onTab : a -> a -> Html.Attribute a 
+onTab msgOnTab msgNotOnTab =
+ Html.Events.preventDefaultOn "keydown" 
+                         (D.map (\tab -> if tab then 
+                            -- it is necessary to prevent defaults
+                            -- otherwise the next immediate appearing input 
+                            -- may not shows up
+                                      (msgOnTab, True) 
+                                    else (msgNotOnTab, False))
+                         tabDecoder
+                         )
+   
 
 makeLatex : List (Html.Attribute a) -> String -> Html.Html a
 makeLatex attrs s = 

@@ -86,9 +86,10 @@ toggleHead : Style -> Style
 toggleHead s =
         { s | head =
          case s.head of
-            DefaultHead -> TwoHeads
-            TwoHeads -> NoHead
-            NoHead -> DefaultHead }
+            DefaultHead -> NoHead
+            NoHead -> TwoHeads
+            TwoHeads -> DefaultHead
+             }
       
 
 toggleHook : Style -> Style

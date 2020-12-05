@@ -2,9 +2,17 @@ port module Main exposing (main)
 -- TODO: avoir mode dans Model, et separer le fichier state de Square
 
 
+-- TODO: corriger la position des edges,
+-- et autoriser de viser un edge
+
 -- https://package.elm-lang.org/packages/mpizenberg/elm-pointer-events/4.0.2/Html-Events-Extra-Mouse
--- autoriser shift pour selectionner d'autres objets
--- afficher dans la selection les points en cours de selection
+-- mouseclick prevent default?
+-- split arrow, copy arrow
+-- when saving, clean the graph
+-- hover for bent lines
+-- tab: prevent default
+-- bug avec square
+
 
 import Html.Events.Extra.Mouse as MouseEvents
 
@@ -53,6 +61,7 @@ import GraphDefs exposing (newEdgeLabel)
 import Html
 import Geometry exposing (Rect)
 import Geometry exposing (rectEnveloppe)
+import Html.Events
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -91,6 +100,14 @@ subscriptions m = Sub.batch
                           (\_ -> GraphDefs.edgeLabelFromJs)
                        |> Loaded),
       E.onClick (D.succeed MouseClick),
+      {- Html.Events.preventDefaultOn "keydown"
+        (D.map (\tab -> if tab then 
+                            -- it is necessary to prevent defaults
+                            -- otherwise the next immediate appearing input 
+                            -- may not shows up
+                                      (TabInput, True) 
+                        else (Msg.noOp, False))
+                         HtmlDefs.tabDecoder), -}
       E.onKeyUp (D.map (KeyChanged False) HtmlDefs.keyDecoder),
       onMouseMoveFromJS MouseMove
     ]
@@ -139,15 +156,20 @@ save model =
 graph_RenameMode : String -> Model -> Graph NodeLabel EdgeLabel
 graph_RenameMode s m = graphRenameObj m.graph (activeObj m) s
 
-graph_MoveNode : Model -> Graph NodeLabel EdgeLabel
-graph_MoveNode model =
+graph_MoveNode : Model -> Point -> Graph NodeLabel EdgeLabel
+graph_MoveNode model orig =
     let nodes = allSelectedNodes model in
-    let center = nodes
-         |> List.map (.label >> .pos)
-         |> Geometry.rectEnveloppe 
-         |> Geometry.centerRect
-    in    
-    let delta = Point.subtract model.mousePos center in
+    let delta = 
+    {-  case selectedObjs model of
+            [ _ ] ->
+             let center = nodes
+                    |> List.map (.label >> .pos)
+                    |> Geometry.rectEnveloppe 
+                    |> Geometry.centerRect
+             in        
+             Point.subtract model.mousePos center -}
+             Point.subtract model.mousePos orig
+    in
     (nodes |> List.map .id
            |> Graph.updateNodes) 
            ( \n -> { n | pos = Point.add n.pos delta })
@@ -196,7 +218,8 @@ update msg model =
                       graph = 
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
-            _ -> model
+            -- MouseClick -> let _ = Debug.log "Mouse Click !" () in model
+            _ -> model            
     in
     case msg of
      Do cmd -> (m, cmd)
@@ -209,7 +232,7 @@ update msg model =
         NewArrow astate -> Modes.NewArrow.update astate msg m
             -- update_Modes.NewArrow astate msg m
         RenameMode l -> update_RenameMode l msg m
-        MoveNode -> update_MoveNode msg m
+        Move p -> update_MoveNode msg p m
         DebugMode -> update_DebugMode msg m
         NewNode -> update_NewNode msg m
         SquareMode state -> Modes.Square.update state msg m
@@ -232,13 +255,13 @@ update_QuickInput ch msg model =
                 noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
         _ -> noCmd model
 
-update_MoveNode : Msg -> Model -> (Model, Cmd Msg)
-update_MoveNode msg model =
+update_MoveNode : Msg -> Point -> Model -> (Model, Cmd Msg)
+update_MoveNode msg orig model =
     case msg of
         -- MouseMove pageX pageY -> { model | graph = g}
         KeyChanged False (Control "Escape") -> switch_Default model
         MouseClick ->
-             switch_Default {model | graph = graph_MoveNode model}
+             switch_Default {model | graph = graph_MoveNode model orig}
         _ -> noCmd model
 
 
@@ -289,11 +312,11 @@ update_DefaultMode msg model =
             noCmd <| { model | mode = DebugMode }
         KeyChanged False (Character 'g') -> 
             noCmd <| { model | mode = 
-                       if allSelectedNodes model |> List.isEmpty
+                       if selectedObjs model |> List.isEmpty
                         then
                           -- Nothing is selected
                           DefaultMode
-                        else MoveNode
+                        else Move model.mousePos
                      }
         KeyChanged False (Control "Delete") ->
             noCmd <| { model | graph = graphRemoveObj (activeObj model) model.graph}
@@ -327,7 +350,7 @@ update_NewNode msg m =
        MouseClick ->
          let (newGraph, newId) = Graph.newNode m.graph 
                (newNodeLabel m.mousePos "")
-             newModel = addOrSetSel True (ONode newId)
+             newModel = addOrSetSel False (ONode newId)
                     {m | graph = newGraph  }
          in
          -- if m.unnamedFlag then
@@ -362,7 +385,7 @@ graphDrawingFromModel m =
         RectSelect p r -> collageGraphFromGraph m <| selectGraph m p r
         NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
-        MoveNode -> graph_MoveNode m |> 
+        Move orig -> graph_MoveNode m orig |> 
             collageGraphFromGraph m 
         RenameMode l ->
             let g = graph_RenameMode l m in
@@ -514,11 +537,12 @@ quickInputView m =
                           --     _ -> [Html.Attributes.value ""]
                      []]
 
-additionnalDrawing : Model -> Drawing a
+additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m = 
    case m.mode of
       RectSelect orig _ -> Drawing.rect (Geometry.makeRect orig m.mousePos)
-      _ -> Drawing.empty
+      _ -> --GraphDrawing.make_input (100.0,100.0) "coucou" (always Msg.noOp)
+          Drawing.empty
 
 view : Model -> Html Msg
 view model =
@@ -547,10 +571,14 @@ view model =
                    Html.Attributes.height 2000,
                    Html.Attributes.style "border-style" "solid",
                    Html.Events.on "mousemove"
-                   (D.map (Do << onMouseMove) D.value),
-                   
-                   MouseEvents.onDown MouseDown,
-                   Html.Events.onMouseUp MouseUp
+                   (D.map (Do << onMouseMove) D.value)                   
+                  ,                 
+                 MouseEvents.onWithOptions "mousedown" 
+                  { stopPropagation = False, preventDefault = False }
+                  MouseDown
+                  -- MouseEvents.onDown MouseDown
+           , Html.Events.onMouseUp MouseUp
+                --    , Msg.onTabAttribute
              ]
              ]
 

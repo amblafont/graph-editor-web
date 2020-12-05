@@ -10,6 +10,8 @@ import Msg exposing (Msg(..))
 import ArrowStyle exposing (ArrowStyle)
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
+import Model exposing (InputPosition(..))
+import Geometry.Point as Point exposing (Point)
 
 
 
@@ -20,13 +22,16 @@ updateStep m state step = {m | mode = NewArrow { state | step = step }}
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
     activeObj m
-        |> objToNode
+        |> objId
         |> Maybe.map
             (\chosenNode ->               
                 { m
                     | mode = NewArrow
 
-                            { step = NewArrowMoveNode ArrowStyle.empty,
+                            { step = NewArrowMoveNode 
+                                 { style = ArrowStyle.empty, 
+                                   pos = InputPosMouse  }
+                                 ,
                              chosenNode = chosenNode }
                              -- prevent bugs (if the mouse is thought
                              -- to be kept on a point)
@@ -62,9 +67,9 @@ nextStep model action state =
             |> renamableNextMode            
     in
     case state.step of
-        NewArrowMoveNode style  ->
+        NewArrowMoveNode {style, pos}  ->
                      
-                let info = moveNodeInfo model state style in
+                let info = moveNodeInfo model state style pos in
           
                 let step = if info.created then
                         NewArrowEditNode info.movedNode info.edgeId
@@ -102,7 +107,8 @@ keyToAction k step =
               NewArrowMoveNode _ -> Just <| ValidateNext
               _ -> Nothing
        KeyChanged False (Control "Enter") -> Just <| ValidateFinish     
-       TabInput -> Just <| ValidateNext
+    --     TabInput -> Just <| ValidateNext
+       KeyChanged False (Control "Tab") -> Just <| ValidateNext
        _ -> Nothing
             
 
@@ -118,15 +124,27 @@ update state msg model =
             noCmd { model | graph = graphRenameObj model.graph (ONode n) s }
 
         
+        
             
         _ ->
             case keyToAction msg state.step of
               Just action -> nextStep model action state
               Nothing ->              
                 case state.step of
-                NewArrowMoveNode style ->
-                    style 
-                     |> Msg.updateArrowStyle msg           
+                NewArrowMoveNode st ->
+                   let st2 = { st | style = Msg.updateArrowStyle msg st.style } in
+                   let offsetPos x y =
+                             let (curx, cury) = getKeyboardPos st2.pos in
+                             { st2 | pos = InputPosKeyboard (x + curx, y + cury)}
+                   in
+                   (case msg of
+                     MouseMove _ -> { st2 | pos = InputPosMouse }
+                     KeyChanged False (Character 'h') -> offsetPos -1 0
+                     KeyChanged False (Character 'j') -> offsetPos 0 1
+                     KeyChanged False (Character 'k') -> offsetPos 0 -1
+                     KeyChanged False (Character 'l') -> offsetPos 1 0
+                     _ -> st2
+                   )
                      |> NewArrowMoveNode
                      |> updateStep model state 
                      |> noCmd
@@ -135,21 +153,33 @@ update state msg model =
             
 
 
+
+ 
+
 moveNodeInfo :
     Model
     -> NewArrowState
     -> ArrowStyle
+    -> InputPosition
     ->
         { graph : Graph NodeLabel EdgeLabel
         , movedNode : NodeId
         , edgeId : EdgeId
         , created : Bool
         }
-moveNodeInfo m state style =
+moveNodeInfo m state style posInfo =
+    let pos = 
+           case posInfo of
+              InputPosMouse -> m.mousePos                
+              InputPosKeyboard p ->     
+                --  Debug.log "ici"             
+                    (keyboardPosToPoint m state.chosenNode p)
+    in
     let
         ( ( graph, movedNode ), created ) =
-           -- Model.getTargetNodes |> List.filter (\i ->)
-            mayCreateTargetNode m ""
+            -- Debug.log "movedNode? "
+             (mayCreateTargetNodeAt False m pos "")
+           
     in
     let (g, edgeId) =  Graph.newEdge graph state.chosenNode movedNode 
            (GraphDefs.newEdgeLabel "" style)
@@ -167,8 +197,8 @@ graphDrawing m s =
     graphMakeEditable (renamableFromState s) <|
     collageGraphFromGraph m <|
     case s.step of
-        NewArrowMoveNode style ->
-            let info = moveNodeInfo m s style in
+        NewArrowMoveNode {style, pos} ->
+            let info = moveNodeInfo m s style pos in
              info.graph 
             --  |> collageGraphFromGraph m
             {-  |> if info.created then 
@@ -196,7 +226,9 @@ help : NewArrowStep -> String
 help s =
  case s of
         NewArrowMoveNode _ ->
-            "[ESC] cancel, [click] name the point (if new), "
+            -- Debug.toString st ++
+            "[ESC] cancel, [click, TAB] name the point (if new), "
+            ++ "[hjkl] position the new point with the keyboard, "
              ++ "[RET] terminate the arrow creation, "
              ++ "[(,=,b,B,-,>] alternate between different arrow styles."
         NewArrowEditNode _ _ ->

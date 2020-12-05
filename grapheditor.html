@@ -53,6 +53,15 @@
                 stroke-width : 4;
             }        
         </style> 
+        <script>
+            document.addEventListener("keydown", function(event)
+            {
+                // Tab key
+                if (event.keyCode === 9)
+                    event.preventDefault();
+            }
+            );
+        </script>
     </head>
 
     <body>       

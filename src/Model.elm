@@ -7,13 +7,14 @@ import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
 import QuickInput exposing (NonEmptyChain)
 import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
-import Geometry.Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 import ArrowStyle exposing (ArrowStyle)
-import Geometry
+
 import GraphDefs
+import Polygraph exposing (Id)
 
 
-
+offsetKeyboardPos = 200
 -- State -----------------------------------------------------------------------
 -- core data that will be saved
 
@@ -39,7 +40,7 @@ type alias Model =
 type Mode
     = DefaultMode
     | NewArrow NewArrowState
-    | MoveNode
+    | Move Point
     | RenameMode String
     | DebugMode
     | NewNode
@@ -52,8 +53,37 @@ type alias NewArrowState =
     { step : NewArrowStep, chosenNode : NodeId }
 
 
+type InputPosition = 
+      InputPosMouse
+    | InputPosKeyboard (Int, Int)
+
+
+deltaKeyboardPos : (Int, Int) -> Point
+deltaKeyboardPos (x, y) =
+   (toFloat x * offsetKeyboardPos, toFloat y * offsetKeyboardPos)
+
+getKeyboardPos : InputPosition -> (Int, Int)
+getKeyboardPos pos =
+    case pos of
+       InputPosMouse  -> (0, 0)
+       InputPosKeyboard p -> p
+
+keyboardPosToPoint : Model -> NodeId -> (Int, Int) -> Point
+keyboardPosToPoint m chosenNode p =
+   case Graph.getNode chosenNode m.graph of
+      Nothing -> m.mousePos
+      Just { pos } -> 
+         let delta = deltaKeyboardPos p in
+         Point.add pos delta
+
+-- inputPositionPoint : Point -> InputPosition -> Point
+-- inputPositionPoint source pos =
+--    case pos of
+--       InputPosMouse p -> p
+--       InputPosKeyboard p -> Point.add source <| deltaKeyboardPos p)
+
 type NewArrowStep
-    = NewArrowMoveNode ArrowStyle
+    = NewArrowMoveNode { style : ArrowStyle, pos : InputPosition }
       -- the moved node
     | NewArrowEditNode NodeId EdgeId
     | NewArrowEditEdge NodeId EdgeId
@@ -166,6 +196,13 @@ objToNode o =
         ONode n -> Just n
         _ -> Nothing
 
+objId : Obj -> Maybe Id
+objId o =
+  case o of
+     ONode n -> Just n
+     OEdge e -> Just e
+     ONothing -> Nothing
+
 objToEdge : Obj -> Maybe EdgeId
 objToEdge o =
     case o of
@@ -275,12 +312,7 @@ graphMakeActive o g =
 -- returns the target node of the new arrow, if it already exists.
 
 
-getNodesAt : Model -> Point -> List NodeId
-getNodesAt m p =
-  Graph.filterNodes m.graph 
-    (\n -> Geometry.isInPosDims { pos = n.pos, 
-                                  dims = GraphDefs.getNodeDims n} p)
-  |> List.map .id
+
 
 
 
@@ -290,21 +322,24 @@ getNodesInRect m r =
     (\n -> Geometry.isInRect r n.pos)
   |> List.map .id
  -}
-getTargetNodes : Model -> List NodeId
-getTargetNodes m = getNodesAt m m.mousePos
+{- getTargetNodes : Model -> List NodeId
+getTargetNodes m = GraphDefs.getNodesAt m.graph m.mousePos
   -- List.head |> Maybe.map .id
 
 -- not very reliable, let us use getNodeAt
-getTargetNode : Model -> Maybe NodeId
-getTargetNode m =
+getTargetNode : Bool -> Model -> Maybe Id
+getTargetNode onlyNode m =
     -- if the mouse is over a node, that is the target node
     case getTargetNodes m of
         i :: _ ->
-             Graph.getNode i m.graph 
-             |> Maybe.map (\_ -> i)             
+             if onlyNode then
+               Graph.getNode i m.graph 
+               |> Maybe.map (\_ -> i)             
+             else 
+               Just i
 
         _ ->
-            Nothing
+            Nothing -}
 
 
 
@@ -314,17 +349,20 @@ getTargetNode m =
 -- True if created
 
 
-mayCreateTargetNode : Model -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
-mayCreateTargetNode m s =
-    case getTargetNode m of
-        Just n ->
-            ( ( m.graph, n ), False )
-
-        Nothing ->
+mayCreateTargetNodeAt : Bool -> Model -> Point -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNodeAt onlyNode m pos s =
+   case GraphDefs.getNodesAt m.graph pos of
+      [ n ] -> ((m.graph, n), False)
+      _ ->
             ( Graph.newNode m.graph 
-              <| newNodeLabel m.mousePos s
+              <| newNodeLabel pos s
             , True )
 
+-- only Nodes ?
+mayCreateTargetNode : Bool -> Model -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNode onlyNode m s =
+  mayCreateTargetNodeAt onlyNode m m.mousePos s
+    
 
 
 -- switch between modes

@@ -49,15 +49,7 @@ make_input : Point -> String -> (String -> Msg) -> Drawing Msg
 make_input pos label onChange =
          Html.input ([ Html.Attributes.value label ,
                        Html.Events.onInput onChange,
-                       Html.Events.preventDefaultOn "keydown" 
-                         (D.map (\tab -> if tab then 
-                            -- it is necessary to prevent defaults
-                            -- otherwise the next immediate appearing input 
-                            -- may not shows up
-                                      (TabInput, True) 
-                                             else (Msg.noOp, False))
-                         HtmlDefs.tabDecoder
-                         ),
+                       Msg.onTabPreventDefault,
                        Html.Attributes.id HtmlDefs.idInput,
                        Html.Attributes.autofocus True
                     ] ++ 

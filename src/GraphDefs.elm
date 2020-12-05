@@ -3,10 +3,12 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
-   setNodesSelection, clearSelection, selectedGraph
+   setNodesSelection, clearSelection, selectedGraph,
+   getNodesAt
    )
 
 import Geometry.Point exposing (Point)
+import Geometry
 import ArrowStyle.Core
 import ArrowStyle exposing (ArrowStyle)
 import Polygraph as Graph exposing (Graph, NodeId)
@@ -94,3 +96,11 @@ clearSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 clearSelection g =
   Graph.map (\_ n -> {n | selected = False})
             (\_ e -> {e | selected = False}) g
+
+
+getNodesAt : Graph NodeLabel e -> Point -> List NodeId
+getNodesAt g p =
+  Graph.filterNodes g
+    (\n -> Geometry.isInPosDims { pos = n.pos, 
+                                  dims = getNodeDims n} p)
+  |> List.map .id

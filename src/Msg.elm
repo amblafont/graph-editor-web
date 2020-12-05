@@ -1,4 +1,4 @@
-module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId)
+module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, onTabPreventDefault)
 
 import Collage exposing (Point)
 -- import Graph exposing (Graph, NodeId)
@@ -12,6 +12,7 @@ import Browser.Dom as Dom
 import ArrowStyle exposing (ArrowStyle)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Html.Events.Extra.Mouse as MouseEvents
+import Html
 
 
 
@@ -35,7 +36,7 @@ type Msg
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
   -- pressing tab when editing the input text
-  | TabInput
+  -- | TabInput
 
 noOp : Msg
 noOp = Do Cmd.none
@@ -52,4 +53,7 @@ updateArrowStyle m style =
    case m of 
       KeyChanged False k -> ArrowStyle.keyUpdateStyle k style  
       _ -> style
+
+onTabPreventDefault : Html.Attribute Msg
+onTabPreventDefault = HtmlDefs.onTab noOp noOp
         
