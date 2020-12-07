@@ -2,9 +2,6 @@ port module Main exposing (main)
 -- TODO: avoir mode dans Model, et separer le fichier state de Square
 
 
--- TODO: corriger la position des edges,
--- et autoriser de viser un edge
-
 -- https://package.elm-lang.org/packages/mpizenberg/elm-pointer-events/4.0.2/Html-Events-Extra-Mouse
 -- mouseclick prevent default?
 -- split arrow, copy arrow
@@ -50,6 +47,8 @@ import Maybe exposing (withDefault)
 
 import Modes.Square
 import Modes.NewArrow 
+import Modes.SplitArrow
+import Modes exposing (Mode(..))
 
 import ArrowStyle
 
@@ -62,6 +61,7 @@ import Html
 import Geometry exposing (Rect)
 import Geometry exposing (rectEnveloppe)
 import Html.Events
+import Modes exposing (SplitArrowState)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -124,9 +124,6 @@ subscriptions m = Sub.batch
 
 
 
-iniModel : Model
-iniModel = createModel <| Graph.empty
-
 
 
 save : Model -> Msg
@@ -153,8 +150,15 @@ save model =
 
 
 
-graph_RenameMode : String -> Model -> Graph NodeLabel EdgeLabel
-graph_RenameMode s m = graphRenameObj m.graph (activeObj m) s
+graph_RenameMode : String -> List Graph.Id -> Model -> Graph NodeLabel EdgeLabel
+graph_RenameMode s l m = 
+   case l of
+      [] -> m.graph
+      id :: _ ->   Graph.update id 
+                        (\ n -> {n | label = s })  
+                               (\ e -> {e | label = s })
+                               
+                               m.graph 
 
 graph_MoveNode : Model -> Point -> Graph NodeLabel EdgeLabel
 graph_MoveNode model orig =
@@ -180,7 +184,7 @@ graph_MoveNode model orig =
 
 
 
-switch_RenameMode : Model -> (Model, Cmd Msg)
+{- switch_RenameMode : Model -> (Model, Cmd Msg)
 switch_RenameMode model =
     let label : Maybe String
         label = case activeObj model of
@@ -190,8 +194,9 @@ switch_RenameMode model =
     in
     case label of
         Nothing -> noCmd model
-        Just l -> ( {model | mode = RenameMode l}, Cmd.none {- focusLabelInput -})
-
+        Just l -> (
+             {model | mode = RenameMode l}, Cmd.none {- focusLabelInput -})
+ -}
 -- Now, deal with incoming messages
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -231,11 +236,12 @@ update msg model =
         RectSelect orig keep -> update_RectSelect msg orig keep m
         NewArrow astate -> Modes.NewArrow.update astate msg m
             -- update_Modes.NewArrow astate msg m
-        RenameMode l -> update_RenameMode l msg m
+        RenameMode s l -> update_RenameMode s l msg m
         Move p -> update_MoveNode msg p m
         DebugMode -> update_DebugMode msg m
         NewNode -> update_NewNode msg m
         SquareMode state -> Modes.Square.update state msg m
+        SplitArrow state -> Modes.SplitArrow.update state msg m
 
 
 update_QuickInput : Maybe NonEmptyChain -> Msg -> Model -> (Model, Cmd Msg)
@@ -268,20 +274,30 @@ update_MoveNode msg orig model =
 
 
         
-update_RenameMode : String -> Msg -> Model -> (Model, Cmd Msg)
-update_RenameMode label msg model =
+update_RenameMode : String -> List Graph.Id -> Msg -> Model -> (Model, Cmd Msg)
+update_RenameMode label ids msg model =
     case msg of
       KeyChanged False (Control "Escape") -> switch_Default model
-      KeyChanged False (Control "Enter") -> finalise_RenameMode label model
+      KeyChanged False (Control "Enter") -> noCmd <| next_RenameMode True label ids model
+      KeyChanged False (Control "Tab") -> noCmd <| next_RenameMode False label ids model
     --   MouseClick -> finalise_RenameMode label model
-      NodeLabelEdit _ s -> noCmd {model | mode = RenameMode s}
-      EdgeLabelEdit _ s -> noCmd {model | mode = RenameMode s}
+      NodeLabelEdit _ s -> noCmd {model | mode = RenameMode s ids}
+      EdgeLabelEdit _ s -> noCmd {model | mode = RenameMode s ids}
       _ -> noCmd model
 
-finalise_RenameMode : String -> Model -> (Model, Cmd Msg)
-finalise_RenameMode label model =
-    let g = graph_RenameMode label model in
-    switch_Default {model | graph = g}
+
+
+next_RenameMode : Bool -> String -> List Graph.Id -> Model -> Model
+next_RenameMode finish label ids model =
+    let g = graph_RenameMode label ids model in
+    let m2 =  {model | graph = g} in
+    if finish then
+      { m2 | mode = DefaultMode }
+    else
+      case ids of
+        [] ->   { m2 | mode = DefaultMode }
+        _ :: q -> initialise_RenameMode q m2
+        
 
 update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
 update_RectSelect msg orig keep model =
@@ -301,10 +317,19 @@ update_DefaultMode msg model =
         MouseDown e -> noCmd <| { model | mode = RectSelect model.mousePos e.keys.shift }
         KeyChanged False (Character 'a') -> Modes.NewArrow.initialise model
         KeyChanged False (Character 's') -> Modes.Square.initialise model 
-        KeyChanged False (Character 'r') -> switch_RenameMode model
+        KeyChanged False (Character '/') -> Modes.SplitArrow.initialise model 
+        KeyChanged False (Character 'r') -> 
+            let ids = activeObj model |> objId |> Maybe.map List.singleton 
+                     |> Maybe.withDefault []
+            in
+            noCmd <| initialise_RenameMode ids model
         KeyChanged False (Character 'p') -> noCmd <| { model | mode = NewNode }
         KeyChanged False (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
                                                  Msg.focusId quickInputId)
+        KeyChanged False (Character 'i') -> 
+           noCmd <| case activeObj model of
+                      OEdge id -> { model | graph = Graph.invertEdge id model.graph }                                         
+                      _ -> model
         -- KeyChanged False (Character 'u') ->
         --     noCmd {model | unnamedFlag = not model.unnamedFlag} 
         -- KeyChanged False (Character 'b') -> ({model | blitzFlag = not model.blitzFlag}, Cmd.none)
@@ -318,10 +343,11 @@ update_DefaultMode msg model =
                           DefaultMode
                         else Move model.mousePos
                      }
+                     
         KeyChanged False (Control "Delete") ->
-            noCmd <| { model | graph = graphRemoveObj (activeObj model) model.graph}
+            noCmd <| { model | graph = GraphDefs.removeSelected model.graph }
         KeyChanged False (Character 'x') ->
-            noCmd <| { model | graph = graphRemoveObj (activeObj model) model.graph} 
+            noCmd <| { model | graph = GraphDefs.removeSelected model.graph} 
         NodeClick n e ->
             noCmd <| addOrSetSel e.keys.shift (ONode n) model
         EdgeClick n e ->
@@ -356,7 +382,7 @@ update_NewNode msg m =
          -- if m.unnamedFlag then
          --   switch_Default newModel
          -- else
-           switch_RenameMode newModel
+           noCmd <| initialise_RenameMode [ newId ] newModel
        KeyChanged False (Control "Escape") -> switch_Default m
        _ -> noCmd m
 
@@ -387,10 +413,17 @@ graphDrawingFromModel m =
         QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
         Move orig -> graph_MoveNode m orig |> 
             collageGraphFromGraph m 
-        RenameMode l ->
-            let g = graph_RenameMode l m in
-            collageGraphFromGraph m g
-                |> graphMakeEditable (activeObj m)
+        RenameMode s l ->
+            let g = graph_RenameMode s l m in
+            let g2 = collageGraphFromGraph m g in
+            case l of
+                id :: _ ->
+                    Graph.update id 
+                    (\n -> {n | editable = True })
+                    (\e -> {e | editable = True })
+                    g2
+                _ -> g2
+              
         DebugMode ->
             m.graph |> collageGraphFromGraph m 
                 |> Graph.map
@@ -399,6 +432,7 @@ graphDrawingFromModel m =
         NewArrow astate -> Modes.NewArrow.graphDrawing m astate
         SquareMode state ->
             Modes.Square.graphDrawing m state
+        SplitArrow state -> Modes.SplitArrow.graphDrawing m state
 
 
 graphDrawingChain : Graph NodeLabel EdgeLabel -> Maybe NonEmptyChain -> Graph NodeLabel EdgeLabel
@@ -489,10 +523,11 @@ helpMsg model =
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [r]ename selected object" 
                 ++ ", [g] move selected objects" 
+                ++ ", [/] split arrow" 
                 ++ "."
                 ++ case activeObj model of
                      OEdge _ ->
-                       " [(,=,b,B,-,>]: alternate between different arrow styles."
+                       " [(,=,b,B,-,>]: alternate between different arrow styles, [i]nverse arrow."
                      _ -> ""
                       -- b "b",
                       -- Html.text "litz flag (no labelling on point creation)."
@@ -508,11 +543,14 @@ helpMsg model =
                     ++ " [RET] to accept the current chain"       
                     ++ ", [ESC] to cancel and comeback to the default mode."]
                 ]
-        NewArrow {step} -> "Mode NewArrow. "
+        NewArrow _ -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
-                           ++  Modes.NewArrow.help step |> msg
-        SquareMode {step} -> "Mode Commutative square. "
-                             ++ Modes.Square.help step |> msg
+                           ++  Modes.NewArrow.help |> msg
+        SquareMode _ -> "Mode Commutative square. "
+                             ++ Modes.Square.help |> msg
+        SplitArrow _ -> "Mode Split Arrow. "
+                             ++ Modes.SplitArrow.help |> msg
+        RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
 
 
         _ -> let txt = "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"

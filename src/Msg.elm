@@ -3,7 +3,7 @@ module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, onTabPreventDefau
 import Collage exposing (Point)
 -- import Graph exposing (Graph, NodeId)
 -- import GraphExtra exposing (EdgeId)
-import Polygraph exposing (EdgeId, NodeId, Graph)
+import Polygraph as Graph exposing (EdgeId, NodeId, Graph)
 
 import HtmlDefs exposing (Key)
 import Task
@@ -35,6 +35,7 @@ type Msg
   | QuickInput String
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
+  | MouseOn Graph.Id
   -- pressing tab when editing the input text
   -- | TabInput
 

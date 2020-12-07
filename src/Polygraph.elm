@@ -1,14 +1,15 @@
 module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      newNode, newEdge,
-     updateNode, updateEdge, updateNodes,
-     getNode, getEdge,
+     update, updateNode, updateEdge, updateNodes, invertEdge,
+     getNode, getEdge, get,
      removeEdge, removeNode, 
      map, mapRec,
      nodes, edges, fromNodesAndEdges,
      filterNodes, filter,
      Node, Edge,
-     incomings, outgoings)
+     incomings, outgoings, drop)
 import IntDict exposing (IntDict)
+
 
 
 
@@ -121,15 +122,15 @@ mapObj fn fe o =
      EdgeObj i1 i2 e -> EdgeObj i1 i2 (fe e)
 
 
-updateObj : Id -> (n -> n) -> (e -> e) -> Graph n e -> Graph n e
-updateObj i fn fe =
+update : Id -> (n -> n) -> (e -> e) -> Graph n e -> Graph n e
+update i fn fe =
   mapRep <| IntDict.update i (Maybe.map (mapObj fn fe))
 
 updateNode : NodeId -> (n -> n) -> Graph n e -> Graph n e
-updateNode i fn g = updateObj i fn identity g 
+updateNode i fn g = update i fn identity g 
 
 updateEdge : EdgeId -> (e -> e) -> Graph n e -> Graph n e
-updateEdge i fe g = updateObj i identity fe g
+updateEdge i fe g = update i identity fe g
 
 map : (NodeId -> n1 -> n2) -> (EdgeId -> e1 -> e2) -> Graph n1 e1 -> Graph n2 e2
 map fn fe = 
@@ -137,6 +138,12 @@ map fn fe =
      IntDict.map (\ i -> mapObj (fn i) (fe i))
 
 
+get : Id -> (n -> a) -> (e -> a) -> Graph n e -> Maybe a
+get id fn fe (Graph g) =
+   case IntDict.get id g of
+      Just (NodeObj n) -> Just <| fn n
+      Just (EdgeObj _ _ e) -> Just <| fe e
+      Nothing -> Nothing
 
 getEdge : EdgeId -> Graph n e -> Maybe (Id, Id, e)
 getEdge id (Graph g) = IntDict.get id g |> Maybe.andThen objEdge
@@ -334,13 +341,27 @@ mapRec fn fe (Graph g) =
    in
    (Graph gf, missings)
 
+
+rawFilter : (n -> Bool) -> (e -> Bool) -> GraphRep n e -> GraphRep n e
+rawFilter fn fe =
+  IntDict.filter (\_ o -> case o of
+                             EdgeObj _ _ e -> fe e 
+                             NodeObj n -> fn n)
+
+-- if an element is dropped, all its ascendants will be dropped
+-- as well
+-- (dual of filter)
+drop : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
+drop fn fe (Graph g) =
+   let g2 = rawFilter fn fe g
+   in
+   removeList (IntDict.keys g2) (Graph g)
+
 -- if an edge is kept, all its descendants will also be
 -- whether or not they are explicitely kept
 filter : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
 filter fn fe (Graph g) =
-   let g2 = IntDict.filter (\_ o -> case o of
-                             EdgeObj _ _ e -> fe e 
-                             NodeObj n -> fn n) g
+   let g2 = rawFilter fn fe g
    in
    let dict = mapRecAux (\_ _ -> ()) (\_ _ _ _ -> ())
         (IntDict.map (\_ -> Input) g)
@@ -362,3 +383,11 @@ outgoings : Id -> Graph n e -> List (Edge e)
 outgoings id g =
     edges g |> List.filter  (\ { from } -> from == id)
    
+
+invertEdge : EdgeId -> Graph n e -> Graph n e
+invertEdge id (Graph g) =
+  IntDict.update id 
+     (\ e -> case e of
+              Just (EdgeObj i1 i2 l) -> Just (EdgeObj i2 i1 l)
+              _ -> e
+      ) g |> Graph

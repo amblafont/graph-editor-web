@@ -144,18 +144,21 @@ segmentLabel q edgeId label =
          
 
 
-edgeDrawing : Graph.EdgeId -> Geometry.PosDims -> Geometry.PosDims
-     -> EdgeDrawingLabel -> Drawing Msg
-edgeDrawing edgeId from to label =
+edgeDrawing : Graph.EdgeId 
+-- -> Geometry.PosDims -> Geometry.PosDims
+     -> EdgeDrawingLabel -> QuadraticBezier -> Drawing Msg
+edgeDrawing edgeId {- from to -} label q =
     let c = if label.isActive then Drawing.red else Drawing.black in
     
     
-    let q = Geometry.segmentRectBent from to 
-             label.style.bend
-    in
+    -- let q = Geometry.segmentRectBent from to 
+    --          label.style.bend
+    -- in
     Drawing.group [
          Drawing.arrow 
-          [Drawing.color c, Drawing.onClick (EdgeClick edgeId)] 
+          [Drawing.color c, Drawing.onClick (EdgeClick edgeId),
+           Drawing.simpleOn "mousemove" (MouseOn edgeId)
+          ] 
           label.style.s
          q, 
           segmentLabel q edgeId label]
@@ -182,11 +185,12 @@ graphDrawing g0 =
                       } |> Geometry.pad padding
                        } )
                (\id n1 n2 e -> 
-                   { drawing = edgeDrawing id n1.posDims n2.posDims e,
+                   let q = Geometry.segmentRectBent n1.posDims n2.posDims e.style.bend in
+                   { drawing = edgeDrawing id  e q,                     
                     -- TODO
                      posDims = {
-                         pos = Point.middle n1.posDims.pos n2.posDims.pos,
-                         dims = (padding, padding)
+                         pos = Bez.middle q,
+                         dims = (padding, padding) |> Point.resize 4
 
                      }
                    }

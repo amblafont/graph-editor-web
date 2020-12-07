@@ -4,6 +4,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    setNodesSelection, clearSelection, selectedGraph,
+   removeSelected,
    getNodesAt
    )
 
@@ -91,6 +92,9 @@ setNodesSelection g f =
 
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectedGraph = Graph.filter .selected .selected
+
+removeSelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+removeSelected =  Graph.drop .selected .selected
 
 clearSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 clearSelection g =

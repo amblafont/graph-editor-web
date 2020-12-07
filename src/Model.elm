@@ -5,13 +5,14 @@ import Color exposing (..)
 import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
-import QuickInput exposing (NonEmptyChain)
-import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
 import Geometry.Point as Point exposing (Point)
-import ArrowStyle exposing (ArrowStyle)
+import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
+
+
+import Modes exposing (Mode(..), InputPosition(..))
 
 import GraphDefs
-import Polygraph exposing (Id)
+
 
 
 offsetKeyboardPos = 200
@@ -37,25 +38,11 @@ type alias Model =
     }
 
 
-type Mode
-    = DefaultMode
-    | NewArrow NewArrowState
-    | Move Point
-    | RenameMode String
-    | DebugMode
-    | NewNode
-    | QuickInputMode (Maybe NonEmptyChain)
-    | SquareMode SquareState
-    | RectSelect Point Bool -- keep previous selection?
 
 
-type alias NewArrowState =
-    { step : NewArrowStep, chosenNode : NodeId }
 
 
-type InputPosition = 
-      InputPosMouse
-    | InputPosKeyboard (Int, Int)
+
 
 
 deltaKeyboardPos : (Int, Int) -> Point
@@ -64,9 +51,9 @@ deltaKeyboardPos (x, y) =
 
 getKeyboardPos : InputPosition -> (Int, Int)
 getKeyboardPos pos =
-    case pos of
-       InputPosMouse  -> (0, 0)
+    case pos of       
        InputPosKeyboard p -> p
+       _  -> (0, 0)
 
 keyboardPosToPoint : Model -> NodeId -> (Int, Int) -> Point
 keyboardPosToPoint m chosenNode p =
@@ -81,36 +68,6 @@ keyboardPosToPoint m chosenNode p =
 --    case pos of
 --       InputPosMouse p -> p
 --       InputPosKeyboard p -> Point.add source <| deltaKeyboardPos p)
-
-type NewArrowStep
-    = NewArrowMoveNode { style : ArrowStyle, pos : InputPosition }
-      -- the moved node
-    | NewArrowEditNode NodeId EdgeId
-    | NewArrowEditEdge NodeId EdgeId
-
-
-type alias SquareState =
-    { data : SquareModeData, step : SquareStep }
-
-
-type SquareStep
-    = -- the argument is the next possibility of square to be tested
-      SquareMoveNode Int
-      -- the moved node
-    | SquareEditNode NodeId EdgeId EdgeId
-    | SquareEditEdge1 NodeId EdgeId EdgeId
-    | SquareEditEdge2 NodeId EdgeId EdgeId
-
-
-type alias SquareModeData =
-    { chosenNode : NodeId
-    , n1 : NodeId
-    , n1ToChosen : Bool
-    , e1 : EdgeId
-    , n2 : NodeId
-    , n2ToChosen : Bool
-    , e2 : EdgeId
-    }
 
 
 createModel : Graph NodeLabel EdgeLabel -> Model
@@ -133,6 +90,27 @@ createModel g =
     -- blitzFlag = False
     }
 
+
+
+iniModel : Model
+iniModel =    
+   createModel <| 
+      Tuple.first <|
+        Graph.newNode Graph.empty
+         { pos = (100, 100), label = "", dims = Nothing,
+           selected = True }
+
+initialise_RenameMode : List Graph.Id -> Model -> Model
+initialise_RenameMode l m =
+  case l of
+     [] -> { m | mode = DefaultMode }
+     id :: _ -> 
+           let s = 
+                 Graph.get id .label .label m.graph
+                 |> Maybe.withDefault ""
+           in
+           { m | mode = RenameMode s l }
+        
 
 
 addOrSetSel : Bool -> Obj -> Model -> Model
@@ -196,7 +174,7 @@ objToNode o =
         ONode n -> Just n
         _ -> Nothing
 
-objId : Obj -> Maybe Id
+objId : Obj -> Maybe Graph.Id
 objId o =
   case o of
      ONode n -> Just n
@@ -209,24 +187,24 @@ objToEdge o =
        OEdge n -> Just n
        _ -> Nothing
 
-obj_NodeId : Obj -> NodeId
+{- obj_NodeId : Obj -> NodeId
 obj_NodeId x =
     case x of
         ONode id ->
             id
 
         _ ->
-            0
+            0 -}
 
 
-obj_EdgeId : Obj -> EdgeId
+{- obj_EdgeId : Obj -> EdgeId
 obj_EdgeId x =
     case x of
         OEdge id ->
             id
 
         _ ->
-            0
+            0 -}
 
 selectedObjs : Model -> List Obj
 selectedObjs m =
@@ -241,21 +219,11 @@ activeObj m =
     case selectedObjs m of
       [ o ] -> o
       _ -> ONothing
-activeNode : Model -> NodeId
+{- activeNode : Model -> NodeId
 activeNode m =
-    obj_NodeId <| activeObj m
+    obj_NodeId <| activeObj m -}
 
-graphRemoveObj : Obj -> Graph a b -> Graph a b
-graphRemoveObj o g =
-    case o of
-        ONothing ->
-            g
 
-        ONode id ->
-            Graph.removeNode id g
-
-        OEdge id ->
-            Graph.removeEdge id g
 
 
 graphRenameObj : Graph NodeLabel EdgeLabel -> Obj -> String -> Graph NodeLabel EdgeLabel
@@ -349,8 +317,8 @@ getTargetNode onlyNode m =
 -- True if created
 
 
-mayCreateTargetNodeAt : Bool -> Model -> Point -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
-mayCreateTargetNodeAt onlyNode m pos s =
+mayCreateTargetNodeAt : Model -> Point -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNodeAt m pos s =
    case GraphDefs.getNodesAt m.graph pos of
       [ n ] -> ((m.graph, n), False)
       _ ->
@@ -359,9 +327,9 @@ mayCreateTargetNodeAt onlyNode m pos s =
             , True )
 
 -- only Nodes ?
-mayCreateTargetNode : Bool -> Model -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
-mayCreateTargetNode onlyNode m s =
-  mayCreateTargetNodeAt onlyNode m m.mousePos s
+mayCreateTargetNode : Model -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNode m s =
+  mayCreateTargetNodeAt m m.mousePos s
     
 
 

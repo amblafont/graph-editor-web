@@ -1,6 +1,6 @@
 module Drawing exposing (Drawing,   
   fromString, circle, html, group, arrow, rect,
-  Attribute, on, onClick, onMouseEnter, onMouseLeave, color,
+  Attribute, simpleOn, on, onClick, {- onMouseEnter, onMouseLeave, -} color,
   svg, Color, red, black, class, empty
   )
 
@@ -67,11 +67,11 @@ simpleOn s m = on s (D.succeed m)
 onClick : (MouseEvents.Event -> msg) -> Attribute msg
 onClick = OnClick 
 
-onMouseEnter : msg -> Attribute msg
+{- onMouseEnter : msg -> Attribute msg
 onMouseEnter = simpleOn "mouseenter" 
 
 onMouseLeave : msg -> Attribute msg
-onMouseLeave = simpleOn "mouseleave" 
+onMouseLeave = simpleOn "mouseleave"  -}
 
 color : Color -> Attribute msg
 color = Color

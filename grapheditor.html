@@ -57,8 +57,11 @@
             document.addEventListener("keydown", function(event)
             {
                 // Tab key
-                if (event.keyCode === 9)
+                if (event.keyCode === 9
+                // slash key
+                || event.keyCode === 191)
                     event.preventDefault();
+
             }
             );
         </script>
