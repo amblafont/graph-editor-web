@@ -5,10 +5,10 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    setNodesSelection, clearSelection, selectedGraph,
    removeSelected,
-   getNodesAt
+   getNodesAt, cloneSelected
    )
 
-import Geometry.Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 import Geometry
 import ArrowStyle.Core
 import ArrowStyle exposing (ArrowStyle)
@@ -108,3 +108,15 @@ getNodesAt g p =
     (\n -> Geometry.isInPosDims { pos = n.pos, 
                                   dims = getNodeDims n} p)
   |> List.map .id
+
+
+cloneSelected : Graph NodeLabel EdgeLabel -> Point -> 
+                Graph NodeLabel EdgeLabel
+cloneSelected g offset =
+  let g2 = selectedGraph g |> 
+       Graph.map (\_ n -> {n | pos = Point.add n.pos offset, selected = True })
+         (\_ e -> {e | selected = True } )
+  in
+  let gclearSel = clearSelection g in
+  Graph.union gclearSel g2
+

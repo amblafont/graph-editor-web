@@ -317,6 +317,8 @@ update_DefaultMode msg model =
     case msg of
         MouseDown e -> noCmd <| { model | mode = RectSelect model.mousePos e.keys.shift }
         KeyChanged False (Character 'a') -> Modes.NewArrow.initialise model
+        KeyChanged False (Character 'c') ->  noCmd <|
+           initialiseMoveMode {model | graph = GraphDefs.cloneSelected model.graph (30, 30)}
         KeyChanged False (Character 's') -> Modes.Square.initialise model 
         KeyChanged False (Character '/') -> Modes.SplitArrow.initialise model 
         KeyChanged False (Character 'r') -> 
@@ -337,13 +339,7 @@ update_DefaultMode msg model =
         KeyChanged False (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged False (Character 'g') -> 
-            noCmd <| { model | mode = 
-                       if selectedObjs model |> List.isEmpty
-                        then
-                          -- Nothing is selected
-                          DefaultMode
-                        else Move { orig = model.mousePos, pos = InputPosMouse }
-                     }
+            noCmd <| initialiseMoveMode model
                      
         KeyChanged False (Control "Delete") ->
             noCmd <| { model | graph = GraphDefs.removeSelected model.graph }
@@ -363,7 +359,15 @@ update_DefaultMode msg model =
                     model.graph
                 }
                
-                 
+initialiseMoveMode : Model -> Model
+initialiseMoveMode model =
+         { model | mode = 
+                       if selectedObjs model |> List.isEmpty
+                        then
+                          -- Nothing is selected
+                          DefaultMode
+                        else Move { orig = model.mousePos, pos = InputPosMouse }
+                     }                 
 
 update_DebugMode : Msg -> Model -> (Model, Cmd Msg)
 update_DebugMode msg model =
@@ -524,6 +528,7 @@ helpMsg model =
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [r]ename selected object" 
                 ++ ", [g] move selected objects" 
+                ++ ", [c]lone selected objects" 
                 ++ ", [/] split arrow" 
                 ++ "."
                 ++ case activeObj model of

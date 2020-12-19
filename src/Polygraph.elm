@@ -1,14 +1,15 @@
 module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      newNode, newEdge,
      update, updateNode, updateEdge, updateNodes, invertEdge,
-     getNode, getEdge, get,
-     removeEdge, removeNode, 
+     getNode, getEdge, get, removeNode, removeEdge,
      map, mapRec,
      nodes, edges, fromNodesAndEdges,
      filterNodes, filter,
-     Node, Edge,
-     incomings, outgoings, drop)
+     Node, Edge, nextId,
+     incomings, outgoings, drop,
+     union)
 import IntDict exposing (IntDict)
+
 
 
 
@@ -69,11 +70,14 @@ empty : Graph n e
 empty =
     Graph IntDict.empty
 
-nextId : Graph n e -> Id 
-nextId (Graph g) =
+supId : GraphRep n e -> Id 
+supId g =
     case IntDict.findMax g of
              Just (id, _) -> id + 1
              Nothing -> 0
+
+nextId : Graph n e -> Id
+nextId (Graph g) = supId g
 
 newObject : Graph n e -> Object n e -> (Graph n e, Id)
 newObject g o =
@@ -312,7 +316,7 @@ mapRecAux fn fe dict ids =
                      _ ->  rec dict tailIds
                    
             _ -> rec dict tailIds
-
+-- returns also the list of edges that could not be treated
 mapRec : 
        (NodeId -> n1 -> a) 
     -> (EdgeId -> a -> a -> e1 -> a) 
@@ -391,3 +395,23 @@ invertEdge id (Graph g) =
               Just (EdgeObj i1 i2 l) -> Just (EdgeObj i2 i1 l)
               _ -> e
       ) g |> Graph
+
+
+addId : Int -> GraphRep n e -> GraphRep n e
+addId n g =
+   IntDict.toList g 
+   |> List.map
+     (\(id, o) -> (id + n, 
+           case o of 
+            NodeObj _ -> o
+            EdgeObj i1 i2 e -> EdgeObj (i1 + n)(i2 + n) e
+        )
+     )
+     |> IntDict.fromList
+
+-- indices in the base graphe are kept
+union : Graph n e -> Graph n e -> Graph n e
+union (Graph base) (Graph ext) = 
+   let baseId = supId base in
+   let extUp = addId baseId ext in   
+     IntDict.union base extUp |> Graph
