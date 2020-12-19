@@ -10,8 +10,10 @@ import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import List.Extra exposing (uniquePairs, getAt)
-import Modes exposing (InputPosition(..), SquareState, Mode(..))
+import Modes exposing (SquareState, Mode(..))
 import Model exposing (..)
+import InputPosition exposing (InputPosition(..))
+
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 

@@ -10,8 +10,9 @@ import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 
-import Modes exposing (InputPosition(..), Mode(..), SplitArrowState)
+import Modes exposing ( Mode(..), SplitArrowState)
 import Model exposing (..)
+import InputPosition exposing (InputPosition(..))
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 
@@ -132,13 +133,10 @@ update state msg model =
         KeyChanged False (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
         KeyChanged False (Control "Tab") -> next False
-        MouseOn id -> noCmd <| { model | mode = SplitArrow 
-            { state | pos = InputPosGraph id } }
-        MouseMove _ -> noCmd <| { model | mode = SplitArrow 
-            { state | pos = InputPosMouse } }
-
-      
-        _ -> noCmd model
+        
+        _ -> noCmd 
+            { model | mode = SplitArrow 
+            { state | pos = InputPosition.updateNoKeyboard state.pos msg } }
 
 help : String
 help =

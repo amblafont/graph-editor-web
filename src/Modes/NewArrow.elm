@@ -6,10 +6,11 @@ import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe exposing (withDefault)
 import Msg exposing (Msg(..))
-import ArrowStyle exposing (ArrowStyle)
+import ArrowStyle 
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import Modes exposing (InputPosition(..), NewArrowState, Mode(..))
+import Modes exposing ( NewArrowState, Mode(..))
+import InputPosition exposing (InputPosition(..))
 import Model exposing (..)
 
 
@@ -85,23 +86,11 @@ update state msg model =
         KeyChanged False (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
         KeyChanged False (Control "Tab") -> next False
-        KeyChanged False (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted} 
-        MouseOn id -> noCmd <| updateState model { state | pos = InputPosGraph id }
+        KeyChanged False (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
         _ ->          
                    let st2 = { state | style = Msg.updateArrowStyle msg state.style } in
-                   let offsetPos x y =
-                             let (curx, cury) = getKeyboardPos st2.pos in
-                             { st2 | pos = InputPosKeyboard (x + curx, y + cury)}
-                   in                   
-                   (case msg of
-                     MouseMove _ -> { st2 | pos = InputPosMouse }
-                     KeyChanged False (Character 'h') -> offsetPos -1 0
-                     KeyChanged False (Character 'j') -> offsetPos 0 1
-                     KeyChanged False (Character 'k') -> offsetPos 0 -1
-                     KeyChanged False (Character 'l') -> offsetPos 1 0
-                     
-                     _ -> st2
-                   )                     
+                   let st3 = { st2 | pos = InputPosition.update st2.pos msg} in
+                   st3            
                      |> updateState model 
                      |> noCmd
                   

@@ -6,16 +6,17 @@ import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
 import Geometry.Point as Point exposing (Point)
+import InputPosition
 import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
 
 
-import Modes exposing (Mode(..), InputPosition(..))
+import Modes exposing (Mode(..))
 
 import GraphDefs
 
 
 
-offsetKeyboardPos = 200
+
 -- State -----------------------------------------------------------------------
 -- core data that will be saved
 
@@ -40,28 +41,6 @@ type alias Model =
 
 
 
-
-
-
-
-
-deltaKeyboardPos : (Int, Int) -> Point
-deltaKeyboardPos (x, y) =
-   (toFloat x * offsetKeyboardPos, toFloat y * offsetKeyboardPos)
-
-getKeyboardPos : InputPosition -> (Int, Int)
-getKeyboardPos pos =
-    case pos of       
-       InputPosKeyboard p -> p
-       _  -> (0, 0)
-
-keyboardPosToPoint : Model -> NodeId -> (Int, Int) -> Point
-keyboardPosToPoint m chosenNode p =
-   case Graph.getNode chosenNode m.graph of
-      Nothing -> m.mousePos
-      Just { pos } -> 
-         let delta = deltaKeyboardPos p in
-         Point.add pos delta
 
 -- inputPositionPoint : Point -> InputPosition -> Point
 -- inputPositionPoint source pos =
@@ -375,5 +354,13 @@ collageGraphFromGraph model =
                       }
         )
 
+
+keyboardPosToPoint : Model -> NodeId -> (Int, Int) -> Point
+keyboardPosToPoint m chosenNode p =
+   case Graph.getNode chosenNode m.graph of
+      Nothing -> m.mousePos
+      Just { pos } -> 
+         let delta = InputPosition.deltaKeyboardPos p in
+         Point.add pos delta
 
 

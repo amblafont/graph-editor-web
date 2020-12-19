@@ -4,12 +4,13 @@ import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
 import QuickInput exposing (NonEmptyChain)
+import InputPosition exposing (InputPosition)
 
 
 type Mode
     = DefaultMode
     | NewArrow NewArrowState
-    | Move Point
+    | Move MoveState
       -- the list of ids to be edited
     | RenameMode String (List Graph.Id)
     | DebugMode
@@ -20,6 +21,7 @@ type Mode
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
 
+type alias MoveState = { orig : Point, pos : InputPosition }
 
 type alias SplitArrowState =
     { chosenEdge : EdgeId
@@ -29,10 +31,7 @@ type alias SplitArrowState =
     }
 
 
-type InputPosition
-    = InputPosMouse
-    | InputPosKeyboard ( Int, Int )
-    | InputPosGraph Graph.Id
+
 
 
 type alias NewArrowState =

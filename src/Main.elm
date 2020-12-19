@@ -62,6 +62,7 @@ import Geometry exposing (Rect)
 import Geometry exposing (rectEnveloppe)
 import Html.Events
 import Modes exposing (SplitArrowState)
+import InputPosition exposing (InputPosition(..))
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -163,19 +164,14 @@ graph_RenameMode s l m =
                                
                                m.graph 
 
-graph_MoveNode : Model -> Point -> Graph NodeLabel EdgeLabel
-graph_MoveNode model orig =
+graph_MoveNode : Model -> Modes.MoveState -> Graph NodeLabel EdgeLabel
+graph_MoveNode model { orig, pos } =
     let nodes = allSelectedNodes model in
     let delta = 
-    {-  case selectedObjs model of
-            [ _ ] ->
-             let center = nodes
-                    |> List.map (.label >> .pos)
-                    |> Geometry.rectEnveloppe 
-                    |> Geometry.centerRect
-             in        
-             Point.subtract model.mousePos center -}
-             Point.subtract model.mousePos orig
+          case pos of
+            InputPosKeyboard p -> InputPosition.deltaKeyboardPos p
+            _ -> 
+              Point.subtract model.mousePos orig
     in
     (nodes |> List.map .id
            |> Graph.updateNodes) 
@@ -240,7 +236,7 @@ update msg model =
         NewArrow astate -> Modes.NewArrow.update astate msg m
             -- update_Modes.NewArrow astate msg m
         RenameMode s l -> update_RenameMode s l msg m
-        Move p -> update_MoveNode msg p m
+        Move s -> update_MoveNode msg s m
         DebugMode -> update_DebugMode msg m
         NewNode -> update_NewNode msg m
         SquareMode state -> Modes.Square.update state msg m
@@ -264,14 +260,16 @@ update_QuickInput ch msg model =
                 noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
         _ -> noCmd model
 
-update_MoveNode : Msg -> Point -> Model -> (Model, Cmd Msg)
-update_MoveNode msg orig model =
+update_MoveNode : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
+update_MoveNode msg state model =
     case msg of
         -- MouseMove pageX pageY -> { model | graph = g}
         KeyChanged False (Control "Escape") -> switch_Default model
         MouseClick ->
-             switch_Default {model | graph = graph_MoveNode model orig}
-        _ -> noCmd model
+             switch_Default {model | graph = graph_MoveNode model state}
+        _ ->       
+            noCmd { model | mode = Move { state | 
+                             pos = InputPosition.update state.pos msg }}
 
 
 
@@ -344,7 +342,7 @@ update_DefaultMode msg model =
                         then
                           -- Nothing is selected
                           DefaultMode
-                        else Move model.mousePos
+                        else Move { orig = model.mousePos, pos = InputPosMouse }
                      }
                      
         KeyChanged False (Control "Delete") ->
@@ -414,7 +412,7 @@ graphDrawingFromModel m =
         RectSelect p r -> collageGraphFromGraph m <| selectGraph m p r
         NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
-        Move orig -> graph_MoveNode m orig |> 
+        Move s -> graph_MoveNode m s |> 
             collageGraphFromGraph m 
         RenameMode s l ->
             let g = graph_RenameMode s l m in
@@ -553,6 +551,7 @@ helpMsg model =
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
                              ++ Modes.SplitArrow.help |> msg
+        Move _ -> "Mode move. Use mouse or h,j,k,l." |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
 
 
