@@ -71,6 +71,9 @@ port onMouseMove : JE.Value -> Cmd a
 -- which is a js object)
 port onMouseMoveFromJS : (Point -> a) -> Sub a
 
+port preventDefault : JE.Value -> Cmd a
+port onSlashKey : (JE.Value -> a) -> Sub a
+
 -- tell js to save the graph
 port saveGraph : (List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> Cmd a
 -- js tells us to load the graph
@@ -109,14 +112,14 @@ subscriptions m = Sub.batch
                         else (Msg.noOp, False))
                          HtmlDefs.tabDecoder), -}
       E.onKeyUp (D.map (KeyChanged False) HtmlDefs.keyDecoder),
-      onMouseMoveFromJS MouseMove
+      onMouseMoveFromJS MouseMove,
+      onSlashKey 
+           ( \e -> 
+              case m.mode of
+                DefaultMode -> Do <| preventDefault e
+                _ -> Msg.noOp )
     ]
-  -- ++
-  --   if True -- captureKeyboard m
-  --   then
-  --       [E.onKeyUp (D.map (KeyChanged False) keyDecoder)]
-  --   else
-        -- []
+
 
 
 

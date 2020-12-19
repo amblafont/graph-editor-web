@@ -57,11 +57,8 @@
             document.addEventListener("keydown", function(event)
             {
                 // Tab key
-                if (event.keyCode === 9
-                // slash key
-                || event.keyCode === 191)
-                    event.preventDefault();
-
+                if (event.keyCode === 9)
+                    event.preventDefault();          
             }
             );
         </script>
@@ -174,6 +171,10 @@
                  app.ports.onMouseMoveFromJS.send([x, y]);
              }
          });
+
+         app.ports.preventDefault.subscribe(function (e) {
+             e.preventDefault();
+         });
          // asks the user to download some file, generated from content
          function download(content, fileName, contentType) {
              var a = document.createElement("a");
@@ -185,6 +186,15 @@
          app.ports.saveGraph.subscribe(function(d) {
              download(JSON.stringify(d), 'graph.json', 'application/json');
          });
+
+         document.addEventListener("keydown", function(event)
+            {
+                if    // slash key
+                  (event.key === "/")
+                    app.ports.onSlashKey.send(event);
+
+            }
+        );
         </script>
     </body>
 </html>
