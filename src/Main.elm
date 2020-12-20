@@ -319,32 +319,33 @@ update_DefaultMode msg model =
         KeyChanged False (Character 'a') -> Modes.NewArrow.initialise model
         KeyChanged False (Character 'c') ->  noCmd <|
            initialiseMoveMode {model | graph = GraphDefs.cloneSelected model.graph (30, 30)}
-        KeyChanged False (Character 's') -> Modes.Square.initialise model 
-        KeyChanged False (Character '/') -> Modes.SplitArrow.initialise model 
+        KeyChanged False (Character 'd') ->
+            noCmd <| { model | mode = DebugMode }
+        KeyChanged False (Character 'g') -> 
+            noCmd <| initialiseMoveMode model
+        KeyChanged False (Character 'i') -> 
+           noCmd <| case activeObj model of
+                      OEdge id -> { model | graph = Graph.invertEdge id model.graph }                                         
+                      _ -> model
+        
         KeyChanged False (Character 'r') -> 
             let ids = activeObj model |> objId |> Maybe.map List.singleton 
                      |> Maybe.withDefault []
             in
             noCmd <| initialise_RenameMode ids model
+        KeyChanged False (Character 's') -> Modes.Square.initialise model 
+        
         KeyChanged False (Character 'p') -> noCmd <| { model | mode = NewNode }
         KeyChanged False (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
                                                  Msg.focusId quickInputId)
-        KeyChanged False (Character 'i') -> 
-           noCmd <| case activeObj model of
-                      OEdge id -> { model | graph = Graph.invertEdge id model.graph }                                         
-                      _ -> model
-        -- KeyChanged False (Character 'u') ->
-        --     noCmd {model | unnamedFlag = not model.unnamedFlag} 
-        -- KeyChanged False (Character 'b') -> ({model | blitzFlag = not model.blitzFlag}, Cmd.none)
-        KeyChanged False (Character 'd') ->
-            noCmd <| { model | mode = DebugMode }
-        KeyChanged False (Character 'g') -> 
-            noCmd <| initialiseMoveMode model
+
+        KeyChanged False (Character 'x') ->
+            noCmd <| { model | graph = GraphDefs.removeSelected model.graph} 
+        
+        KeyChanged False (Character '/') -> Modes.SplitArrow.initialise model 
                      
         KeyChanged False (Control "Delete") ->
             noCmd <| { model | graph = GraphDefs.removeSelected model.graph }
-        KeyChanged False (Character 'x') ->
-            noCmd <| { model | graph = GraphDefs.removeSelected model.graph} 
         NodeClick n e ->
             noCmd <| addOrSetSel e.keys.shift (ONode n) model
         EdgeClick n e ->
