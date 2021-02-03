@@ -169,11 +169,12 @@ edgeDrawing edgeId {- from to -} label q =
     } -}
 
 
-graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> (Drawing Msg, List (Edge EdgeDrawingLabel))
+graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 graphDrawing g0 =
      
       let padding = 5 in
-      let (g, missing) = Graph.mapRec           
+      let g = Graph.mapRecAll     
+             identity identity      
               (\id n -> { drawing = nodeDrawing (Node id n), 
                       posDims = {
                       dims = 
@@ -202,5 +203,4 @@ graphDrawing g0 =
       let
           drawings = nodes ++ edges
       in
-          (
-          Drawing.group drawings, missing)
+          Drawing.group drawings

@@ -3,7 +3,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
-   setNodesSelection, clearSelection, selectedGraph,
+   addNodesSelection, clearSelection, selectedGraph,
    removeSelected,
    getNodesAt, cloneSelected
    )
@@ -13,6 +13,7 @@ import Geometry
 import ArrowStyle.Core
 import ArrowStyle exposing (ArrowStyle)
 import Polygraph as Graph exposing (Graph, NodeId)
+
 
 type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool}
@@ -84,14 +85,19 @@ getEdgeDims n =
         Nothing -> defaultDims n.label
         Just p -> p
 
-
-setNodesSelection : Graph NodeLabel e -> (NodeLabel -> Bool) -> Graph NodeLabel e
-setNodesSelection g f =
-    Graph.map 
-        (\_ n -> { n | selected = f n })(\_ -> identity) g
+-- select nodes and everything between them
+addNodesSelection : Graph NodeLabel EdgeLabel -> (NodeLabel -> Bool) -> Graph NodeLabel EdgeLabel
+addNodesSelection g f =
+      Graph.mapRecAll .selected
+        .selected
+       (\_ n -> { n | selected = f n || n.selected})
+       (\_ s1 s2 e -> {e | selected = (s1 && s2) || e.selected })
+       g
+    -- Graph.map 
+    --    (\_ n -> { n | selected = f n })(\_ -> identity) g
 
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
-selectedGraph = Graph.filter .selected .selected
+selectedGraph = Graph.keepBelow .selected .selected
 
 removeSelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 removeSelected =  Graph.drop .selected .selected

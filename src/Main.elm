@@ -1,5 +1,7 @@
 port module Main exposing (main)
 -- TODO: avoir mode dans Model, et separer le fichier state de Square
+-- move: with keyboard
+-- copier ?
 
 
 -- https://package.elm-lang.org/packages/mpizenberg/elm-pointer-events/4.0.2/Html-Events-Extra-Mouse
@@ -9,6 +11,7 @@ port module Main exposing (main)
 -- hover for bent lines
 -- tab: prevent default
 -- bug avec square
+
 
 
 import Html.Events.Extra.Mouse as MouseEvents
@@ -405,8 +408,8 @@ selectGraph : Model -> Point -> Bool -> Graph NodeLabel EdgeLabel
 selectGraph m orig keep = 
    let selRect = (Geometry.makeRect orig m.mousePos) in
    let g = if keep then m.graph else GraphDefs.clearSelection m.graph in
-   let isSel n = Geometry.isInRect selRect n.pos || (n.selected && keep) in
-   GraphDefs.setNodesSelection g isSel
+   let isSel n = Geometry.isInRect selRect n.pos in
+   GraphDefs.addNodesSelection g isSel
    
 
 
@@ -592,7 +595,8 @@ additionnalDrawing m =
 
 view : Model -> Html Msg
 view model =
-    let (drawings, missings) = graphDrawing (graphDrawingFromModel model) in
+    let missings = Graph.invalidEdges model.graph in
+    let drawings= graphDrawing (graphDrawingFromModel model) in
     let nmissings = List.length missings in
     Html.div [] [
          Html.button [Html.Events.onClick (save model)

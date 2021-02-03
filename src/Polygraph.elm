@@ -2,15 +2,14 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      newNode, newEdge,
      update, updateNode, updateEdge, updateNodes, invertEdge,
      getNode, getEdge, get, removeNode, removeEdge,
-     map, mapRec,
+     map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
-     filterNodes, filter,
+     filterNodes, keepBelow,
      Node, Edge, nextId,
      incomings, outgoings, drop,
      union)
 import IntDict exposing (IntDict)
-
-
+import IntDictExtra 
 
 
 
@@ -93,20 +92,9 @@ newEdge g i1 i2 e = newObject g <| EdgeObj i1 i2 e
 
 
 removeList : List Id -> Graph n e -> Graph n e
-removeList l (Graph g) =
-   case l of 
-     [] -> Graph g
-     t :: q ->
-         let gt = IntDict.remove t g in
-         let newl =
-              IntDict.filter (\ _ o -> case o of
-                 EdgeObj i1 i2 _ -> i1 == t || i2 == t
-                 _ -> False
-              ) gt |> IntDict.keys
-         in
-           removeList (newl ++ q) (Graph gt)
-           
-
+removeList l (Graph d) =
+   IntDictExtra.removeList l d |> Graph |> sanitise
+    
 
 remove : Id -> Graph n e -> Graph n e
 remove id = removeList [id]
@@ -188,107 +176,35 @@ updateNodes l f g =
 
 -- tail recursive function
 
-{- 
-
-type MapRecObj a n1 e1 n2 e2 =
+type MapRecObj n1 e1 n2 e2 =
     Input (Object n1 e1)
-  | Output a (Object n2 e2)
+  | Output (Object n2 e2)
   -- impossible to affect
 --   | Missing
   -- we have asked for inspecting e1
   | Waiting Id Id e1
-mapRecAux : 
-      (n1 -> a)
-      -> (e1 -> a)
-      -> (Id -> n1 -> n2) 
-      -- ah oui c'est pas bon...
-      -> (Id -> a -> a -> e1 -> e2)  
-       -- input objects
-       -> IntDict (MapRecObj a n1 e1 n2 e2)
-       -- to be treated objects
-       -> List Id
-       -- Treated objects       
-       -> IntDict (MapRecObj a n1 e1 n2 e2)
-mapRecAux cn ce fn fe dict ids =
-   let rec = mapRecAux cn ce fn fe in
-   let ins id o = IntDict.insert id o dict in
-    case ids of
-       [] -> dict
-       id :: tailIds ->
-                   
-         case IntDict.get id dict of           
-            Just (Input (NodeObj n)) ->
-                  rec 
-                      (ins id (Output (cn n) <| NodeObj <| fn id n)) 
-                      tailIds                         
-            Just (Input (EdgeObj i1 i2 e)) ->
-                  rec (ins id <| Waiting i1 i2 e) (i1 :: i2 :: id :: tailIds)
-            Just (Waiting i1 i2 e) ->
-                  case (IntDict.get i1 dict, IntDict.get i2 dict) of                  
-                     (Just (Output a1 o1), Just (Output a2 o2)) ->
-                        rec
-                           (ins id 
-                               (Output (ce e) <| EdgeObj i1 i2 <| 
-                                       fe id a1 a2 e) 
-                                ) 
-                               tailIds
-                     _ ->  rec dict tailIds
-                   
-            _ -> rec dict tailIds
 
-mapRec : (n1 -> a)
-      -> (e1 -> a)
-    -> (Id -> n1 -> n2) 
-    -> (Id -> a -> a -> e1 -> e2) 
-    -> Graph n1 e1 -> (Graph n2 e2,  List (Edge e1))
-mapRec cn ce fn fe (Graph g) = 
-   let dict = mapRecAux cn ce fn fe
-        (IntDict.map (\_ -> Input) g)
-        (IntDict.keys g) 
-   in
-   let l = IntDict.toList dict in
-   let missings = l
-          |> List.filterMap 
-           (\ (id, o) -> 
-               case o of
-                  Waiting i1 i2 e -> Just <| { id = id, from = i1, to = i2, label = e}
-                  _ -> Nothing)
-   in
-   --  Sadly, there is no IntDict.filterMap
-   let gf = l
-         |> List.filterMap (\(id, o) ->
-             case o of
-                  Output _ o2 -> Just (id, o2)
-                  _ -> Nothing)
-         |> IntDict.fromList  
-        
-   in
-   (Graph gf, missings) -}
 
-type MapRecObj a n1 e1 =
-    Input (Object n1 e1)
-  | Output (Object a a)
-  -- impossible to affect
---   | Missing
-  -- we have asked for inspecting e1
-  | Waiting Id Id e1
 
 mapRecAux :      
-         (NodeId -> n1 -> a) 
+         
+     (n2 -> a)
+   -> (e2 -> a)
+   -> (NodeId -> n1 -> n2) 
       -- ah oui c'est pas bon...
-      -> (EdgeId -> a -> a -> e1 -> a)  
+      -> (EdgeId -> a -> a -> e1 -> e2)  
        -- input objects
-       -> IntDict (MapRecObj a n1 e1)
+       -> IntDict (MapRecObj n1 e1 n2 e2)
        -- to be treated objects
        -> List Id
        -- Treated objects       
-       -> IntDict (MapRecObj a n1 e1)
-mapRecAux fn fe dict ids =
+       -> IntDict (MapRecObj n1 e1 n2 e2)
+mapRecAux cn ce fn fe dict ids =
    let getA o = case o of
-         NodeObj a -> a
-         EdgeObj _ _ a -> a
+         NodeObj n -> cn n
+         EdgeObj _ _ e -> ce e
    in
-   let rec = mapRecAux fn fe in
+   let rec = mapRecAux cn ce fn fe in
    let ins id o = IntDict.insert id o dict in
     case ids of
        [] -> dict
@@ -316,15 +232,14 @@ mapRecAux fn fe dict ids =
                      _ ->  rec dict tailIds
                    
             _ -> rec dict tailIds
--- returns also the list of edges that could not be treated
-mapRec : 
-       (NodeId -> n1 -> a) 
-    -> (EdgeId -> a -> a -> e1 -> a) 
-    -> Graph n1 e1 -> (Graph a a,  List (Edge e1))
-mapRec fn fe (Graph g) = 
-   let dict = mapRecAux fn fe
+
+
+invalidEdges : Graph n e -> List (Edge e)
+invalidEdges (Graph g) =
+   let dict = mapRecAux (always ()) (always ()) 
+        (always identity) (\_ _ _ -> identity)
         (IntDict.map (\_ -> Input) g)
-        (IntDict.keys g) 
+        (IntDict.keys g)
    in
    let l = IntDict.toList dict in
    let missings = l
@@ -333,17 +248,49 @@ mapRec fn fe (Graph g) =
                case o of
                   Waiting i1 i2 e -> Just <| { id = id, from = i1, to = i2, label = e}
                   _ -> Nothing)
+   in        
+   missings
+     
+-- remove invalid edges
+sanitise : Graph n e -> Graph n e
+sanitise ((Graph d) as g) =
+   let ids = invalidEdges g |> List.map .id in
+    IntDictExtra.removeList ids d |> Graph
+
+
+-- returns also the list of edges that could not be treated
+mapRecAll : 
+      (n2 -> a)
+   -> (e2 -> a)
+   ->  (NodeId -> n1 -> n2) 
+   -> (EdgeId -> a -> a -> e1 -> e2) 
+   -> Graph n1 e1 -> Graph n2 e2
+mapRecAll cn ce fn fe (Graph g) = 
+   mapRec cn ce fn fe (IntDict.keys g) (Graph g)
+
+-- returns also the list of edges that could not be treated
+mapRec : 
+      (n2 -> a)
+   -> (e2 -> a)
+   ->  (NodeId -> n1 -> n2) 
+    -> (EdgeId -> a -> a -> e1 -> e2)
+    -> List Id
+    -> Graph n1 e1 -> Graph n2 e2
+mapRec cn ce fn fe ids (Graph g) = 
+   let dict = mapRecAux cn ce fn fe
+        (IntDict.map (\_ -> Input) g)
+        ids 
    in
-   --  Sadly, there is no IntDict.filterMap
-   let gf = l
-         |> List.filterMap (\(id, o) ->
+   let gf = IntDictExtra.filterMap
+          (\ id o ->
              case o of
-                  Output o2 -> Just (id, o2)
-                  _ -> Nothing)
-         |> IntDict.fromList  
-        
+                  Output o2 -> Just o2
+                  _ -> Nothing) dict       
    in
-   (Graph gf, missings)
+   Graph gf
+   
+
+
 
 
 rawFilter : (n -> Bool) -> (e -> Bool) -> GraphRep n e -> GraphRep n e
@@ -351,6 +298,8 @@ rawFilter fn fe =
   IntDict.filter (\_ o -> case o of
                              EdgeObj _ _ e -> fe e 
                              NodeObj n -> fn n)
+
+
 
 -- if an element is dropped, all its ascendants will be dropped
 -- as well
@@ -361,15 +310,34 @@ drop fn fe (Graph g) =
    in
    removeList (IntDict.keys g2) (Graph g)
 
+
 -- if an edge is kept, all its descendants will also be
 -- whether or not they are explicitely kept
-filter : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
-filter fn fe (Graph g) =
+keepBelow : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
+keepBelow fn fe (Graph g) =
    let g2 = rawFilter fn fe g
    in
-   let dict = mapRecAux (\_ _ -> ()) (\_ _ _ _ -> ())
-        (IntDict.map (\_ -> Input) g)
+   let dict = mapRec (always ()) (always ()) (\_ -> identity) (\_ _ _ -> identity)
+        
         (IntDict.keys g2) 
+        (Graph g)
+   in
+   
+   dict
+   -- IntDict.intersect g dictIds |> Graph 
+
+-- generates the full embedded subgraph containing
+-- the given objects and everything between them
+-- (the dual of filter)
+{- keepUp : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
+keepUp fn fe (Graph g) =    
+   let dict = mapRec fn fe (\_ -> fn) 
+         (\_ b1 b2 e -> 
+            -- on le garde si la source et le but sont deja dedans
+            (b1 && b2) ||
+             fe e)
+         (IntDict.map (\_ -> Input) g)
+         (IntDict.keys g) 
    in
    let dictIds = IntDict.filter 
           (\_ o -> case o of 
@@ -377,7 +345,7 @@ filter fn fe (Graph g) =
                      _ -> False )
          dict
    in
-   IntDict.intersect g dictIds |> Graph
+   IntDict.intersect g dictIds |> Graph -}
 
 incomings : Id -> Graph n e -> List (Edge e)
 incomings id g =
