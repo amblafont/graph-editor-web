@@ -265,11 +265,12 @@ update_QuickInput ch msg model =
 
 update_MoveNode : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
 update_MoveNode msg state model =
+    let movedRet = switch_Default {model | graph = graph_MoveNode model state} in
     case msg of
         -- MouseMove pageX pageY -> { model | graph = g}
         KeyChanged False (Control "Escape") -> switch_Default model
-        MouseClick ->
-             switch_Default {model | graph = graph_MoveNode model state}
+        MouseClick -> movedRet
+        KeyChanged False (Control "Enter") -> movedRet
         _ ->       
             noCmd { model | mode = Move { state | 
                              pos = InputPosition.update state.pos msg }}
@@ -560,7 +561,7 @@ helpMsg model =
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
                              ++ Modes.SplitArrow.help |> msg
-        Move _ -> "Mode move. Use mouse or h,j,k,l." |> msg
+        Move _ -> "Mode move. Use mouse or h,j,k,l. [RET] or [click] to confirm" |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
 
 
