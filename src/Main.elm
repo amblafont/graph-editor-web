@@ -121,6 +121,7 @@ subscriptions m = Sub.batch
            ( \e -> 
               case m.mode of
                 DefaultMode -> Do <| preventDefault e
+                SplitArrow _ -> Do <| preventDefault e
                 _ -> Msg.noOp )
     ]
 

@@ -5,6 +5,7 @@ import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
 import QuickInput exposing (NonEmptyChain)
 import InputPosition exposing (InputPosition)
+import GraphDefs
 
 
 type Mode
@@ -28,6 +29,8 @@ type alias SplitArrowState =
     , source : Graph.Id
     , target : Graph.Id
     , pos : InputPosition
+    , label : GraphDefs.EdgeLabel -- original edge label
+    , labelOnSource : Bool -- shall we transfer the existing label from the source
     }
 
 

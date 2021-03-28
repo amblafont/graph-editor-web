@@ -5,7 +5,7 @@ module Modes.SplitArrow exposing (graphDrawing, initialise, update, help)
 -- import Graph exposing (..)
 
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
-import Maybe exposing (withDefault)
+import Maybe
 import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
@@ -20,10 +20,6 @@ import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 
 
 
-
--- second argument: the n-th possibility
-
-
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
     case 
@@ -34,8 +30,10 @@ initialise m =
       Just id ->        
         Graph.getEdge id m.graph
         |> Maybe.map 
-        (\(i1, i2, _) -> noCmd {m | mode = SplitArrow 
-        { chosenEdge = id, source = i1, target = i2, pos = InputPosMouse}
+        (\(i1, i2, l) -> noCmd {m | mode = SplitArrow 
+        { chosenEdge = id, source = i1, target = i2, pos = InputPosMouse,
+          label = l,
+          labelOnSource = True}
         })
         
         -- |> Maybe.map
@@ -95,20 +93,22 @@ stateInfo m state =
               _ -> makeInfo m.mousePos                              
            
     in
-    let (g1, ne1) = (Graph.newEdge g state.source n GraphDefs.emptyEdge) in
-    let (g2, ne2) = (Graph.newEdge g1 n state.target GraphDefs.emptyEdge) in
+    let (l1, l2) = 
+           if state.labelOnSource then 
+             (state.label, GraphDefs.emptyEdge)
+           else
+             (GraphDefs.emptyEdge, state.label)
+    in
+    let (g1, ne1) = (Graph.newEdge g state.source n l1) in
+    let (g2, ne2) = (Graph.newEdge g1 n state.target l2) in
     { graph = Graph.removeEdge state.chosenEdge g2,
       created = created,
       movedNode = n,
       ne1 = ne1,
       ne2 = ne2 }
-    
    
 
 
-
-
-     
 
 
 
@@ -124,23 +124,24 @@ graphDrawing m state =
 update : SplitArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let next finish = nextStep model finish state in
-    case msg of   
-
-   
-       
+    let updateState st = { model | mode = SplitArrow st } in
+    case msg of  
         KeyChanged False (Control "Escape") -> switch_Default model
+        KeyChanged False (Character '/') -> noCmd <| updateState
+           { state | labelOnSource = not state.labelOnSource } 
         MouseClick -> next False          
         KeyChanged False (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
         KeyChanged False (Control "Tab") -> next False
         
         _ -> noCmd 
-            { model | mode = SplitArrow 
-            { state | pos = InputPosition.updateNoKeyboard state.pos msg } }
-
+             <| updateState 
+             { state | pos = InputPosition.updateNoKeyboard state.pos msg } 
+           
 help : String
 help =
             "[ESC] cancel, [click] name the point (if new), "
-             ++ "[RET] terminate the square creation"             
+            ++ "[/] to move the existing label on the other edge, "
+            ++ "[RET] terminate the square creation"             
              
       
