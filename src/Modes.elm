@@ -22,7 +22,12 @@ type Mode
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
 
-type alias MoveState = { orig : Point, pos : InputPosition }
+type alias MoveState = 
+   { orig : Point,  -- mouse original point at the beginning of the move mode
+     -- this was used to compute the move relative to this point, but this
+     -- is no longer used
+      pos : InputPosition, 
+    merge : Bool }
 
 type alias SplitArrowState =
     { chosenEdge : EdgeId

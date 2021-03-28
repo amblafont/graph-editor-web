@@ -1,6 +1,6 @@
 module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      newNode, newEdge,
-     update, updateNode, updateEdge, updateNodes, invertEdge,
+     update, updateNode, updateEdge, updateNodes, invertEdge, merge,
      getNode, getEdge, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
@@ -168,10 +168,14 @@ fromNodesAndEdges ln le =
 filterNodes : Graph n e -> (n -> Bool) -> List (Node n)
 filterNodes g f = nodes g |> List.filter (f << .label)
 
-updateNodes : List NodeId -> (a -> a) -> Graph a b -> Graph a b
+{- updateNodes : List NodeId -> (a -> a) -> Graph a b -> Graph a b
 updateNodes l f g =
   List.foldl (\ id g2 -> updateNode id f g2) g l
+  -}
 
+updateNodes : List (Node a) -> Graph a b -> Graph a b
+updateNodes l g =
+  List.foldl (\ { id, label } g2 -> updateNode id (always label) g2) g l
 
 
 -- tail recursive function
@@ -363,6 +367,21 @@ invertEdge id (Graph g) =
               Just (EdgeObj i1 i2 l) -> Just (EdgeObj i2 i1 l)
               _ -> e
       ) g |> Graph
+
+-- merge two objects: the first one is kept, and all the
+-- objects above the second one refers then to the first one.
+-- Hence, the nature of the new object (edge/node) depends
+-- only on the first object
+merge : Id -> Id -> Graph n e -> Graph n e
+merge i1 i2 (Graph g) =
+   g |> IntDict.map (\_ o -> case o of
+                   EdgeObj j1 j2 e ->
+                        let repl k = if k == i2 then i1 else k in
+                        EdgeObj (repl j1) (repl j2) e
+                   NodeObj _ -> o)
+     |> IntDict.remove i2
+     |> Graph                
+
 
 
 addId : Int -> GraphRep n e -> GraphRep n e

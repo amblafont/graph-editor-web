@@ -168,19 +168,52 @@ graph_RenameMode s l m =
                                
                                m.graph 
 
-graph_MoveNode : Model -> Modes.MoveState -> Graph NodeLabel EdgeLabel
-graph_MoveNode model { orig, pos } =
+info_MoveNode : Model -> Modes.MoveState -> 
+   { graph : Graph NodeLabel EdgeLabel,
+   -- The graph is not valid if we are in merge mode
+   -- and no object is pointed at
+     valid : Bool }
+info_MoveNode model { orig, pos, merge } =
     let nodes = allSelectedNodes model in
-    let delta = 
-          case pos of
-            InputPosKeyboard p -> InputPosition.deltaKeyboardPos p
-            _ -> 
-              Point.subtract model.mousePos orig
+    let updNode delta {id, label} = 
+          {id = id, label = { label | pos = Point.add label.pos delta }}
     in
-    (nodes |> List.map .id
-           |> Graph.updateNodes) 
-           ( \n -> { n | pos = Point.add n.pos delta })
-     model.graph
+    let moveNodes delta = nodes |> List.map (updNode delta) in
+   --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) model.graph in
+    let mkRet movedNodes = { graph = Graph.updateNodes movedNodes model.graph, valid = not merge } in
+    let retMerge movedNodes =           
+           case movedNodes of
+              [ n ] ->         
+                case GraphDefs.getNodesAt model.graph n.label.pos of
+                  [ i ] -> { graph = Graph.merge i n.id model.graph, valid = True }
+                  _ -> mkRet movedNodes
+              _ -> mkRet movedNodes      
+    in       
+    let retDelta delta =
+            let movedNodes = moveNodes delta in
+            if merge then
+                retMerge movedNodes
+            else
+                mkRet movedNodes      
+          
+    in
+   
+    let mouseDelta = Point.subtract           
+          model.mousePos
+          ((Geometry.rectEnveloppe <| List.map (.pos << .label) nodes) |> Geometry.centerRect)
+    -- orig 
+    in
+    case pos of
+      InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos p
+      InputPosGraph id ->         
+         if not merge then 
+            retDelta mouseDelta
+         else            
+            case nodes of 
+               [n] -> {graph = Graph.merge id n.id model.graph, valid = True}
+               _ -> retDelta mouseDelta
+      InputPosMouse -> retDelta mouseDelta
+
 
 
 
@@ -266,15 +299,30 @@ update_QuickInput ch msg model =
 
 update_MoveNode : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
 update_MoveNode msg state model =
-    let movedRet = switch_Default {model | graph = graph_MoveNode model state} in
+    let movedRet = 
+           let info = info_MoveNode model state in
+           if info.valid then
+              switch_Default {model | graph = info.graph}
+           else
+              noCmd model
+    in
+    let updateState st = { model | mode = Move st } in
     case msg of
         -- MouseMove pageX pageY -> { model | graph = g}
         KeyChanged False (Control "Escape") -> switch_Default model
+        KeyChanged False (Character 'm') ->
+          noCmd <| 
+            let newMerge = 
+                   (not state.merge) &&
+                    (objToNode (activeObj model) /= Maybe.Nothing)
+                  
+            in
+            updateState { state | merge = newMerge }
+          
         MouseClick -> movedRet
         KeyChanged False (Control "Enter") -> movedRet
         _ ->       
-            noCmd { model | mode = Move { state | 
-                             pos = InputPosition.update state.pos msg }}
+            noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
 
@@ -372,7 +420,7 @@ initialiseMoveMode model =
                         then
                           -- Nothing is selected
                           DefaultMode
-                        else Move { orig = model.mousePos, pos = InputPosMouse }
+                        else Move { orig = model.mousePos, pos = InputPosMouse, merge = False }
                      }                 
 
 update_DebugMode : Msg -> Model -> (Model, Cmd Msg)
@@ -422,7 +470,7 @@ graphDrawingFromModel m =
         RectSelect p r -> collageGraphFromGraph m <| selectGraph m p r
         NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
-        Move s -> graph_MoveNode m s |> 
+        Move s -> info_MoveNode m s |> .graph |>
             collageGraphFromGraph m 
         RenameMode s l ->
             let g = graph_RenameMode s l m in
@@ -533,7 +581,7 @@ helpMsg model =
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [r]ename selected object" 
-                ++ ", [g] move selected objects" 
+                ++ ", [g] move selected objects (also merge, if wanted)" 
                 ++ ", [c]lone selected objects" 
                 ++ ", [/] split arrow" 
                 ++ "."
@@ -562,7 +610,13 @@ helpMsg model =
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
                              ++ Modes.SplitArrow.help |> msg
-        Move _ -> "Mode move. Use mouse or h,j,k,l. [RET] or [click] to confirm" |> msg
+        Move { merge } -> "Mode " 
+                ++ (if merge then "merge : move node on top of another one to merge it "
+                    ++ "(only works if one node is selected)" else "move")
+                ++ ". Use mouse or h,j,k,l. [RET] or [click] to confirm."
+                ++ "Press [m] to switch to " ++ (if merge then "move" else "merge")
+                ++ " mode." 
+                  |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
 
 
