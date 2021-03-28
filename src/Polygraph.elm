@@ -380,7 +380,7 @@ merge i1 i2 (Graph g) =
                         EdgeObj (repl j1) (repl j2) e
                    NodeObj _ -> o)
      |> IntDict.remove i2
-     |> Graph                
+     |> Graph |> sanitise         
 
 
 
