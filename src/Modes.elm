@@ -48,12 +48,15 @@ type alias NewArrowState =
 
 type alias SquareState =
     { chosenNode : NodeId
+    , chosenLabel : String
     , n1 : NodeId
+    , n1Label : String
     , n1ToChosen : Bool
-    , e1 : EdgeId
+    , e1 : Graph.Edge GraphDefs.EdgeLabel
     , n2 : NodeId
+    , n2Label : String
     , n2ToChosen : Bool
-    , e2 : EdgeId
+    , e2 : Graph.Edge GraphDefs.EdgeLabel
 
     --   next possibility of square to be tested
     , configuration : Int

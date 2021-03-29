@@ -13,40 +13,55 @@ import List.Extra exposing (uniquePairs, getAt)
 import Modes exposing (SquareState, Mode(..))
 import Model exposing (..)
 import InputPosition exposing (InputPosition(..))
-
+import ArrowStyle
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
+import MyDiff
 
 
 
-possibleSquareStates : Graph n e -> Graph.NodeId {- NodeContext a b -} -> List SquareState
+possibleSquareStates : Graph GraphDefs.NodeLabel GraphDefs.EdgeLabel -> Graph.NodeId {- NodeContext a b -} -> List SquareState
 possibleSquareStates g id =
+    let chosenLabel = Graph.get id .label .label g |> Maybe.withDefault "" in
+    
     -- Boolean: is it going to the node?
     let
         ins = Graph.incomings id g
             -- IntDict.keys nc.incoming
-             |> List.map (\x -> ( x, x.from, True ))
+             |> List.filterMap 
+             (\x -> 
+             Graph.get x.from .label .label g |>
+             Maybe.map (\ labelNode -> 
+             ( x, (labelNode, x.from), 
+             True )))
 
         outs = Graph.outgoings id g
             -- IntDict.keys nc.outgoing 
-            |> List.map (\x -> ( x, x.to, False ))
+            |> List.filterMap 
+             (\x -> 
+             Graph.get x.to .label .label g |>
+             Maybe.map (\ labelNode -> 
+             ( x, (labelNode, x.to), 
+             False )))
     in
     ins
         ++ outs
         |> uniquePairs
         |> List.map
-            (\( ( e1, n1, i1 ), ( e2, n2, i2 ) ) ->
+            (\( ( e1, (l1,n1), i1 ), ( e2, (l2,n2), i2 ) ) ->
                 { chosenNode = id
-
+                , chosenLabel = chosenLabel
                 --   -- we don't care
                 -- , movedNode = 0
                 , n1 = n1
                 , n2 = n2
-                , e1 = e1.id
-                , e2 = e2.id
+                , e1 = e1
+                , e2 = e2
                 , n1ToChosen = i1
                 , n2ToChosen = i2
                 , configuration = 0
+                , n1Label = l1
+                , n2Label = l2                
                 }
             )
 
@@ -56,7 +71,7 @@ possibleSquareStates g id =
 
 
 
-square_setPossibility : Int -> Graph a b -> NodeId -> Maybe SquareState
+square_setPossibility : Int -> Graph GraphDefs.NodeLabel GraphDefs.EdgeLabel -> NodeId -> Maybe SquareState
 square_setPossibility idx g chosenNode =
     -- Graph.get chosenNode g
     --     |> Maybe.map 
@@ -152,9 +167,24 @@ squareMode_activeObj info =
 
 moveNodeViewInfo : Model -> SquareState -> ( ViewInfo, NodeId, Bool )
 moveNodeViewInfo m data =
+    let flipIf b x1 x2 = if False then (x2, x1) else (x1, x2) in
+    let commute (str1, str2) =                
+                   MyDiff.swapDiff (String.toList str1) 
+                       (String.toList data.chosenLabel)
+                       (String.toList str2)
+                       |> Maybe.map String.fromList
+                       |> Maybe.withDefault "!"
+    in
+    let (labelNode, labelEdge1, labelEdge2) = if data.n1ToChosen == not data.n2ToChosen then 
+                       (commute (data.n1Label, data.n2Label), 
+                       commute <| flipIf data.n1ToChosen data.n1Label data.e2.label.label, 
+                       commute <| flipIf data.n1ToChosen data.e1.label.label data.n2Label
+                       )
+                    else ("", "", "")
+    in
     let
         ( ( g, n ), created ) =
-            mayCreateTargetNode m ""
+            mayCreateTargetNode m labelNode
     in
     {- let
         edges =
@@ -168,8 +198,10 @@ moveNodeViewInfo m data =
     in
     let (e1n1, e1n2) = make_EdgeId data.n1 n <| nToMoved data.n1ToChosen data.n2ToChosen in
     let (e2n1, e2n2) = make_EdgeId data.n2 n <| nToMoved data.n2ToChosen data.n1ToChosen in
-    let (g1, ne1) = (Graph.newEdge g e1n1 e1n2 GraphDefs.emptyEdge) in
-    let (g2, ne2) = (Graph.newEdge g1 e2n1 e2n2 GraphDefs.emptyEdge) in
+    
+    let (g1, ne1) = Graph.newEdge g e1n1 e1n2 <| GraphDefs.newEdgeLabel labelEdge1 ArrowStyle.empty in
+    let (g2, ne2) = Graph.newEdge g1 e2n1 e2n2 <| GraphDefs.newEdgeLabel labelEdge2 ArrowStyle.empty in
+    
         
             {- Graph.newEdge 
             (Graph.newEdge g edges.ne1 GraphDefs.emptyEdge)
@@ -202,11 +234,10 @@ makeEdges data movedNode =
  -}
 makeEdges : SquareState -> EdgeId -> EdgeId -> Edges
 makeEdges data ne1 ne2 =
-    { e1 = data.e1
-    , e2 = data.e2
+    { e1 = data.e1.id
+    , e2 = data.e2.id
     , ne1 = ne1
-    , ne2 = ne2
-
+    , ne2 = ne2    
     -- movedNode = movedNode
     }
 
