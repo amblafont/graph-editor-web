@@ -60,6 +60,8 @@ type alias SquareState =
     , n2ToChosen : Bool
     , e2 : Graph.Edge GraphDefs.EdgeLabel
 
-    --   next possibility of square to be tested
+    -- next possibility of square to be tested (to determine the orientation)
     , configuration : Int
+    -- next possibility of labels to be tested
+    , labelConfiguration : Int
     }

@@ -18,6 +18,7 @@ import Json.Encode as JE
 
 
 -- the model automatically updates its record of HtmlDefs.Keys (shift,alt,ctrl status) in any case
+-- when the message gives it, so there is a kind of redundancy on this matter
 type Msg
   = -- call some js function
     Do (Cmd Msg)

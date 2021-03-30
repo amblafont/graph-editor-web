@@ -17,6 +17,8 @@ import ArrowStyle
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import MyDiff
+import Html exposing (q)
+import Bitwise exposing (and)
 
 
 
@@ -60,6 +62,7 @@ possibleSquareStates g id =
                 , n1ToChosen = i1
                 , n2ToChosen = i2
                 , configuration = 0
+                , labelConfiguration = 0
                 , n1Label = l1
                 , n2Label = l2                
                 }
@@ -164,23 +167,55 @@ squareMode_activeObj info =
     , OEdge info.ne2
     ]
 
+chooseAmong : List Int -> Int -> List Int
+chooseAmong l n =
+   case l of
+      t :: q -> modBy t n :: (chooseAmong q (n // t))
+      [] -> []
+
 
 moveNodeViewInfo : Model -> SquareState -> ( ViewInfo, NodeId, Bool )
 moveNodeViewInfo m data =
-    let flipIf b x1 x2 = if False then (x2, x1) else (x1, x2) in
-    let commute (str1, str2) =                
-                   MyDiff.swapDiff (String.toList str1) 
-                       (String.toList data.chosenLabel)
-                       (String.toList str2)
-                       |> Maybe.map String.fromList
-                       |> Maybe.withDefault "!"
+    
+    {- let insert1 x l = case l of 
+             [] -> [ x ]
+             t :: q -> t :: x :: q
+    in -}
+    
+    let commute str1 str2 =
+      
+           if str1 == "" || str2 == "" then
+              [ ""]
+           else
+                   MyDiff.swapDiffStr (data.n1ToChosen == data.n2ToChosen) str1 
+                       data.chosenLabel
+                       str2                       
+                       
     in
-    let (labelNode, labelEdge1, labelEdge2) = if data.n1ToChosen == not data.n2ToChosen then 
-                       (commute (data.n1Label, data.n2Label), 
-                       commute <| flipIf data.n1ToChosen data.n1Label data.e2.label.label, 
-                       commute <| flipIf data.n1ToChosen data.e1.label.label data.n2Label
-                       )
-                    else ("", "", "")
+    let labelsNode = commute data.n1Label data.n2Label
+        labelsEdge1 = commute data.n1Label data.e2.label.label 
+        labelsEdge2 = commute data.e1.label.label data.n2Label                       
+    in
+      
+           
+
+    let possibleLabels = [labelsNode, labelsEdge1, labelsEdge2] in
+    let lens = List.map List.length possibleLabels in
+    let labels = 
+         if modBy (List.product lens + 1) data.labelConfiguration == 1 then
+           ["", "", ""]
+         else 
+          let lconf = if data.labelConfiguration == 0 then 0 else data.labelConfiguration - 1 in          
+         
+          let ids =  chooseAmong lens lconf in
+            List.map2 getAt ids possibleLabels 
+                       |> List.map (Maybe.withDefault "!!")  --should never happen
+      
+    in
+    let (labelNode, labelEdge1, labelEdge2) =
+          case labels of
+            [a,b,c] -> (a,b,c)
+            _ -> ("!","!","!") --this should never happen
     in
     let
         ( ( g, n ), created ) =
@@ -277,9 +312,10 @@ update state msg model =
     case msg of   
 
    
-        KeyChanged False _ (Character 's') ->
-            
+        KeyChanged False _ (Character 's') ->            
                     square_updatePossibility model state.configuration state.chosenNode
+        KeyChanged False _ (Character 'a') ->
+                    noCmd  { model | mode = SquareMode { state | labelConfiguration = state.labelConfiguration + 1}}                    
 
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
@@ -294,6 +330,7 @@ help : String
 help =
             "[ESC] cancel, [click] name the point (if new), "
              ++ "[RET] terminate the square creation, "
-             ++ " alternative possible [s]quares."
+             ++ " alternative possible [s]quares, "
+             ++ " [a]lternative possible labels."
              
       
