@@ -3,7 +3,7 @@ module Modes exposing (..)
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
-import QuickInput exposing (NonEmptyChain)
+-- import QuickInput exposing (NonEmptyChain)
 import InputPosition exposing (InputPosition)
 import GraphDefs
 
@@ -16,7 +16,7 @@ type Mode
     | RenameMode String (List Graph.Id)
     | DebugMode
     | NewNode
-    | QuickInputMode (Maybe NonEmptyChain)
+   -- | QuickInputMode (Maybe NonEmptyChain)
     | SquareMode SquareState
     | RectSelect Point
     -- Bool -- keep previous selection?

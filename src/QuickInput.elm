@@ -1,5 +1,5 @@
 module QuickInput exposing (..)
-
+-- This is not used anymore
 import Parser exposing (Parser, variable, map, (|.), (|=), succeed, symbol, spaces, oneOf, end, lazy, andThen, backtrackable)
 
 import Set

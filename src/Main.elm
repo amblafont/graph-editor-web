@@ -42,7 +42,7 @@ import Html.Events
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
-import QuickInput exposing (chainParser, NonEmptyChain, orientToPoint)
+-- import QuickInput exposing (chainParser, NonEmptyChain, orientToPoint)
 
 import GraphDrawing exposing (..)
 import Msg exposing (Msg(..))
@@ -245,7 +245,7 @@ update msg model =
             MouseMoveRaw _ keys -> { model | specialKeys = keys }
             MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
             MouseDown e -> { model | specialKeys = e.keys }
-            QuickInput s -> { model | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
+           --  QuickInput s -> { model | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                     -- {model | mousePos = (x, y), statusMsg = "mouse " ++ Debug.toString (x, y)}
             -- KeyChanged False s -> {model | statusMsg = keyToString s}
             -- NodeClick n -> {model | statusMsg = "point " }
@@ -274,7 +274,7 @@ update msg model =
      Loaded g -> noCmd <| createModel g
      _ ->
       case model.mode of
-        QuickInputMode c -> update_QuickInput c msg m 
+        -- QuickInputMode c -> update_QuickInput c msg m 
         DefaultMode -> update_DefaultMode msg m
         RectSelect orig -> update_RectSelect msg orig m.specialKeys.shift m
         NewArrow astate -> Modes.NewArrow.update astate msg m
@@ -286,7 +286,7 @@ update msg model =
         SquareMode state -> Modes.Square.update state msg m
         SplitArrow state -> Modes.SplitArrow.update state msg m
 
-
+{- 
 update_QuickInput : Maybe NonEmptyChain -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
     case msg of
@@ -303,6 +303,7 @@ update_QuickInput ch msg model =
                 in
                 noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
         _ -> noCmd model
+-}
 
 update_MoveNode : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
 update_MoveNode msg state model =
@@ -385,8 +386,8 @@ update_DefaultMode msg model =
         KeyChanged False _ (Character 's') -> Modes.Square.initialise model 
         
         KeyChanged False _ (Character 'p') -> noCmd <| { model | mode = NewNode }
-        KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
-                                                 Msg.focusId quickInputId)
+     --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
+     --                                            Msg.focusId quickInputId)
 
         KeyChanged False _ (Character 'x') ->
             noCmd <| { model | graph = GraphDefs.removeSelected model.graph} 
@@ -465,7 +466,7 @@ graphDrawingFromModel m =
         DefaultMode -> collageGraphFromGraph m m.graph
         RectSelect p -> collageGraphFromGraph m <| selectGraph m p m.specialKeys.shift
         NewNode -> collageGraphFromGraph m m.graph
-        QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
+     --   QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
         Move s -> info_MoveNode m s |> .graph |>
             collageGraphFromGraph m 
         RenameMode s l ->
@@ -489,7 +490,7 @@ graphDrawingFromModel m =
             Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
 
-
+{-
 graphDrawingChain : Graph NodeLabel EdgeLabel -> Maybe NonEmptyChain -> Graph NodeLabel EdgeLabel
 graphDrawingChain g ch = 
     case ch of
@@ -521,6 +522,7 @@ graphDrawingNonEmptyChain g ch loc -- defOrient
                <| GraphDefs.newEdgeLabel label ArrowStyle.empty            
             , source)
 
+-}
 
 type HelpStrType = Bold | Plain
 helpMsgParser_aux : Parser (String, HelpStrType)
@@ -573,7 +575,7 @@ helpMsg model =
                 ++ ", new [p]oint"
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
                 ++ ", [del]ete selected object (also [x])"
-                ++ ", [q]ickInput mode" 
+               --  ++ ", [q]ickInput mode" 
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [r]ename selected object" 
@@ -591,14 +593,14 @@ helpMsg model =
         DebugMode ->
             "Debug Mode. [ESC] to cancel and come back to the default mode. " ++
               Debug.toString model |> Html.text |> List.singleton |> makeHelpDiv
-        QuickInputMode ch ->
+       {- QuickInputMode ch ->
             makeHelpDiv [
             "Mode: QuickInput" ++ Debug.toString model.mode ++ "." |> Html.text,
                 Html.p [] [
                      msg <| " Syntax: v1 -> v2 - edgeLabel >@d v3 vr |down arrow v X | \"uparrow \" ^ end yo."
                     ++ " [RET] to accept the current chain"       
                     ++ ", [ESC] to cancel and comeback to the default mode."]
-                ]
+                ] -}
         NewArrow _ -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
                            ++  Modes.NewArrow.help |> msg
@@ -609,7 +611,7 @@ helpMsg model =
         Move _ -> "Mode Move."                
                    
                 ++ "Use mouse or h,j,k,l. [RET] or [click] to confirm."
-                ++ " Hold [ctrl] to merge the selected node (not an edge) onto another one."                
+                ++ " Hold [ctrl] to merge the selected point onto another node."                
                   |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
 
