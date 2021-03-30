@@ -126,13 +126,13 @@ update state msg model =
     let next finish = nextStep model finish state in
     let updateState st = { model | mode = SplitArrow st } in
     case msg of  
-        KeyChanged False (Control "Escape") -> switch_Default model
-        KeyChanged False (Character '/') -> noCmd <| updateState
+        KeyChanged False _ (Control "Escape") -> switch_Default model
+        KeyChanged False _ (Character '/') -> noCmd <| updateState
            { state | labelOnSource = not state.labelOnSource } 
         MouseClick -> next False          
-        KeyChanged False (Control "Enter") -> next True
+        KeyChanged False _ (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
-        KeyChanged False (Control "Tab") -> next False
+        KeyChanged False _ (Control "Tab") -> next False
         
         _ -> noCmd 
              <| updateState 

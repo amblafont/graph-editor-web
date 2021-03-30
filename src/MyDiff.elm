@@ -37,14 +37,17 @@ apply c l =
 applyAll : List a -> List (Change a) -> List a
 applyAll = List.foldl apply
 
+offset : Change a -> Int
+offset c = List.length c.rep - c.length
+
 commute : Change a -> Change b -> Maybe (Change b, Change a)
 commute c1 c2 = 
     -- TODO: verifeir que ca commute bien
     let ret p2 q2 = Just ({c2 | index = q2}, { c1 | index = p2}) in
     if c1.index < c2.index then
-       ret c1.index (c2.index + c1.length - List.length c1.rep)
+       ret c1.index (c2.index + offset c1)
     else
-       ret (c1.index + List.length c2.rep - c2.length) c2.index
+       ret (c1.index - offset c2) c2.index
    
     
 

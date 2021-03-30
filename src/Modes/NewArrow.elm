@@ -63,14 +63,14 @@ nextStep model finish state =
 {- eyToAction : Msg -> NewArrowStep -> Maybe Action
 keyToAction k step =
    case k of 
-       KeyChanged False (Control "Escape") -> Just Cancel
+       KeyChanged False _ (Control "Escape") -> Just Cancel
        MouseClick ->
            case step of
               NewArrowMoveNode _ -> Just <| ValidateNext
               _ -> Nothing
-       KeyChanged False (Control "Enter") -> Just <| ValidateFinish     
+       KeyChanged False _ (Control "Enter") -> Just <| ValidateFinish     
     --     TabInput -> Just <| ValidateNext
-       KeyChanged False (Control "Tab") -> Just <| ValidateNext
+       KeyChanged False _ (Control "Tab") -> Just <| ValidateNext
        _ -> Nothing -}
             
 
@@ -81,12 +81,12 @@ update state msg model =
       
 
   
-        KeyChanged False (Control "Escape") -> switch_Default model
+        KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
-        KeyChanged False (Control "Enter") -> next True
+        KeyChanged False _ (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
-        KeyChanged False (Control "Tab") -> next False
-        KeyChanged False (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
+        KeyChanged False _ (Control "Tab") -> next False
+        KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
         _ ->          
                    let st2 = { state | style = Msg.updateArrowStyle msg state.style } in
                    let st3 = { st2 | pos = InputPosition.update st2.pos msg} in

@@ -13,14 +13,19 @@ import ArrowStyle exposing (ArrowStyle)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Html.Events.Extra.Mouse as MouseEvents
 import Html
+import Json.Encode as JE
 
 
 
-
+-- the model automatically updates its record of HtmlDefs.Keys (shift,alt,ctrl status) in any case
 type Msg
   = -- call some js function
     Do (Cmd Msg)
-  | KeyChanged Bool Key
+    -- on reception of this message, the js function onMouseMove is called
+    -- which sends back a MouseMove message with the relative position to 
+    -- the canvas
+  | MouseMoveRaw JE.Value HtmlDefs.Keys
+  | KeyChanged Bool HtmlDefs.Keys Key
   | MouseMove Point
   | MouseClick 
   | MouseDown MouseEvents.Event -- is Shift selected?
@@ -52,7 +57,7 @@ focusId s = Task.attempt (\_ -> noOp) (Dom.focus s)
 updateArrowStyle : Msg -> ArrowStyle -> ArrowStyle
 updateArrowStyle m style =
    case m of 
-      KeyChanged False k -> ArrowStyle.keyUpdateStyle k style  
+      KeyChanged False _ k -> ArrowStyle.keyUpdateStyle k style  
       _ -> style
 
 onTabPreventDefault : Html.Attribute Msg

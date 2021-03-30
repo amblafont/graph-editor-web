@@ -8,7 +8,7 @@ import Msg exposing (..)
 import Geometry.Point as Point exposing (Point)
 import InputPosition
 import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
-
+import HtmlDefs
 
 import Modes exposing (Mode(..))
 
@@ -21,10 +21,12 @@ import GraphDefs
 -- core data that will be saved
 
 
+
 type alias Model =
     { graph : Graph NodeLabel EdgeLabel
     -- , selectedObjs : List Obj
     , mousePos : Point
+    , specialKeys : HtmlDefs.Keys
     -- , -- if the mouse is over some node or edge
     --  mousePointOver : Obj
     , statusMsg : String
@@ -59,6 +61,7 @@ createModel g =
       --                        pointToAngle (-1, 0.01)]),
       quickInput = ""
     , mousePos = ( 0, 0 )
+    , specialKeys = { ctrl = False, alt = False, shift = False }
    -- , mousePointOver = ONothing
   --  , selectedObjs = []
     -- , dimNodes = Dict.empty

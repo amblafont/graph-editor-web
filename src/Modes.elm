@@ -18,7 +18,8 @@ type Mode
     | NewNode
     | QuickInputMode (Maybe NonEmptyChain)
     | SquareMode SquareState
-    | RectSelect Point Bool -- keep previous selection?
+    | RectSelect Point
+    -- Bool -- keep previous selection?
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
 
@@ -26,8 +27,9 @@ type alias MoveState =
    { orig : Point,  -- mouse original point at the beginning of the move mode
      -- this was used to compute the move relative to this point, but this
      -- is no longer used
-      pos : InputPosition, 
-    merge : Bool }
+      pos : InputPosition
+      -- , merge : Bool 
+      }
 
 type alias SplitArrowState =
     { chosenEdge : EdgeId

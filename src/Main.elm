@@ -11,7 +11,9 @@ port module Main exposing (main)
 -- hover for bent lines
 -- tab: prevent default
 -- bug avec square
-
+-- ctrl pour merge,
+-- et close commutation
+-- touche pour guess labels (s'il  a plusieurs possiblites')
 
 
 import Html.Events.Extra.Mouse as MouseEvents
@@ -115,7 +117,7 @@ subscriptions m = Sub.batch
                                       (TabInput, True) 
                         else (Msg.noOp, False))
                          HtmlDefs.tabDecoder), -}
-      E.onKeyUp (D.map (KeyChanged False) HtmlDefs.keyDecoder),
+      E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onMouseMoveFromJS MouseMove,
       onSlashKey 
            ( \e -> 
@@ -173,7 +175,8 @@ info_MoveNode : Model -> Modes.MoveState ->
    -- The graph is not valid if we are in merge mode
    -- and no object is pointed at
      valid : Bool }
-info_MoveNode model { orig, pos, merge } =
+info_MoveNode model { orig, pos } =
+    let merge = model.specialKeys.ctrl in
     let nodes = allSelectedNodes model in
     let updNode delta {id, label} = 
           {id = id, label = { label | pos = Point.add label.pos delta }}
@@ -238,7 +241,10 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     let
        m = case msg of
+            KeyChanged _ r _ -> { model | specialKeys = r }
+            MouseMoveRaw _ keys -> { model | specialKeys = keys }
             MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
+            MouseDown e -> { model | specialKeys = e.keys }
             QuickInput s -> { model | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                     -- {model | mousePos = (x, y), statusMsg = "mouse " ++ Debug.toString (x, y)}
             -- KeyChanged False s -> {model | statusMsg = keyToString s}
@@ -263,13 +269,14 @@ update msg model =
             _ -> model            
     in
     case msg of
+     MouseMoveRaw v _ -> (m, onMouseMove v)
      Do cmd -> (m, cmd)
      Loaded g -> noCmd <| createModel g
      _ ->
       case model.mode of
         QuickInputMode c -> update_QuickInput c msg m 
         DefaultMode -> update_DefaultMode msg m
-        RectSelect orig keep -> update_RectSelect msg orig keep m
+        RectSelect orig -> update_RectSelect msg orig m.specialKeys.shift m
         NewArrow astate -> Modes.NewArrow.update astate msg m
             -- update_Modes.NewArrow astate msg m
         RenameMode s l -> update_RenameMode s l msg m
@@ -283,10 +290,10 @@ update msg model =
 update_QuickInput : Maybe NonEmptyChain -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
     case msg of
-        KeyChanged False (Control "Escape") ->
+        KeyChanged False _ (Control "Escape") ->
             ({model | mode = DefaultMode}, 
                  Task.attempt (\_ -> Msg.noOp) (Dom.blur quickInputId))
-        KeyChanged False (Control "Enter") ->
+        KeyChanged False _ (Control "Enter") ->
             switch_Default {model | graph = graphDrawingChain model.graph ch, quickInput = ""}
         QuickInput s ->
                 let (statusMsg, chain) =
@@ -308,21 +315,10 @@ update_MoveNode msg state model =
     in
     let updateState st = { model | mode = Move st } in
     case msg of
-        -- MouseMove pageX pageY -> { model | graph = g}
-        KeyChanged False (Control "Escape") -> switch_Default model
-        KeyChanged False (Character 'm') ->
-          noCmd <| 
-            let newMerge = 
-                   (not state.merge) &&
-                    (objToNode (activeObj model) /= Maybe.Nothing)
-                  
-            in
-            updateState { state | merge = newMerge }
-          
+        KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> movedRet
-        KeyChanged False (Control "Enter") -> movedRet
-        _ ->       
-            noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
+        KeyChanged False _ (Control "Enter") -> movedRet
+        _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
 
@@ -331,9 +327,9 @@ update_MoveNode msg state model =
 update_RenameMode : String -> List Graph.Id -> Msg -> Model -> (Model, Cmd Msg)
 update_RenameMode label ids msg model =
     case msg of
-      KeyChanged False (Control "Escape") -> switch_Default model
-      KeyChanged False (Control "Enter") -> noCmd <| next_RenameMode True label ids model
-      KeyChanged False (Control "Tab") -> noCmd <| next_RenameMode False label ids model
+      KeyChanged False _ (Control "Escape") -> switch_Default model
+      KeyChanged False _ (Control "Enter") -> noCmd <| next_RenameMode True label ids model
+      KeyChanged False _ (Control "Tab") -> noCmd <| next_RenameMode False label ids model
     --   MouseClick -> finalise_RenameMode label model
       NodeLabelEdit _ s -> noCmd {model | mode = RenameMode s ids}
       EdgeLabelEdit _ s -> noCmd {model | mode = RenameMode s ids}
@@ -356,7 +352,7 @@ next_RenameMode finish label ids model =
 update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
 update_RectSelect msg orig keep model =
    case msg of
-      KeyChanged False (Control "Escape") -> switch_Default model
+      KeyChanged False _ (Control "Escape") -> switch_Default model
       MouseUp -> switch_Default 
                   { model | graph = selectGraph model orig keep }
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
@@ -368,36 +364,36 @@ update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     -- Tuples.mapFirst (changeModel model) <|
     case msg of
-        MouseDown e -> noCmd <| { model | mode = RectSelect model.mousePos e.keys.shift }
-        KeyChanged False (Character 'a') -> Modes.NewArrow.initialise model
-        KeyChanged False (Character 'c') ->  noCmd <|
+        MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
+        KeyChanged False _ (Character 'a') -> Modes.NewArrow.initialise model
+        KeyChanged False _ (Character 'c') ->  noCmd <|
            initialiseMoveMode {model | graph = GraphDefs.cloneSelected model.graph (30, 30)}
-        KeyChanged False (Character 'd') ->
+        KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
-        KeyChanged False (Character 'g') -> 
+        KeyChanged False _ (Character 'g') -> 
             noCmd <| initialiseMoveMode model
-        KeyChanged False (Character 'i') -> 
+        KeyChanged False _ (Character 'i') -> 
            noCmd <| case activeObj model of
                       OEdge id -> { model | graph = Graph.invertEdge id model.graph }                                         
                       _ -> model
         
-        KeyChanged False (Character 'r') -> 
+        KeyChanged False _ (Character 'r') -> 
             let ids = activeObj model |> objId |> Maybe.map List.singleton 
                      |> Maybe.withDefault []
             in
             noCmd <| initialise_RenameMode ids model
-        KeyChanged False (Character 's') -> Modes.Square.initialise model 
+        KeyChanged False _ (Character 's') -> Modes.Square.initialise model 
         
-        KeyChanged False (Character 'p') -> noCmd <| { model | mode = NewNode }
-        KeyChanged False (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
+        KeyChanged False _ (Character 'p') -> noCmd <| { model | mode = NewNode }
+        KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
                                                  Msg.focusId quickInputId)
 
-        KeyChanged False (Character 'x') ->
+        KeyChanged False _ (Character 'x') ->
             noCmd <| { model | graph = GraphDefs.removeSelected model.graph} 
         
-        KeyChanged False (Character '/') -> Modes.SplitArrow.initialise model 
+        KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise model 
                      
-        KeyChanged False (Control "Delete") ->
+        KeyChanged False _ (Control "Delete") ->
             noCmd <| { model | graph = GraphDefs.removeSelected model.graph }
         NodeClick n e ->
             noCmd <| addOrSetSel e.keys.shift (ONode n) model
@@ -420,13 +416,13 @@ initialiseMoveMode model =
                         then
                           -- Nothing is selected
                           DefaultMode
-                        else Move { orig = model.mousePos, pos = InputPosMouse, merge = False }
+                        else Move { orig = model.mousePos, pos = InputPosMouse }
                      }                 
 
 update_DebugMode : Msg -> Model -> (Model, Cmd Msg)
 update_DebugMode msg model =
     case msg of
-        KeyChanged False (Control "Escape") -> switch_Default model
+        KeyChanged False _ (Control "Escape") -> switch_Default model
         _ -> noCmd model
 
 update_NewNode : Msg -> Model -> (Model, Cmd Msg)
@@ -442,7 +438,7 @@ update_NewNode msg m =
          --   switch_Default newModel
          -- else
            noCmd <| initialise_RenameMode [ newId ] newModel
-       KeyChanged False (Control "Escape") -> switch_Default m
+       KeyChanged False _ (Control "Escape") -> switch_Default m
        _ -> noCmd m
 
 
@@ -467,7 +463,7 @@ graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
     case m.mode of
         DefaultMode -> collageGraphFromGraph m m.graph
-        RectSelect p r -> collageGraphFromGraph m <| selectGraph m p r
+        RectSelect p -> collageGraphFromGraph m <| selectGraph m p m.specialKeys.shift
         NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
         Move s -> info_MoveNode m s |> .graph |>
@@ -610,12 +606,10 @@ helpMsg model =
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
                              ++ Modes.SplitArrow.help |> msg
-        Move { merge } -> "Mode " 
-                ++ (if merge then "merge : move node on top of another one to merge it "
-                    ++ "(only works if one node is selected)" else "move")
-                ++ ". Use mouse or h,j,k,l. [RET] or [click] to confirm."
-                ++ "Press [m] to switch to " ++ (if merge then "move" else "merge")
-                ++ " mode." 
+        Move _ -> "Mode Move."                
+                   
+                ++ "Use mouse or h,j,k,l. [RET] or [click] to confirm."
+                ++ " Hold [ctrl] to merge the selected node (not an edge) onto another one."                
                   |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
 
@@ -645,7 +639,7 @@ quickInputView m =
 additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m = 
    case m.mode of
-      RectSelect orig _ -> Drawing.rect (Geometry.makeRect orig m.mousePos)
+      RectSelect orig -> Drawing.rect (Geometry.makeRect orig m.mousePos)
       _ -> --GraphDrawing.make_input (100.0,100.0) "coucou" (always Msg.noOp)
           Drawing.empty
 
@@ -677,7 +671,7 @@ view model =
                    Html.Attributes.height 2000,
                    Html.Attributes.style "border-style" "solid",
                    Html.Events.on "mousemove"
-                   (D.map (Do << onMouseMove) D.value)                   
+                   (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder)                   
                   ,                 
                  MouseEvents.onWithOptions "mousedown" 
                   { stopPropagation = False, preventDefault = False }

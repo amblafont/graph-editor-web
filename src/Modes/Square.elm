@@ -277,15 +277,15 @@ update state msg model =
     case msg of   
 
    
-        KeyChanged False (Character 's') ->
+        KeyChanged False _ (Character 's') ->
             
                     square_updatePossibility model state.configuration state.chosenNode
 
-        KeyChanged False (Control "Escape") -> switch_Default model
+        KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
-        KeyChanged False (Control "Enter") -> next True
+        KeyChanged False _ (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
-        KeyChanged False (Control "Tab") -> next False
+        KeyChanged False _ (Control "Tab") -> next False
 
       
         _ -> noCmd model

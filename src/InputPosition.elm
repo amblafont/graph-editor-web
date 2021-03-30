@@ -17,10 +17,10 @@ type InputPosition
                    in                   
                    (case msg of
                      MouseMove _ -> { st2 | pos = InputPosMouse }
-                     KeyChanged False (Character 'h') -> offsetPos -1 0
-                     KeyChanged False (Character 'j') -> offsetPos 0 1
-                     KeyChanged False (Character 'k') -> offsetPos 0 -1
-                     KeyChanged False (Character 'l') -> offsetPos 1 0
+                     KeyChanged False _ (Character 'h') -> offsetPos -1 0
+                     KeyChanged False _ (Character 'j') -> offsetPos 0 1
+                     KeyChanged False _ (Character 'k') -> offsetPos 0 -1
+                     KeyChanged False _ (Character 'l') -> offsetPos 1 0
                      
                      _ -> st2
                    )  -}
@@ -50,10 +50,10 @@ update pos msg =
                 InputPosKeyboard (x + curx, y + cury)
      in                   
      (case msg of      
-       KeyChanged False (Character 'h') -> offsetPos -1 0
-       KeyChanged False (Character 'j') -> offsetPos 0 1
-       KeyChanged False (Character 'k') -> offsetPos 0 -1
-       KeyChanged False (Character 'l') -> offsetPos 1 0       
+       KeyChanged False _ (Character 'h') -> offsetPos -1 0
+       KeyChanged False _ (Character 'j') -> offsetPos 0 1
+       KeyChanged False _ (Character 'k') -> offsetPos 0 -1
+       KeyChanged False _ (Character 'l') -> offsetPos 1 0       
        _ -> updateNoKeyboard pos msg
      ) 
 
