@@ -57,7 +57,7 @@ import Modes exposing (Mode(..))
 
 import ArrowStyle
 
-import HtmlDefs exposing (quickInputId, Key(..))
+import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs, NodeLabelJs)
 import GraphDefs exposing (newNodeLabel)
 import GraphDefs exposing (getNodeLabelOrCreate)
@@ -621,7 +621,7 @@ helpMsg model =
              in
                 makeHelpDiv [ Html.text txt ]
 
-quickInputView : Model -> Html Msg
+{- quickInputView : Model -> Html Msg
 quickInputView m = 
              Html.p []
                  [
@@ -637,7 +637,7 @@ quickInputView m =
                           --     QuickInputMode _ -> []
                           --     _ -> [Html.Attributes.value ""]
                      []]
-
+ -}
 additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m = 
    case m.mode of
@@ -657,8 +657,8 @@ view model =
          -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
          -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
          Html.p [] 
-         [(helpMsg model),
-          quickInputView model
+         [(helpMsg model){- ,
+          quickInputView model -}
          ],
          Html.p [] [ Html.text <| if nmissings > 0 then 
             String.fromInt nmissings ++ " nodes or edges could not be rendered."

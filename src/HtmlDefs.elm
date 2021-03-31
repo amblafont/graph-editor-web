@@ -1,4 +1,4 @@
-module HtmlDefs exposing (onRendered, tabDecoder, quickInputId, idInput, 
+module HtmlDefs exposing (onRendered, tabDecoder, {- quickInputId, -} idInput, 
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex,
    onTab)
 import Html
@@ -12,8 +12,8 @@ import Json.Decode as D
 idInput : String
 idInput = "edited_label"
 
-quickInputId : String
-quickInputId = "quickinput"
+-- quickInputId : String
+-- quickInputId = "quickinput"
 
 renderedClass = "rendered-callback"
 renderedEvent = "rendered"
