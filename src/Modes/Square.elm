@@ -174,6 +174,7 @@ chooseAmong l n =
       [] -> []
 
 
+
 moveNodeViewInfo : Model -> SquareState -> ( ViewInfo, NodeId, Bool )
 moveNodeViewInfo m data =
     
@@ -181,7 +182,7 @@ moveNodeViewInfo m data =
              [] -> [ x ]
              t :: q -> t :: x :: q
     in -}
-    
+    let atLeast1 l = if List.isEmpty l then [ "" ] else l in
     let commute str1 str2 =
       
            if str1 == "" || str2 == "" then
@@ -189,7 +190,7 @@ moveNodeViewInfo m data =
            else
                    MyDiff.swapDiffStr (data.n1ToChosen == data.n2ToChosen) str1 
                        data.chosenLabel
-                       str2                       
+                       str2 |> atLeast1                      
                        
     in
     let labelsNode = commute data.n1Label data.n2Label
