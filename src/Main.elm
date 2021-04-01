@@ -669,8 +669,9 @@ view model =
     ]
     -- |> debug
     |> Drawing.svg [
-                   Html.Attributes.style "width" "100%",
-                   Html.Attributes.height 2000,
+                --   Html.Attributes.style "width" "4000px",
+                --   Html.Attributes.height 4000,
+                   Html.Attributes.id "canvas",
                    Html.Attributes.style "border-style" "solid",
                    Html.Events.on "mousemove"
                    (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder)                   
