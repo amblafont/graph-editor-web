@@ -57,7 +57,7 @@ pad n {pos , dims } =
 
 pxFromRatio : Point -> Point -> Float -> Float
 pxFromRatio p1 p2 r =
-  r * Point.radius (Point.subtract p2 p1)
+  r * Point.distance p2 p1
 
   
 

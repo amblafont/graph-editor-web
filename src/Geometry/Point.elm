@@ -1,5 +1,6 @@
 module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
-  normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList)
+  normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList,
+  angleWithInRange, distance)
 
 
 type alias Point = (Float, Float)
@@ -12,6 +13,7 @@ type alias Point = (Float, Float)
 radius : Point -> Float
 radius ( x, y ) =
     sqrt (x * x + y * y)
+
 
 
 normalise : Float -> Point -> Point
@@ -70,6 +72,10 @@ middle ( x1, y1 ) ( x2, y2 ) =
 
 
 
+
+distance : Point -> Point -> Float
+distance x y = subtract y x |> radius
+
 -- convert a point to an angle
 
 
@@ -85,6 +91,25 @@ pointToAngle ( x, y ) =
 
 toList : Point -> List Float
 toList (px, py) = [px, py]
+
+
+-- return something between -q / 2 and q/2
+closeRemainder : Float -> Float -> Float
+closeRemainder q a = a - toFloat (round (a / q)) * q
+
+-- normaliseAngle : Float -> Float
+-- normaliseAngle alpha = modByFloat (2 * pi) alpha
+
+-- return an angle between 0 and pi
+distanceAngle : Float -> Float -> Float 
+distanceAngle alpha beta = 
+   closeRemainder (2 * pi) (beta - alpha) |> abs
+   
+angleWithInRange : Float -> Float -> Float -> Bool
+angleWithInRange delta alpha beta  =
+
+   distanceAngle alpha beta <= abs delta
+   
 
 
 

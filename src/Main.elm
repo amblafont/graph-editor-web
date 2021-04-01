@@ -69,6 +69,8 @@ import Html.Events
 import Modes exposing (SplitArrowState)
 import InputPosition exposing (InputPosition(..))
 
+import List.Extra
+
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
 -- we then get back the relative position of the mouse
@@ -363,6 +365,26 @@ update_RectSelect msg orig keep model =
 
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
+    let delta_angle = pi / 5 in    
+    let move angle = 
+               activeObj model
+                 |> objToNode
+                 |> Maybe.andThen (\id -> Graph.getNode id model.graph) 
+                 |> Maybe.map .pos
+                 |> Maybe.andThen (\p ->
+                    Graph.filterNodes model.graph 
+                      (\ n -> n.pos /= p && (Point.subtract n.pos p |> Point.pointToAngle |>
+                      Point.angleWithInRange delta_angle angle  ))
+                    |>
+                    List.Extra.minimumBy (.label >> .pos >> Point.distance p )                  
+                
+                 )
+                 |> Maybe.map (\n ->
+                 Model.addOrSetSel False (ONode n.id) model
+                 )                 
+                 |> Maybe.withDefault model
+                 |> noCmd
+    in
     -- Tuples.mapFirst (changeModel model) <|
     case msg of
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
@@ -399,8 +421,14 @@ update_DefaultMode msg model =
         NodeClick n e ->
             noCmd <| addOrSetSel e.keys.shift (ONode n) model
         EdgeClick n e ->
-             noCmd <| addOrSetSel e.keys.shift (OEdge n) model            
+             noCmd <| addOrSetSel e.keys.shift (OEdge n) model 
+        KeyChanged False _ (Character 'h') -> move pi
+        KeyChanged False _ (Character 'j') -> move (pi/2)
+        KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
+        KeyChanged False _ (Character 'l') -> move 0
+   
         _ ->
+
             case objToEdge <| activeObj model of
               Nothing -> noCmd model
               Just id -> noCmd 
@@ -582,6 +610,7 @@ helpMsg model =
                 ++ ", [g] move selected objects (also merge, if wanted)" 
                 ++ ", [c]lone selected objects" 
                 ++ ", [/] split arrow" 
+                ++ ", [hjkl] to move the selction from a point to another" 
                 ++ "."
                 ++ case activeObj model of
                      OEdge _ ->
