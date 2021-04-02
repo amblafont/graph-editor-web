@@ -610,12 +610,9 @@ helpMsg model =
                 ++ ", [g] move selected objects (also merge, if wanted)" 
                 ++ ", [c]lone selected objects" 
                 ++ ", [/] split arrow" 
-                ++ ", [hjkl] to move the selction from a point to another" 
-                ++ "."
-                ++ case activeObj model of
-                     OEdge _ ->
-                       " [(,=,b,B,-,>]: alternate between different arrow styles, [i]nverse arrow."
-                     _ -> ""
+                ++ ", [hjkl] to move the selection from a point to another"                 
+                ++ ", if an arrow is selected: [(,=,b,B,-,>] alternate between different arrow styles, [i]nvert arrow."
+                   
                       -- b "b",
                       -- Html.text "litz flag (no labelling on point creation)."
              -- "[r]ename selected object, move selected point [g], [d]ebug mode"

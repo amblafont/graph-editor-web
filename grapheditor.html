@@ -65,16 +65,19 @@
                     event.preventDefault();          
             }
             );
+            // copied and pasted from tutorial.json
+            var tutorial = [[{"id":0,"label":{"label":"","pos":[152,121.63333129882812]}},{"id":1,"label":{"label":"\\textbf{Basic tutorial}","pos":[85.5,16.133331298828125]}},{"id":2,"label":{"label":"\\text{Select the point below, press 'a' , and then use 'hjkl' to move the target point}","pos":[547,86.63333129882812]}},{"id":3,"label":{"label":"\\text{\\underline{Arrow creation}}","pos":[82,83.63333129882812]}},{"id":7,"label":{"label":"\\text{\\underline{Commutative square}}","pos":[105,171.63333129882812]}},{"id":8,"label":{"label":"FS0","pos":[122,224.63333129882812]}},{"id":9,"label":{"label":"FSx","pos":[322,224.63333129882812]}},{"id":11,"label":{"label":"S(Fx+S0)","pos":[322,424.6333312988281]}},{"id":15,"label":{"label":"\\text{Select the node $FSx$ below,  then press 's'}","pos":[396,171.63333129882812]}},{"id":23,"label":{"label":"\\text{\\underline{Move \\& Merge}}","pos":[86.5,496.1333312988281]}},{"id":24,"label":{"label":"a","pos":[173.5,587.1333312988281]}},{"id":25,"label":{"label":"b","pos":[271.5,647.1333312988281]}},{"id":27,"label":{"label":"c","pos":[170.5,713.1333312988281]}},{"id":53,"label":{"label":"a'","pos":[465.5,587.1333312988281]}},{"id":54,"label":{"label":"b'","pos":[407.5,646.1333312988281]}},{"id":56,"label":{"label":"c'","pos":[462.5,713.1333312988281]}},{"id":73,"label":{"label":"\\text{Select the node $b$ below, press 'g' and use 'hjkl' to move. }","pos":[442.5,498.1333312988281]}},{"id":74,"label":{"label":"\\text{Hold 'ctrl' when hovering $b'$ to merge.}","pos":[366.5,528.1333312988281]}},{"id":75,"label":{"label":"h:FS \\rightarrow{S(F-+S0)}","pos":[524,314.6333312988281]}},{"id":76,"label":{"label":"\\text{Read the header help message for a complete list of available commands}","pos":[498.5,14.133331298828125]}},{"id":77,"label":{"label":"","pos":[162.5,828.6333312988281]}},{"id":79,"label":{"label":"\\text{Select the arrow below, press 'r'}","pos":[332,791.6333312988281]}},{"id":80,"label":{"label":"\\text{\\underline{Rename}}","pos":[61,792.6333312988281]}},{"id":81,"label":{"label":"","pos":[362.5,828.6333312988281]}},{"id":160,"label":{"label":"","pos":[167,1061.2583312988281]}},{"id":162,"label":{"label":"\\text{Select the arrow below, press 'a', then '='}","pos":[377,891.6333312988281]}},{"id":163,"label":{"label":"\\text{\\underline{Higher cells}}","pos":[74,888.6333312988281]}},{"id":164,"label":{"label":"","pos":[367,1061.2583312988281]}},{"id":166,"label":{"label":"","pos":[267,966.0083312988281]}},{"id":169,"label":{"label":"\\text{(depending on the current mode)}","pos":[335.5,37.133331298828125]}}],[{"from":8,"id":10,"label":{"bend":0,"label":"FSi","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":9},{"from":9,"id":12,"label":{"bend":0,"label":"hx","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":11},{"from":24,"id":26,"label":{"bend":0,"label":"","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":25},{"from":25,"id":28,"label":{"bend":0,"label":"","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":27},{"from":53,"id":55,"label":{"bend":0,"label":"","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":54},{"from":54,"id":57,"label":{"bend":0,"label":"","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":56},{"from":77,"id":82,"label":{"bend":0,"label":"\\text{rename me}","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":81},{"from":160,"id":165,"label":{"bend":0,"label":"\\text{select me}","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":164},{"from":160,"id":167,"label":{"bend":0,"label":"","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":166},{"from":164,"id":168,"label":{"bend":0,"label":"","style":{"dashed":false,"double":false,"head":"default","tail":"none"}},"to":166}]];
         </script>
     </head>
 
     <body>       
-        <h1>Graph editor</h1>
+        <h1>Diagram editor</h1>
    
      
         <p>
-            A commutative diagram editor, with              
-            (latex) labelled nodes and edges, tested with Firefox. Higher cells are supported.
+            A vi-inspired diagram editor, with              
+            (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a>. 
+            Higher cells are supported.
         The code is available on
         <a href="https://github.com/amblafont/graph-editor-web">github</a>.
         </p>
@@ -147,6 +150,9 @@
          var app = Elm.Main.init({
              node: appDiv
          });
+         
+         app.ports.loadedGraph.send(tutorial);
+         
          // load a json graph file, send it to the elm component
          function loadGraph() {
              var input = document.createElement('input');
