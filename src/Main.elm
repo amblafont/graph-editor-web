@@ -243,6 +243,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     let
        m = case msg of
+            Clear -> iniModel
             KeyChanged _ r _ -> { model | specialKeys = r }
             MouseMoveRaw _ keys -> { model | specialKeys = keys }
             MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
@@ -677,8 +678,9 @@ view model =
     let drawings= graphDrawing (graphDrawingFromModel model) in
     let nmissings = List.length missings in
     Html.div [] [
-         Html.button [Html.Events.onClick (save model)
-              ] [Html.text "Save"],             
+         Html.button [Html.Events.onClick (save model)] [Html.text "Save"],
+         Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
+         ,             
              Html.text model.statusMsg,
          -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
          -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",

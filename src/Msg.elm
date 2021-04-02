@@ -42,6 +42,7 @@ type Msg
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
   | MouseOn Graph.Id
+  | Clear
   -- pressing tab when editing the input text
   -- | TabInput
 
