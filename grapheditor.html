@@ -78,6 +78,8 @@
             A vi-inspired diagram editor, with              
             (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a>. 
             Higher cells are supported.
+            For a LaTeX export, first export to Quiver (beware that vertices will be snapped
+            to the grid in the exported quiver diagram).
         The code is available on
         <a href="https://github.com/amblafont/graph-editor-web">github</a>.
         </p>
@@ -195,6 +197,13 @@
          }
          app.ports.saveGraph.subscribe(function(d) {
              download(JSON.stringify(d), 'graph.json', 'application/json');
+         });
+
+         app.ports.exportQuiver.subscribe(function(d) {
+             // copied from quiver/quiver.js (export base64)
+             var s = `https://q.uiver.app/?q=${
+              btoa(unescape(encodeURIComponent(JSON.stringify(d))))}`;
+              window.open(s);             
          });
 
          document.addEventListener("keydown", function(event)

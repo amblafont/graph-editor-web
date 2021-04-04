@@ -1,6 +1,6 @@
 module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
   normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList,
-  angleWithInRange, distance)
+  angleWithInRange, distance, snapToGrid)
 
 
 type alias Point = (Float, Float)
@@ -111,7 +111,10 @@ angleWithInRange delta alpha beta  =
    distanceAngle alpha beta <= abs delta
    
 
-
+snapToGrid : Float -> Point -> Point
+snapToGrid sizeGrid (px, py) =
+   let approx c = toFloat (floor (c / sizeGrid)) * sizeGrid + sizeGrid / 2 in
+   (approx px, approx py)
 
 -- distanceToBox : Point -> Distances -> (Point, Point)
 -- distanceToBox (px, py) { toTop, toBottom, toRight, toLeft} =

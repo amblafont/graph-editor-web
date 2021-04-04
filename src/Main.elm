@@ -70,6 +70,7 @@ import Modes exposing (SplitArrowState)
 import InputPosition exposing (InputPosition(..))
 
 import List.Extra
+import GraphDefs exposing (exportQuiver)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -84,6 +85,8 @@ port onSlashKey : (JE.Value -> a) -> Sub a
 
 -- tell js to save the graph
 port saveGraph : (List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> Cmd a
+port exportQuiver : JE.Value -> Cmd a
+
 -- js tells us to load the graph
 port loadedGraph : ((List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> a) -> Sub a
 
@@ -138,17 +141,7 @@ subscriptions m = Sub.batch
 
 
 
-save : Model -> Msg
-save model = 
-   let g =  model.graph 
-            |> Graph.map 
-             (\_ -> GraphDefs.nodeLabelToJs)
-             (\_ -> GraphDefs.edgeLabelToJs)            
-   in
-   let nodes = Graph.nodes g
-       edges = Graph.edges g
-    in
-   Do (saveGraph (nodes, edges))
+
 
 -- Model -----------------------------------------------------------------------
 
@@ -209,7 +202,7 @@ info_MoveNode model { orig, pos } =
     -- orig 
     in
     case pos of
-      InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos p
+      InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos model.sizeGrid p
       InputPosGraph id ->         
          if not merge then 
             retDelta mouseDelta
@@ -242,12 +235,11 @@ switch_RenameMode model =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     let
-       m = case msg of
-            Clear -> iniModel
-            KeyChanged _ r _ -> { model | specialKeys = r }
-            MouseMoveRaw _ keys -> { model | specialKeys = keys }
-            MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
-            MouseDown e -> { model | specialKeys = e.keys }
+       m = case msg of            
+             KeyChanged _ r _ -> { model | specialKeys = r }
+             MouseMoveRaw _ keys -> { model | specialKeys = keys }
+             MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
+             MouseDown e -> { model | specialKeys = e.keys }
            --  QuickInput s -> { model | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                     -- {model | mousePos = (x, y), statusMsg = "mouse " ++ Debug.toString (x, y)}
             -- KeyChanged False s -> {model | statusMsg = keyToString s}
@@ -256,25 +248,41 @@ update msg model =
             --    let _ = Debug.log "ici" n in
             --   { model | mousePointOver = ONode n}
             -- NodeLeave n -> { model | mousePointOver = ONothing}
-            NodeRendered n dims ->
+ 
+            -- MouseClick -> let _ = Debug.log "Mouse Click !" () in model
+             _ -> model            
+    in
+    case msg of
+     Save ->       
+          let g =  model.graph 
+                   |> Graph.map 
+                    (\_ -> GraphDefs.nodeLabelToJs)
+                    (\_ -> GraphDefs.edgeLabelToJs) 
+                   |> Graph.normalise           
+          in
+          let nodes = Graph.nodes g
+              edges = Graph.edges g
+          in
+          (model, saveGraph (nodes, edges))
+     Clear -> noCmd iniModel
+     ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
+     SizeGrid s -> noCmd { model | sizeGrid = s }
+     ExportQuiver -> (model, exportQuiver <| GraphDefs.exportQuiver model.sizeGrid model.graph)
+     MouseMoveRaw v _ -> (m, onMouseMove v)
+     NodeRendered n dims ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
-                { model | -- statusMsg = "newsize " ++ Debug.toString (n, dims),
+                noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (n, dims),
                       graph = 
                       Graph.updateNode n (\l -> {l | dims = Just dims }) model.graph                      
                 }
-            EdgeRendered e dims ->
+     EdgeRendered e dims ->
                 -- let _ = Debug.log "nouvelle dims !" (e, dims) in
-                { model | -- statusMsg = "newsize " ++ Debug.toString (e, dims),
+                noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (e, dims),
                       graph = 
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
-            -- MouseClick -> let _ = Debug.log "Mouse Click !" () in model
-            _ -> model            
-    in
-    case msg of
-     MouseMoveRaw v _ -> (m, onMouseMove v)
      Do cmd -> (m, cmd)
-     Loaded g -> noCmd <| createModel g
+     Loaded g -> noCmd <| createModel defaultGridSize g
      _ ->
       case model.mode of
         -- QuickInputMode c -> update_QuickInput c msg m 
@@ -388,6 +396,7 @@ update_DefaultMode msg model =
     in
     -- Tuples.mapFirst (changeModel model) <|
     case msg of
+        SnapToGrid -> noCmd <| { model | graph = GraphDefs.snapToGrid model.sizeGrid model.graph }
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
         KeyChanged False _ (Character 'a') -> Modes.NewArrow.initialise model
         KeyChanged False _ (Character 'c') ->  noCmd <|
@@ -427,6 +436,7 @@ update_DefaultMode msg model =
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
         KeyChanged False _ (Character 'l') -> move 0
+        -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise model.graph
    
         _ ->
 
@@ -676,12 +686,16 @@ view : Model -> Html Msg
 view model =
     let missings = Graph.invalidEdges model.graph in
     let drawings= graphDrawing (graphDrawingFromModel model) in
+    let grid = if model.hideGrid then Drawing.empty else Drawing.grid model.sizeGrid in
     let nmissings = List.length missings in
     Html.div [] [
-         Html.button [Html.Events.onClick (save model)] [Html.text "Save"],
-         Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
-         ,             
-             Html.text model.statusMsg,
+         Html.button [Html.Events.onClick Save] [Html.text "Save"]
+         , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
+         , HtmlDefs.checkbox ToggleHideGrid "Hide grid"            
+         , Html.button [Html.Events.onClick SnapToGrid] [Html.text "Snap to grid"]
+        , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export to quiver"]
+         , HtmlDefs.slider SizeGrid "Grid size" 2 500 model.sizeGrid
+          ,   Html.text model.statusMsg,
          -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
          -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
          Html.p [] 
@@ -692,7 +706,8 @@ view model =
             String.fromInt nmissings ++ " nodes or edges could not be rendered."
             else "" ]
          ,
-    Drawing.group [drawings,
+    Drawing.group [grid,
+       drawings,
        additionnalDrawing model
     ]
     -- |> debug

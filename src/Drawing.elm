@@ -1,10 +1,11 @@
 module Drawing exposing (Drawing,   
   fromString, circle, html, group, arrow, rect,
   Attribute, simpleOn, on, onClick, {- onMouseEnter, onMouseLeave, -} color,
-  svg, Color, red, black, class, empty
+  svg, Color, red, black, class, empty, grid
   )
 
 import Svg exposing (Svg)
+import Svg as S
 import Svg.Attributes as Svg
 import Svg as SvgElts
 import Svg.Events
@@ -167,8 +168,23 @@ rect { topLeft, bottomRight } =
        |> ofSvg
 
 
+grid : Int -> Drawing a
+grid n =
+  let sn = String.fromInt n in
+  [Svg.defs [] [Svg.pattern [ Svg.id "grid", 
+        Svg.width sn,
+        Svg.height sn,
+        Svg.patternUnits "userSpaceOnUse"] 
+        [ -- Svg.rect [Svg.width sn, Svg.height sn] []
+         S.path [Svg.d ("M " ++ sn ++ " 0 L 0 0 0 " ++ sn),
+          Svg.fill "none", Svg.stroke "gray", Svg.strokeWidth "1px"
+          ] []
+        ]
+        ],
+        Svg.rect [Svg.width "100%", Svg.height "100%", Svg.fill "url(#grid)"] []
+        ]         
+        |> Drawing
 
-    
 
 
 

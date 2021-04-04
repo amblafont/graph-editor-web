@@ -22,6 +22,8 @@ import Json.Encode as JE
 type Msg
   = -- call some js function
     Do (Cmd Msg)
+  | Save
+  | ExportQuiver
     -- on reception of this message, the js function onMouseMove is called
     -- which sends back a MouseMove message with the relative position to 
     -- the canvas
@@ -43,6 +45,9 @@ type Msg
   | EdgeRendered EdgeId Point
   | MouseOn Graph.Id
   | Clear
+  | SizeGrid Int
+  | ToggleHideGrid
+  | SnapToGrid
   -- pressing tab when editing the input text
   -- | TabInput
 

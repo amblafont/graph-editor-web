@@ -5,14 +5,16 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, clearSelection, selectedGraph,
    removeSelected,
-   getNodesAt, cloneSelected
+   getNodesAt, cloneSelected, snapToGrid, exportQuiver
    )
 
 import Geometry.Point as Point exposing (Point)
 import Geometry
-import ArrowStyle.Core
+import ArrowStyle.Core exposing (HeadStyle(..), TailStyle(..))
 import ArrowStyle exposing (ArrowStyle)
 import Polygraph as Graph exposing (Graph, NodeId)
+
+import Json.Encode as JEncode
 
 
 type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
@@ -20,6 +22,57 @@ type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selec
 
 type alias EdgeLabelJs = { label : String, style : ArrowStyle.Core.JsStyle, bend : Float}
 type alias NodeLabelJs = { pos : Point , label : String}
+
+
+
+quiverStyle : ArrowStyle -> List (String, JEncode.Value)
+quiverStyle st =
+   let { tail, head, double, dashed } = st.s in
+   let makeIf b x = if b then [x] else [] in
+   let headStyle = case head of 
+          DefaultHead -> []       
+          TwoHeads -> [("head", [("name", "epi")])]
+          NoHead -> [("head", [("name", "none")])]
+   in
+   let tailStyle = case tail of 
+          DefaultTail -> []
+          Hook -> [("tail", [("name", "hook"),("side", "top")])]
+          HookAlt -> [("tail", [("name", "hook"),("side", "bottom")])]
+   in
+   let style = List.map (\(x,y) -> (x, JEncode.object <| List.map (\(s, l) -> (s, JEncode.string l)) y)) <|
+               headStyle
+               ++
+               tailStyle ++
+               (makeIf dashed ("body", [("name", "dashed")]))
+   in
+   (makeIf double ("level", JEncode.int 2))  
+   ++ [("style", JEncode.object style )]
+   ++ (makeIf (st.bend /= 0) ("curve", JEncode.int <| floor (st.bend * 10)))
+
+
+exportQuiver : Int -> Graph NodeLabel EdgeLabel -> JEncode.Value
+exportQuiver sizeGrid g =
+  let gnorm = Graph.normalise g in
+  let nodes = Graph.nodes gnorm
+      edges = Graph.edges gnorm
+  in
+  let coordInt x = floor (x / toFloat sizeGrid) |> JEncode.int in
+  let encodePos (x, y) = [coordInt x, coordInt y] in
+  let encodeNode n = JEncode.list identity <| encodePos n.label.pos ++ 
+            [ JEncode.string (if n.label.label == "" then "\\bullet" else n.label.label)] in
+  let encodeEdge e = JEncode.list identity <| 
+               [JEncode.int e.from
+               , JEncode.int e.to
+               , JEncode.string e.label.label
+               , JEncode.int 0 -- alignment
+               , JEncode.object <| quiverStyle e.label.style
+                  -- [("level", if e.label.style.double then JEncode.int 2 else JEncode.int 1)] --options
+                ] in
+  let jnodes = nodes |> List.map encodeNode
+      jedges = edges |> List.map encodeEdge
+  in
+  JEncode.list identity <|
+  [JEncode.int 0, JEncode.int <| List.length nodes] ++ jnodes ++ jedges
 
 newNodeLabel : Point -> String -> NodeLabel
 newNodeLabel p s = NodeLabel p s Nothing False
@@ -126,3 +179,6 @@ cloneSelected g offset =
   let gclearSel = clearSelection g in
   Graph.union gclearSel g2
 
+snapToGrid : Int -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+snapToGrid sizeGrid g =
+   Graph.map (\_ n -> { n | pos = Point.snapToGrid (toFloat sizeGrid) n.pos }) (\_ -> identity ) g

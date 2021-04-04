@@ -1,11 +1,12 @@
 module HtmlDefs exposing (onRendered, tabDecoder, {- quickInputId, -} idInput, 
-   Key(..), Keys, keyDecoder, keysDecoder, makeLatex,
+   Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider,
    onTab)
 import Html
 import Html.Attributes
 import Html.Events
 import Geometry.Point exposing (Point)
 import Json.Decode as D
+
 
 
 -- id of the text input when the user labels an edge or a node
@@ -87,3 +88,25 @@ type alias Keys =
 keysDecoder : D.Decoder Keys
 keysDecoder = D.map3 (\ alt ctrl shift -> { alt = alt, ctrl = ctrl, shift = shift})
      (D.field "altKey" D.bool) (D.field "ctrlKey" D.bool) (D.field "shiftKey" D.bool)
+
+-- copied from https://github.com/dwyl/learn-elm/blob/master/examples/checkboxes.elm
+checkbox : msg -> String -> Html.Html msg
+checkbox msg name =
+    Html.label
+        [ Html.Attributes.style "padding" "20px" ]
+        [ Html.input [ Html.Attributes.type_ "checkbox", Html.Events.onClick msg ] []
+        , Html.text name
+        ]
+
+slider : (Int -> msg) -> String -> Int -> Int -> Int -> Html.Html msg
+slider msg name min max value =
+     let f = String.fromInt in 
+      Html.label
+        [ Html.Attributes.style "padding" "20px" ]
+        [ Html.input [ Html.Attributes.type_ "range", 
+           Html.Attributes.value <| f value,
+           Html.Attributes.min <| f min,
+           Html.Attributes.max <| f max,
+          Html.Events.onInput (String.toInt >> Maybe.withDefault value >> msg) ] []
+        , Html.text name
+        ]

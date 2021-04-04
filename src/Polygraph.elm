@@ -6,7 +6,8 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      nodes, edges, fromNodesAndEdges,
      filterNodes, keepBelow,
      Node, Edge, nextId,
-     incomings, outgoings, drop,
+     incomings, outgoings, drop, 
+     normalise,
      union)
 import IntDict exposing (IntDict)
 import IntDictExtra 
@@ -49,6 +50,9 @@ type alias GraphRep n e = IntDict (Object n e)
 
 type Graph n e =
    Graph (GraphRep n e)
+
+graphRep : Graph n e -> GraphRep n e
+graphRep (Graph g) = g
 
 
 {- 
@@ -402,3 +406,42 @@ union (Graph base) (Graph ext) =
    let baseId = supId base in
    let extUp = addId baseId ext in   
      IntDict.union base extUp |> Graph
+
+
+computeDimensions : Graph n e -> Graph n (e, Int)
+computeDimensions = 
+  mapRecAll (always 0) Tuple.second (always identity)
+     (\_ n1 n2 e -> (e, 1 + max n1 n2 ))
+
+
+-- returns a graph where ids are ordered at least by the dimensions of the cells
+-- (the first ids are vertices, then 1-cells, and so on)
+normalise : Graph n e -> Graph n e
+normalise g = 
+   let getDim (_, o) =
+         case o of
+          NodeObj _ -> 0
+          EdgeObj _ _ (_, dim) -> dim
+   in
+   let gWithDims = computeDimensions g |> graphRep |> IntDict.toList 
+          |> List.sortBy getDim
+   in
+   let idDict = List.foldl 
+        (\ (id, _) d -> IntDict.insert id (IntDict.size d) d)
+        IntDict.empty gWithDims
+   in
+   let getId id = case IntDict.get id idDict of
+             Nothing -> id
+             Just i -> i
+   in   
+   let updateId o = case o of 
+               NodeObj l -> NodeObj l
+               EdgeObj i1 i2 (e, dim) -> EdgeObj (getId i1) (getId i2) e
+   in
+   gWithDims |>
+   List.map (\(id, o) -> (getId id, updateId o))
+   |> IntDict.fromList
+   |> Graph
+   
+
+          

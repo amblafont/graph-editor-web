@@ -33,6 +33,8 @@ type alias Model =
     , -- unnamedFlag : Bool,
       quickInput : String
     , mode : Mode
+    , hideGrid : Bool
+    , sizeGrid : Int
     -- real dimensions of nodes
     -- , dimNodes : Dict NodeId Point
     -- quickInput : Maybe NonEmptyChain
@@ -51,8 +53,8 @@ type alias Model =
 --       InputPosKeyboard p -> Point.add source <| deltaKeyboardPos p)
 
 
-createModel : Graph NodeLabel EdgeLabel -> Model
-createModel g =
+createModel : Int -> Graph NodeLabel EdgeLabel -> Model
+createModel sizeGrid g =
     { graph = g
     , mode = DefaultMode
     , statusMsg = ""
@@ -62,6 +64,8 @@ createModel g =
       quickInput = ""
     , mousePos = ( 0, 0 )
     , specialKeys = { ctrl = False, alt = False, shift = False }
+    , hideGrid = False
+    , sizeGrid = sizeGrid
    -- , mousePointOver = ONothing
   --  , selectedObjs = []
     -- , dimNodes = Dict.empty
@@ -72,14 +76,15 @@ createModel g =
     -- blitzFlag = False
     }
 
-
+defaultGridSize = 200
 
 iniModel : Model
-iniModel =    
-   createModel <| 
+iniModel = 
+   let sizeGrid = defaultGridSize in
+   createModel sizeGrid <| 
       Tuple.first <|
         Graph.newNode Graph.empty
-         { pos = (100, 100), label = "", dims = Nothing,
+         { pos = (sizeGrid / 2, sizeGrid / 2), label = "", dims = Nothing,
            selected = True }
 
 initialise_RenameMode : List Graph.Id -> Model -> Model
@@ -363,7 +368,7 @@ keyboardPosToPoint m chosenNode p =
    case Graph.getNode chosenNode m.graph of
       Nothing -> m.mousePos
       Just { pos } -> 
-         let delta = InputPosition.deltaKeyboardPos p in
+         let delta = InputPosition.deltaKeyboardPos m.sizeGrid p in
          Point.add pos delta
 
 

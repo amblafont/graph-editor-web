@@ -27,13 +27,13 @@ type InputPosition
 
 
 
-offsetKeyboardPos = 200
+-- offsetKeyboardPos = 200
 
 
 
-deltaKeyboardPos : (Int, Int) -> Point
-deltaKeyboardPos (x, y) =
-   (toFloat x * offsetKeyboardPos, toFloat y * offsetKeyboardPos)
+deltaKeyboardPos : Int -> (Int, Int) -> Point
+deltaKeyboardPos offsetKeyboardPos (x, y) =
+   (toFloat (x * offsetKeyboardPos), toFloat (y * offsetKeyboardPos))
 
 getKeyboardPos : InputPosition -> (Int, Int)
 getKeyboardPos pos =

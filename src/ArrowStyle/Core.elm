@@ -1,6 +1,6 @@
 module ArrowStyle.Core exposing (Style, JsStyle, toJsStyle, fromJsStyle, empty, toggleHead, toggleHook, toggleDouble,
                                  makeHeadTailImgs, isDouble, doubleSize,
-                                 toggleDashed, dashedStr)
+                                 toggleDashed, dashedStr, HeadStyle(..), TailStyle(..))
 
 import Geometry.Point as Point exposing (Point)
 import Svg exposing (Svg)
