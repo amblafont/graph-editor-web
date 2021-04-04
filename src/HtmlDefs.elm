@@ -1,4 +1,4 @@
-module HtmlDefs exposing (onRendered, tabDecoder, {- quickInputId, -} idInput, 
+module HtmlDefs exposing (onRendered, tabDecoder, {- quickInputId, -} idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider,
    onTab)
 import Html
@@ -12,6 +12,9 @@ import Json.Decode as D
 -- id of the text input when the user labels an edge or a node
 idInput : String
 idInput = "edited_label"
+
+canvasId : String
+canvasId = "canvas"
 
 -- quickInputId : String
 -- quickInputId = "quickinput"

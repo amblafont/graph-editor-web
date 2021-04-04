@@ -81,11 +81,11 @@ defaultGridSize = 200
 iniModel : Model
 iniModel = 
    let sizeGrid = defaultGridSize in
-   createModel sizeGrid <| 
-      Tuple.first <|
+   createModel sizeGrid <| Graph.empty
+      {- Tuple.first <|
         Graph.newNode Graph.empty
          { pos = (sizeGrid / 2, sizeGrid / 2), label = "", dims = Nothing,
-           selected = True }
+           selected = True } -}
 
 initialise_RenameMode : List Graph.Id -> Model -> Model
 initialise_RenameMode l m =

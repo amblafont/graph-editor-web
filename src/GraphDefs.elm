@@ -5,7 +5,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, clearSelection, selectedGraph,
    removeSelected,
-   getNodesAt, cloneSelected, snapToGrid, exportQuiver
+   getNodesAt, cloneSelected, snapToGrid, snapNodeToGrid, exportQuiver
    )
 
 import Geometry.Point as Point exposing (Point)
@@ -179,6 +179,9 @@ cloneSelected g offset =
   let gclearSel = clearSelection g in
   Graph.union gclearSel g2
 
+snapNodeToGrid : Int -> NodeLabel -> NodeLabel
+snapNodeToGrid sizeGrid n =  { n | pos = Point.snapToGrid (toFloat sizeGrid) n.pos }
+
 snapToGrid : Int -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 snapToGrid sizeGrid g =
-   Graph.map (\_ n -> { n | pos = Point.snapToGrid (toFloat sizeGrid) n.pos }) (\_ -> identity ) g
+   Graph.map (\_ -> snapNodeToGrid sizeGrid) (\_ -> identity ) g

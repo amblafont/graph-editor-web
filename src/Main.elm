@@ -264,8 +264,9 @@ update msg model =
               edges = Graph.edges g
           in
           (model, saveGraph (nodes, edges))
-     Clear -> noCmd iniModel
+     Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
+     SnapToGrid -> noCmd <| { model | graph = GraphDefs.snapToGrid model.sizeGrid model.graph }
      SizeGrid s -> noCmd { model | sizeGrid = s }
      ExportQuiver -> (model, exportQuiver <| GraphDefs.exportQuiver model.sizeGrid model.graph)
      MouseMoveRaw v _ -> (m, onMouseMove v)
@@ -396,7 +397,7 @@ update_DefaultMode msg model =
     in
     -- Tuples.mapFirst (changeModel model) <|
     case msg of
-        SnapToGrid -> noCmd <| { model | graph = GraphDefs.snapToGrid model.sizeGrid model.graph }
+       
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
         KeyChanged False _ (Character 'a') -> Modes.NewArrow.initialise model
         KeyChanged False _ (Character 'c') ->  noCmd <|
@@ -432,6 +433,10 @@ update_DefaultMode msg model =
             noCmd <| addOrSetSel e.keys.shift (ONode n) model
         EdgeClick n e ->
              noCmd <| addOrSetSel e.keys.shift (OEdge n) model 
+        KeyChanged False _ (Character 'f') -> noCmd 
+             { model | graph = Graph.map 
+                (\ _ n -> if n.selected then GraphDefs.snapNodeToGrid model.sizeGrid n else n )
+                (always identity) model.graph } 
         KeyChanged False _ (Character 'h') -> move pi
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
@@ -621,6 +626,7 @@ helpMsg model =
                 ++ ", [g] move selected objects (also merge, if wanted)" 
                 ++ ", [c]lone selected objects" 
                 ++ ", [/] split arrow" 
+                ++ ", [f]ix (snap) selected objects on the grid" 
                 ++ ", [hjkl] to move the selection from a point to another"                 
                 ++ ", if an arrow is selected: [(,=,b,B,-,>] alternate between different arrow styles, [i]nvert arrow."
                    
@@ -714,7 +720,7 @@ view model =
     |> Drawing.svg [
                 --   Html.Attributes.style "width" "4000px",
                 --   Html.Attributes.height 4000,
-                   Html.Attributes.id "canvas",
+                   Html.Attributes.id HtmlDefs.canvasId,
                    Html.Attributes.style "border-style" "solid",
                    Html.Events.on "mousemove"
                    (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder)                   
