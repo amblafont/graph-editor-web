@@ -613,7 +613,7 @@ helpMsg model =
     case model.mode of
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
-            msg <| "Default mode. Commands: [click] for point/edge selection (hold for selection rectangle, "
+            msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle, "
                 ++ "[shift] to keep previous selection)" 
                 ++ ", new [a]rrow from selected point"
                 ++ ", new [p]oint"
@@ -697,7 +697,7 @@ view model =
     Html.div [] [
          Html.button [Html.Events.onClick Save] [Html.text "Save"]
          , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
-         , HtmlDefs.checkbox ToggleHideGrid "Hide grid"            
+         , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
          , Html.button [Html.Events.onClick SnapToGrid] [Html.text "Snap to grid"]
         , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export to quiver"]
          , HtmlDefs.slider SizeGrid "Grid size" 2 500 model.sizeGrid

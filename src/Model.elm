@@ -64,7 +64,7 @@ createModel sizeGrid g =
       quickInput = ""
     , mousePos = ( 0, 0 )
     , specialKeys = { ctrl = False, alt = False, shift = False }
-    , hideGrid = False
+    , hideGrid = True
     , sizeGrid = sizeGrid
    -- , mousePointOver = ONothing
   --  , selectedObjs = []
