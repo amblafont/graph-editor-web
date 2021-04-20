@@ -76,12 +76,16 @@
      
         <p>
             A vi-inspired diagram editor, with              
-            (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a>. 
+            (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a> (see the code on 
+        <a href="https://github.com/amblafont/graph-editor-web">github</a>).
             Higher cells are supported.
-            For a LaTeX export, first export to Quiver (beware that vertices will be snapped
-            to the grid in the exported quiver diagram).
-        The code is available on
-        <a href="https://github.com/amblafont/graph-editor-web">github</a>.
+	    It is far less sophisticated than <a href="https://q.uiver.app">Quiver</a>, but one useful feature (if you don't know the final shape of your diagram) is that you can draw anywhere, not just on the grid (whose size can be later adjusted).
+	    </p>
+	    <p>
+	    For a LaTeX export, first export to <a href="https://q.uiver.app">Quiver</a> (beware that vertices will be snapped
+            to the grid in the process).
+	    </p>
+	    <p>
         </p>
         <button onclick="loadGraph()" >Load graph</button>
     <!--     <button onclick="dispatchRenderedChildren(document)">
