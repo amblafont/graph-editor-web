@@ -81,7 +81,7 @@ port onMouseMove : JE.Value -> Cmd a
 port onMouseMoveFromJS : (Point -> a) -> Sub a
 
 port preventDefault : JE.Value -> Cmd a
-port onSlashKey : (JE.Value -> a) -> Sub a
+port onKeyDownActive : (JE.Value -> a) -> Sub a
 
 -- tell js to save the graph
 port saveGraph : (List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> Cmd a
@@ -124,12 +124,25 @@ subscriptions m = Sub.batch
                          HtmlDefs.tabDecoder), -}
       E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onMouseMoveFromJS MouseMove,
-      onSlashKey 
-           ( \e -> 
-              case m.mode of
-                DefaultMode -> Do <| preventDefault e
-                SplitArrow _ -> Do <| preventDefault e
-                _ -> Msg.noOp )
+      onKeyDownActive
+           (\e -> e |> D.decodeValue (D.map2 ( \ks k -> 
+               case k of
+                 Character '/' ->
+                    case m.mode of
+                      DefaultMode  -> Do <| preventDefault e
+                      SplitArrow _ -> Do <| preventDefault e
+                      _ -> Msg.noOp 
+                 Character 'a' ->
+                    if ks.ctrl && m.mode == DefaultMode then
+                      Do <| preventDefault e
+                    else Msg.noOp
+                 _ -> Msg.noOp
+                
+                )                
+                HtmlDefs.keysDecoder
+                HtmlDefs.keyDecoder)
+                |> Result.withDefault Msg.noOp
+                )
     ]
 
 
@@ -399,7 +412,11 @@ update_DefaultMode msg model =
     case msg of
        
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
-        KeyChanged False _ (Character 'a') -> Modes.NewArrow.initialise model
+        KeyChanged False k (Character 'a') -> 
+            if not k.ctrl then
+             Modes.NewArrow.initialise model 
+            else
+             noCmd <| { model | graph = GraphDefs.selectAll model.graph}
         KeyChanged False _ (Character 'c') ->  noCmd <|
            initialiseMoveMode {model | graph = GraphDefs.cloneSelected model.graph (30, 30)}
         KeyChanged False _ (Character 'd') ->
@@ -615,6 +632,7 @@ helpMsg model =
             -- msg <| "Default mode. couc[c]" 
             msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle, "
                 ++ "[shift] to keep previous selection)" 
+                ++ ", [C-a] select all" 
                 ++ ", new [a]rrow from selected point"
                 ++ ", new [p]oint"
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"

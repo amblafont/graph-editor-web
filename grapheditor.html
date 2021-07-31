@@ -209,14 +209,12 @@
               btoa(unescape(encodeURIComponent(JSON.stringify(d))))}`;
               window.open(s);             
          });
-
-         document.addEventListener("keydown", function(event)
-            {
-                if    // slash key
-                  (event.key === "/")
-                    app.ports.onSlashKey.send(event);
-
-            }
+         // Elm browser keydown handler is passive
+         // and thus cannot prevent default behaviour
+         // so we make our custom event listener.
+         document.addEventListener("keydown", function(event)  {
+                    app.ports.onKeyDownActive.send(event);
+         }
         );
         </script>
     </body>

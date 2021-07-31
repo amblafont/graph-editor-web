@@ -1,4 +1,5 @@
-module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, onTabPreventDefault)
+module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, 
+  onTabPreventDefault)
 
 import Collage exposing (Point)
 -- import Graph exposing (Graph, NodeId)
@@ -68,5 +69,5 @@ updateArrowStyle m style =
       _ -> style
 
 onTabPreventDefault : Html.Attribute Msg
-onTabPreventDefault = HtmlDefs.onTab noOp noOp
-        
+onTabPreventDefault = HtmlDefs.preventsDefaultOnKeyDown
+   noOp (\ _ k -> k == HtmlDefs.Control "tab")

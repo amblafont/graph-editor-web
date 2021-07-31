@@ -3,7 +3,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
-   addNodesSelection, clearSelection, selectedGraph,
+   addNodesSelection, selectAll, clearSelection, selectedGraph,
    removeSelected,
    getNodesAt, cloneSelected, snapToGrid, snapNodeToGrid, exportQuiver
    )
@@ -148,6 +148,9 @@ addNodesSelection g f =
        g
     -- Graph.map 
     --    (\_ n -> { n | selected = f n })(\_ -> identity) g
+
+selectAll : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+selectAll g = addNodesSelection g (always True)
 
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectedGraph = Graph.keepBelow .selected .selected

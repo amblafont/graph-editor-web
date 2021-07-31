@@ -1,6 +1,6 @@
-module HtmlDefs exposing (onRendered, tabDecoder, {- quickInputId, -} idInput, canvasId,
-   Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider,
-   onTab)
+module HtmlDefs exposing (onRendered, {- quickInputId, -} idInput, canvasId,
+   Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
+   , preventsDefaultOnKeyDown)
 import Html
 import Html.Attributes
 import Html.Events
@@ -59,27 +59,19 @@ keyDecoder = D.field "key" D.string
 
 
 
--- is it a tab?
-tabDecoder : D.Decoder Bool
-tabDecoder = keyDecoder |>
- D.map 
- (\ k -> case k of 
-          Control "Tab" -> True 
-          _ -> False )
 
-onTab : a -> a -> Html.Attribute a 
-onTab msgOnTab msgNotOnTab =
- Html.Events.preventDefaultOn "keydown" 
-                         (D.map (\tab -> if tab then 
-                            -- it is necessary to prevent defaults
-                            -- otherwise the next immediate appearing input 
-                            -- may not shows up
-                                      (msgOnTab, True) 
-                                    else (msgNotOnTab, False))
-                         tabDecoder
+          
+
+
+preventsDefaultOnKeyDown : a -> (Keys -> Key -> Bool) -> Html.Attribute a
+preventsDefaultOnKeyDown noOp filter =
+    Html.Events.preventDefaultOn "keydown" 
+                         (D.map2 (\ks k -> if filter ks k then                             
+                                      (noOp, True) 
+                                    else (noOp, False))
+                         keysDecoder
+                         keyDecoder
                          )
-   
-
 makeLatex : List (Html.Attribute a) -> String -> Html.Html a
 makeLatex attrs s = 
    Html.node "math-latex" attrs [Html.text s]
