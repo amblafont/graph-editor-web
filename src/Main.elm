@@ -280,7 +280,9 @@ update msg model =
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
      SizeGrid s -> noCmd { model | sizeGrid = s }
-     ExportQuiver -> (model, exportQuiver <| GraphDefs.exportQuiver model.sizeGrid model.graph)
+     ExportQuiver -> (model,  
+                    exportQuiver <| 
+                     GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
      MouseMoveRaw v _ -> (m, onMouseMove v)
      NodeRendered n dims ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
@@ -715,7 +717,7 @@ view model =
          Html.button [Html.Events.onClick Save] [Html.text "Save"]
          , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
          , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
-        , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export to quiver"]
+        , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"]
          , HtmlDefs.slider SizeGrid "Grid size" 2 500 model.sizeGrid
           ,   Html.text model.statusMsg,
          -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
