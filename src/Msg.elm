@@ -48,7 +48,6 @@ type Msg
   | Clear
   | SizeGrid Int
   | ToggleHideGrid
-  | SnapToGrid
   -- pressing tab when editing the input text
   -- | TabInput
 

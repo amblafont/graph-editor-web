@@ -279,7 +279,6 @@ update msg model =
           (model, saveGraph (nodes, edges))
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
-     SnapToGrid -> noCmd <| { model | graph = GraphDefs.snapToGrid model.sizeGrid model.graph }
      SizeGrid s -> noCmd { model | sizeGrid = s }
      ExportQuiver -> (model, exportQuiver <| GraphDefs.exportQuiver model.sizeGrid model.graph)
      MouseMoveRaw v _ -> (m, onMouseMove v)
@@ -716,7 +715,6 @@ view model =
          Html.button [Html.Events.onClick Save] [Html.text "Save"]
          , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
          , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
-         , Html.button [Html.Events.onClick SnapToGrid] [Html.text "Snap to grid"]
         , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export to quiver"]
          , HtmlDefs.slider SizeGrid "Grid size" 2 500 model.sizeGrid
           ,   Html.text model.statusMsg,
