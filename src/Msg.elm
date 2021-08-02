@@ -41,6 +41,9 @@ type Msg
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
   | Loaded (Graph NodeLabel EdgeLabel)
+  | CopyGraph
+  -- a graph is pasted
+  | PasteGraph (Graph NodeLabel EdgeLabel)
   | QuickInput String
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point

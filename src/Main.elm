@@ -70,7 +70,7 @@ import Modes exposing (SplitArrowState)
 import InputPosition exposing (InputPosition(..))
 
 import List.Extra
-import GraphDefs exposing (exportQuiver)
+import GraphDefs exposing (exportQuiver, GraphJS)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -84,12 +84,17 @@ port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
 -- tell js to save the graph
-port saveGraph : (List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> Cmd a
+port saveGraph : GraphJS-> Cmd a
 port exportQuiver : JE.Value -> Cmd a
 
 -- js tells us to load the graph
-port loadedGraph : ((List (Node NodeLabelJs) , List (Edge EdgeLabelJs)) -> a) -> Sub a
+port loadedGraph : (GraphJS -> a) -> Sub a
 
+port clipboardWriteGraph : GraphJS -> Cmd a
+-- tells JS we got a paste event with such data
+port pasteGraph : JE.Value -> Cmd a
+-- JS would then calls us back with the decoded graph
+port clipboardGraph : (GraphJS -> a) -> Sub a
 
 
 
@@ -108,11 +113,8 @@ subscriptions m = Sub.batch
     [
       -- upload a graph (triggered by js)
       
-      loadedGraph (\ (ns,es) -> Graph.fromNodesAndEdges ns es
-                       |> Graph.map 
-                          (\_ -> GraphDefs.nodeLabelFromJs)
-                          (\_ -> GraphDefs.edgeLabelFromJs)
-                       |> Loaded),
+      loadedGraph (GraphDefs.jsToGraph >> Loaded),
+      clipboardGraph (GraphDefs.jsToGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
@@ -126,16 +128,18 @@ subscriptions m = Sub.batch
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
            (\e -> e |> D.decodeValue (D.map2 ( \ks k -> 
+               let checkCtrl =
+                    if ks.ctrl && m.mode == DefaultMode then
+                      Do <| preventDefault e
+                    else Msg.noOp
+                in
                case k of
                  Character '/' ->
                     case m.mode of
                       DefaultMode  -> Do <| preventDefault e
                       SplitArrow _ -> Do <| preventDefault e
                       _ -> Msg.noOp 
-                 Character 'a' ->
-                    if ks.ctrl && m.mode == DefaultMode then
-                      Do <| preventDefault e
-                    else Msg.noOp
+                 Character 'a' -> checkCtrl
                  _ -> Msg.noOp
                 
                 )                
@@ -266,17 +270,8 @@ update msg model =
              _ -> model            
     in
     case msg of
-     Save ->       
-          let g =  model.graph 
-                   |> Graph.map 
-                    (\_ -> GraphDefs.nodeLabelToJs)
-                    (\_ -> GraphDefs.edgeLabelToJs) 
-                   |> Graph.normalise           
-          in
-          let nodes = Graph.nodes g
-              edges = Graph.edges g
-          in
-          (model, saveGraph (nodes, edges))
+     Save ->               
+          (model, saveGraph <| GraphDefs.graphToJs model.graph)
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
      SizeGrid s -> noCmd { model | sizeGrid = s }
@@ -297,7 +292,7 @@ update msg model =
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
      Do cmd -> (m, cmd)
-     Loaded g -> noCmd <| createModel defaultGridSize g
+     Loaded g -> noCmd <| { model | graph = g, mode = DefaultMode }
      _ ->
       case model.mode of
         -- QuickInputMode c -> update_QuickInput c msg m 
@@ -418,8 +413,10 @@ update_DefaultMode msg model =
              Modes.NewArrow.initialise model 
             else
              noCmd <| { model | graph = GraphDefs.selectAll model.graph}
-        KeyChanged False _ (Character 'c') ->  noCmd <|
-           initialiseMoveMode {model | graph = GraphDefs.cloneSelected model.graph (30, 30)}
+        CopyGraph ->
+              (model,
+               clipboardWriteGraph <| 
+                 GraphDefs.graphToJs <| GraphDefs.selectedGraph model.graph)
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged False _ (Character 'g') -> 
@@ -458,7 +455,14 @@ update_DefaultMode msg model =
         KeyChanged False _ (Character 'h') -> move pi
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
-        KeyChanged False _ (Character 'l') -> move 0
+        KeyChanged False _ (Character 'l') -> move 0       
+        PasteGraph g -> noCmd <| initialiseMoveMode
+              {
+              model | graph = 
+                Graph.union 
+                  (GraphDefs.clearSelection model.graph)
+                  (GraphDefs.selectAll g)
+               }        
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise model.graph
    
         _ ->
@@ -634,6 +638,8 @@ helpMsg model =
             msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle, "
                 ++ "[shift] to keep previous selection)" 
                 ++ ", [C-a] select all" 
+                ++ ", [C-c] copy selection" 
+                ++ ", [C-v] paste" 
                 ++ ", new [a]rrow from selected point"
                 ++ ", new [p]oint"
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
@@ -642,8 +648,7 @@ helpMsg model =
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [r]ename selected object" 
-                ++ ", [g] move selected objects (also merge, if wanted)" 
-                ++ ", [c]lone selected objects" 
+                ++ ", [g] move selected objects (also merge, if wanted)"
                 ++ ", [/] split arrow" 
                 ++ ", [f]ix (snap) selected objects on the grid" 
                 ++ ", [hjkl] to move the selection from a point to another"                 
@@ -713,6 +718,28 @@ view model =
     let drawings= graphDrawing (graphDrawingFromModel model) in
     let grid = if model.hideGrid then Drawing.empty else Drawing.grid model.sizeGrid in
     let nmissings = List.length missings in
+    let svg =   Drawing.group [grid,
+                 drawings,
+                 additionnalDrawing model
+              ]
+              -- |> debug
+              |> Drawing.svg [
+                          --   Html.Attributes.style "width" "4000px",
+                          --   Html.Attributes.height 4000,
+                             Html.Attributes.id HtmlDefs.canvasId,
+                             Html.Attributes.style "border-style" "solid",
+                             Html.Events.on "mousemove"
+                             (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder)                   
+                            ,                 
+                           MouseEvents.onWithOptions "mousedown" 
+                            { stopPropagation = False, preventDefault = False }
+                            MouseDown
+                            -- MouseEvents.onDown MouseDown
+                     , Html.Events.onMouseUp MouseUp
+                     , Html.Events.on "copy" (D.succeed CopyGraph)
+                          --    , Msg.onTabAttribute
+                       ]
+    in
     Html.div [] [
          Html.button [Html.Events.onClick Save] [Html.text "Save"]
          , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
@@ -729,27 +756,8 @@ view model =
          Html.p [] [ Html.text <| if nmissings > 0 then 
             String.fromInt nmissings ++ " nodes or edges could not be rendered."
             else "" ]
-         ,
-    Drawing.group [grid,
-       drawings,
-       additionnalDrawing model
-    ]
-    -- |> debug
-    |> Drawing.svg [
-                --   Html.Attributes.style "width" "4000px",
-                --   Html.Attributes.height 4000,
-                   Html.Attributes.id HtmlDefs.canvasId,
-                   Html.Attributes.style "border-style" "solid",
-                   Html.Events.on "mousemove"
-                   (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder)                   
-                  ,                 
-                 MouseEvents.onWithOptions "mousedown" 
-                  { stopPropagation = False, preventDefault = False }
-                  MouseDown
-                  -- MouseEvents.onDown MouseDown
-           , Html.Events.onMouseUp MouseUp
-                --    , Msg.onTabAttribute
-             ]
+         , HtmlDefs.makePasteCapture (Do << pasteGraph) []
+             [   svg  ]  
              ]
 
 

@@ -1,6 +1,6 @@
 module HtmlDefs exposing (onRendered, {- quickInputId, -} idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
-   , preventsDefaultOnKeyDown)
+   , preventsDefaultOnKeyDown, makePasteCapture)
 import Html
 import Html.Attributes
 import Html.Events
@@ -16,11 +16,16 @@ idInput = "edited_label"
 canvasId : String
 canvasId = "canvas"
 
+pasteElement = "paste-capture"
+latexElement = "math-latex"
+
 -- quickInputId : String
 -- quickInputId = "quickinput"
 
 renderedClass = "rendered-callback"
 renderedEvent = "rendered"
+
+pasteEvent = "pasteData"
 
 renderedDecoder : D.Decoder Point
 renderedDecoder = 
@@ -33,6 +38,19 @@ onRendered : (Point -> msg) -> List (Html.Attribute msg)
 onRendered onRender =
     [ Html.Events.on renderedEvent (D.map onRender renderedDecoder),
       Html.Attributes.class renderedClass ]
+
+onPaste : (D.Value -> msg) -> Html.Attribute msg
+onPaste handler = Html.Events.on pasteEvent 
+                  <| D.map handler D.value
+
+
+makePasteCapture : (D.Value -> a) -> List (Html.Attribute a) -> List (Html.Html a) -> Html.Html a
+makePasteCapture handler attrs s =
+  Html.node pasteElement (onPaste handler :: attrs) s
+  
+   
+      
+
 
 -- From https://github.com/elm/browser/blob/1.0.2/notes/keyboard.md
 -- useful for keyboard events
@@ -74,7 +92,7 @@ preventsDefaultOnKeyDown noOp filter =
                          )
 makeLatex : List (Html.Attribute a) -> String -> Html.Html a
 makeLatex attrs s = 
-   Html.node "math-latex" attrs [Html.text s]
+   Html.node latexElement attrs [Html.text s]
 
 
 type alias Keys =

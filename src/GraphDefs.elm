@@ -2,10 +2,11 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    newNodeLabel, newEdgeLabel, emptyEdge,
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
+   graphToJs, jsToGraph, GraphJS,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
    removeSelected,
-   getNodesAt, cloneSelected, snapToGrid, snapNodeToGrid, exportQuiver
+   getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver
    )
 
 import Geometry.Point as Point exposing (Point)
@@ -23,7 +24,26 @@ type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selec
 type alias EdgeLabelJs = { label : String, style : ArrowStyle.Core.JsStyle, bend : Float}
 type alias NodeLabelJs = { pos : Point , label : String}
 
+type alias GraphJS = (List (Graph.Node NodeLabelJs) , List (Graph.Edge EdgeLabelJs))
 
+graphToJs : Graph NodeLabel EdgeLabel -> GraphJS
+graphToJs g = 
+          let gjs = g
+                   |> Graph.map 
+                    (\_ -> nodeLabelToJs)
+                    (\_ -> edgeLabelToJs) 
+                   |> Graph.normalise           
+          in
+          let nodes = Graph.nodes gjs
+              edges = Graph.edges gjs
+          in
+          (nodes, edges)
+
+jsToGraph : GraphJS -> Graph NodeLabel EdgeLabel
+jsToGraph (ns,es) = Graph.fromNodesAndEdges ns es
+                       |> Graph.map 
+                          (\_ -> nodeLabelFromJs)
+                          (\_ -> edgeLabelFromJs)
 
 quiverStyle : ArrowStyle -> List (String, JEncode.Value)
 quiverStyle st =
@@ -171,16 +191,6 @@ getNodesAt g p =
                                   dims = getNodeDims n} p)
   |> List.map .id
 
-
-cloneSelected : Graph NodeLabel EdgeLabel -> Point -> 
-                Graph NodeLabel EdgeLabel
-cloneSelected g offset =
-  let g2 = selectedGraph g |> 
-       Graph.map (\_ n -> {n | pos = Point.add n.pos offset, selected = True })
-         (\_ e -> {e | selected = True } )
-  in
-  let gclearSel = clearSelection g in
-  Graph.union gclearSel g2
 
 snapNodeToGrid : Int -> NodeLabel -> NodeLabel
 snapNodeToGrid sizeGrid n =  { n | pos = Point.snapToGrid (toFloat sizeGrid) n.pos }
