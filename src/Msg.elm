@@ -72,4 +72,4 @@ updateArrowStyle m style =
 
 onTabPreventDefault : Html.Attribute Msg
 onTabPreventDefault = HtmlDefs.preventsDefaultOnKeyDown
-   noOp (\ _ k -> k == HtmlDefs.Control "tab")
+   noOp (\ _ k -> k == HtmlDefs.Control "Tab")
