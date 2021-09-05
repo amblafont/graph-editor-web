@@ -254,8 +254,12 @@
          });
         
          function handlePasteGraph(event) {   
-            const paste = event.detail;              
-            app.ports.clipboardGraph.send(JSON.parse(paste));
+            const paste = event.detail;
+            var json;
+            try { json = JSON.parse(paste); }
+            catch (e) { json = false; }
+            if (json) 
+              app.ports.clipboardGraph.send(json);
          }
 
          app.ports.pasteGraph.subscribe(handlePasteGraph);
