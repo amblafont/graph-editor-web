@@ -5,7 +5,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    graphToJs, jsToGraph, GraphJS,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
-   removeSelected,
+   removeSelected, getLabelLabel,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver
    )
 
@@ -198,3 +198,6 @@ snapNodeToGrid sizeGrid n =  { n | pos = Point.snapToGrid (toFloat sizeGrid) n.p
 snapToGrid : Int -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 snapToGrid sizeGrid g =
    Graph.map (\_ -> snapNodeToGrid sizeGrid) (\_ -> identity ) g
+
+getLabelLabel : Graph.Id -> Graph NodeLabel EdgeLabel -> String
+getLabelLabel id g = g |> Graph.get id .label .label |> Maybe.withDefault ""

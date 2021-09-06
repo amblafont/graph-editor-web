@@ -4,7 +4,6 @@ module Modes.NewArrow exposing (graphDrawing, initialise, update, help)
 import Color exposing (..)
 import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
-import Maybe exposing (withDefault)
 import Msg exposing (Msg(..))
 import ArrowStyle 
 import HtmlDefs exposing (Key(..))
@@ -52,12 +51,14 @@ nextStep model finish state =
      let m2 = addOrSetSel False (ONode info.movedNode) { model | graph = info.graph } in
      
      if finish then switch_Default m2 else
-        let ids = 
-                         if info.created then [ info.movedNode , info.edgeId ]
-                                    else [ info.edgeId ]
+        let ids = if info.created then 
+                     [ info.movedNode , info.edgeId ] 
+                  else [ info.edgeId ]
         in
+        let label = GraphDefs.getLabelLabel state.chosenNode info.graph in
+        let ids_labels = List.map (\ id -> (id, label)) ids in
         noCmd <| 
-        initialise_RenameMode ids m2
+        initialise_RenameModeWithDefault ids_labels m2
        
 
 {- eyToAction : Msg -> NewArrowStep -> Maybe Action

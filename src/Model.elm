@@ -87,16 +87,19 @@ iniModel =
          { pos = (sizeGrid / 2, sizeGrid / 2), label = "", dims = Nothing,
            selected = True } -}
 
-initialise_RenameMode : List Graph.Id -> Model -> Model
-initialise_RenameMode l m =
+initialise_RenameModeWithDefault : List (Graph.Id, String) -> Model -> Model
+initialise_RenameModeWithDefault l m =
   case l of
      [] -> { m | mode = DefaultMode }
-     id :: _ -> 
-           let s = 
-                 Graph.get id .label .label m.graph
-                 |> Maybe.withDefault ""
-           in
-           { m | mode = RenameMode s l }
+     _ -> { m | mode = RenameMode l }
+
+
+
+initialise_RenameMode : List Graph.Id -> Model -> Model
+initialise_RenameMode l m =
+    let ls =  List.map (\id -> (id, GraphDefs.getLabelLabel id m.graph)) l
+    in
+        initialise_RenameModeWithDefault ls m
         
 
 

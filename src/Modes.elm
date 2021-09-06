@@ -12,8 +12,9 @@ type Mode
     = DefaultMode
     | NewArrow NewArrowState
     | Move MoveState
-      -- the list of ids to be edited
-    | RenameMode String (List Graph.Id)
+      -- the list of ids to be edited, with associated default labels 
+      -- (which may differ from the labels of the objects in the model)
+    | RenameMode (List (Graph.Id, String))
     | DebugMode
     | NewNode
    -- | QuickInputMode (Maybe NonEmptyChain)

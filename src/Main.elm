@@ -178,14 +178,13 @@ subscriptions m = Sub.batch
 
 
 
-graph_RenameMode : String -> List Graph.Id -> Model -> Graph NodeLabel EdgeLabel
-graph_RenameMode s l m = 
+graph_RenameMode : List (Graph.Id, String) -> Model -> Graph NodeLabel EdgeLabel
+graph_RenameMode l m = 
    case l of
       [] -> m.graph
-      id :: _ ->   Graph.update id 
+      (id, s) :: _ ->   Graph.update id 
                         (\ n -> {n | label = s })  
-                               (\ e -> {e | label = s })
-                               
+                               (\ e -> {e | label = s })                               
                                m.graph 
 
 info_MoveNode : Model -> Modes.MoveState -> 
@@ -306,7 +305,7 @@ update msg model =
         RectSelect orig -> update_RectSelect msg orig m.specialKeys.shift m
         NewArrow astate -> Modes.NewArrow.update astate msg m
             -- update_Modes.NewArrow astate msg m
-        RenameMode s l -> update_RenameMode s l msg m
+        RenameMode l -> update_RenameMode l msg m
         Move s -> update_MoveNode msg s m
         DebugMode -> update_DebugMode msg m
         NewNode -> update_NewNode msg m
@@ -352,29 +351,36 @@ update_MoveNode msg state model =
 
 
         
-update_RenameMode : String -> List Graph.Id -> Msg -> Model -> (Model, Cmd Msg)
-update_RenameMode label ids msg model =
+update_RenameMode : List (Graph.Id, String) -> Msg -> Model -> (Model, Cmd Msg)
+update_RenameMode labels msg model =
+   let edit_label s = 
+         noCmd {model | mode = RenameMode <| 
+         case labels of
+           (id, _) :: q -> (id, s) :: q
+           _ -> labels -- should not happen
+         }
+   in 
     case msg of
       KeyChanged False _ (Control "Escape") -> switch_Default model
-      KeyChanged False _ (Control "Enter") -> noCmd <| next_RenameMode True label ids model
-      KeyChanged False _ (Control "Tab") -> noCmd <| next_RenameMode False label ids model
+      KeyChanged False _ (Control "Enter") -> noCmd <| next_RenameMode True labels model
+      KeyChanged False _ (Control "Tab") -> noCmd <| next_RenameMode False labels  model
     --   MouseClick -> finalise_RenameMode label model
-      NodeLabelEdit _ s -> noCmd {model | mode = RenameMode s ids}
-      EdgeLabelEdit _ s -> noCmd {model | mode = RenameMode s ids}
+      NodeLabelEdit _ s -> edit_label s
+      EdgeLabelEdit _ s -> edit_label s
       _ -> noCmd model
 
 
 
-next_RenameMode : Bool -> String -> List Graph.Id -> Model -> Model
-next_RenameMode finish label ids model =
-    let g = graph_RenameMode label ids model in
+next_RenameMode : Bool -> List (Graph.Id, String) -> Model -> Model
+next_RenameMode finish labels model =
+    let g = graph_RenameMode labels model in
     let m2 =  {model | graph = g} in
     if finish then
       { m2 | mode = DefaultMode }
     else
-      case ids of
+      case labels of
         [] ->   { m2 | mode = DefaultMode }
-        _ :: q -> initialise_RenameMode q m2
+        _ :: q -> { m2 | mode = RenameMode q }
         
 
 update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
@@ -541,11 +547,11 @@ graphDrawingFromModel m =
      --   QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.graph ch
         Move s -> info_MoveNode m s |> .graph |>
             collageGraphFromGraph m 
-        RenameMode s l ->
-            let g = graph_RenameMode s l m in
+        RenameMode l ->
+            let g = graph_RenameMode l m in
             let g2 = collageGraphFromGraph m g in
             case l of
-                id :: _ ->
+                (id, _) :: _ ->
                     Graph.update id 
                     (\n -> {n | editable = True })
                     (\e -> {e | editable = True })
@@ -686,7 +692,7 @@ helpMsg model =
                 ++ "Use mouse or h,j,k,l. [RET] or [click] to confirm."
                 ++ " Hold [ctrl] to merge the selected point onto another node."                
                   |> msg
-        RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
+        RenameMode _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
 
 
         _ -> let txt = "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"

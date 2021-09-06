@@ -56,12 +56,18 @@ nextStep model finish state =
     in
     let m2 = addOrSetSel False (ONode info.movedNode) { model | graph = info.graph } in
      if finish then switch_Default m2 else
+        let ne1 = (info.ne1, info.le1)
+            ne2 = (info.ne2, info.le2)
+        in
         let ids = 
-                         if info.created then [ info.movedNode , info.ne1, info.ne2 ]
-                                    else [ info.ne1, info.ne2 ]
+              if info.created then 
+                [ (info.movedNode, GraphDefs.getLabelLabel info.movedNode info.graph),
+                  ne1, ne2 ]
+              else
+                 [ ne1, ne2 ]
         in
         noCmd <|         
-        initialise_RenameMode ids m2
+        initialise_RenameModeWithDefault ids m2
                           
 
 
@@ -77,27 +83,40 @@ nextStep model finish state =
 -- movedNode
 
 type alias Info = { graph : Graph NodeLabel EdgeLabel,
-                    movedNode : NodeId ,
+                    movedNode : NodeId ,                    
                     created : Bool,
                     ne1 : EdgeId,
-                    ne2 : EdgeId }
+                    ne2 : EdgeId,
+                    -- default label for renaming
+                    le1 : String,
+                    -- default label for renaming
+                    le2 : String }
 
 
 stateInfo : Model -> SplitArrowState -> Info
 stateInfo m state =
+    let otherLabel = 
+              m.graph |> GraphDefs.getLabelLabel 
+              (if state.labelOnSource then 
+                 state.target 
+               else 
+                 state.source)
+    in
     let
         ( ( g, n ), created ) =
-          let makeInfo pos = mayCreateTargetNodeAt m pos "" in
+          let makeInfo pos = mayCreateTargetNodeAt m pos otherLabel in
            case state.pos of
               InputPosGraph id -> ((m.graph, id), False)
               _ -> makeInfo m.mousePos                              
            
     in
-    let (l1, l2) = 
+    let ((l1, d1), (l2, d2)) = 
+           let existingLabels = (state.label, state.label.label) in
+           let newLabel = (GraphDefs.emptyEdge, otherLabel) in                  
            if state.labelOnSource then 
-             (state.label, GraphDefs.emptyEdge)
+             (existingLabels, newLabel)
            else
-             (GraphDefs.emptyEdge, state.label)
+             (newLabel, existingLabels)
     in
     let (g1, ne1) = (Graph.newEdge g state.source n l1) in
     let (g2, ne2) = (Graph.newEdge g1 n state.target l2) in
@@ -105,7 +124,9 @@ stateInfo m state =
       created = created,
       movedNode = n,
       ne1 = ne1,
-      ne2 = ne2 }
+      le1 = d1,
+      ne2 = ne2,
+      le2 = d2 }
    
 
 
