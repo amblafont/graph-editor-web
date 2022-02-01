@@ -24,6 +24,7 @@ type Msg
   = -- call some js function
     Do (Cmd Msg)
   | Save
+  | FileName String -- new file name
   | ExportQuiver
     -- on reception of this message, the js function onMouseMove is called
     -- which sends back a MouseMove message with the relative position to 
@@ -40,7 +41,7 @@ type Msg
   | EdgeClick EdgeId MouseEvents.Event
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
-  | Loaded (Graph NodeLabel EdgeLabel)
+  | Loaded (Graph NodeLabel EdgeLabel) String
   | CopyGraph
   -- a graph is pasted
   | PasteGraph (Graph NodeLabel EdgeLabel)

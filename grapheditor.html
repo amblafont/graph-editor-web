@@ -196,8 +196,9 @@
          var app = Elm.Main.init({
              node: appDiv
          });
+         var tutoData = {"graph" : tutorial, "fileName" : "graph.json" };
          
-         app.ports.loadedGraph.send(tutorial);
+         app.ports.loadedGraph.send(tutoData);
          
          // load a json graph file, send it to the elm component
          function loadGraph() {
@@ -209,7 +210,7 @@
                  var fr=new FileReader();
                  fr.onload=function(){
                      var json = JSON.parse (fr.result);
-                     app.ports.loadedGraph.send(json);
+                     app.ports.loadedGraph.send({ graph : json, fileName : file.name});
                  }
                  fr.readAsText(file);
              }
@@ -239,8 +240,11 @@
              a.download = fileName;
              a.click();
          }
-         app.ports.saveGraph.subscribe(function(d) {
-             download(JSON.stringify(d), 'graph.json', 'application/json');
+         app.ports.saveGraph.subscribe(function(a) {
+             var d = a.graph;
+             var name = window.prompt("Filename?", a.fileName);
+             download(JSON.stringify(d), name /* + '.json' */, 'application/json');
+             app.ports.savedGraph.send(name);
          });
 
          app.ports.exportQuiver.subscribe(function(d) {

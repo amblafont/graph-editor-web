@@ -84,11 +84,12 @@ port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
 -- tell js to save the graph
-port saveGraph : GraphJS-> Cmd a
+port saveGraph : { graph : GraphJS, fileName : String } -> Cmd a
+port savedGraph : (String -> a) -> Sub a
 port exportQuiver : JE.Value -> Cmd a
 
 -- js tells us to load the graph
-port loadedGraph : (GraphJS -> a) -> Sub a
+port loadedGraph : ({ graph : GraphJS, fileName : String } -> a) -> Sub a
 
 port clipboardWriteGraph : GraphJS -> Cmd a
 -- tells JS we got a paste event with such data
@@ -113,8 +114,9 @@ subscriptions m = Sub.batch
     [
       -- upload a graph (triggered by js)
       
-      loadedGraph (GraphDefs.jsToGraph >> Loaded),
+      loadedGraph (\ r -> Loaded (GraphDefs.jsToGraph r.graph) r.fileName),
       clipboardGraph (GraphDefs.jsToGraph >> PasteGraph),
+      savedGraph FileName,
       E.onClick (D.succeed MouseClick),
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
@@ -258,6 +260,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     let
        m = case msg of            
+             FileName s -> { model | fileName = s }
              KeyChanged _ r _ -> { model | specialKeys = r }
              MouseMoveRaw _ keys -> { model | specialKeys = keys }
              MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
@@ -276,7 +279,8 @@ update msg model =
     in
     case msg of
      Save ->               
-          (model, saveGraph <| GraphDefs.graphToJs model.graph)
+          (model, saveGraph { graph = GraphDefs.graphToJs model.graph, 
+                              fileName = model.fileName})
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
      SizeGrid s -> noCmd { model | sizeGrid = s }
@@ -297,7 +301,9 @@ update msg model =
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
      Do cmd -> (m, cmd)
-     Loaded g -> noCmd <| { model | graph = g, mode = DefaultMode }
+     Loaded g fileName -> noCmd <| { model | graph = g, 
+                                             fileName = fileName,
+                                             mode = DefaultMode }
      _ ->
       case model.mode of
         -- QuickInputMode c -> update_QuickInput c msg m 

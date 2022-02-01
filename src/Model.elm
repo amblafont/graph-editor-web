@@ -35,6 +35,7 @@ type alias Model =
     , mode : Mode
     , hideGrid : Bool
     , sizeGrid : Int
+    , fileName : String
     -- real dimensions of nodes
     -- , dimNodes : Dict NodeId Point
     -- quickInput : Maybe NonEmptyChain
@@ -66,6 +67,7 @@ createModel sizeGrid g =
     , specialKeys = { ctrl = False, alt = False, shift = False }
     , hideGrid = True
     , sizeGrid = sizeGrid
+    , fileName = "graph.json"
    -- , mousePointOver = ONothing
   --  , selectedObjs = []
     -- , dimNodes = Dict.empty
