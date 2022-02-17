@@ -3,19 +3,24 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
    graphToJs, jsToGraph, GraphJS,
+   createNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
+   isEmptySelection,
+   selectedEdgeId, selectedNode, selectedId,
    removeSelected, getLabelLabel,
-   getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver
+   getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
+   addOrSetSel
    )
 
 import Geometry.Point as Point exposing (Point)
 import Geometry
 import ArrowStyle.Core exposing (HeadStyle(..), TailStyle(..))
 import ArrowStyle exposing (ArrowStyle)
-import Polygraph as Graph exposing (Graph, NodeId)
+import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 
 import Json.Encode as JEncode
+import List.Extra as List
 
 
 type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
@@ -175,6 +180,36 @@ selectAll g = addNodesSelection g (always True)
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectedGraph = Graph.keepBelow .selected .selected
 
+selectedNodes : Graph NodeLabel EdgeLabel -> List (Node NodeLabel)
+selectedNodes g = Graph.nodes g |> List.filter (.label >> .selected)
+
+selectedEdges : Graph NodeLabel EdgeLabel -> List (Edge EdgeLabel)
+selectedEdges g = Graph.edges g |> List.filter (.label >> .selected)
+
+isEmptySelection : Graph NodeLabel EdgeLabel -> Bool
+isEmptySelection g = 
+   List.isEmpty (selectedNodes g) && List.isEmpty (selectedEdges g)
+
+selectedNode : Graph NodeLabel EdgeLabel -> Maybe (Node NodeLabel)
+selectedNode g = 
+    case selectedNodes g of
+       [ x ] -> Just x
+       _ -> Nothing
+
+selectedEdgeId : Graph NodeLabel EdgeLabel -> Maybe EdgeId
+selectedEdgeId g = 
+    case selectedEdges g of
+       [ x ] -> Just x.id
+       _ -> Nothing
+
+selectedId : Graph NodeLabel EdgeLabel -> Maybe Graph.Id
+selectedId g = 
+   case (List.map .id <| selectedNodes g)
+          ++ (List.map .id <| selectedEdges g) of
+      [ x ] -> Just x
+      _ -> Nothing
+
+
 removeSelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 removeSelected =  Graph.drop .selected .selected
 
@@ -201,3 +236,17 @@ snapToGrid sizeGrid g =
 
 getLabelLabel : Graph.Id -> Graph NodeLabel EdgeLabel -> String
 getLabelLabel id g = g |> Graph.get id .label .label |> Maybe.withDefault ""
+
+addOrSetSel : Bool -> Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+addOrSetSel keep o gi =
+
+    let g = if keep then gi else clearSelection gi in
+    let g2 = Graph.update o (\n -> {n | selected = True}) 
+                  (\n -> {n | selected = True}) g
+    in
+       {-   = case o of
+          ONothing -> g
+          ONode id -> Graph.updateNode id (\n -> {n | selected = True}) g
+          OEdge id -> Graph.updateEdge id (\n -> {n | selected = True}) g
+    in -}
+   g2

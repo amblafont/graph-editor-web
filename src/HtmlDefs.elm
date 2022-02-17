@@ -1,6 +1,7 @@
-module HtmlDefs exposing (onRendered, {- quickInputId, -} idInput, canvasId,
+module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
-   , preventsDefaultOnKeyDown, makePasteCapture)
+   , preventsDefaultOnKeyDown, makePasteCapture,
+   bottomTextId)
 import Html
 import Html.Attributes
 import Html.Events
@@ -16,11 +17,14 @@ idInput = "edited_label"
 canvasId : String
 canvasId = "canvas"
 
+bottomTextId : String
+bottomTextId = "bottom-text"
+
 pasteElement = "paste-capture"
 latexElement = "math-latex"
 
--- quickInputId : String
--- quickInputId = "quickinput"
+quickInputId : String
+quickInputId = "quickinput"
 
 renderedClass = "rendered-callback"
 renderedEvent = "rendered"

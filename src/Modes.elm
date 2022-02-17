@@ -3,7 +3,7 @@ module Modes exposing (..)
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
--- import QuickInput exposing (NonEmptyChain)
+import QuickInput exposing (NonEmptyChain)
 import InputPosition exposing (InputPosition)
 import GraphDefs
 
@@ -17,12 +17,13 @@ type Mode
     | RenameMode (List (Graph.Id, String))
     | DebugMode
     | NewNode
-   -- | QuickInputMode (Maybe NonEmptyChain)
+    | QuickInputMode (Maybe QuickInput.Equation)
     | SquareMode SquareState
     | RectSelect Point
     -- Bool -- keep previous selection?
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
+    | EnlargeMode Point
 
 type alias MoveState = 
    { orig : Point,  -- mouse original point at the beginning of the move mode

@@ -31,6 +31,12 @@ type alias NodeDrawingLabel =
           -- watchEnterLeave : Bool
     }
 
+makeActive : List Graph.Id -> Graph NodeDrawingLabel EdgeDrawingLabel ->  Graph NodeDrawingLabel EdgeDrawingLabel
+makeActive l = Graph.updateList l 
+             (\ n -> { n | isActive = True})
+             (\ e -> { e | isActive = True})
+             
+
 make_edgeDrawingLabel : {editable : Bool, isActive : Bool} 
                       -> EdgeLabel-> EdgeDrawingLabel
 make_edgeDrawingLabel {editable, isActive} ({label, style} as l) =
@@ -132,7 +138,8 @@ segmentLabel q edgeId label =
          else 
             Drawing.html labelpos label.dims -- n.dims
             <| HtmlDefs.makeLatex
-            ([   MouseEvents.onClick (EdgeClick edgeId)            
+            ([   MouseEvents.onClick (EdgeClick edgeId),
+                 MouseEvents.onMove  (always (MouseOn edgeId))
             ] ++ 
             (if label.isActive then [Html.Attributes.class "active-label" ] else [])
              ++

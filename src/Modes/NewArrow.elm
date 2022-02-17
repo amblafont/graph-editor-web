@@ -21,8 +21,7 @@ updateState m state = {m | mode = NewArrow state}
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    activeObj m
-        |> objId
+    GraphDefs.selectedId m.graph        
         |> Maybe.map
             (\chosenNode ->               
                 { m
@@ -48,7 +47,7 @@ nextStep : Model -> Bool -> NewArrowState -> ( Model, Cmd Msg )
 nextStep model finish state =
      let info = moveNodeInfo model state in
      
-     let m2 = addOrSetSel False (ONode info.movedNode) { model | graph = info.graph } in
+     let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
      
      if finish then switch_Default m2 else
         let ids = if info.created then 

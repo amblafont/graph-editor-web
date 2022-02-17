@@ -12,7 +12,7 @@ import HtmlDefs
 
 import Modes exposing (Mode(..))
 
-import GraphDefs
+import ParseLatex
 
 
 
@@ -41,6 +41,7 @@ type alias Model =
     -- quickInput : Maybe NonEmptyChain
     -- mouseOnCanvas : Bool
     -- blitzFlag : Bool
+    , bottomText : String
     }
 
 
@@ -68,6 +69,7 @@ createModel sizeGrid g =
     , hideGrid = True
     , sizeGrid = sizeGrid
     , fileName = "graph.json"
+    , bottomText = ""
    -- , mousePointOver = ONothing
   --  , selectedObjs = []
     -- , dimNodes = Dict.empty
@@ -83,7 +85,56 @@ defaultGridSize = 200
 iniModel : Model
 iniModel = 
    let sizeGrid = defaultGridSize in
-   createModel sizeGrid <| Graph.empty
+   
+  {-  let dbg = Debug.log "test" 
+        <| ParseLatex.convertString """
+    \\Diag{%
+    \\justify{m-2-2}{naturality of $\\widetilde{h^∘}$ in $X$}{m-1-3} %
+    \\justify[.4]{m-2-1}{extranaturality of $\\widetilde{h^∘}$ in $Y$}{m-4-2} %
+    \\justify{m-2-2}{interchange}{m-3-3} %
+    \\justify{m-5-1}{interchange}{m-4-2} %
+    \\justify{m-6-1}{interchange}{m-5-3} %
+    \\justify[.6]{m-4-2}{\\cite[Theorem~IV.7.2]{MacLane:cwm}}{m-3-3} %
+    }{%
+    Σ R_Z K_Z L_Z X \\& \\& Σ R_Y K_Z L_Z X \\\\
+    {\\ } \\& R_Y K_Y L_Y R_Z K_Z L_Z X \\& R_Y K_Y L_Y R_Y K_Z L_Z X \\\\
+    \\& R_Y K_Z L_Y R_Z K_Z L_Z X \\& R_Y K_Z L_Y R_Y K_Z L_Z X \\\\
+    R_Z K_Z L_Z R_Z K_Z L_Z X \\& R_Y K_Z L_Z R_Z K_Z L_Z X  \\\\
+    R_Z K_Z K_Z L_Z X \\&          \\& R_Y K_Z K_Z L_Z X \\\\
+        R_Z K_Z L_Z X \\&              \\& R_Y K_Z L_Z X %
+      }{%
+        (m-1-1) edge[labela={Σ R_f K_Z L_Z X}] (m-1-3) %
+        edge[labell={\\widetilde{h^∘}_{R_Z K_Z L_Z X,Z}}] (m-4-1) %
+        edge[labelon={\\widetilde{h^∘}_{R_Z K_Z L_Z X,Y}}] (m-2-2) %
+        (m-2-2) edge[label={[above=.7ex]{$\\scriptstyle
+            R_Y K_Y L_Y R_f K_Z L_Z X$}}] (m-2-3) %
+        (m-3-2) edge[label={[above=.7ex]{$\\scriptstyle
+            R_Y K_Z L_Y R_f K_Z L_Z X$}}] (m-3-3) %
+        (m-1-3) edge[labelon={\\widetilde{h^∘}_{R_Y K_Z L_Z X,Y}}]
+                      (m-2-3) %
+        (m-2-2) edge[labelon={R_Y K_f L_Y R_Z K_Z L_Z X}] %
+                      (m-3-2) %
+        (m-3-2) edge[labell={R_Y K_Z L_f R_Z K_Z L_Z X}] %
+                      (m-4-2) %
+        (m-3-3) edge[labelon={R_Y K_Z ε_Y K_Z L_Z X}] (m-5-3) %
+        (m-2-3) edge[labelon={R_Y K_f L_Y R_Y K_Z L_Z X}] (m-3-3) %
+        (m-4-1)  edge[label={[above=.7ex]{$\\scriptstyle
+            R_f K_Z L_Z R_Z K_Z L_Z X$}}] (m-4-2) %
+        (m-4-1) edge[labelon={R_Z K_Z ε_Z K_Z L_Z X}] (m-5-1) %
+        (m-5-1)  edge[label={[above=.7ex]{$\\scriptstyle
+            R_f K_Z K_Z L_Z X$}}] (m-5-3) %
+        (m-4-2) edge[labelon={R_Z K_Z ε_Z K_Z L_Z X}] (m-5-3) %
+        (m-5-1) edge[labelon={R_Z μ^{K_Z} L_Z X }] (m-6-1) %
+        (m-5-3) edge[labelon={R_Y μ^{K_Z} L_Z X }] (m-6-3) %
+        (m-6-1) edge[labela={R_f K_Z L_Z X}] (m-6-3) %
+  }
+
+         """
+   in -}
+   let graph = {- dbg -} Nothing |> Maybe.map (ParseLatex.buildGraph sizeGrid) |>
+               Maybe.withDefault Graph.empty
+   in
+   createModel sizeGrid <| graph
       {- Tuple.first <|
         Graph.newNode Graph.empty
          { pos = (sizeGrid / 2, sizeGrid / 2), label = "", dims = Nothing,
@@ -105,35 +156,12 @@ initialise_RenameMode l m =
         
 
 
-addOrSetSel : Bool -> Obj -> Model -> Model
+addOrSetSel : Bool -> Graph.Id -> Model -> Model
 addOrSetSel keep o m =
-
-    let g = if keep then m.graph else GraphDefs.clearSelection m.graph in
-    let g2 
-         = case o of
-          ONothing -> g
-          ONode id -> Graph.updateNode id (\n -> {n | selected = True}) g
-          OEdge id -> Graph.updateEdge id (\n -> {n | selected = True}) g
-    in
-   {m | graph = g2 }
+   {m | graph = GraphDefs.addOrSetSel keep o m.graph }
         
       
 
-{- allSelectedNodesId : Model -> List NodeId
-allSelectedNodesId m =
-  List.concatMap 
-    (\ o ->  case  o of
-               ONothing -> []
-               ONode id -> [ id ]
-               OEdge (id1, id2) -> [ id1, id2 ]
-    )
-    m.selectedObjs -}
-
--- selectedNodes : Model -> List (Node NodeLabel)
--- selectedNodes m = Graph.nodes m.graph |> List.filter (.label >> .selected)
-
--- selectedEdges : Model -> List (EdgeNodes NodeLabel EdgeLabel)
--- selectedEdges m = Graph.edgesWithNodes m.graph |> List.filter (.label >> .selected)
 
 allSelectedNodes : Model -> List (Node NodeLabel)
 allSelectedNodes m = 
@@ -153,153 +181,6 @@ allSelectedNodes m =
 --         QuickInputMode _ -> False
 --         _ -> True
 
-
-type Obj
-    = ONothing
-    | ONode NodeId
-    | OEdge EdgeId
-
-
-objToNode : Obj -> Maybe NodeId
-objToNode o =
-    case o of
-        ONode n -> Just n
-        _ -> Nothing
-
-objId : Obj -> Maybe Graph.Id
-objId o =
-  case o of
-     ONode n -> Just n
-     OEdge e -> Just e
-     ONothing -> Nothing
-
-objToEdge : Obj -> Maybe EdgeId
-objToEdge o =
-    case o of
-       OEdge n -> Just n
-       _ -> Nothing
-
-{- obj_NodeId : Obj -> NodeId
-obj_NodeId x =
-    case x of
-        ONode id ->
-            id
-
-        _ ->
-            0 -}
-
-
-{- obj_EdgeId : Obj -> EdgeId
-obj_EdgeId x =
-    case x of
-        OEdge id ->
-            id
-
-        _ ->
-            0 -}
-
-selectedObjs : Model -> List Obj
-selectedObjs m =
-    let edges = Graph.edges m.graph |> List.filter (.label >> .selected) |> List.map (.id >> OEdge)
-        nodes = Graph.nodes m.graph |> List.filter (.label >> .selected) |> List.map (.id >> ONode)
-        
-    in
-    edges ++ nodes 
-
-activeObj : Model -> Obj
-activeObj m =
-    case selectedObjs m of
-      [ o ] -> o
-      _ -> ONothing
-{- activeNode : Model -> NodeId
-activeNode m =
-    obj_NodeId <| activeObj m -}
-
-
-
-
-graphRenameObj : Graph NodeLabel EdgeLabel -> Obj -> String -> Graph NodeLabel EdgeLabel
-graphRenameObj g o s =
-    case o of
-        ONode id ->
-            Graph.updateNode id (\nl -> { nl | label = s }) g
-
-        OEdge id ->
-            Graph.updateEdge id (\e -> { e | label = s}) g
-
-        ONothing ->
-            g
-
-
-graphMakeEditable : Obj -> Graph NodeDrawingLabel EdgeDrawingLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
-graphMakeEditable o g =
-    case o of
-        ONode id ->
-            Graph.updateNode id (\e -> { e | editable = True }) g
-
-        OEdge id ->
-            Graph.updateEdge id (\e -> { e | editable = True }) g
-
-        ONothing ->
-            g
-
-
-graphMakeActive : Obj -> Graph NodeDrawingLabel EdgeDrawingLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
-graphMakeActive o g =
-    case o of
-        ONode id ->
-            Graph.updateNode id (\e -> { e | isActive = True }) g
-
-        OEdge id ->
-            Graph.updateEdge id (\e -> { e | isActive = True }) g
-
-        ONothing ->
-            g
-
-
-
-
-
-
-
-
--- The graphs are updated according to the current mode
--- returns also the endpoint id of the arrow
--- graph_Square : SquareState -> State -> (Graph NodeLabel EdgeLabel, NodeId)
--- graph_Square state m =
---     let (graph, target) = mayCreateTargetNode m "" in
---          (Graph.addEdge graph (activeNode m, target) state.edgeLabel, target)
--- returns the target node of the new arrow, if it already exists.
-
-
-
-
-
-
-{- getNodesInRect : Model -> Geometry.Rect -> List NodeId
-getNodesInRect m r =
-    Graph.filterNodes m.graph 
-    (\n -> Geometry.isInRect r n.pos)
-  |> List.map .id
- -}
-{- getTargetNodes : Model -> List NodeId
-getTargetNodes m = GraphDefs.getNodesAt m.graph m.mousePos
-  -- List.head |> Maybe.map .id
-
--- not very reliable, let us use getNodeAt
-getTargetNode : Bool -> Model -> Maybe Id
-getTargetNode onlyNode m =
-    -- if the mouse is over a node, that is the target node
-    case getTargetNodes m of
-        i :: _ ->
-             if onlyNode then
-               Graph.getNode i m.graph 
-               |> Maybe.map (\_ -> i)             
-             else 
-               Just i
-
-        _ ->
-            Nothing -}
 
 
 
@@ -337,11 +218,6 @@ switch_Default : Model -> ( Model, Cmd Msg )
 switch_Default m =
     noCmd { m | mode = DefaultMode }
 
-isSelectedObj : Model -> Obj -> Bool
-isSelectedObj m o = 
-   case o of 
-      ONothing -> False
-      _ -> List.member o (selectedObjs m)
 
 make_defaultNodeDrawingLabel : Model -> NodeLabel -> NodeDrawingLabel
 make_defaultNodeDrawingLabel model n =
@@ -375,5 +251,4 @@ keyboardPosToPoint m chosenNode p =
       Just { pos } -> 
          let delta = InputPosition.deltaKeyboardPos m.sizeGrid p in
          Point.add pos delta
-
 

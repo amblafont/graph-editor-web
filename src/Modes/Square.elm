@@ -18,7 +18,6 @@ import ArrowStyle
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import MyDiff
 import Html exposing (q)
-import Bitwise exposing (and)
 
 
 
@@ -104,9 +103,8 @@ square_updatePossibility m idx node =
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    activeObj m
-        |> objToNode
-        |> Maybe.map (square_updatePossibility m 0)
+    GraphDefs.selectedNode m.graph
+        |> Maybe.map (.id >> square_updatePossibility m 0)
         -- |> Maybe.map
         -- -- prevent bugs (if the mouse is thought
         -- -- to be kept on a point)
@@ -125,7 +123,7 @@ nextStep model finish state =
         ( info, movedNode, created ) =
             moveNodeViewInfo model state
     in
-    let m2 = addOrSetSel False (ONode movedNode) { model | graph = info.graph } in
+    let m2 = addOrSetSel False movedNode { model | graph = info.graph } in
      if finish then switch_Default m2 else
         let ids = 
                          if created then [ movedNode , info.edges.ne1, info.edges.ne2 ]
@@ -159,12 +157,12 @@ type alias ViewInfo =
 -- movedNode
 
 
-squareMode_activeObj : Edges -> List Obj
+squareMode_activeObj : Edges -> List Graph.Id
 squareMode_activeObj info =
-    [ OEdge info.e1
-    , OEdge info.e2
-    , OEdge info.ne1
-    , OEdge info.ne2
+    [ info.e1
+    , info.e2
+    , info.ne1
+    , info.ne2
     ]
 
 chooseAmong : List Int -> Int -> List Int
@@ -293,8 +291,8 @@ graphDrawingFromInfo :
     Edges ->
      Graph NodeDrawingLabel EdgeDrawingLabel
     -> Graph NodeDrawingLabel EdgeDrawingLabel
-graphDrawingFromInfo info g =    
-    List.foldl graphMakeActive g (squareMode_activeObj info)
+graphDrawingFromInfo info =    
+    GraphDrawing.makeActive (squareMode_activeObj info)
 
 
 graphDrawing : Model -> SquareState -> Graph NodeDrawingLabel EdgeDrawingLabel

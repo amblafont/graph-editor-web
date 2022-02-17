@@ -52,6 +52,9 @@ type Msg
   | Clear
   | SizeGrid Int
   | ToggleHideGrid
+  -- | ComputeLayout
+  -- | FindInitial
+  -- | EditBottomText String
   -- pressing tab when editing the input text
   -- | TabInput
 

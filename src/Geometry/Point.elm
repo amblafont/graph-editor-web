@@ -1,6 +1,8 @@
 module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
   normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList,
-  angleWithInRange, distance, snapToGrid)
+  angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
+  countRounds )
+
 
 
 type alias Point = (Float, Float)
@@ -97,14 +99,25 @@ toList (px, py) = [px, py]
 closeRemainder : Float -> Float -> Float
 closeRemainder q a = a - toFloat (round (a / q)) * q
 
+-- returns something between -pi and pi
+normaliseAngle : Float -> Float
+normaliseAngle alpha = closeRemainder (2 * pi) alpha 
+
 -- normaliseAngle : Float -> Float
 -- normaliseAngle alpha = modByFloat (2 * pi) alpha
 
 -- return an angle between 0 and pi
 distanceAngle : Float -> Float -> Float 
 distanceAngle alpha beta = 
-   closeRemainder (2 * pi) (beta - alpha) |> abs
+   distanceAngleSigned alpha beta |> abs
    
+distanceAngleSigned : Float -> Float -> Float 
+distanceAngleSigned alpha beta = 
+   normaliseAngle (beta - alpha) 
+
+flipAngle : Float -> Float
+flipAngle a = a + pi
+
 angleWithInRange : Float -> Float -> Float -> Bool
 angleWithInRange delta alpha beta  =
 
@@ -120,3 +133,17 @@ snapToGrid sizeGrid (px, py) =
 -- distanceToBox (px, py) { toTop, toBottom, toRight, toLeft} =
 --     ((x - toLeft, y - toBottom), (x + toRight, y + toTop))
 
+sumAngles : List Float -> Float
+sumAngles l =
+ case l of
+      [] -> 0
+      [ _ ] -> 0
+      a :: b :: tl ->
+          let sr = distanceAngleSigned a b in
+        --   let _ = Debug.log "r" (a,b, sr) in
+          sr + sumAngles (b :: tl)
+
+-- count the number of rounds with respect to the angles
+countRounds : List Float -> Int
+countRounds l =  
+   sumAngles l / (2 * pi) |> round 

@@ -22,17 +22,14 @@ import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    case 
-       activeObj m
-        |> objToEdge
-        of
+    case GraphDefs.selectedEdgeId m.graph of
       Nothing -> switch_Default m
       Just id ->        
         Graph.getEdge id m.graph
         |> Maybe.map 
-        (\(i1, i2, l) -> noCmd {m | mode = SplitArrow 
-        { chosenEdge = id, source = i1, target = i2, pos = InputPosMouse,
-          label = l,
+        (\ e -> noCmd {m | mode = SplitArrow 
+        { chosenEdge = id, source = e.from, target = e.to, pos = InputPosMouse,
+          label = e.label,
           labelOnSource = True}
         })
         
@@ -54,7 +51,7 @@ nextStep model finish state =
         info =
             stateInfo model state
     in
-    let m2 = addOrSetSel False (ONode info.movedNode) { model | graph = info.graph } in
+    let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
      if finish then switch_Default m2 else
         let ne1 = (info.ne1, info.le1)
             ne2 = (info.ne2, info.le2)

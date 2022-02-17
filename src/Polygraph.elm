@@ -1,6 +1,7 @@
 module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      newNode, newEdge,
-     update, updateNode, updateEdge, updateNodes, invertEdge, merge,
+     update, updateNode, updateEdge, updateNodes, updateList,
+     invertEdge, merge,
      getNode, getEdge, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
@@ -8,9 +9,11 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      Node, Edge, nextId,
      incomings, outgoings, drop, 
      normalise,
-     union)
+     union,
+     {- findInitial, sourceNode, -} removeLoops)
 import IntDict exposing (IntDict)
 import IntDictExtra 
+import Svg.Attributes exposing (from)
 
 
 
@@ -36,9 +39,9 @@ objUniv fn fe o =
      EdgeObj _ _ e -> fe e 
      NodeObj n -> fn n -}
 
-objEdge : Object n e -> Maybe (Id, Id, e)
-objEdge o = case o of
-  EdgeObj i1 i2 e -> Just (i1, i2, e)
+objEdge : EdgeId -> Object n e -> Maybe (Edge e)
+objEdge id o = case o of
+  EdgeObj i1 i2 e -> Just { id = id, from = i1, to = i2, label = e }
   _ -> Nothing
 
 objNode : Object n e -> Maybe n
@@ -122,27 +125,44 @@ update : Id -> (n -> n) -> (e -> e) -> Graph n e -> Graph n e
 update i fn fe =
   mapRep <| IntDict.update i (Maybe.map (mapObj fn fe))
 
+updateList : List Id -> (n -> n) -> (e -> e) -> Graph n e -> Graph n e
+updateList l fn fe g =
+    List.foldl (\ i -> update i fn fe)  g l
+  -- mapRep <| IntDict.update i (Maybe.map (mapObj fn fe))
+
+
 updateNode : NodeId -> (n -> n) -> Graph n e -> Graph n e
 updateNode i fn g = update i fn identity g 
 
 updateEdge : EdgeId -> (e -> e) -> Graph n e -> Graph n e
 updateEdge i fe g = update i identity fe g
 
+updateNodes : List (Node a) -> Graph a b -> Graph a b
+updateNodes l g =  
+  List.foldl (\ { id, label } g2 -> updateNode id (always label) g2) g l
+
+
 map : (NodeId -> n1 -> n2) -> (EdgeId -> e1 -> e2) -> Graph n1 e1 -> Graph n2 e2
 map fn fe = 
    mapRep <|
      IntDict.map (\ i -> mapObj (fn i) (fe i))
 
+{- getFull : Id -> (n -> a) -> (Id -> Id -> e -> a) -> Graph n e -> Maybe a
+getFull id fn fe (Graph g) =
+   case IntDict.get id g of
+      Just (NodeObj n) -> Just <| fn n
+      Just (EdgeObj i1 i2 e) -> Just <| fe e i1 i2
+      Nothing -> Nothing -}
 
 get : Id -> (n -> a) -> (e -> a) -> Graph n e -> Maybe a
 get id fn fe (Graph g) =
    case IntDict.get id g of
       Just (NodeObj n) -> Just <| fn n
-      Just (EdgeObj _ _ e) -> Just <| fe e
+      Just (EdgeObj i1 i2 e) -> Just <| fe e
       Nothing -> Nothing
-
-getEdge : EdgeId -> Graph n e -> Maybe (Id, Id, e)
-getEdge id (Graph g) = IntDict.get id g |> Maybe.andThen objEdge
+   
+getEdge : EdgeId -> Graph n e -> Maybe (Edge e)
+getEdge id (Graph g) = IntDict.get id g |> Maybe.andThen (objEdge id)
 
 getNode : NodeId -> Graph n e -> Maybe n
 getNode id (Graph g) = IntDict.get id g |> Maybe.andThen objNode
@@ -156,7 +176,7 @@ edges : Graph n e -> List (Edge e)
 edges (Graph g) = 
    let mkEdge id (i1, i2, e) = Edge id i1 i2 e in
    IntDict.toList g |> List.filterMap 
-      (\(id, e) -> objEdge e |> Maybe.map (mkEdge id))
+      (\(id, e) -> objEdge id e)
 
 fromNodesAndEdges : List (Node n) -> List (Edge e) -> Graph n e 
 fromNodesAndEdges ln le =
@@ -177,9 +197,6 @@ updateNodes l f g =
   List.foldl (\ id g2 -> updateNode id f g2) g l
   -}
 
-updateNodes : List (Node a) -> Graph a b -> Graph a b
-updateNodes l g =
-  List.foldl (\ { id, label } g2 -> updateNode id (always label) g2) g l
 
 
 -- tail recursive function
@@ -298,20 +315,23 @@ mapRec cn ce fn fe ids (Graph g) =
    Graph gf
    
 
+rawFilterIds : (n -> Bool) -> (Id -> Id -> e -> Bool) -> GraphRep n e -> GraphRep n e
+rawFilterIds fn fe =
+                        IntDict.filter (\_ o -> case o of
+                             EdgeObj id1 id2 e -> fe id1 id2 e 
+                             NodeObj n -> fn n)
 
 
 
 rawFilter : (n -> Bool) -> (e -> Bool) -> GraphRep n e -> GraphRep n e
-rawFilter fn fe =
-  IntDict.filter (\_ o -> case o of
-                             EdgeObj _ _ e -> fe e 
-                             NodeObj n -> fn n)
+rawFilter fn fe = rawFilterIds fn (\ _ _ -> fe)
 
 
 
 -- if an element is dropped, all its ascendants will be dropped
 -- as well
 -- (dual of filter)
+
 drop : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
 drop fn fe (Graph g) =
    let g2 = rawFilter fn fe g
@@ -384,7 +404,12 @@ merge i1 i2 (Graph g) =
                         EdgeObj (repl j1) (repl j2) e
                    NodeObj _ -> o)
      |> IntDict.remove i2
-     |> Graph |> sanitise         
+     |> Graph |> sanitise
+
+removeLoops : Graph n e -> Graph n e
+removeLoops = 
+       sanitise >> 
+         (mapRep <| rawFilterIds (always True) (\ id1 id2 _ -> id1 /= id2))
 
 
 
@@ -443,5 +468,18 @@ normalise g =
    |> IntDict.fromList
    |> Graph
    
+{- sourceNode : Graph n e -> Id -> NodeId
+sourceNode (Graph g) id =
+  case IntDict.get id g of
+      Just (NodeObj n) -> id
+      Just (EdgeObj i1 i2 e) -> sourceNode (Graph g) i1
+      Nothing -> id
 
-          
+findInitial : Graph n e -> Id -> NodeId
+findInitial g start =
+  incomings start g 
+  |> List.head
+  |> Maybe.map .from
+  |> Maybe.map (findInitial (remove start g))
+  |> Maybe.withDefault start -}
+  
