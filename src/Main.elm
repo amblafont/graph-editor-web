@@ -43,8 +43,7 @@ import Maybe.Extra as Maybe
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
-import QuickInput exposing (equalityParser, Orient, NonEmptyChain, 
-   orientToPoint, orientEquation)
+import QuickInput exposing (equalityParser)
 
 import GraphDrawing exposing (..)
 import Msg exposing (Msg(..))
@@ -353,7 +352,7 @@ update_QuickInput ch msg model =
                 let _ = Debug.log "coucou!" () in
                 let (statusMsg, chain) =
                         case Parser.run equalityParser s of
-                            Ok l -> (Debug.toString l, l)
+                            Ok l -> (Debug.toString l, Just l)
                             Err e -> (Parser.deadEndsToString e, Nothing)
                 in
                 noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
@@ -726,7 +725,7 @@ graphDrawingChain offset g eq =
             let iniP = (mid, mid) in
             {- graphDrawingEquation -}
             QuickInput.graphEquation iniP (toFloat offset) 
-               (orientEquation eq) g  -- QuickInput.Right
+               eq g  -- QuickInput.Right
 
 
 

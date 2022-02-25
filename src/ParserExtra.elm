@@ -10,7 +10,9 @@ maybe p = oneOf [
                map Just p, succeed Nothing
               ]
 
-repeat : Parser a -> Parser (List a)
-repeat p = oneOf [ succeed [] |. end, succeed (::) |= p |= lazy (\ _ -> repeat p)]
+-- repeat until it fails
+repeat p = oneOf [ -- succeed [] |. end,
+                   succeed (::) |= p |= lazy (\ _ -> repeat p)
+              ,    succeed [] ]
 
 repeatSpaces p = repeat (succeed identity |. spaces |= p |. spaces)

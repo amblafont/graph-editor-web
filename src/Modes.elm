@@ -3,7 +3,7 @@ module Modes exposing (..)
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
-import QuickInput exposing (NonEmptyChain)
+import QuickInput
 import InputPosition exposing (InputPosition)
 import GraphDefs
 
