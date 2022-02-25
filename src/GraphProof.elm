@@ -1,9 +1,10 @@
-module GraphProof exposing (convertGraph, loopFrom, getAllDiagrams,
+module GraphProof exposing (loopFrom, getAllValidDiagrams,
     isBorder, proofStatementToDebugString,
-    proofStatementToString, loopToDiagram,
-    fullProofs)
+    proofStatementToString, proofStepToString, loopToDiagram,
+    fullProofs, getIncompleteDiagram, isEmptyBranch, generateIncompleteProofStepFromDiagram, 
+    LoopEdge, LoopNode, Diagram, incompleteProofStepToString,
+    nodesOfDiag, edgesOfDiag)
 
-import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Polygraph as Graph exposing (Graph, NodeId, Edge, Node)
 import Geometry.Point as Point exposing (Point)
 import List.Extra as List
@@ -12,19 +13,12 @@ import Debug exposing (toString)
 import IntDict exposing (IntDict)
 import Collage.Layout exposing (debug)
 import Set exposing (Set)
+import Maybe.Extra as Maybe
 
 type alias LoopEdge = { pos : Point, angle : Float, label : String }
 type alias LoopNode = { pos : Point }
 
-convertGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
-convertGraph = 
-    Graph.mapRecAll .pos 
-             .pos
-             (\ _ n -> { pos = n.pos })
-             (\ _ fromP toP l -> 
-                        { angle = Point.subtract toP fromP |> Point.pointToAngle ,
-                          label = l.label,
-                          pos = Point.middle fromP toP })
+
 
 angleDir : Bool -> LoopEdge -> Float
 angleDir dir edge = if dir then edge.angle else Point.flipAngle edge.angle
@@ -64,6 +58,14 @@ extremePath direction target gi e =
 loopFrom : Bool -> Graph LoopNode LoopEdge -> Edge LoopEdge -> List (Edge LoopEdge, Bool)
 loopFrom direction g e = 
    extremePath direction (if direction then e.from else e.to) g e
+
+diagramFrom : Bool -> Graph LoopNode LoopEdge -> Edge LoopEdge -> Diagram
+diagramFrom dir g e =
+     let loopEdges = loopFrom dir g e in
+          loopToDiagram loopEdges
+
+isValidDiagram : Diagram -> Bool
+isValidDiagram d = d.lhs /= [] && d.rhs /= []
    
 type alias Diagram = { lhs : List (Edge LoopEdge), 
                        rhs : List (Edge LoopEdge)
@@ -100,8 +102,12 @@ loopToDiagram edges =
     in
     let (l1, l2) = List.splitAt (findInitial edges) edges in
     let lordered = l2 ++ l1 in
-    { lhs = List.filter second lordered |> List.map first, 
-      rhs = List.filterNot second lordered |> List.reverse |> List.map first }
+    let (lhs0, rhs0) = List.partition second lordered in
+    let lhs = List.map first lhs0
+        rhs = List.reverse rhs0 |> List.map first
+    in     
+    { lhs = lhs,
+      rhs = rhs }
 
 -- edges: remaining edges to examine
 getDiagrams : Graph LoopNode LoopEdge -> List (Edge LoopEdge, Bool) ->
@@ -110,24 +116,88 @@ getDiagrams g edges =
    case edges of
       [] -> []
       (e, dir) :: tail -> 
-         let loopEdges = loopFrom dir g e in
-         let idLoopEdges = List.map (\(e2, dir2) -> (e2.id, dir2)) loopEdges in
+         let d = diagramFrom dir g e in
+         -- let loopEdges = loopFrom dir g e in
+         let fromIds = d.lhs |> List.map .id in
+         let toIds = d.rhs |> List.map .id in
          let tailBis = List.filterNot 
-                        (\ (e2, dir2) -> List.member (e2.id, dir2) idLoopEdges)  
+                        (\ (e2, dir2) -> List.member e2.id
+                           (if dir2 then fromIds else toIds)
+                        )  
                         tail 
          in
-          loopToDiagram loopEdges :: getDiagrams g tailBis         
+          d :: getDiagrams g tailBis
+
+{-
+Returns the one diagram that the given input list of edges represents
+(if the input list indeed represents a diagram)
+-}
+getIncompleteDiagram : Graph LoopNode LoopEdge -> List (Edge LoopEdge) ->
+           Maybe Diagram
+getIncompleteDiagram g l =
+   case l of
+       [ ] -> Nothing
+       e :: _ ->
+            let makeDiag dir = 
+                  let d = diagramFrom dir g e in
+                   
+                  if List.sort (List.map .id l) == List.sort (List.map .id (d.lhs ++ d.rhs)) then
+                     Just <| Debug.log "oui!" d
+                  else
+                     Nothing
+                   
+            in
+            Maybe.or (makeDiag True) (makeDiag False)
+
+{- generateIncompleteProofStep : Graph LoopNode LoopEdge ->  List (Edge LoopEdge)  -> Maybe ProofStep
+generateIncompleteProofStep g l = 
+  getIncompleteDiagram g l |> 
+  Maybe.andThen (generateIncompleteProofStepFromDiagram g) -}
+
+isEmptyBranch : List (Edge LoopEdge) -> Maybe Graph.EdgeId
+isEmptyBranch l =
+   case l of
+       [ e ] -> if e.label.label == "" then Just e.id else Nothing
+       _ -> Nothing
+
+invertProofstepDiag : ProofStep -> ProofStep
+invertProofstepDiag s = { s | diag = invertDiagram s.diag }
+
+generateIncompleteProofStepFromDiagram : Graph LoopNode LoopEdge -> Diagram -> Maybe ProofStep
+generateIncompleteProofStepFromDiagram g d =
+   let flipIf b diag = if b then invertDiagram diag else diag in
+   let surroundingDiag dir = 
+        let d2 = flipIf dir d in        
+
+        isEmptyBranch d2.rhs 
+        |> Maybe.andThen (\id ->                                
+             let g2 = Graph.removeEdge id g in
+             d2.lhs |> List.head |>
+             Maybe.andThen (diagramFrom (not dir) g2 >> flipIf dir >>
+                           .lhs >> List.map .id
+                               >> applyDiag d2
+                               >> Maybe.map 
+                               (if dir then invertProofstepDiag else identity)
+                               ))
+               
+   in
+   let step = Maybe.or 
+             (surroundingDiag True)      
+             (surroundingDiag False)            
+   in
+      step
 
 
-getAllDiagrams : Graph LoopNode LoopEdge -> 
+getAllValidDiagrams : Graph LoopNode LoopEdge -> 
            List Diagram
-getAllDiagrams g =
+getAllValidDiagrams g =
    let edges = Graph.edges g in
    let edgesR = List.map (\ e -> (e, True)) edges
        edgesL = List.map (\ e -> (e, False)) edges
    in
    let edgesFull = edgesR ++ edgesL in
      getDiagrams g edgesFull
+     |> List.filter isValidDiagram
 
 type alias ProofStep = { diag : Diagram, startOffset : Int,
    backOffset : Int, endChain : List Graph.Id }
@@ -163,11 +233,13 @@ finishedProof { statement, proof } =
 
 fullProofs : Graph LoopNode LoopEdge -> List ProofStatement
 fullProofs g =
-   let diags = getAllDiagrams g in
-   let _ = List.map (Debug.log " " << statementToString) diags in
+   let diags = getAllValidDiagrams g in
    let (bigDiags, smallDiags) = List.partition isBorder diags in
+   -- let _ = List.map (Debug.log " stat:" << statementToString) diags in
    let _ = Debug.log "nombre de gros diagrammes: " (List.length bigDiags) in
+   let _ = List.map (Debug.log " big:" << statementToString) bigDiags in
    let _ = Debug.log "nombre de petits diagrammes: " (List.length smallDiags) in
+   let _ = List.map (Debug.log " small:" << statementToString) smallDiags in
    List.filter finishedProof <|
    List.map (\d ->
        { statement = d, proof = d.lhs |> List.map .id |> commuteProof smallDiags
@@ -176,47 +248,75 @@ fullProofs g =
 statementToString : Diagram -> String
 statementToString d = 
   let edgeToString = List.map (.label >> .label) >> String.join " · " in
-  edgeToString d.lhs ++ " = " ++ edgeToString d.rhs
+  "{ " ++ edgeToString d.lhs ++ " = " ++ edgeToString d.rhs ++ " }"
 
-proofStepToString : ProofStep -> String
-proofStepToString { startOffset, backOffset, diag} =
-   let write0 n s = if n == 0 then [] else s in
-   let do n s = case n of 
+
+write0 n s = if n == 0 then [] else s 
+repeat n s = case n of 
                 0 -> []
                 1 ->  ["  " ++ s]
                 _ ->  ["  do " ++ String.fromInt n ++ " " ++ s] 
-   in
+   
+getToThePoint : Int -> Int -> String
+getToThePoint startOffset backOffset =
+   String.join "\n" <|
+    repeat backOffset "apply cancel_postcomposition."   
+   ++
+     write0 startOffset 
+    (
+    ([ "  repeat rewrite assoc'." ]
+    ++
+    repeat startOffset "apply cancel_precomposition."    
+    ++ 
+    [ "  repeat rewrite assoc." ]))
+proofStepToString : ProofStep -> String
+proofStepToString { startOffset, backOffset, diag} =
+ 
    String.join "\n" <|
    [ "assert(eq : " ++ statementToString diag ++ ")."
    , "{"
    , "  admit."
    , "}"
    , "etrans."
-   , "{" ]
-   ++
-   do backOffset "apply cancel_postcomposition."   
-   ++
-     write0 startOffset 
-    (
-    ([ "  repeat rewrite assoc'." ]
-    ++
-    do startOffset "apply cancel_precomposition."    
-    ++ 
-    [ "  repeat rewrite assoc." ]))
-   ++
-   [ "  apply eq."
+   , "{" ,
+     getToThePoint startOffset backOffset
+   , "  apply eq."
    , "}" ]
    ++ (write0 startOffset ["repeat rewrite assoc."])
    ++ [
     "clear eq."
    ]
 
+symmetryStr = "apply pathsinv0."
+
+incompleteProofStepToString : ProofStep -> String
+incompleteProofStepToString { startOffset, backOffset, diag} =
+   let invert = isEmptyBranch diag.lhs |> Maybe.isJust in
+   let symList =  (if invert then [ symmetryStr ] else [] ) in
+    String.join "\n" <|
+    symList ++
+   [ 
+     "etrans."
+   , "{" 
+   , getToThePoint startOffset backOffset 
+   , "  (* remove this after copying the goal *)"
+   , "  duplicate_goal."
+   -- , "  {"
+   , "  admit."
+   --, "  }" 
+   , "  (* copy the result in the proof editor *)"
+   , "  norm_graph."
+   , "  admit."
+   , "}"
+   ]
+   ++ (write0 startOffset ["repeat rewrite assoc."])
+   ++ symList
 
 
-nodesOfDiag : Diagram -> Set Graph.NodeId
+nodesOfDiag : Diagram -> List Graph.NodeId
 nodesOfDiag d =    
-   List.map .from d.lhs ++ List.map .to d.rhs 
-   |> Set.fromList
+   List.map .from d.lhs ++ List.reverseMap .to d.rhs 
+   
    
 
 edgesOfDiag : Diagram -> IntDict ({from : Graph.Id, to : Graph.Id })
@@ -246,8 +346,10 @@ renameDebugProofStep step =
 
 
 proofStatementToDebugString : ProofStatement -> String
-proofStatementToDebugString st =
-   let nodes = List.foldl Set.union Set.empty (List.map (.diag >> nodesOfDiag) st.proof) in
+proofStatementToDebugString st = 
+   let nodes = List.foldl Set.union Set.empty 
+             (List.map (.diag >> nodesOfDiag >> Set.fromList) st.proof) 
+   in
    let edges = List.foldl IntDict.union IntDict.empty (List.map (.diag >> edgesOfDiag) st.proof) in
    let nidS id = "o" ++ String.fromInt id in
    "Goal " 

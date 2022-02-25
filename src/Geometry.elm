@@ -2,7 +2,8 @@ module Geometry exposing (raytraceRect, PosDims, Rect, pad, makeRect,
     centerRect, 
     rectEnveloppe,
    -- segmentRect, 
-   segmentRectBent, isInRect, isInPosDims -- , diamondPointPx
+   segmentRectBent, isInRect, isInPosDims,
+   isInPoly -- , diamondPointPx 
   )
 
 import Geometry.Point as Point exposing (Point)
@@ -45,6 +46,16 @@ isInRect {topLeft , bottomRight} (x, y) =
 
 isInPosDims : PosDims -> Point -> Bool
 isInPosDims dims p = isInRect (rectFromPosDims dims) p
+
+isInPoly : Point -> List Point -> Bool
+isInPoly pos l = 
+   let angles = List.map (Point.subtract pos >> Point.pointToAngle) l in
+   let anglesLoop = 
+         case angles of
+            t :: _ -> angles ++ [ t ]
+            [] -> []
+   in
+      Debug.log "isInPoly" (Point.countRounds anglesLoop) == 1
 
 pad : Float -> PosDims -> PosDims 
 pad n {pos , dims } = 

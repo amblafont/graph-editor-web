@@ -1,4 +1,4 @@
-module IntDictExtra exposing (filterMap, removeList)
+module IntDictExtra exposing (filterMap, removeList, getList)
 
 import IntDict exposing (IntDict)
 
@@ -10,3 +10,8 @@ filterMap f d =
 
 removeList : List Int -> IntDict a -> IntDict a
 removeList l d = List.foldl IntDict.remove d l
+
+getList : List Int -> IntDict a -> List (Int, a)
+getList l d =
+   let d2 = IntDict.map Tuple.pair d in
+   List.filterMap (\i -> IntDict.get i d2) l

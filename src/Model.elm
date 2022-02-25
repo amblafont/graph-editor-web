@@ -219,29 +219,11 @@ switch_Default m =
     noCmd { m | mode = DefaultMode }
 
 
-make_defaultNodeDrawingLabel : Model -> NodeLabel -> NodeDrawingLabel
-make_defaultNodeDrawingLabel model n =
-    make_nodeDrawingLabel
-        { editable = False
-        , isActive = n.selected
-        -- isSelectedObj model (ONode n.id)
-       -- , dims =  getNodeDims n.label  
-        }
-        n
 
 
 collageGraphFromGraph : Model -> Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
-collageGraphFromGraph model =
-    Graph.map
-        (\ _ -> make_defaultNodeDrawingLabel model)
-        (\ _ e ->
-            e
-                |> make_edgeDrawingLabel
-                    { editable = False, 
-                      isActive = e.selected
-                      -- isSelectedObj model <| OEdge ( e.from, e.to )  
-                      }
-        )
+collageGraphFromGraph _ g =
+    GraphDrawing.toDrawingGraph g
 
 
 keyboardPosToPoint : Model -> NodeId -> (Int, Int) -> Point

@@ -2,7 +2,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      newNode, newEdge,
      update, updateNode, updateEdge, updateNodes, updateList,
      invertEdge, merge,
-     getNode, getEdge, get, removeNode, removeEdge,
+     getNode, getNodes, getEdge, getEdges, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
      filterNodes, keepBelow,
@@ -164,8 +164,19 @@ get id fn fe (Graph g) =
 getEdge : EdgeId -> Graph n e -> Maybe (Edge e)
 getEdge id (Graph g) = IntDict.get id g |> Maybe.andThen (objEdge id)
 
-getNode : NodeId -> Graph n e -> Maybe n
+getEdges : List EdgeId -> Graph n e -> List (Edge e)
+getEdges l (Graph g) = 
+      IntDictExtra.getList l g |> List.filterMap (\(id, e) -> objEdge id e)
+
+
+getNode : NodeId -> Graph n e -> (Maybe n)
 getNode id (Graph g) = IntDict.get id g |> Maybe.andThen objNode
+
+getNodes : List NodeId -> Graph n e -> List (Node n)
+getNodes l (Graph g) = 
+      IntDictExtra.getList l g 
+      |> List.filterMap (\(id, e) -> objNode e 
+      |> Maybe.map (Node id))
 
 nodes : Graph n e -> List (Node n)
 nodes (Graph g) = 
@@ -316,8 +327,7 @@ mapRec cn ce fn fe ids (Graph g) =
    
 
 rawFilterIds : (n -> Bool) -> (Id -> Id -> e -> Bool) -> GraphRep n e -> GraphRep n e
-rawFilterIds fn fe =
-                        IntDict.filter (\_ o -> case o of
+rawFilterIds fn fe = IntDict.filter (\_ o -> case o of
                              EdgeObj id1 id2 e -> fe id1 id2 e 
                              NodeObj n -> fn n)
 

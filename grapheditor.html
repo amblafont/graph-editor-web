@@ -245,9 +245,11 @@
          }
          app.ports.saveGraph.subscribe(function(a) {
              var d = a.graph;
-             var name = window.prompt("Filename?", a.fileName);
-             download(JSON.stringify(d), name /* + '.json' */, 'application/json');
-             app.ports.savedGraph.send(name);
+             var name = window.prompt("Filename?", a.fileName) ;
+             if (name) {
+               download(JSON.stringify(d), name /* + '.json' */, 'application/json');
+               app.ports.savedGraph.send(name);
+             }
          });
 
          app.ports.exportQuiver.subscribe(function(d) {

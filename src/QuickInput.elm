@@ -1,11 +1,17 @@
 module QuickInput exposing (equalityParser, Orient,  
-   orientToPoint, orientEquation, Equation, defOrient, NonEmptyChain(..), Edge(..))
+   orientToPoint, orientEquation, Equation, defOrient, NonEmptyChain(..), Edge(..)
+   , splitWithChain, graphEquation)
 -- This is not used anymore
 import Parser exposing (Parser, variable, map, (|.), (|=), succeed, symbol, spaces, oneOf, end, lazy, andThen, backtrackable)
 import ParserExtra as Parser
 import Set
 import Html exposing (source)
 import Geometry.Point as Point exposing (Point)
+import GraphDefs exposing (NodeLabel, EdgeLabel)
+import Polygraph as Graph exposing (Graph, EdgeId, NodeId, Edge)
+import List exposing (length)
+import ArrowStyle
+import Geometry exposing (PosDims)
 
 endArrowChar = '⟩'
 type alias Vertex = String
@@ -16,6 +22,7 @@ defOrient : Orient
 defOrient = { dir = Right, strength = 1 }
 
 type Edge = Edge (Maybe String) (Maybe Orient)
+-- TODO: changer ca en Vertex , List (Vertex Edge)
 type NonEmptyChain = Singleton Vertex
            | Cons Vertex Edge NonEmptyChain 
 
@@ -70,9 +77,10 @@ orientEquation (source, but) =
     )
 
 
-orientToPoint : Orient -> Point
-orientToPoint {strength, dir} =
-    Point.resize (Debug.log "strength" strength) <| case dir of
+orientToPoint : Maybe Orient -> Point
+orientToPoint o =
+    let {strength, dir} = Maybe.withDefault defOrient o in
+    Point.resize strength <| case dir of
         Up   -> (0, -1)
         Down -> (0, 1)
         Left -> (-1, 0)
@@ -173,3 +181,106 @@ equalityParser =
             |. spaces 
             |= nonEmptyChainParser
            ]
+
+
+-- TODO
+-- replaces the given edge with a composition of edges
+splitWithChain : Graph NodeLabel EdgeLabel -> NonEmptyChain -> EdgeId -> Graph NodeLabel EdgeLabel
+splitWithChain g ch id =
+   -- to get the position
+   -- let gd = GraphDrawing.toDrawingGraph g in
+   Graph.getEdge id g |> Maybe.map (\ edge ->
+    let on1 = Graph.getNode edge.from g
+        on2 = Graph.getNode edge.to g
+    in
+    case (on1, on2) of
+        (Just n1, Just n2) ->
+            let offset = Point.subtract n2.pos n1.pos
+                       |> Point.resize (1 / (lengthChain ch |> toFloat))
+            in
+            let pos = n1.pos in -- Point.add n1.pos offset in
+             buildChain (Graph.removeEdge id g) offset pos edge.from edge.to ch 
+        _ -> g
+    )
+    |> Maybe.withDefault g
+   -- let g2 = Graph.s
+
+buildChain : Graph NodeLabel EdgeLabel -> Point -> Point -> NodeId -> NodeId -> NonEmptyChain -> Graph NodeLabel EdgeLabel
+buildChain g offset pos from to ch = 
+  case ch of
+      Singleton _ -> g
+      Cons _ (Edge olabel _) tail ->
+          let label = Maybe.withDefault "" olabel in
+          let (g3, idto) = buildChainRec g offset (Point.add pos offset) to tail in
+             Tuple.first <|  Graph.newEdge g3 from idto
+               <| GraphDefs.newEdgeLabel label ArrowStyle.empty            
+
+buildChainRec : Graph NodeLabel EdgeLabel -> Point -> Point -> NodeId -> NonEmptyChain -> (Graph NodeLabel EdgeLabel, NodeId)
+buildChainRec g offset pos to ch =
+   case ch of
+       Singleton _ -> (g, to)
+       Cons v (Edge olabel _) tail -> 
+          let label = Maybe.withDefault "" olabel in
+          let (g2, id, _ ) = GraphDefs.createNodeLabel g v pos in
+          let (g3, idto) = buildChainRec g2 offset (Point.add pos offset) to tail in
+          let (g4, _) = Graph.newEdge g3 id idto
+                        <| GraphDefs.newEdgeLabel label ArrowStyle.empty            
+          in
+            (g4, id)
+
+finalNodeLabel : Point -> Float -> Equation -> NodeLabel
+finalNodeLabel pos offset (eq1, eq2) =
+   let longCh = if lengthChain eq1 > lengthChain eq2 then eq1 else eq2 in
+   finalNodeLabelChain pos offset longCh
+
+initialNodeLabel : Point -> Equation -> NodeLabel
+initialNodeLabel pos (eq1, eq2) =
+   case eq1 of
+     Singleton v ->  GraphDefs.newNodeLabel pos v
+     Cons v _ _ ->   GraphDefs.newNodeLabel pos v
+  
+nextPos : Point -> Float -> Maybe Orient -> Point
+nextPos pos offset o =
+   (Point.add pos (Point.resize offset 
+            (orientToPoint o)))
+finalNodeLabelChain : Point -> Float -> NonEmptyChain -> NodeLabel
+finalNodeLabelChain pos offset ch =
+   case ch of
+       Singleton s -> GraphDefs.newNodeLabel pos s
+       Cons _ (Edge _ orient) tail -> 
+           finalNodeLabelChain 
+           (nextPos pos offset orient)
+            offset
+            tail
+
+buildGraphChain : Float -> NodeId -> NodeId -> Point -> NonEmptyChain -> 
+   Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+buildGraphChain offset start final pos ch g =
+   case ch of
+       Singleton _ -> g
+       Cons _ (Edge l _) (Singleton _) ->
+           Tuple.first <| Graph.newEdge g start final
+           <| GraphDefs.newEdgeLabel (Maybe.withDefault "" l)
+              ArrowStyle.empty
+       Cons _ (Edge l o) (Cons v e tail) ->
+            let npos = nextPos pos offset o in
+            let (g2, id, _ ) = GraphDefs.createNodeLabel g v npos in
+            let (g3, _) = Graph.newEdge g2 start id 
+                  <| GraphDefs.newEdgeLabel (Maybe.withDefault "" l)
+                     ArrowStyle.empty
+            in
+            buildGraphChain offset id final npos (Cons v e tail)
+            g3
+
+graphEquation : Point -> Float -> Equation -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+graphEquation pos offset eq g =
+    let labelf = finalNodeLabel pos offset eq in
+    let labeli = initialNodeLabel pos eq in
+    let (g2, finalId) = Graph.newNode g labelf in
+    let (g3, startId) = Graph.newNode g2 labeli in
+    let (eq1, eq2) = eq in
+    g3 
+    |>  buildGraphChain offset  startId finalId pos eq1
+    |>  buildGraphChain offset  startId finalId pos eq2
+
+   

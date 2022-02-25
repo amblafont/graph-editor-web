@@ -1,5 +1,6 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
    newNodeLabel, newEdgeLabel, emptyEdge,
+   selectedEdges, 
    EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
    NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
    graphToJs, jsToGraph, GraphJS,
@@ -10,14 +11,17 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    selectedEdgeId, selectedNode, selectedId,
    removeSelected, getLabelLabel,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
-   addOrSetSel
+   addOrSetSel, toProofGraph, selectedIncompleteDiagram,
+   selectSurroundingDiagram
    )
 
+import IntDict
 import Geometry.Point as Point exposing (Point)
 import Geometry
 import ArrowStyle.Core exposing (HeadStyle(..), TailStyle(..))
 import ArrowStyle exposing (ArrowStyle)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
+import GraphProof exposing (LoopNode, LoopEdge, Diagram)
 
 import Json.Encode as JEncode
 import List.Extra as List
@@ -30,6 +34,22 @@ type alias EdgeLabelJs = { label : String, style : ArrowStyle.Core.JsStyle, bend
 type alias NodeLabelJs = { pos : Point , label : String}
 
 type alias GraphJS = (List (Graph.Node NodeLabelJs) , List (Graph.Edge EdgeLabelJs))
+
+toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
+toProofGraph = 
+    Graph.mapRecAll .pos 
+             .pos
+             (\ _ n -> { pos = n.pos })
+             (\ _ fromP toP l -> 
+                        { angle = Point.subtract toP fromP |> Point.pointToAngle ,
+                          label = l.label,
+                          pos = Point.middle fromP toP })
+
+selectedIncompleteDiagram : Graph NodeLabel EdgeLabel -> Maybe Diagram
+selectedIncompleteDiagram g = 
+   let gc = (toProofGraph g) in
+    GraphProof.getIncompleteDiagram gc
+     <| Graph.getEdges (selectedEdges g |> List.map .id) gc
 
 graphToJs : Graph NodeLabel EdgeLabel -> GraphJS
 graphToJs g = 
@@ -129,7 +149,7 @@ edgeLabelFromJs {label, style, bend } =
 createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)
 createNodeLabel g s p =
-    let label = { pos = p, label = s, dims = Nothing, selected = False} in
+    let label = newNodeLabel p s in
     let (g2, id) = Graph.newNode g label in
      (g2, id, p)
 
@@ -250,3 +270,20 @@ addOrSetSel keep o gi =
           OEdge id -> Graph.updateEdge id (\n -> {n | selected = True}) g
     in -}
    g2
+
+selectEdges : Graph NodeLabel EdgeLabel -> List EdgeId -> Graph NodeLabel EdgeLabel
+selectEdges = List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True}))
+
+selectSurroundingDiagram : Point -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+selectSurroundingDiagram pos gi =   
+   let gp = toProofGraph gi in
+   let diags = GraphProof.getAllValidDiagrams gp 
+            |> List.map (\d -> 
+              (Graph.getNodes (GraphProof.nodesOfDiag d)
+               gi |> List.map (.label >> .pos),
+               GraphProof.edgesOfDiag d |> IntDict.keys
+                  ))
+   in 
+   let d = List.find (Tuple.first >> Geometry.isInPoly pos) diags in
+   let gf = d |> Maybe.map (Tuple.second >> selectEdges (clearSelection gi)) in
+   Maybe.withDefault gi gf

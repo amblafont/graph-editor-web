@@ -38,6 +38,7 @@ import Color exposing (..)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Maybe.Extra as Maybe
 
 
 import Parser exposing ((|.), (|=), Parser)
@@ -263,15 +264,16 @@ switch_RenameMode model =
  -}
 -- Now, deal with incoming messages
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-    let m = case msg of
-                FileName s -> { model | fileName = s }
-                KeyChanged _ r _ -> { model | specialKeys = r }
-                MouseMoveRaw _ keys -> { model | specialKeys = keys }
-                MouseMove p -> { model | mousePos = p} -- , mouseOnCanvas = True}
-                MouseDown e -> { model | specialKeys = e.keys }
+update msg modeli =
+    let model = case msg of
+                FileName s -> { modeli | fileName = s }
+                KeyChanged _ r _ -> { modeli | specialKeys = r }
+                MouseMoveRaw _ keys -> { modeli | specialKeys = keys }
+                MouseMove p -> { modeli | mousePos = p} -- , mouseOnCanvas = True}
+                MouseDown e -> { modeli | specialKeys = e.keys }
                 {- FindInitial -> selectInitial model -}
-                QuickInput s -> { model | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
+                QuickInput s -> let _ = Debug.log "coucou1!" () in
+                     { modeli | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                 -- EditBottomText s -> 
                 --     let _ = Debug.log "bottomText" model.bottomText in
                 --     { model | bottomText = {- Debug.log "bottomText" -} s}
@@ -284,7 +286,7 @@ update msg model =
                -- NodeLeave n -> { model | mousePointOver = ONothing}
  
                -- MouseClick -> let _ = Debug.log "Mouse Click !" () in model
-                _ -> model            
+                _ -> modeli            
     in
     case msg of
      Save ->               
@@ -296,7 +298,7 @@ update msg model =
      ExportQuiver -> (model,  
                     exportQuiver <| 
                      GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
-     MouseMoveRaw v _ -> (m, onMouseMove v)
+     MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n dims ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
                 noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (n, dims),
@@ -309,34 +311,35 @@ update msg model =
                       graph = 
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
-     Do cmd -> (m, cmd)
+     Do cmd -> (model, cmd)
      Loaded g fileName -> noCmd <| { model | graph = g, 
                                              fileName = fileName,
                                              mode = DefaultMode }
      _ ->
       case model.mode of
-        QuickInputMode c -> update_QuickInput c msg m 
-        DefaultMode -> update_DefaultMode msg m
-        RectSelect orig -> update_RectSelect msg orig m.specialKeys.shift m
-        EnlargeMode orig -> update_Enlarge msg orig m
-        NewArrow astate -> Modes.NewArrow.update astate msg m
+        QuickInputMode c -> update_QuickInput c msg model 
+        DefaultMode -> update_DefaultMode msg model
+        RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
+        EnlargeMode orig -> update_Enlarge msg orig model
+        NewArrow astate -> Modes.NewArrow.update astate msg model
             -- update_Modes.NewArrow astate msg m
-        RenameMode l -> update_RenameMode l msg m
-        Move s -> update_MoveNode msg s m
-        DebugMode -> update_DebugMode msg m
-        NewNode -> update_NewNode msg m
-        SquareMode state -> Modes.Square.update state msg m
-        SplitArrow state -> Modes.SplitArrow.update state msg m
+        RenameMode l -> update_RenameMode l msg model
+        Move s -> update_MoveNode msg s model
+        DebugMode -> update_DebugMode msg model
+        NewNode -> update_NewNode msg model
+        SquareMode state -> Modes.Square.update state msg model
+        SplitArrow state -> Modes.SplitArrow.update state msg model
 
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
+    let _ = Debug.log "coucou2!" msg in
     case msg of
         KeyChanged False _ (Control "Escape") ->
             ({model | mode = DefaultMode}, 
                  Task.attempt (\_ -> Msg.noOp) (Dom.blur quickInputId))
         KeyChanged False _ (Control "Enter") ->
-            ({model | graph = graphDrawingChain model.sizeGrid model.graph ch, 
+            ({model | graph = graphQuickInput model ch, 
                      quickInput = "",
                      mode = DefaultMode }, 
                      -- new nodes may have sent their dimensions
@@ -347,6 +350,7 @@ update_QuickInput ch msg model =
                      -- even before
                      computeLayout ())
         QuickInput s ->
+                let _ = Debug.log "coucou!" () in
                 let (statusMsg, chain) =
                         case Parser.run equalityParser s of
                             Ok l -> (Debug.toString l, l)
@@ -432,7 +436,7 @@ update_Enlarge msg orig model =
 
 selectLoop : Bool -> Model -> Model
 selectLoop direction model =
-     let g = GraphProof.convertGraph model.graph in
+     let g = GraphDefs.toProofGraph model.graph in
      let edges =  GraphDefs.selectedEdgeId model.graph 
               |> Maybe.andThen (\id -> 
                    Graph.getEdge id g) -- |> Maybe.map (\ e -> { id = id, label = e.label}))
@@ -440,13 +444,13 @@ selectLoop direction model =
               |> Maybe.withDefault []
      in
      let diag = GraphProof.loopToDiagram edges in
-    --  let _ = Debug.log "lhs" (diag.lhs |> List.map (.label >> .label)) in
-    --  let _ = Debug.log "rhs" (diag.rhs |> List.map (.label >> .label)) in
+     let _ = Debug.log "sel lhs" (diag.lhs |> List.map (.label >> .label)) in
+     let _ = Debug.log "sel rhs" (diag.rhs |> List.map (.label >> .label)) in
      let _ = Debug.log "isBorder?" (GraphProof.isBorder diag) in     
             { model | graph = edges |> List.map (Tuple.first >> .id)            
               |> List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True})) 
                   (GraphDefs.clearSelection model.graph) }
-
+ 
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     let delta_angle = pi / 5 in    
@@ -468,16 +472,20 @@ update_DefaultMode msg model =
                  |> Maybe.withDefault model
                  |> noCmd
     in
+    let fillBottom s err =
+          let c = if s == "" then alert err
+                      else jumpToId HtmlDefs.bottomTextId
+          in
+          ({ model | bottomText = s }, c)
+    in
     let generateProof stToString =
            let s = String.join "\n\n"
                  <| List.map stToString 
                  <| GraphProof.fullProofs
-                 <| GraphProof.convertGraph model.graph
+                 <| GraphDefs.toProofGraph model.graph
            in
-           let c = if s == "" then alert "No diagram found!"
-                   else jumpToId HtmlDefs.bottomTextId
-           in
-           ({ model | bottomText = s }, c)
+           fillBottom s "No diagram found!"
+           
     in
     {- let updateStr =
        GraphProof.proofStatementToString  -}
@@ -520,8 +528,23 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'G') -> 
            generateProof GraphProof.proofStatementToString            
         KeyChanged False _ (Character 'T') -> 
-           generateProof GraphProof.proofStatementToDebugString           
-                    
+           generateProof GraphProof.proofStatementToDebugString   
+        KeyChanged False _ (Character 'S') ->         
+           noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
+        KeyChanged False _ (Character 'C') -> 
+               let gc = GraphDefs.toProofGraph model.graph in
+               let s = 
+                       GraphDefs.selectedIncompleteDiagram model.graph
+                       |> Maybe.andThen
+                         (GraphProof.generateIncompleteProofStepFromDiagram gc >> 
+                          Maybe.map GraphProof.incompleteProofStepToString 
+                         )
+                       |> Maybe.withDefault ""
+                      
+                        
+                                                   
+               in
+                     fillBottom s "No selected subdiagram found!"
         
         KeyChanged False _ (Character 'r') -> 
             let ids = GraphDefs.selectedId model.graph 
@@ -654,7 +677,7 @@ graphDrawingFromModel m =
              enlargeGraph m p
              |> collageGraphFromGraph m
         NewNode -> collageGraphFromGraph m m.graph
-        QuickInputMode ch -> collageGraphFromGraph m <| graphDrawingChain m.sizeGrid m.graph ch
+        QuickInputMode ch -> collageGraphFromGraph m <| graphQuickInput m ch
         Move s -> info_MoveNode m s |> .graph |>
             collageGraphFromGraph m 
         RenameMode l ->
@@ -678,64 +701,32 @@ graphDrawingFromModel m =
             Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
 
+graphQuickInput : Model -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabel
+graphQuickInput model ch = 
+  case ch of
+    Nothing -> model.graph
+    Just (eq1, eq2) -> 
+      -- if an incomplete subdiagram is selected, we use it
+      let od = Debug.log "selected subdiag" <| GraphDefs.selectedIncompleteDiagram model.graph in
+      let default = graphDrawingChain model.sizeGrid model.graph (eq1, eq2) in 
+      let split l edges = GraphProof.isEmptyBranch l |> 
+              Maybe.map (QuickInput.splitWithChain model.graph edges) 
+      in
+      case od of
+        Nothing -> default
+        Just d ->           
+           Maybe.or (split d.lhs eq1)
+                    (split d.rhs eq2)
+                    |> Maybe.withDefault default
+               
 
-graphDrawingChain : Int -> Graph NodeLabel EdgeLabel -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabel
-graphDrawingChain offset g ch = 
-    case ch of
-        Nothing -> g
-        Just nonEmptyCh ->
+graphDrawingChain : Int -> Graph NodeLabel EdgeLabel -> QuickInput.Equation -> Graph NodeLabel EdgeLabel
+graphDrawingChain offset g eq =         
             let mid = toFloat offset / 2 in
-            let iniP = (mid, mid ) in
-            graphDrawingEquation (toFloat offset) g 
-               (orientEquation nonEmptyCh)  iniP -- QuickInput.Right
-
-graphDrawingEquation : Float -> Graph NodeLabel EdgeLabel -> QuickInput.Equation -> Point -- -> QuickInput.Orient
-                    -> Graph NodeLabel EdgeLabel
-graphDrawingEquation offset g (e1, e2) loc -- defOrient
-    =
-    let (g2, startId, finalId) = graphDrawingNonEmptyChain Nothing offset g e1 loc in
-    case e2 of
-       QuickInput.Singleton _ -> g2
-       QuickInput.Cons _ (QuickInput.Edge olabel oorient) tail ->
-            let (g3, _, _) = drawChainCons (Just finalId) offset g2 startId loc olabel oorient tail loc in
-             g3
-
-
-
-graphDrawingNonEmptyChain : Maybe NodeId -> Float -> Graph NodeLabel EdgeLabel -> NonEmptyChain -> Point -- -> QuickInput.Orient
-                    -> (Graph NodeLabel EdgeLabel, NodeId, NodeId)
-graphDrawingNonEmptyChain finalTarget offset g ch loc -- defOrient
-    =
-    case ch of
-        QuickInput.Singleton v ->  
-                case finalTarget of
-                    Just id -> (g, id, id)
-                    Nothing -> let (g2, source, _ ) = GraphDefs.createNodeLabel g v loc in -- getNodeLabelOrCreate g v loc in
-                                  (g2, source, source)
-                                   
-        QuickInput.Cons v (QuickInput.Edge olabel oorient) tail ->
-            let (g2, source, source_pos) = GraphDefs.createNodeLabel  g v loc in -- getNodeLabelOrCreate g v loc in
-                drawChainCons finalTarget offset g2 source source_pos olabel oorient tail loc
-
-drawChainCons : Maybe NodeId -> Float -> Graph NodeLabel EdgeLabel 
-      -> NodeId -> Point
-      ->  Maybe String -> Maybe QuickInput.Orient
-      -> NonEmptyChain -> Point -- -> QuickInput.Orient
-                    -> (Graph NodeLabel EdgeLabel, NodeId, NodeId)
-drawChainCons finalTarget offset g2 source source_pos olabel oorient tail loc =
-            -- let (g2, source, source_pos) = GraphDefs.createNodeLabel  g v loc in -- getNodeLabelOrCreate g v loc in
-            -- let defOrient = QuickInput.Right in
-            let orient = withDefault QuickInput.defOrient oorient in
-            -- length of arrows
-            
-            let newPoint = Point.add source_pos <| Point.resize offset <| (orientToPoint orient) in
-            let (g3, target, finalId) = graphDrawingNonEmptyChain finalTarget offset g2 tail newPoint -- orient
-            in
-            let label = withDefault "" olabel in
-
-            (Tuple.first <| Graph.newEdge g3 source target
-               <| GraphDefs.newEdgeLabel label ArrowStyle.empty            
-            , source, finalId)          
+            let iniP = (mid, mid) in
+            {- graphDrawingEquation -}
+            QuickInput.graphEquation iniP (toFloat offset) 
+               (orientEquation eq) g  -- QuickInput.Right
 
 
 
@@ -802,9 +793,13 @@ helpMsg model =
                 ++ ", [f]ix (snap) selected objects on the grid" 
                 ++ ", [e]nlarge diagram (create row/column spaces)" 
                 ++ ", [hjkl] to move the selection from a point to another"                 
-                ++ ", if an arrow is selected: [(,=,b,B,-,>] alternate between different arrow styles, [i]nvert arrow."
-                ++ ", [L] and [K]: select subdiagram adjacent to selected edge"
+                ++ ", if an arrow is selected: [(,=,b,B,-,>] alternate between different arrow styles, [i]nvert arrow."               
+                ++ ", [S]elect pointer surrounding subdiagram"
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
+                ++ ", [C] generate Coq script to address selected incomplete subdiagram "
+                ++ "(i.e., a subdiagram with an empty branch)"
+                ++ ", [L] and [K]: select subdiagram adjacent to selected edge"
+                
                    
                       -- b "b",
                       -- Html.text "litz flag (no labelling on point creation)."
@@ -837,6 +832,10 @@ helpMsg model =
         QuickInputMode _ -> msg <| "Equation mode: enter equation in the textfield "
                           ++ "(e.g., a - f ⟩ b - g ⟩ c =  a - h ⟩ d - k ⟩ c)"
                           ++ ",  [RET] to confirm, [ESC] to cancel."
+                          ++ " If an incomplete subdiagram (i.e. a subdiagram "
+                          ++ "where one branch is a single arrow with empty label)"
+                          ++ " is selected, it will replace the empty branch with"
+                          ++ " the lhs or the rhs (depending on the orientation)."
 
         _ -> let txt = "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"
                    ++ " mode."

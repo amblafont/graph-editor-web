@@ -31,6 +31,19 @@ type alias NodeDrawingLabel =
           -- watchEnterLeave : Bool
     }
 
+toDrawingGraph : Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
+toDrawingGraph =
+    Graph.map
+        (\ _ n ->  make_nodeDrawingLabel
+          { editable = False
+         , isActive = n.selected
+          } n)
+        (\ _ e ->  make_edgeDrawingLabel
+                    { editable = False, 
+                      isActive = e.selected
+                    } e
+        )
+
 makeActive : List Graph.Id -> Graph NodeDrawingLabel EdgeDrawingLabel ->  Graph NodeDrawingLabel EdgeDrawingLabel
 makeActive l = Graph.updateList l 
              (\ n -> { n | isActive = True})
