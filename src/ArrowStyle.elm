@@ -11,6 +11,8 @@ import Svg exposing (Svg)
 import Svg.Attributes as Svg
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
 import Json.Encode as JEncode
+import List.Extra as List
+import Maybe.Extra exposing (next)
 
 imgDir : String
 imgDir = "img/arrow/"
@@ -70,22 +72,27 @@ isDouble { double } = double
 type HeadStyle = DefaultHead | TwoHeads | NoHead
 type TailStyle = DefaultTail | Hook | HookAlt
 
+prevInList : List a -> a -> a
+prevInList l a = case l of
+      [] -> a
+      [c] -> c
+      b :: c :: t ->
+         if a == c then
+            b
+         else
+            prevInList (c :: t) a
+
+
+
+nextInList : List a -> a -> a
+nextInList l a = prevInList (List.reverse l) a
+
 toggleHead : Style -> Style
-toggleHead s =  { s | head =
-                      case s.head of
-                         DefaultHead -> NoHead
-                         NoHead -> TwoHeads
-                         TwoHeads -> DefaultHead
-                }
+toggleHead s =  { s | head = nextInList [DefaultHead, NoHead, TwoHeads] s.head }
 
 toggleHook : Style -> Style
 toggleHook s =  
-        { s | tail =
-              case s.tail of
-                  DefaultTail -> Hook
-                  Hook -> HookAlt
-                  HookAlt -> DefaultTail
-        }
+        { s | tail = nextInList [DefaultTail, Hook, HookAlt] s.tail }
     
 
 toggleDouble : Style -> Style
