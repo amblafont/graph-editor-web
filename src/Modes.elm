@@ -15,8 +15,7 @@ type Mode
       -- the list of ids to be edited, with associated default labels 
       -- (which may differ from the labels of the objects in the model)
     | RenameMode (List (Graph.Id, String))
-    | DebugMode
-    | NewNode
+    | DebugMode    
     | QuickInputMode (Maybe QuickInput.Equation)
     | SquareMode SquareState
     | RectSelect Point

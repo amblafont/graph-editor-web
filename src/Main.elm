@@ -333,7 +333,7 @@ update msg modeli =
         RenameMode l -> update_RenameMode l msg model
         Move s -> update_MoveNode msg s model
         DebugMode -> update_DebugMode msg model
-        NewNode -> update_NewNode msg model
+       -- NewNode -> update_NewNode msg model
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
 
@@ -561,7 +561,14 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             noCmd <| initialise_RenameMode ids model
         KeyChanged False _ (Character 's') -> Modes.Square.initialise model 
         
-        KeyChanged False _ (Character 'p') -> noCmd <| { model | mode = NewNode }
+        KeyChanged False _ (Character 'p') -> 
+            let (newGraph, newId) = Graph.newNode model.graph 
+                    (newNodeLabel model.mousePos "")
+                newModel = addOrSetSel False newId
+                    {model | graph = newGraph  }
+            in
+            noCmd <| initialise_RenameMode [ newId ] newModel
+           --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
         --                                            Msg.focusId quickInputId)
 
@@ -620,21 +627,6 @@ update_DebugMode msg model =
         KeyChanged False _ (Control "Escape") -> switch_Default model
         _ -> noCmd model
 
-update_NewNode : Msg -> Model -> (Model, Cmd Msg)
-update_NewNode msg m =
-    case msg of
-       MouseClick ->
-         let (newGraph, newId) = Graph.newNode m.graph 
-               (newNodeLabel m.mousePos "")
-             newModel = addOrSetSel False newId
-                    {m | graph = newGraph  }
-         in
-         -- if m.unnamedFlag then
-         --   switch_Default newModel
-         -- else
-           noCmd <| initialise_RenameMode [ newId ] newModel
-       KeyChanged False _ (Control "Escape") -> switch_Default m
-       _ -> noCmd m
 
 
 
@@ -683,7 +675,7 @@ graphDrawingFromModel m =
         EnlargeMode p ->
              enlargeGraph m p
              |> collageGraphFromGraph m
-        NewNode -> collageGraphFromGraph m m.graph
+--        NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphQuickInput m ch
         Move s -> info_MoveNode m s |> .graph |>
             collageGraphFromGraph m 
