@@ -1,9 +1,6 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
    newNodeLabel, newEdgeLabel, emptyEdge,
    selectedEdges, 
-   EdgeLabelJs, edgeLabelToJs, edgeLabelFromJs,
-   NodeLabelJs, nodeLabelToJs, nodeLabelFromJs,
-   graphToJs, jsToGraph, GraphJS,
    createNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
@@ -18,7 +15,6 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
 import IntDict
 import Geometry.Point as Point exposing (Point)
 import Geometry
-import ArrowStyle.Core exposing (HeadStyle(..), TailStyle(..))
 import ArrowStyle exposing (ArrowStyle)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 import GraphProof exposing (LoopNode, LoopEdge, Diagram)
@@ -29,11 +25,6 @@ import List.Extra as List
 
 type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool}
-
-type alias EdgeLabelJs = { label : String, style : ArrowStyle.Core.JsStyle, bend : Float}
-type alias NodeLabelJs = { pos : Point , label : String}
-
-type alias GraphJS = (List (Graph.Node NodeLabelJs) , List (Graph.Edge EdgeLabelJs))
 
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
@@ -51,49 +42,6 @@ selectedIncompleteDiagram g =
     GraphProof.getIncompleteDiagram gc
      <| Graph.getEdges (selectedEdges g |> List.map .id) gc
 
-graphToJs : Graph NodeLabel EdgeLabel -> GraphJS
-graphToJs g = 
-          let gjs = g
-                   |> Graph.map 
-                    (\_ -> nodeLabelToJs)
-                    (\_ -> edgeLabelToJs) 
-                   |> Graph.normalise           
-          in
-          let nodes = Graph.nodes gjs
-              edges = Graph.edges gjs
-          in
-          (nodes, edges)
-
-jsToGraph : GraphJS -> Graph NodeLabel EdgeLabel
-jsToGraph (ns,es) = Graph.fromNodesAndEdges ns es
-                       |> Graph.map 
-                          (\_ -> nodeLabelFromJs)
-                          (\_ -> edgeLabelFromJs)
-
-quiverStyle : ArrowStyle -> List (String, JEncode.Value)
-quiverStyle st =
-   let { tail, head, double, dashed } = st.s in
-   let makeIf b x = if b then [x] else [] in
-   let headStyle = case head of 
-          DefaultHead -> []       
-          TwoHeads -> [("head", [("name", "epi")])]
-          NoHead -> [("head", [("name", "none")])]
-   in
-   let tailStyle = case tail of 
-          DefaultTail -> []
-          Hook -> [("tail", [("name", "hook"),("side", "top")])]
-          HookAlt -> [("tail", [("name", "hook"),("side", "bottom")])]
-   in
-   let style = List.map (\(x,y) -> (x, JEncode.object <| List.map (\(s, l) -> (s, JEncode.string l)) y)) <|
-               headStyle
-               ++
-               tailStyle ++
-               (makeIf dashed ("body", [("name", "dashed")]))
-   in
-   (makeIf double ("level", JEncode.int 2))  
-   ++ [("style", JEncode.object style )]
-   ++ (makeIf (st.bend /= 0) ("curve", JEncode.int <| floor (st.bend * 10)))
-
 
 exportQuiver : Int -> Graph NodeLabel EdgeLabel -> JEncode.Value
 exportQuiver sizeGrid g =
@@ -110,7 +58,7 @@ exportQuiver sizeGrid g =
                , JEncode.int e.to
                , JEncode.string e.label.label
                , JEncode.int 0 -- alignment
-               , JEncode.object <| quiverStyle e.label.style
+               , JEncode.object <| ArrowStyle.quiverStyle e.label.style
                   -- [("level", if e.label.style.double then JEncode.int 2 else JEncode.int 1)] --options
                 ] in
   let jnodes = nodes |> List.map encodeNode
@@ -128,23 +76,6 @@ newEdgeLabel s style = { label = s, style = style, dims = Nothing, selected = Fa
 emptyEdge : EdgeLabel
 emptyEdge = newEdgeLabel "" ArrowStyle.empty
 
-
-nodeLabelToJs : NodeLabel -> NodeLabelJs
-nodeLabelToJs {pos, label} = NodeLabelJs pos label
-
-nodeLabelFromJs : NodeLabelJs -> NodeLabel
-nodeLabelFromJs {pos, label} = NodeLabel pos label Nothing False
-
-
-edgeLabelToJs : EdgeLabel -> EdgeLabelJs
-edgeLabelToJs {label, style} = 
-  {label = label, style = ArrowStyle.Core.toJsStyle style.s, bend = style.bend}
-
-edgeLabelFromJs : EdgeLabelJs -> EdgeLabel
-edgeLabelFromJs {label, style, bend } = 
-  EdgeLabel label 
-     (ArrowStyle (ArrowStyle.Core.fromJsStyle style) bend)
-     Nothing False
 
 createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)

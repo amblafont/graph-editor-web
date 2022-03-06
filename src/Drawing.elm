@@ -13,7 +13,7 @@ import Geometry.Point exposing (Point)
 import Geometry
 import Json.Decode as D
 import Html 
-import ArrowStyle.Core as ArrowStyle
+import ArrowStyle exposing (ArrowStyle)
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
 import Svg
@@ -131,7 +131,7 @@ mkPath dashed attrs q =
   []        
 
 
-arrow : List (Attribute a) -> ArrowStyle.Style -> QuadraticBezier -> Drawing a
+arrow : List (Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
 arrow attrs style q =
     let imgs = ArrowStyle.makeHeadTailImgs q style in    
     let mkl = mkPath style.dashed attrs in

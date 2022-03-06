@@ -7,7 +7,6 @@ import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
 import ArrowStyle exposing (ArrowStyle)
-import ArrowStyle.Core as ArrowStyle
 import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
 import Color exposing (..)
@@ -130,7 +129,7 @@ segmentLabel : QuadraticBezier -> Graph.EdgeId -> EdgeDrawingLabel -> Drawing Ms
 segmentLabel q edgeId label =
 
     let
-        offset = 10 + (if ArrowStyle.isDouble label.style.s then ArrowStyle.doubleSize else 0)
+        offset = 10 + (if ArrowStyle.isDouble label.style then ArrowStyle.doubleSize else 0)
         labelpos =
            if Bez.isLine q then
               Point.diamondPx q.from q.to offset
@@ -179,7 +178,7 @@ edgeDrawing edgeId {- from to -} label q =
           [Drawing.color c, Drawing.onClick (EdgeClick edgeId),
            Drawing.simpleOn "mousemove" (MouseOn edgeId)
           ] 
-          label.style.s
+          label.style
          q, 
           segmentLabel q edgeId label]
 

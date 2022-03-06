@@ -59,7 +59,7 @@ import Modes exposing (Mode(..))
 import ArrowStyle
 
 import HtmlDefs exposing (Key(..), quickInputId)
-import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeLabelJs, NodeLabelJs)
+import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDefs exposing (newNodeLabel)
 import GraphDefs exposing (getNodeLabelOrCreate)
 import GraphDefs exposing (newEdgeLabel)
@@ -69,9 +69,12 @@ import Geometry exposing (rectEnveloppe)
 import Html.Events
 import Modes exposing (SplitArrowState)
 import InputPosition exposing (InputPosition(..))
+import Format.Version0
+import Format.Version1
+import Format.LastVersion as LastFormat
 
 import List.Extra
-import GraphDefs exposing (exportQuiver, GraphJS)
+import GraphDefs exposing (exportQuiver)
 import GraphProof
 
 -- we tell js about some mouse move event
@@ -85,21 +88,23 @@ port onMouseMoveFromJS : (Point -> a) -> Sub a
 port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
--- tell js to save the graph
-port saveGraph : { graph : GraphJS, fileName : String } -> Cmd a
+-- tell js to save the graph, version  is the format version
+port saveGraph : { graph : LastFormat.Graph, fileName : String, version : Int } -> Cmd a
+-- filename
 port savedGraph : (String -> a) -> Sub a
 port exportQuiver : JE.Value -> Cmd a
 port alert : String -> Cmd a
 port jumpToId : String -> Cmd a
 
 -- js tells us to load the graph
-port loadedGraph : ({ graph : GraphJS, fileName : String } -> a) -> Sub a
+port loadedGraph0 : ({ graph : Format.Version0.Graph, fileName : String } -> a) -> Sub a
+port loadedGraph1 : ({ graph : Format.Version1.Graph, fileName : String } -> a) -> Sub a
 
-port clipboardWriteGraph : GraphJS -> Cmd a
+port clipboardWriteGraph : LastFormat.Graph -> Cmd a
 -- tells JS we got a paste event with such data
 port pasteGraph : JE.Value -> Cmd a
 -- JS would then calls us back with the decoded graph
-port clipboardGraph : (GraphJS -> a) -> Sub a
+port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
 
 port computeLayout : () -> Cmd a
 
@@ -116,12 +121,14 @@ port computeLayout : () -> Cmd a
 
 
 subscriptions : Model -> Sub Msg
-subscriptions m = Sub.batch 
+subscriptions m = 
+    Sub.batch 
     [
       -- upload a graph (triggered by js)
       
-      loadedGraph (\ r -> Loaded (GraphDefs.jsToGraph r.graph) r.fileName),
-      clipboardGraph (GraphDefs.jsToGraph >> PasteGraph),
+      loadedGraph0 (\ r -> Loaded (Format.Version0.fromJSGraph r.graph) r.fileName),
+      loadedGraph1 (\ r -> Loaded (Format.Version1.fromJSGraph r.graph) r.fileName),
+      clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick),
       {- Html.Events.preventDefaultOn "keydown"
@@ -289,8 +296,9 @@ update msg modeli =
     in
     case msg of
      Save ->               
-          (model, saveGraph { graph = GraphDefs.graphToJs model.graph, 
-                              fileName = model.fileName})
+          (model, saveGraph { graph = LastFormat.toJSGraph model.graph, 
+                              fileName = model.fileName,
+                              version = LastFormat.version})
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
      SizeGrid s -> noCmd { model | sizeGrid = s }
@@ -501,7 +509,7 @@ update_DefaultMode msg model =
         CopyGraph ->
               (model,
                clipboardWriteGraph <| 
-                 GraphDefs.graphToJs <| GraphDefs.selectedGraph model.graph)
+                 LastFormat.toJSGraph <| GraphDefs.selectedGraph model.graph)
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged False _ (Character 'g') -> 

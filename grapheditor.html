@@ -201,7 +201,7 @@
          });
          var tutoData = {"graph" : tutorial, "fileName" : "graph.json" };
          
-         app.ports.loadedGraph.send(tutoData);
+         app.ports.loadedGraph0.send(tutoData);
          
          // load a json graph file, send it to the elm component
          function loadGraph() {
@@ -213,7 +213,15 @@
                  var fr=new FileReader();
                  fr.onload=function(){
                      var json = JSON.parse (fr.result);
-                     app.ports.loadedGraph.send({ graph : json, fileName : file.name});
+                     var graph = json;
+                     var version = 0;
+                     if (json.hasOwnProperty('version')) {
+                        version = json.version;
+                        graph = json.graph;
+                     }
+                     
+                     var args = { graph : graph, fileName : file.name};
+                     app.ports["loadedGraph" + version].send(args);
                  }
                  fr.readAsText(file);
              }
@@ -244,7 +252,7 @@
              a.click();
          }
          app.ports.saveGraph.subscribe(function(a) {
-             var d = a.graph;
+             var d = {graph : a.graph, version : a.version };
              var name = window.prompt("Filename?", a.fileName) ;
              if (name) {
                download(JSON.stringify(d), name /* + '.json' */, 'application/json');

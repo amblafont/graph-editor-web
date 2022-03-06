@@ -9,7 +9,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      Node, Edge, nextId,
      incomings, outgoings, drop, 
      normalise,
-     union,
+     union, edgeMap,
      {- findInitial, sourceNode, -} removeLoops)
 import IntDict exposing (IntDict)
 import IntDictExtra 
@@ -32,6 +32,10 @@ type alias Edge e =
     to : Id,
     label : e
    }
+
+edgeMap : (a -> b) -> Edge a -> Edge b
+edgeMap f {id, from, to, label} = 
+   { id = id, from = from, to = to, label = f label}
 
 {- objUniv : (n -> a) -> (e -> a) -> Object n e -> a
 objUniv fn fe o =
@@ -327,9 +331,13 @@ mapRec cn ce fn fe ids (Graph g) =
    
 
 rawFilterIds : (n -> Bool) -> (Id -> Id -> e -> Bool) -> GraphRep n e -> GraphRep n e
-rawFilterIds fn fe = IntDict.filter (\_ o -> case o of
-                             EdgeObj id1 id2 e -> fe id1 id2 e 
-                             NodeObj n -> fn n)
+rawFilterIds fn fe =
+     IntDict.filter
+        (\_ o -> 
+           case o of
+               EdgeObj id1 id2 e -> fe id1 id2 e 
+               NodeObj n -> fn n
+         )
 
 
 
@@ -412,9 +420,11 @@ merge i1 i2 (Graph g) =
                    EdgeObj j1 j2 e ->
                         let repl k = if k == i2 then i1 else k in
                         EdgeObj (repl j1) (repl j2) e
-                   NodeObj _ -> o)
+                   NodeObj _ -> o
+      )
      |> IntDict.remove i2
-     |> Graph |> sanitise
+   |> Graph
+   |> sanitise
 
 removeLoops : Graph n e -> Graph n e
 removeLoops = 
