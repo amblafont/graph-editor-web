@@ -85,7 +85,8 @@ splitWithChain g ch id =
             buildGraphSegment 
             { from = n1.pos, to = n2.pos,
               fromId = edge.from, toId = edge.to,
-              edges = ch.edges                
+              edges = ch.edges,
+              alignLeft = True           
             }
             <| (Graph.removeEdge id g)            
         _ -> g
@@ -100,26 +101,35 @@ buildGraphSegment s g =
     let offset = Point.subtract s.to s.from
              |> Point.resize (1 / (List.length s.edges |> toFloat))
     in
-      buildGraphEdges g offset s.from s.fromId s.toId s.edges
+      buildGraphEdges g offset 
+        (if s.alignLeft then ArrowStyle.Left else ArrowStyle.Right)
+        s.from s.fromId s.toId s.edges
 
 
-buildGraphEdges : Graph NodeLabel EdgeLabel -> Point -> Point -> NodeId -> NodeId -> List Edge -> Graph NodeLabel EdgeLabel
-buildGraphEdges g offset pos from to ch =
+buildGraphEdges : Graph NodeLabel EdgeLabel -> Point -> ArrowStyle.LabelAlignment 
+           -> Point -> NodeId -> NodeId -> List Edge -> Graph NodeLabel EdgeLabel
+buildGraphEdges g offset alignment pos from to ch =
+   let style =
+          let st= ArrowStyle.empty in
+           { st | labelAlignment = alignment } 
+   in
    case ch of
        [] -> g
        [ e ] -> 
           Tuple.first <| Graph.newEdge g from to
-                        <| GraphDefs.newEdgeLabel e.edge ArrowStyle.empty 
+                        <| GraphDefs.newEdgeLabel e.edge style
        e :: tail -> 
           let posf = Point.add offset pos in          
           let (g2, idto, _ ) = GraphDefs.createNodeLabel g e.to posf in          
           let (g3, _) = Graph.newEdge g2 from idto
-                        <| GraphDefs.newEdgeLabel e.edge ArrowStyle.empty            
+                        <| GraphDefs.newEdgeLabel e.edge
+                        <| style
           in
-            buildGraphEdges g3 offset  posf idto to tail
+            buildGraphEdges g3 offset alignment posf idto to tail
 
 
-type alias Segment = { edges : List Edge, from : Point, fromId : NodeId, to : Point, toId : NodeId }
+type alias Segment = { edges : List Edge, from : Point, fromId : NodeId, to : Point, toId : NodeId,
+                      alignLeft : Bool }
 
 -- it implicitly assumes that source and targets are not empty
 orientEquation : Point -> Equation -> Float -> Graph NodeLabel EdgeLabel ->
@@ -174,10 +184,10 @@ orientEquation iniP (source, but) offset g =
            GraphDefs.createNodeLabel g4 bottomLeftLabel bottomLeftPos in
    (g5, 
    [
-      { edges = source1, from = topLeftPos, fromId = topLeftId, to = topRightPos, toId = topRightId }
-    , { edges = but1, from = topLeftPos, fromId = topLeftId, to = bottomLeftPos, toId = bottomLeftId }
-    , { edges = source2, from = topRightPos, fromId = topRightId, to = bottomRightPos, toId = bottomRightId }    
-    , { edges = but2, from = bottomLeftPos, fromId = bottomLeftId, to = bottomRightPos, toId = bottomRightId }
+      { edges = source1, from = topLeftPos, fromId = topLeftId, to = topRightPos, toId = topRightId, alignLeft = True }
+    , { edges = but1, from = topLeftPos, fromId = topLeftId, to = bottomLeftPos, toId = bottomLeftId, alignLeft = False }
+    , { edges = source2, from = topRightPos, fromId = topRightId, to = bottomRightPos, toId = bottomRightId, alignLeft = True }    
+    , { edges = but2, from = bottomLeftPos, fromId = bottomLeftId, to = bottomRightPos, toId = bottomRightId, alignLeft = False }
    ])
    
 
