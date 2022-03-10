@@ -1,3 +1,5 @@
+-- deprecated: we now use Bezier (from Quiver)
+-- TODO: delete this file
 module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx)
 import Geometry.Point as Point exposing (Point)
 
@@ -28,3 +30,6 @@ orthoVectPx px {from, to, controlPoint} =
   { from = Point.add deltaFrom from, 
     to = Point.add deltaTo to, 
     controlPoint = Point.add controlPoint deltaCp }
+
+
+

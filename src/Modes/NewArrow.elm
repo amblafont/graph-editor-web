@@ -179,7 +179,9 @@ help  =
             "[ESC] cancel, [click, TAB] name the point (if new), "
             ++ "[hjkl] position the new point with the keyboard, "
              ++ "[RET] terminate the arrow creation, "
-             ++ "[(,=,b,B,-,>] alternate between different arrow styles, "
+             ++ "[\""
+             ++ ArrowStyle.controlChars
+             ++ "\"] alternate between different arrow styles, "
              ++ "[i]nvert arrow."
         -- NewArrowEditNode _ _ ->
         --     "[ESC] empty label, [RET] confirm the label, "

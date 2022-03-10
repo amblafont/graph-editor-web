@@ -71,6 +71,7 @@ import Modes exposing (SplitArrowState)
 import InputPosition exposing (InputPosition(..))
 import Format.Version0
 import Format.Version1
+import Format.Version2
 import Format.LastVersion as LastFormat
 
 import List.Extra
@@ -99,6 +100,7 @@ port jumpToId : String -> Cmd a
 -- js tells us to load the graph
 port loadedGraph0 : ({ graph : Format.Version0.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph1 : ({ graph : Format.Version1.Graph, fileName : String } -> a) -> Sub a
+port loadedGraph2 : ({ graph : Format.Version2.Graph, fileName : String } -> a) -> Sub a
 
 port clipboardWriteGraph : LastFormat.Graph -> Cmd a
 -- tells JS we got a paste event with such data
@@ -128,6 +130,7 @@ subscriptions m =
       
       loadedGraph0 (\ r -> Loaded (Format.Version0.fromJSGraph r.graph) r.fileName),
       loadedGraph1 (\ r -> Loaded (Format.Version1.fromJSGraph r.graph) r.fileName),
+      loadedGraph2 (\ r -> Loaded (Format.Version2.fromJSGraph r.graph) r.fileName),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick),
@@ -732,16 +735,24 @@ graphDrawingChain offset g eq =
 type HelpStrType = Bold | Plain
 helpMsgParser_aux : Parser (String, HelpStrType)
 helpMsgParser_aux =
-    let correctChar = \ c -> c /= '[' && c /= ']' in
-    let varParser = Parser.variable { start = correctChar, inner = correctChar, reserved = Set.empty }
+    
+    let varParser cend = 
+          let correctChar = \ c -> c /= cend in
+          Parser.variable { start = correctChar, inner = correctChar, reserved = Set.empty }
     in
     Parser.oneOf [
          Parser.succeed (\ s -> (s , Bold))
-             |. Parser.symbol "["
-             |= varParser
+             |. Parser.token "["
+             |= Parser.oneOf [
+               Parser.succeed identity 
+               |. Parser.token "\""
+               |= varParser '\"'
+               |. Parser.token "\""
+               ,
+              varParser ']']
              |. Parser.symbol "]" ,
          Parser.succeed (\ s -> (s , Plain))
-             |= varParser
+             |= varParser '['
         ]
 
 helpMsgParser : Parser (List (String, HelpStrType))
@@ -792,7 +803,9 @@ helpMsg model =
                 ++ ", [f]ix (snap) selected objects on the grid" 
                 ++ ", [e]nlarge diagram (create row/column spaces)" 
                 ++ ", [hjkl] to move the selection from a point to another"                 
-                ++ ", if an arrow is selected: [(,=,b,B,-,>] alternate between different arrow styles, [i]nvert arrow."               
+                ++ ", if an arrow is selected: [\""
+                ++ ArrowStyle.controlChars
+                ++ "\"] alternate between different arrow styles, [i]nvert arrow."               
                 ++ ", [S]elect pointer surrounding subdiagram"
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [C] generate Coq script to address selected incomplete subdiagram "

@@ -2,7 +2,7 @@ module Format.Version0 exposing (Graph, fromJSGraph, version)
 
 import Polygraph as Graph
 import Geometry.Point exposing (Point)
-import Format.Version1 as Version1
+import Format.Version1 as NextVersion
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 
 version = 0
@@ -14,8 +14,8 @@ type alias Node = { pos : Point , label : String}
 type alias Graph = (List (Graph.Node Node) , List (Graph.Edge Edge))
 
 
-toEdge1 : Edge -> Version1.Edge
-toEdge1 { label, style, bend } = 
+toNextEdge : Edge -> NextVersion.Edge
+toNextEdge { label, style, bend } = 
   { label = label, style = 
        { tail = style.tail
        , head = style.head
@@ -23,10 +23,10 @@ toEdge1 { label, style, bend } =
        , dashed = style.dashed 
        , bend = bend }}
 
-toVersion1 : Graph -> Version1.Graph
-toVersion1 (nodes, edges) = 
+toNextVersion : Graph -> NextVersion.Graph
+toNextVersion (nodes, edges) = 
     { nodes = nodes, 
-      edges = List.map (Graph.edgeMap toEdge1) edges }
+      edges = List.map (Graph.edgeMap toNextEdge) edges }
 
 fromJSGraph : Graph -> Graph.Graph NodeLabel EdgeLabel
-fromJSGraph g = g |> toVersion1 |> Version1.fromJSGraph
+fromJSGraph g = g |> toNextVersion |> NextVersion.fromJSGraph

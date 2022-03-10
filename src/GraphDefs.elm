@@ -215,6 +215,6 @@ selectSurroundingDiagram pos gi =
                GraphProof.edgesOfDiag d |> IntDict.keys
                   ))
    in 
-   let d = List.find (Tuple.first >> Geometry.isInPoly pos) diags in
+   let d = List.find (Tuple.first >> Point.isInPoly pos) diags in
    let gf = d |> Maybe.map (Tuple.second >> selectEdges (clearSelection gi)) in
    Maybe.withDefault gi gf

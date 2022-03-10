@@ -1,12 +1,19 @@
 module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
   normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList,
   angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
-  countRounds )
+  countRounds, name, unname, NamedPoint, isInPoly,
+  -- from quiver
+  lerp, lendir, rotate, scale, inv_scale)
 
 
 
 type alias Point = (Float, Float)
+type alias NamedPoint = { x : Float, y : Float}
+name : Point -> NamedPoint
+name (x, y) = {x = x, y = y}
 
+unname : NamedPoint -> Point
+unname {x, y} = (x, y)
 
 
 -- get the radius of a pont
@@ -147,3 +154,38 @@ sumAngles l =
 countRounds : List Float -> Int
 countRounds l =  
    sumAngles l / (2 * pi) |> round 
+
+
+-- Note: Quiver has a more efficient implementation
+-- (point_inside_polygon), as it does not use
+-- trigonometric functions (I do in Point.pointToAngle)
+isInPoly : Point -> List Point -> Bool
+isInPoly pos l = 
+   let angles = List.map (subtract pos >> pointToAngle) l in
+   let anglesLoop = 
+         case angles of
+            t :: _ -> angles ++ [ t ]
+            [] -> []
+   in
+      --Debug.log "isInPoly" 
+      (countRounds anglesLoop) == 1
+
+-- fron quiver
+lerp : Point -> Point -> Float -> Point
+lerp this other t =
+   add this 
+   <| resize t <| subtract other this
+
+lendir : Float -> Float -> Point
+lendir length direction = (length * cos direction, length * sin direction)
+
+rotate : Float -> Point -> Point
+rotate theta (x, y)  = (x * cos theta - y * sin theta,
+                       y * cos theta + x * sin theta
+                      )
+
+scale : Float -> Float -> Point -> Point
+scale sx sy (x, y) = (x * sx, y * sy)
+
+inv_scale : Float -> Float -> Point -> Point
+inv_scale sx sy (x, y) = (x / sx, y / sy)

@@ -1,8 +1,12 @@
 module ArrowStyle exposing (ArrowStyle, empty, keyUpdateStyle, quiverStyle,
    tailToString , tailFromString,
-   headToString, headFromString,  
+   headToString, headFromString, 
+   alignmentToString, alignmentFromString, 
    makeHeadTailImgs, isDouble, doubleSize,
-   toggleDashed, dashedStr )
+   controlChars,
+   toggleDashed, dashedStr, -- PosLabel(..),
+   -- quiver
+    LabelAlignment(..) )
 
 import HtmlDefs exposing (Key(..))
 
@@ -10,6 +14,7 @@ import Geometry.Point as Point exposing (Point)
 import Svg exposing (Svg)
 import Svg.Attributes as Svg
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
+import Geometry.Epsilon exposing (norm0)
 import Json.Encode as JEncode
 import List.Extra as List
 import Maybe.Extra exposing (next)
@@ -30,8 +35,18 @@ imgHeight = 13
 
 doubleSize = 2.5
 
-
-type alias Style = { tail : TailStyle, head : HeadStyle, double : Bool, dashed : Bool, bend : Float} 
+{-}
+type PosLabel =
+     DefaultPosLabel
+   | LeftPosLabel
+   | RightPosLabel -}
+type alias Style = { tail : TailStyle, 
+                     head : HeadStyle, double : Bool, 
+                     dashed : Bool, bend : Float,
+                     labelAlignment : LabelAlignment,
+                     -- betweeon 0 and 1, 0.5 by default
+                     labelPosition : Float
+                    } 
 type alias ArrowStyle = Style
 
 tailToString : TailStyle -> String
@@ -61,9 +76,25 @@ headFromString head =
        "none" -> NoHead      
        _ -> DefaultHead
 
+alignmentToString : LabelAlignment -> String
+alignmentToString tail =
+   case tail of
+         Centre -> "centre"
+         Over -> "over"
+         Left -> "left"
+         Right -> "right"
+alignmentFromString : String -> LabelAlignment
+alignmentFromString tail =
+   case tail of         
+         "centre" -> Centre
+         "right" -> Right
+         "over" -> Over
+         _ -> Left
+
 empty : Style
 empty = { tail = DefaultTail, head = DefaultHead, double = False, dashed = False,
-          bend = 0 }
+          bend = 0, labelAlignment = Left,
+          labelPosition = 0.5 }
 
 isDouble : Style -> Basics.Bool
 isDouble { double } = double
@@ -93,7 +124,14 @@ toggleHead s =  { s | head = nextInList [DefaultHead, NoHead, TwoHeads] s.head }
 toggleHook : Style -> Style
 toggleHook s =  
         { s | tail = nextInList [DefaultTail, Hook, HookAlt] s.tail }
-    
+
+toggleLabelAlignement : Style -> Style
+toggleLabelAlignement s =  
+        { s | labelAlignment = nextInList [Left, Right]
+        -- , Centre, Over] 
+        -- the other ones do not seem to work properly
+        s.labelAlignment }
+
 
 toggleDouble : Style -> Style
 toggleDouble s = { s | double = not s.double }
@@ -161,9 +199,15 @@ keyUpdateStyle k style =
         Character '(' -> toggleHook style
         Character '=' -> toggleDouble style
         Character '-' -> toggleDashed style
-        Character 'b' -> {style | bend = style.bend + 0.1}
-        Character 'B' -> {style | bend = style.bend - 0.1}
+        Character 'b' -> {style | bend = style.bend + 0.1 |> norm0}
+        Character 'B' -> {style | bend = style.bend - 0.1 |> norm0}
+        Character 'A' -> toggleLabelAlignement style
+        Character ']' -> {style | labelPosition = style.labelPosition + 0.1 |> min 0.9}
+        Character '[' -> {style | labelPosition = style.labelPosition - 0.1 |> max 0.1}
         _ -> style
+
+-- chars used to control in keyUpdateStyle
+controlChars = ">(=-bBA]["
 
 quiverStyle : ArrowStyle -> List (String, JEncode.Value)
 quiverStyle st =
@@ -188,3 +232,10 @@ quiverStyle st =
    (makeIf double ("level", JEncode.int 2))  
    ++ [("style", JEncode.object style )]
    ++ (makeIf (st.bend /= 0) ("curve", JEncode.int <| floor (st.bend * 10)))
+
+-- from Quiver
+type LabelAlignment =
+    Centre
+  | Over
+  | Left 
+  | Right

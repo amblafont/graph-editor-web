@@ -120,17 +120,32 @@ nodeDrawing n =
     nodeLabelDrawing
     [Drawing.onClick (NodeClick n.id)]
     
-     n
+    n
         
 
 
-
-segmentLabel : QuadraticBezier -> Graph.EdgeId -> EdgeDrawingLabel -> Drawing Msg
-segmentLabel q edgeId label =
-
-    let
-        offset = 10 + (if ArrowStyle.isDouble label.style then ArrowStyle.doubleSize else 0)
-        labelpos =
+segmentLabel : QuadraticBezier -> Graph.EdgeId -> EdgeDrawingLabel -> Float -> Drawing Msg
+segmentLabel q edgeId label curve =
+    let offset = 10 + (if ArrowStyle.isDouble label.style then ArrowStyle.doubleSize else 0) in
+    let labelpos =              
+              -- Quiver algorithm, following redraw_label
+              -- https://github.com/varkor/quiver/blob/2c62d40b820cadc3c7f9d0816a33121f389b6240/src/arrow.js#L1219
+              let diffP = Point.subtract q.to q.from in
+              let angle = Point.pointToAngle diffP in
+              let length = Point.radius diffP in
+               Geometry.determine_label_position
+                 length
+                 angle
+                 2 -- edge_width
+                 0 -- start
+                 1 -- end
+                 (curve * length)
+                 label.style.labelPosition -- label_position
+                 label.style.labelAlignment
+                 label.dims
+                 |> Point.rotate angle
+                 |> Point.add q.from
+         {-  -- previous algorithm 
            if Bez.isLine q then
               Point.diamondPx q.from q.to offset
               
@@ -139,6 +154,7 @@ segmentLabel q edgeId label =
               Point.add m <|
               Point.normalise offset <|        
                Point.subtract q.controlPoint <| m
+               -}
       
     in
         if label.editable then
@@ -162,11 +178,10 @@ segmentLabel q edgeId label =
               labelpos label.label  -}
          
 
-
 edgeDrawing : Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims
-     -> EdgeDrawingLabel -> QuadraticBezier -> Drawing Msg
-edgeDrawing edgeId {- from to -} label q =
+     -> EdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
+edgeDrawing edgeId {- from to -} label q curve =
     let c = if label.isActive then Drawing.red else Drawing.black in
     
     
@@ -180,7 +195,7 @@ edgeDrawing edgeId {- from to -} label q =
           ] 
           label.style
          q, 
-          segmentLabel q edgeId label]
+          segmentLabel q edgeId label curve]
 
 {- type alias DrawingDims msg =
     { drawing : Drawing msg
@@ -193,7 +208,7 @@ graphDrawing g0 =
      
       let padding = 5 in
       let g = Graph.mapRecAll     
-             identity identity      
+              identity identity      
               (\id n -> { drawing = nodeDrawing (Node id n), 
                       posDims = {
                       dims = 
@@ -206,7 +221,7 @@ graphDrawing g0 =
                        } )
                (\id n1 n2 e -> 
                    let q = Geometry.segmentRectBent n1.posDims n2.posDims e.style.bend in
-                   { drawing = edgeDrawing id  e q,                     
+                   { drawing = edgeDrawing id e q e.style.bend,                     
                     -- TODO
                      posDims = {
                          pos = Bez.middle q,
@@ -214,8 +229,9 @@ graphDrawing g0 =
 
                      }
                    }
-               )
-              g0 in
+              )
+              g0 
+      in
       let nodes = Graph.nodes g |> List.map (.label >> .drawing)
           edges = Graph.edges g |> List.map (.label >> .drawing)
       in

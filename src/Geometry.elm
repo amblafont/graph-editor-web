@@ -2,14 +2,20 @@ module Geometry exposing (raytraceRect, PosDims, Rect, pad, makeRect,
     centerRect, 
     rectEnveloppe,
    -- segmentRect, 
-   segmentRectBent, isInRect, isInPosDims,
-   isInPoly -- , diamondPointPx 
+   segmentRectBent, isInRect, isInPosDims
+   -- , diamondPointPx 
+   -- from Quiver
+   , determine_label_position
   )
 
 import Geometry.Point as Point exposing (Point)
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
+import Geometry.Bezier as Bezier exposing (Bezier)
 import Collage.Layout exposing (bottomRight)
 import Collage.Layout exposing (topLeft)
+-- import ArrowStyle exposing (PosLabel(..))
+import Geometry.RoundedRectangle exposing (RoundedRectangle)
+import ArrowStyle exposing (LabelAlignment(..))
 
 
 type alias PosDims = { pos : Point, dims : Point }
@@ -47,15 +53,7 @@ isInRect {topLeft , bottomRight} (x, y) =
 isInPosDims : PosDims -> Point -> Bool
 isInPosDims dims p = isInRect (rectFromPosDims dims) p
 
-isInPoly : Point -> List Point -> Bool
-isInPoly pos l = 
-   let angles = List.map (Point.subtract pos >> Point.pointToAngle) l in
-   let anglesLoop = 
-         case angles of
-            t :: _ -> angles ++ [ t ]
-            [] -> []
-   in
-      Debug.log "isInPoly" (Point.countRounds anglesLoop) == 1
+
 
 pad : Float -> PosDims -> PosDims 
 pad n {pos , dims } = 
@@ -130,3 +128,62 @@ distance ro rd (aa,bb) =
                else
                    Just maxLo
            _ -> Nothing
+
+
+-- translated from https://github.com/varkor/quiver/blob/2c62d40b820cadc3c7f9d0816a33121f389b6240/src/arrow.js#L1247
+-- determine_label_position :
+-- length: the distance from the source to the target
+-- angle The angle of the straight line connecting the source to the target.
+-- label_position: between 0 and 1
+determine_label_position length angle edge_width start end curve label_position label_alignement label_size =
+   let bezier = Bezier.new (0, 0) length -- curve 
+         (Debug.log "curve" curve) 
+         --(Debug.log "angle" angle)
+           angle
+   in
+   let centre = Bezier.point bezier (start + (end - start) * label_position)
+   in
+   let offset_angle = case label_alignement of
+            Centre -> 0
+            Over -> 0
+            Left -> 0 - pi / 2
+            Right -> pi / 2
+   in
+   let offset_allowance = 4 in
+   
+   let bail_out = 1024 in
+   let while i offset_min offset_max =
+        let label_offset = (offset_min + offset_max) / 2 in 
+        if i == 0 then 
+          Debug.log "Had to bail out from determining label offset." label_offset
+        else
+        let nexti = i - 1 in
+        let rect_centre = Point.rotate angle centre
+                |> Point.add (Point.lendir label_offset (angle + offset_angle))
+        in
+        let intersections = Bezier.intersections_with_rounded_rectangle
+                         bezier 
+                         (RoundedRectangle rect_centre
+                            (Point.add (edge_width, edge_width)
+                                       label_size
+                            )
+                            (edge_width / 2)
+                         )
+                         True
+        in
+        if intersections == [] then
+           if offset_max - offset_min < 1 then
+              label_offset
+           else              
+              while nexti offset_min label_offset
+        else   
+          while nexti label_offset offset_max
+   in
+   let offset_min = 0 in
+   let offset_max = offset_allowance + abs curve / 2 +
+                     (Point.radius <| Point.resize 0.5 
+                     <| Point.add label_size (edge_width, edge_width) )
+   in
+   let label_offset = while bail_out offset_min offset_max in
+   Point.add centre <| Point.lendir label_offset offset_angle
+
