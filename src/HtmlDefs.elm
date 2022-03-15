@@ -1,12 +1,14 @@
-module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
+port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown, makePasteCapture,
-   bottomTextId)
+   bottomTextId, computeLayout)
 import Html
 import Html.Attributes
 import Html.Events
 import Geometry.Point exposing (Point)
 import Json.Decode as D
+
+port computeLayout : () -> Cmd a
 
 
 

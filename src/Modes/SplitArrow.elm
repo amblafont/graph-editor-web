@@ -7,7 +7,7 @@ module Modes.SplitArrow exposing (graphDrawing, initialise, update, help)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe
 import Msg exposing (Msg(..))
-import HtmlDefs exposing (Key(..))
+import HtmlDefs exposing (Key(..), computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 
 import Modes exposing ( Mode(..), SplitArrowState)
@@ -63,8 +63,7 @@ nextStep model finish state =
               else
                  [ ne1, ne2 ]
         in
-        noCmd <|         
-        initialise_RenameModeWithDefault ids m2
+        (initialise_RenameModeWithDefault ids m2, computeLayout ())
                           
 
 

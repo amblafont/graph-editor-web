@@ -7,7 +7,7 @@ module Modes.Square exposing (help, graphDrawing, initialise, update)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe exposing (withDefault)
 import Msg exposing (Msg(..))
-import HtmlDefs exposing (Key(..))
+import HtmlDefs exposing (Key(..), computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import List.Extra exposing (uniquePairs, getAt)
 import Modes exposing (SquareState, Mode(..))
@@ -129,8 +129,7 @@ nextStep model finish state =
                          if created then [ movedNode , info.edges.ne1, info.edges.ne2 ]
                                     else [ info.edges.ne1, info.edges.ne2 ]
         in
-        noCmd <|         
-        initialise_RenameMode ids m2
+        (initialise_RenameMode ids m2, computeLayout ())
                           
 
 

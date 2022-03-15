@@ -58,7 +58,7 @@ import Modes exposing (Mode(..))
 
 import ArrowStyle
 
-import HtmlDefs exposing (Key(..), quickInputId)
+import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDefs exposing (newNodeLabel)
 import GraphDefs exposing (getNodeLabelOrCreate)
@@ -108,7 +108,7 @@ port pasteGraph : JE.Value -> Cmd a
 -- JS would then calls us back with the decoded graph
 port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
 
-port computeLayout : () -> Cmd a
+
 
 
 
