@@ -124,7 +124,7 @@ nextStep model finish state =
             moveNodeViewInfo model state
     in
     let m2 = addOrSetSel False movedNode { model | graph = info.graph } in
-     if finish then switch_Default m2 else
+     if finish then ({ m2 | mode = DefaultMode }, computeLayout ()) else
         let ids = 
                          if created then [ movedNode , info.edges.ne1, info.edges.ne2 ]
                                     else [ info.edges.ne1, info.edges.ne2 ]
