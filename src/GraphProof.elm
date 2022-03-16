@@ -295,8 +295,8 @@ incompleteProofStepToString { startOffset, backOffset, diag} =
    let symList =  (if invert then [ symmetryStr ] else [] ) in
     String.join "\n" <|
     symList ++
-   [ 
-     "etrans."
+   [ "(* generated with YADE *)"
+   , "etrans."
    , "{" 
    , getToThePoint startOffset backOffset 
    , "  (* remove this after copying the goal *)"
@@ -369,6 +369,7 @@ proofStatementToDebugString st =
 proofStatementToString : ProofStatement -> String
 proofStatementToString st =
    "Goal " ++ statementToString st.statement ++ ".\n\n"
+   ++ "(* generated with YADE *)"
    ++ (String.join "\n" <| List.map proofStepToString st.proof)
    ++ "\n apply idpath."
    ++ "\nQed."
