@@ -9,7 +9,8 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    removeSelected, getLabelLabel,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
-   selectSurroundingDiagram
+   selectSurroundingDiagram, cloneSelected,
+   centerOfNodes
    )
 
 import IntDict
@@ -221,3 +222,16 @@ selectSurroundingDiagram pos gi =
    let d = List.find (Tuple.first >> Point.isInPoly pos) diags in
    let gf = d |> Maybe.map (Tuple.second >> selectEdges (clearSelection gi)) in
    Maybe.withDefault gi gf
+
+cloneSelected : Graph NodeLabel EdgeLabel -> Point -> 
+                Graph NodeLabel EdgeLabel
+cloneSelected g offset =
+  let g2 = selectedGraph g |> 
+       Graph.map (\_ n -> {n | pos = Point.add n.pos offset, selected = True })
+         (\_ e -> {e | selected = True } )
+  in
+  let gclearSel = clearSelection g in
+  Graph.union gclearSel g2
+
+centerOfNodes : List (Node NodeLabel) -> Point
+centerOfNodes nodes = ((Geometry.rectEnveloppe <| List.map (.pos << .label) nodes) |> Geometry.centerRect)

@@ -236,11 +236,7 @@ info_MoveNode model { orig, pos } =
           
     in
    
-    let mouseDelta = Point.subtract           
-          model.mousePos
-          ((Geometry.rectEnveloppe <| List.map (.pos << .label) nodes) |> Geometry.centerRect)
-    -- orig 
-    in
+    let mouseDelta = Point.subtract model.mousePos <| GraphDefs.centerOfNodes nodes in
     case pos of
       InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos model.sizeGrid p
       InputPosGraph id ->         
@@ -340,6 +336,7 @@ update msg modeli =
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
         CutHead id head -> update_CutHead id head msg model
+        CloneMode -> update_Clone msg model
 
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
@@ -544,7 +541,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
            noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
         KeyChanged False k (Character 'c') -> 
             if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
-            else
+            else if k.alt then noCmd { model | mode = CloneMode } else
             case GraphDefs.selectedEdgeId model.graph of
               Nothing -> noCmd model
               Just id -> noCmd {  model | mode = CutHead id True }              
@@ -652,6 +649,18 @@ update_CutHead id head msg m =
         KeyChanged False _ (Character 'c') -> ({ m | mode = CutHead id (not head)}, Cmd.none)
         _ -> noCmd m
 
+update_Clone : Msg -> Model -> (Model, Cmd Msg)
+update_Clone msg m =
+  let finalise () = 
+         ({m | mode = DefaultMode, graph = graphClone m}, Cmd.none)
+         -- computeLayout())
+  in
+  case msg of
+        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
+        KeyChanged False _ (Control "Enter") -> finalise ()
+        MouseClick -> finalise ()        
+        _ -> noCmd m
+
 
 
 -- functions that turns a model graph into one with more information
@@ -720,7 +729,8 @@ graphDrawingFromModel m =
         SquareMode state ->
             Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
-        CutHead id head -> graphDrawing_CutHead id head m
+        CutHead id head -> graphCutHead id head m |> GraphDrawing.toDrawingGraph
+        CloneMode -> graphClone m |> GraphDrawing.toDrawingGraph
 
 
 graphCutHead : Graph.EdgeId -> Bool -> Model -> Graph NodeLabel EdgeLabel
@@ -738,9 +748,12 @@ graphCutHead id head m =
     ))   
     |> Maybe.withDefault m.graph
 
-graphDrawing_CutHead : Graph.EdgeId -> Bool -> Model -> Graph NodeDrawingLabel EdgeDrawingLabel
-graphDrawing_CutHead id head m = 
-  graphCutHead id head m |> GraphDrawing.toDrawingGraph
+graphClone : Model -> Graph NodeLabel EdgeLabel
+graphClone m =       
+   let nodes = allSelectedNodes m in
+   let mouseDelta = Point.subtract m.mousePos <| GraphDefs.centerOfNodes nodes in
+   GraphDefs.cloneSelected m.graph mouseDelta 
+ 
 
 graphQuickInput : Model -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabel
 graphQuickInput model ch = 
@@ -829,6 +842,7 @@ helpMsg model =
                 -- ++ ", [C-a] select all" 
                 ++ ", [C-c] copy selection" 
                 ++ ", [C-v] paste" 
+                ++ ", [M-c] clone selection (same as C-c C-v)"
                 ++ ", new [a]rrow from selected point"
                 ++ ", new [p]oint"
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
