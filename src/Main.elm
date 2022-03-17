@@ -339,6 +339,7 @@ update msg modeli =
        -- NewNode -> update_NewNode msg model
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
+        CutHead id head -> update_CutHead id head msg model
 
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
@@ -541,6 +542,10 @@ s                  (GraphDefs.clearSelection model.graph) } -}
            generateProof GraphProof.proofStatementToDebugString   
         KeyChanged False _ (Character 'S') ->         
            noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
+        KeyChanged False _ (Character 'c') -> 
+            case GraphDefs.selectedEdgeId model.graph of
+              Nothing -> noCmd model
+              Just id -> noCmd {  model | mode = CutHead id True }              
         KeyChanged False _ (Character 'C') -> 
                let gc = GraphDefs.toProofGraph model.graph in
                let s = 
@@ -632,7 +637,18 @@ update_DebugMode msg model =
 
 
 
-
+update_CutHead : Graph.EdgeId -> Bool -> Msg -> Model -> (Model, Cmd Msg)
+update_CutHead id head msg m =
+  let finalise () = 
+         ({m | mode = DefaultMode, graph = graphCutHead id head m}, Cmd.none)
+         -- computeLayout())
+  in
+  case msg of
+        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
+        KeyChanged False _ (Control "Enter") -> finalise ()
+        MouseClick -> finalise ()
+        KeyChanged False _ (Character 'c') -> ({ m | mode = CutHead id (not head)}, Cmd.none)
+        _ -> noCmd m
 
 
 
@@ -702,6 +718,27 @@ graphDrawingFromModel m =
         SquareMode state ->
             Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
+        CutHead id head -> graphDrawing_CutHead id head m
+
+
+graphCutHead : Graph.EdgeId -> Bool -> Model -> Graph NodeLabel EdgeLabel
+graphCutHead id head m = 
+   let pos = m.mousePos in
+    Graph.getEdge id m.graph 
+    |> Maybe.andThen (\e -> Graph.getNode (if head then e.to else e.from)
+         m.graph 
+    |> Maybe.map (\ nto -> 
+    let g1 = Graph.removeEdge id m.graph in
+    let (g2, newId) = Graph.newNode g1 {nto | pos = pos } in
+    let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
+    let (g3, _) = Graph.newEdge g2 n1 n2  e.label in
+    g3
+    ))   
+    |> Maybe.withDefault m.graph
+
+graphDrawing_CutHead : Graph.EdgeId -> Bool -> Model -> Graph NodeDrawingLabel EdgeDrawingLabel
+graphDrawing_CutHead id head m = 
+  graphCutHead id head m |> GraphDrawing.toDrawingGraph
 
 graphQuickInput : Model -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabel
 graphQuickInput model ch = 
@@ -800,6 +837,7 @@ helpMsg model =
                 ++ ", [r]ename selected object" 
                 ++ ", [g] move selected objects (also merge, if wanted)"
                 ++ ", [/] split arrow" 
+                ++ ", [c]ut head of selected arrow" 
                 ++ ", [f]ix (snap) selected objects on the grid" 
                 ++ ", [e]nlarge diagram (create row/column spaces)" 
                 ++ ", [hjkl] to move the selection from a point to another"                 
@@ -838,6 +876,10 @@ helpMsg model =
                    
                 ++ "Use mouse or h,j,k,l. [RET] or [click] to confirm."
                 ++ " Hold [ctrl] to merge the selected point onto another node."                
+                  |> msg
+        CutHead _ _ -> "Mode cut arrow."
+                ++ " [RET] or [click] to confirm. [ESC] to cancel. "
+                ++ "[c] to switch between head/tail."                
                   |> msg
         RenameMode _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
         EnlargeMode _ -> msg "Enlarge mode: draw a rectangle to create space"

@@ -147,12 +147,15 @@ selectedNode g =
        [ x ] -> Just x
        _ -> Nothing
 
-selectedEdgeId : Graph NodeLabel EdgeLabel -> Maybe EdgeId
-selectedEdgeId g = 
+selectedEdge : Graph NodeLabel EdgeLabel -> Maybe (Edge EdgeLabel)
+selectedEdge g = 
     case selectedEdges g of
-       [ x ] -> Just x.id
+       [ x ] -> Just x
        _ -> Nothing
 
+selectedEdgeId : Graph NodeLabel EdgeLabel -> Maybe EdgeId
+selectedEdgeId = selectedEdge >> Maybe.map .id
+    
 selectedId : Graph NodeLabel EdgeLabel -> Maybe Graph.Id
 selectedId g = 
    case (List.map .id <| selectedNodes g)

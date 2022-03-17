@@ -23,6 +23,7 @@ type Mode
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
     | EnlargeMode Point
+    | CutHead Graph.EdgeId Bool -- the head or the tail?
 
 type alias MoveState = 
    { orig : Point,  -- mouse original point at the beginning of the move mode
