@@ -717,8 +717,8 @@ graphQuickInput model ch =
       case od of
         Nothing -> default
         Just d ->           
-           Maybe.or (split d.lhs eq1)
-                    (split d.rhs eq2)
+            Maybe.or (split d.lhs eq2)
+                  (split d.rhs eq2)
                     |> Maybe.withDefault default
                
 
