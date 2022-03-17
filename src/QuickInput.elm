@@ -12,6 +12,8 @@ import List.Extra as List
 import ArrowStyle
 
 endArrowChar = '⟩'
+startSymbol = "--"
+endSymbol = "->"
 
 
 type alias Edge =  { edge : String, to : String } 
@@ -41,12 +43,12 @@ edgeParser : Parser Edge
 edgeParser = 
              oneOf[
                succeed Edge
-           |. symbol "-"
+           |. symbol startSymbol
            |. spaces
               -- some label?
-           |= labelParser [endArrowChar]
+           |= vertexParser -- labelParser [endArrowChar]
            |. spaces
-           |. symbol (endArrowChar |> String.fromChar)
+           |. symbol endSymbol --(endArrowChar |> String.fromChar)
            |= vertexParser
          
                  ]
