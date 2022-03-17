@@ -542,7 +542,9 @@ s                  (GraphDefs.clearSelection model.graph) } -}
            generateProof GraphProof.proofStatementToDebugString   
         KeyChanged False _ (Character 'S') ->         
            noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
-        KeyChanged False _ (Character 'c') -> 
+        KeyChanged False k (Character 'c') -> 
+            if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
+            else
             case GraphDefs.selectedEdgeId model.graph of
               Nothing -> noCmd model
               Just id -> noCmd {  model | mode = CutHead id True }              
