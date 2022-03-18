@@ -69,7 +69,9 @@ make_input pos label onChange =
                        Html.Events.onInput onChange,
                        Msg.onTabPreventDefault,
                        Html.Attributes.id HtmlDefs.idInput,
-                       Html.Attributes.autofocus True
+                       Html.Attributes.autofocus True,
+                       Html.Attributes.style "width"
+                           <| String.fromInt (String.length label + 1) ++ "ch"
                     ] ++ 
                     HtmlDefs.onRendered (always <| Do <| Msg.focusId HtmlDefs.idInput ))
                       []
@@ -142,7 +144,7 @@ segmentLabel q edgeId label curve =
                  (curve * length)
                  label.style.labelPosition -- label_position
                  label.style.labelAlignment
-                 label.dims
+                 (if label.editable then (2,2) else label.dims)
                  |> Point.rotate angle
                  |> Point.add q.from
          {-  -- previous algorithm 
