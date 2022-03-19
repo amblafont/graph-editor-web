@@ -20,10 +20,11 @@ import ParseLatex
 -- State -----------------------------------------------------------------------
 -- core data that will be saved
 
-
+depthHistory = 20
 
 type alias Model =
     { graph : Graph NodeLabel EdgeLabel
+    , history : List (Graph NodeLabel EdgeLabel)
     -- , selectedObjs : List Obj
     , mousePos : Point
     , specialKeys : HtmlDefs.Keys
@@ -45,7 +46,23 @@ type alias Model =
     }
 
 
+undo : Model -> Model
+undo m = popHistory { m | graph = peekHistory m }               
 
+peekHistory : Model -> Graph NodeLabel EdgeLabel
+peekHistory m = List.head m.history |> Maybe.withDefault m.graph
+
+pushHistory : Model -> Model
+pushHistory m = { m | history = List.take depthHistory (m.graph :: m.history)}
+
+popHistory : Model -> Model
+popHistory m = { m | history = List.tail m.history |> Maybe.withDefault []}
+
+
+setSaveGraph : Model -> Graph NodeLabel EdgeLabel -> Model
+setSaveGraph m g = 
+   let m2 = pushHistory m in
+   { m2 | graph = g }
 
 
 -- inputPositionPoint : Point -> InputPosition -> Point
@@ -58,6 +75,7 @@ type alias Model =
 createModel : Int -> Graph NodeLabel EdgeLabel -> Model
 createModel sizeGrid g =
     { graph = g
+    , history = []
     , mode = DefaultMode
     , statusMsg = ""
     , -- Debug.toString ([pointToAngle (0,1), pointToAngle (0.001,1),

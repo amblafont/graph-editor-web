@@ -1,5 +1,5 @@
 module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, 
-  onTabPreventDefault)
+  onTabPreventDefault, mayUpdateArrowStyle)
 
 import Collage exposing (Point)
 -- import Graph exposing (Graph, NodeId)
@@ -67,12 +67,18 @@ noOp = Do Cmd.none
 focusId : String -> Cmd Msg
 focusId s = Task.attempt (\_ -> noOp) (Dom.focus s)
 
+mayUpdateArrowStyle : Msg -> ArrowStyle -> Maybe ArrowStyle
+mayUpdateArrowStyle m style =
+   case m of 
+      KeyChanged False _ k -> ArrowStyle.keyMaybeUpdateStyle k style  
+      _ -> Nothing
+
+
+
 
 updateArrowStyle : Msg -> ArrowStyle -> ArrowStyle
-updateArrowStyle m style =
-   case m of 
-      KeyChanged False _ k -> ArrowStyle.keyUpdateStyle k style  
-      _ -> style
+updateArrowStyle m style = mayUpdateArrowStyle m style |> Maybe.withDefault style
+
 
 onTabPreventDefault : Html.Attribute Msg
 onTabPreventDefault = HtmlDefs.preventsDefaultOnKeyDown

@@ -501,10 +501,10 @@ update_DefaultMode msg model =
     case msg of
        
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
-        KeyChanged False _ (Character 'e') -> noCmd <| { model | mode = EnlargeMode model.mousePos }
+        KeyChanged False _ (Character 'e') -> noCmd <| pushHistory { model | mode = EnlargeMode model.mousePos }
         KeyChanged False k (Character 'a') -> 
             -- if not k.ctrl then
-             Modes.NewArrow.initialise model 
+             Modes.NewArrow.initialise <| pushHistory model 
             -- else
             --  noCmd <| { model | graph = GraphDefs.selectAll model.graph}
         CopyGraph ->
@@ -514,10 +514,10 @@ update_DefaultMode msg model =
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged False _ (Character 'g') -> 
-            noCmd <| initialiseMoveMode model
+            noCmd <| initialiseMoveMode <| pushHistory model
         KeyChanged False _ (Character 'i') -> 
            noCmd <| case GraphDefs.selectedEdgeId model.graph of
-                      Just id -> { model | graph = Graph.invertEdge id model.graph }                                         
+                      Just id -> setSaveGraph model <| Graph.invertEdge id model.graph
                       _ -> model
         {- KeyChanged False _ (Character 'I') -> noCmd <| selectInitial model -}
         {- KeyChanged False _ (Character 'E') -> 
@@ -565,58 +565,69 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                       |> Maybe.map List.singleton 
                       |> Maybe.withDefault []
             in
-            noCmd <| initialise_RenameMode ids model
-        KeyChanged False _ (Character 's') -> Modes.Square.initialise model 
+            noCmd <| initialise_RenameMode ids <| pushHistory model
+        KeyChanged False _ (Character 's') -> 
+            Modes.Square.initialise <| pushHistory model 
         
         KeyChanged False _ (Character 'p') -> 
             let (newGraph, newId) = Graph.newNode model.graph 
                     (newNodeLabel model.mousePos "")
                 newModel = addOrSetSel False newId
-                    {model | graph = newGraph  }
+                   <| setSaveGraph model newGraph                    
             in
             noCmd <| initialise_RenameMode [ newId ] newModel
            --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
         --                                            Msg.focusId quickInputId)
 
-        KeyChanged False _ (Character 'x') ->
-            noCmd <| { model | graph = GraphDefs.removeSelected model.graph} 
         
-        KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise model 
+        KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise <| pushHistory model 
+        KeyChanged False _ (Character 'x') ->
+            noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph
                      
         KeyChanged False _ (Control "Delete") ->
-            noCmd <| { model | graph = GraphDefs.removeSelected model.graph }
+            noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
         NodeClick n e ->
             noCmd <| addOrSetSel e.keys.shift n model
         EdgeClick n e ->
              noCmd <| addOrSetSel e.keys.shift n model 
-        KeyChanged False _ (Character 'f') -> noCmd 
-             { model | graph = Graph.map 
+        KeyChanged False _ (Character 'f') -> noCmd
+              <| setSaveGraph model 
+              <| Graph.map 
                 (\ _ n -> if n.selected then GraphDefs.snapNodeToGrid model.sizeGrid n else n )
-                (always identity) model.graph } 
+                (always identity) model.graph 
         KeyChanged False _ (Character 'h') -> move pi
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
         KeyChanged False _ (Character 'l') -> move 0       
         PasteGraph g -> noCmd <| initialiseMoveMode
-              {
-              model | graph = 
+               <|  setSaveGraph model <|              
                 Graph.union 
                   (GraphDefs.clearSelection model.graph)
                   (GraphDefs.selectAll g)
-               }        
+               
+        KeyChanged False k (Character 'z') -> 
+             if k.ctrl then noCmd <| undo model else noCmd model
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise model.graph
    
         _ ->
 
             case GraphDefs.selectedEdgeId model.graph of
               Nothing -> noCmd model
-              Just id -> noCmd 
-                { model | graph =
-                  Graph.updateEdge id 
-                    (\e -> {e | style = Msg.updateArrowStyle msg e.style})
+              Just id -> 
+                 Graph.getEdge id model.graph
+                 |> Maybe.andThen (\e ->
+                    Msg.mayUpdateArrowStyle msg e.label.style
+                   )
+                 |> Maybe.map ( \style ->
+                  setSaveGraph model <| 
+                   Graph.updateEdge id 
+                    (\e -> {e | style = style})
                     model.graph
-                }
+                 )
+                 |> Maybe.withDefault model
+                 |> noCmd
+
                
 initialiseMoveMode : Model -> Model
 initialiseMoveMode model =
@@ -840,6 +851,7 @@ helpMsg model =
             msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle, "
                 ++ "[shift] to keep previous selection)" 
                 -- ++ ", [C-a] select all" 
+                ++ ", [C-z] undo" 
                 ++ ", [C-c] copy selection" 
                 ++ ", [C-v] paste" 
                 ++ ", [M-c] clone selection (same as C-c C-v)"

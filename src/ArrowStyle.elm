@@ -1,4 +1,4 @@
-module ArrowStyle exposing (ArrowStyle, empty, keyUpdateStyle, quiverStyle,
+module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
    tailToString , tailFromString,
    headToString, headFromString, 
    alignmentToString, alignmentFromString, 
@@ -6,7 +6,8 @@ module ArrowStyle exposing (ArrowStyle, empty, keyUpdateStyle, quiverStyle,
    controlChars,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
-    LabelAlignment(..) )
+    LabelAlignment(..),
+    keyMaybeUpdateStyle )
 
 import HtmlDefs exposing (Key(..))
 
@@ -190,21 +191,22 @@ makeHeadTailImgs {from, to, controlPoint} style =
        <| tailFileName style ]
 
 
-
-
-keyUpdateStyle : Key -> Style -> Style
-keyUpdateStyle k style = 
+keyMaybeUpdateStyle : Key -> Style -> Maybe Style
+keyMaybeUpdateStyle k style = 
    case k of 
-        Character '>' -> toggleHead style
-        Character '(' -> toggleHook style
-        Character '=' -> toggleDouble style
-        Character '-' -> toggleDashed style
-        Character 'b' -> {style | bend = style.bend + 0.1 |> norm0}
-        Character 'B' -> {style | bend = style.bend - 0.1 |> norm0}
-        Character 'A' -> toggleLabelAlignement style
-        Character ']' -> {style | labelPosition = style.labelPosition + 0.1 |> min 0.9}
-        Character '[' -> {style | labelPosition = style.labelPosition - 0.1 |> max 0.1}
-        _ -> style
+        Character '>' -> Just <| toggleHead style
+        Character '(' -> Just <| toggleHook style
+        Character '=' -> Just <| toggleDouble style
+        Character '-' -> Just <| toggleDashed style
+        Character 'b' -> Just <| {style | bend = style.bend + 0.1 |> norm0}
+        Character 'B' -> Just <| {style | bend = style.bend - 0.1 |> norm0}
+        Character 'A' -> Just <| toggleLabelAlignement style
+        Character ']' -> Just <| {style | labelPosition = style.labelPosition + 0.1 |> min 0.9}
+        Character '[' -> Just <| {style | labelPosition = style.labelPosition - 0.1 |> max 0.1}
+        _ -> Nothing
+
+--keyUpdateStyle : Key -> Style -> Style
+--keyUpdateStyle k style = keyMaybeUpdateStyle k style |> Maybe.withDefault style
 
 -- chars used to control in keyUpdateStyle
 controlChars = ">(=-bBA]["
