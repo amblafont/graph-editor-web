@@ -99,7 +99,7 @@ getNodeLabelOrCreate g s p =
 defaultDims : String -> Point
 defaultDims s = 
   let height = 16 in
-  let size = max 1 (String.length s) in
+  let size = 1 in --max 1 (String.length s) in
    -- copied from source code of Collage
    (height / 2 * toFloat size, height)
 
