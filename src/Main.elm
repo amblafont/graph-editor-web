@@ -94,6 +94,7 @@ port saveGraph : { graph : LastFormat.Graph, fileName : String, version : Int } 
 -- filename
 port savedGraph : (String -> a) -> Sub a
 port exportQuiver : JE.Value -> Cmd a
+port exportQuiverLocal : JE.Value -> Cmd a
 port alert : String -> Cmd a
 port jumpToId : String -> Cmd a
 
@@ -304,6 +305,9 @@ update msg modeli =
      ExportQuiver -> (model,  
                     exportQuiver <| 
                      GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
+     ExportQuiverLocal -> (model,  
+                    exportQuiverLocal <| 
+                     GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n dims ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
@@ -458,7 +462,15 @@ selectLoop direction model =
             { model | graph = edges |> List.map (Tuple.first >> .id)            
               |> List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True})) 
                   (GraphDefs.clearSelection model.graph) }
- 
+
+rename : Model -> (Model, Cmd Msg)
+rename model =
+    let ids = GraphDefs.selectedId model.graph 
+            |> Maybe.map List.singleton 
+            |> Maybe.withDefault []
+    in
+        noCmd <| initialise_RenameMode ids <| pushHistory model
+            
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     let delta_angle = pi / 5 in    
@@ -560,12 +572,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                in
                      fillBottom s "No selected subdiagram found!"
         
-        KeyChanged False _ (Character 'r') -> 
-            let ids = GraphDefs.selectedId model.graph 
-                      |> Maybe.map List.singleton 
-                      |> Maybe.withDefault []
-            in
-            noCmd <| initialise_RenameMode ids <| pushHistory model
+        KeyChanged False _ (Character 'r') -> rename model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise <| pushHistory model 
         
@@ -589,6 +596,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
         NodeClick n e ->
             noCmd <| addOrSetSel e.keys.shift n model
+        EltDoubleClick n e ->
+            noCmd <| initialise_RenameMode [n] model
         EdgeClick n e ->
              noCmd <| addOrSetSel e.keys.shift n model 
         KeyChanged False _ (Character 'f') -> noCmd
@@ -988,6 +997,7 @@ view model =
         --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
          , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
         , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"]
+        , Html.button [Html.Events.onClick ExportQuiverLocal] [Html.text "Export selection to quiver code"]
          , HtmlDefs.slider SizeGrid "Grid size" 2 500 model.sizeGrid
           ,   Html.text model.statusMsg,
          -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",

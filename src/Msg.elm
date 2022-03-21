@@ -26,6 +26,7 @@ type Msg
   | Save
   | FileName String -- new file name
   | ExportQuiver
+  | ExportQuiverLocal
     -- on reception of this message, the js function onMouseMove is called
     -- which sends back a MouseMove message with the relative position to 
     -- the canvas
@@ -38,6 +39,7 @@ type Msg
   -- | NodeEnter NodeId
   -- | NodeLeave NodeId
   | NodeClick NodeId MouseEvents.Event
+  | EltDoubleClick Graph.Id MouseEvents.Event
   | EdgeClick EdgeId MouseEvents.Event
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String

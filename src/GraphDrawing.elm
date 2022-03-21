@@ -92,7 +92,8 @@ nodeLabelDrawing attrs node =
          else 
             Drawing.html n.pos n.dims
             <| HtmlDefs.makeLatex
-            ([   MouseEvents.onClick (NodeClick id)            
+            ([   MouseEvents.onClick (NodeClick id),
+                 MouseEvents.onDoubleClick (EltDoubleClick id)
             ] ++ 
             (if n.isActive then [Html.Attributes.class "active-label" ] else [])
             ++
@@ -169,6 +170,7 @@ segmentLabel q edgeId label curve =
             Drawing.html labelpos label.dims -- n.dims
             <| HtmlDefs.makeLatex
             ([   MouseEvents.onClick (EdgeClick edgeId),
+                 MouseEvents.onDoubleClick (EltDoubleClick edgeId),
                  MouseEvents.onMove  (always (MouseOn edgeId))
             ] ++ 
             (if label.isActive then [Html.Attributes.class "active-label" ] else [])
@@ -192,7 +194,9 @@ edgeDrawing edgeId {- from to -} label q curve =
     -- in
     Drawing.group [
          Drawing.arrow 
-          [Drawing.color c, Drawing.onClick (EdgeClick edgeId),
+          [Drawing.color c,
+           Drawing.onClick (EdgeClick edgeId),
+           Drawing.onDoubleClick (EltDoubleClick edgeId),
            Drawing.simpleOn "mousemove" (MouseOn edgeId)
           ] 
           label.style

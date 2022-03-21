@@ -267,6 +267,14 @@
               btoa(unescape(encodeURIComponent(JSON.stringify(d))))}`;
               window.open(s);             
          });
+
+         app.ports.exportQuiverLocal.subscribe(function(d) {
+             // copied from quiver/quiver.js (export base64)
+             var s = `file://path/to/quiver/src/index.html?q=${
+              btoa(unescape(encodeURIComponent(JSON.stringify(d))))}`;
+              window.open(s);             
+         });
+
          app.ports.clipboardWriteGraph.subscribe(function(g) {
             navigator.clipboard.writeText(JSON.stringify(g));                     
          });
