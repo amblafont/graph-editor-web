@@ -94,7 +94,6 @@ port saveGraph : { graph : LastFormat.Graph, fileName : String, version : Int } 
 -- filename
 port savedGraph : (String -> a) -> Sub a
 port exportQuiver : JE.Value -> Cmd a
-port exportQuiverLocal : JE.Value -> Cmd a
 port alert : String -> Cmd a
 port jumpToId : String -> Cmd a
 
@@ -304,9 +303,6 @@ update msg modeli =
      SizeGrid s -> noCmd { model | sizeGrid = s }
      ExportQuiver -> (model,  
                     exportQuiver <| 
-                     GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
-     ExportQuiverLocal -> (model,  
-                    exportQuiverLocal <| 
                      GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n dims ->
@@ -871,7 +867,7 @@ helpMsg model =
                --  ++ ", [q]ickInput mode" 
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
-                ++ ", [r]ename selected object" 
+                ++ ", [r]ename selected object (or double click)" 
                 ++ ", [g] move selected objects (also merge, if wanted)"
                 ++ ", [/] split arrow" 
                 ++ ", [c]ut head of selected arrow" 
@@ -997,7 +993,6 @@ view model =
         --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
          , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
         , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"]
-        , Html.button [Html.Events.onClick ExportQuiverLocal] [Html.text "Export selection to quiver code"]
          , HtmlDefs.slider SizeGrid "Grid size" 2 500 model.sizeGrid
           ,   Html.text model.statusMsg,
          -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
