@@ -458,7 +458,15 @@ selectLoop direction model =
             { model | graph = edges |> List.map (Tuple.first >> .id)            
               |> List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True})) 
                   (GraphDefs.clearSelection model.graph) }
- 
+
+rename : Model -> (Model, Cmd Msg)
+rename model =
+    let ids = GraphDefs.selectedId model.graph 
+            |> Maybe.map List.singleton 
+            |> Maybe.withDefault []
+    in
+        noCmd <| initialise_RenameMode ids <| pushHistory model
+            
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     let delta_angle = pi / 5 in    
@@ -560,12 +568,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                in
                      fillBottom s "No selected subdiagram found!"
         
-        KeyChanged False _ (Character 'r') -> 
-            let ids = GraphDefs.selectedId model.graph 
-                      |> Maybe.map List.singleton 
-                      |> Maybe.withDefault []
-            in
-            noCmd <| initialise_RenameMode ids <| pushHistory model
+        KeyChanged False _ (Character 'r') -> rename model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise <| pushHistory model 
         
@@ -589,6 +592,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
         NodeClick n e ->
             noCmd <| addOrSetSel e.keys.shift n model
+        EltDoubleClick n e ->
+            noCmd <| initialise_RenameMode [n] model
         EdgeClick n e ->
              noCmd <| addOrSetSel e.keys.shift n model 
         KeyChanged False _ (Character 'f') -> noCmd
@@ -862,7 +867,7 @@ helpMsg model =
                --  ++ ", [q]ickInput mode" 
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
-                ++ ", [r]ename selected object" 
+                ++ ", [r]ename selected object (or double click)" 
                 ++ ", [g] move selected objects (also merge, if wanted)"
                 ++ ", [/] split arrow" 
                 ++ ", [c]ut head of selected arrow" 

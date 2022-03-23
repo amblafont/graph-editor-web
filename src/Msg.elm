@@ -38,6 +38,7 @@ type Msg
   -- | NodeEnter NodeId
   -- | NodeLeave NodeId
   | NodeClick NodeId MouseEvents.Event
+  | EltDoubleClick Graph.Id MouseEvents.Event
   | EdgeClick EdgeId MouseEvents.Event
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String

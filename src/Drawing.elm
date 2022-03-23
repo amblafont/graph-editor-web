@@ -1,6 +1,6 @@
 module Drawing exposing (Drawing,   
   fromString, circle, html, group, arrow, rect,
-  Attribute, simpleOn, on, onClick, {- onMouseEnter, onMouseLeave, -} color,
+  Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
   svg, Color, red, black, class, empty, grid
   )
 
@@ -32,6 +32,7 @@ attrToSvgAttr col a =
      Class s -> Svg.class s |> Just
      On e d -> Svg.Events.on e d |> Just
      OnClick f -> MouseEvents.onClick f |> Just
+     OnDoubleClick f -> MouseEvents.onDoubleClick f |> Just             
 
 attrsToSvgAttrs : (String -> Svg.Attribute a) -> List (Attribute a) -> List (Svg.Attribute a)
 attrsToSvgAttrs f = List.filterMap (attrToSvgAttr f)
@@ -41,6 +42,7 @@ type Attribute msg =
     | Color Color
     | Class String
     | OnClick (MouseEvents.Event -> msg)
+    | OnDoubleClick (MouseEvents.Event -> msg)      
 
 type Color = Black | Red
 
@@ -67,6 +69,9 @@ simpleOn s m = on s (D.succeed m)
 
 onClick : (MouseEvents.Event -> msg) -> Attribute msg
 onClick = OnClick 
+
+onDoubleClick : (MouseEvents.Event -> msg) -> Attribute msg
+onDoubleClick = OnDoubleClick 
 
 {- onMouseEnter : msg -> Attribute msg
 onMouseEnter = simpleOn "mouseenter" 
