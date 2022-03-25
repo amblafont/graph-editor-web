@@ -137,7 +137,8 @@ distance ro rd (aa,bb) =
 -- label_position: between 0 and 1
 determine_label_position length angle edge_width start end curve label_position label_alignement label_size =
    let bezier = Bezier.new (0, 0) length -- curve 
-         (Debug.log "curve" curve) 
+         --(Debug.log "curve" curve) 
+           curve
          --(Debug.log "angle" angle)
            angle
    in

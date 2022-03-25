@@ -353,7 +353,6 @@ update msg0 modeli =
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
-    let _ = Debug.log "coucou2!" msg in
     case msg of
         KeyChanged False _ (Control "Escape") ->
             ({model | mode = DefaultMode}, 
@@ -370,7 +369,6 @@ update_QuickInput ch msg model =
                      -- even before
                      computeLayout ())
         QuickInput s ->
-                let _ = Debug.log "coucou!" () in
                 let (statusMsg, chain) =
                         case Parser.run equalityParser s of
                             Ok l -> (Debug.toString l, Just l)
