@@ -10,7 +10,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram, cloneSelected,
-   centerOfNodes
+   centerOfNodes, mergeWithSameLoc
    )
 
 import IntDict
@@ -235,3 +235,10 @@ cloneSelected g offset =
 
 centerOfNodes : List (Node NodeLabel) -> Point
 centerOfNodes nodes = ((Geometry.rectEnveloppe <| List.map (.pos << .label) nodes) |> Geometry.centerRect)
+
+mergeWithSameLoc : Node NodeLabel -> Graph NodeLabel EdgeLabel -> (Graph NodeLabel EdgeLabel, Bool)
+mergeWithSameLoc n g =
+    case getNodesAt g n.label.pos |> List.filterNot ((==) n.id) of
+         [ i ] -> (Graph.removeLoops 
+              <| Graph.merge i n.id g, True)
+         _ -> (g, False)

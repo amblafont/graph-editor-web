@@ -219,12 +219,14 @@ info_MoveNode model { orig, pos } =
     let moveNodes delta = nodes |> List.map (updNode delta) in
    --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) model.graph in
     let mkRet movedNodes = { graph = Graph.updateNodes movedNodes model.graph, valid = not merge } in
-    let retMerge movedNodes =           
+    let retMerge movedNodes =                  
            case movedNodes of
-              [ n ] ->         
-                case GraphDefs.getNodesAt model.graph n.label.pos of
-                  [ i ] -> { graph = Graph.removeLoops <| Graph.merge i n.id model.graph, valid = True }
-                  _ -> mkRet movedNodes
+              [ n ] ->        
+                let (g, valid) = GraphDefs.mergeWithSameLoc n model.graph in
+                if valid then
+                  {graph = g, valid = True }
+                else
+                  mkRet movedNodes
               _ -> mkRet movedNodes      
     in       
     let retDelta delta =
@@ -757,10 +759,18 @@ graphCutHead id head m =
          m.graph 
     |> Maybe.map (\ nto -> 
     let g1 = Graph.removeEdge id m.graph in
-    let (g2, newId) = Graph.newNode g1 {nto | pos = pos } in
+    let label = {nto | pos = pos } in
+    let (g2, newId) = Graph.newNode g1 label in
     let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
     let (g3, _) = Graph.newEdge g2 n1 n2  e.label in
-    g3
+    let g4 = if m.specialKeys.ctrl then 
+                     Tuple.first <| 
+                     GraphDefs.mergeWithSameLoc
+                       { id = newId, label = label }
+                       g3
+             else g3
+    in
+    g4
     ))   
     |> Maybe.withDefault m.graph
 
@@ -911,7 +921,7 @@ helpMsg model =
                 ++ " Hold [ctrl] to merge the selected point onto another node."                
                   |> msg
         CutHead _ _ -> "Mode cut arrow."
-                ++ " [RET] or [click] to confirm. [ESC] to cancel. "
+                ++ " [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
                 ++ "[c] to switch between head/tail."                
                   |> msg
         RenameMode _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
