@@ -125,6 +125,7 @@ port findReplace : ({ search: String, replace:String} -> a) -> Sub a
 subscriptions : Model -> Sub Msg
 subscriptions m = 
     Sub.batch 
+     <|
     [
       findReplace FindReplace,
       -- upload a graph (triggered by js)
@@ -134,7 +135,7 @@ subscriptions m =
       loadedGraph2 (\ r -> Loaded (Format.Version2.fromJSGraph r.graph) r.fileName),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
-      E.onClick (D.succeed MouseClick),
+      E.onClick (D.succeed MouseClick)
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
                             -- it is necessary to prevent defaults
@@ -142,8 +143,10 @@ subscriptions m =
                             -- may not shows up
                                       (TabInput, True) 
                         else (Msg.noOp, False))
-                         HtmlDefs.tabDecoder), -}
-      E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
+                         HtmlDefs.tabDecoder), -} ]
+    ++
+    if not m.mouseOnCanvas then [] else
+    [  E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
            (\e -> e |> D.decodeValue (D.map2 ( \ks k -> 
@@ -151,14 +154,14 @@ subscriptions m =
                     if ks.ctrl && m.mode == DefaultMode then
                       Do <| preventDefault e
                     else Msg.noOp
-                in
+               in
                case k of
                  Character '/' ->
                     case m.mode of
                       DefaultMode  -> Do <| preventDefault e
                       SplitArrow _ -> Do <| preventDefault e
                       _ -> Msg.noOp 
-                 -- Character 'a' -> checkCtrl
+                 Character 'a' -> checkCtrl
                  Control "Tab" ->  
                     case m.mode of
                       SquareMode _  -> Do <| preventDefault e
@@ -272,8 +275,8 @@ switch_RenameMode model =
  -}
 -- Now, deal with incoming messages
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg0 modeli =
-    let model = case msg0 of
+update msg modeli =
+    let model = case msg of
                 FileName s -> { modeli | fileName = s }
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
                 MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
@@ -298,13 +301,6 @@ update msg0 modeli =
  
                -- MouseClick -> let _ = Debug.log "Mouse Click !" () in model
                 _ -> modeli            
-    in
-    let msg = 
-          case msg0 of
-              KeyChanged False _ (Control "Escape") -> msg0
-              KeyChanged _ _ _ ->
-                 if model.mouseOnCanvas then msg0 else Msg.noOp
-              _ -> msg0
     in
     case msg of
      Save ->               
