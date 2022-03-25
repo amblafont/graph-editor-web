@@ -520,10 +520,10 @@ update_DefaultMode msg model =
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
         KeyChanged False _ (Character 'e') -> noCmd <| pushHistory { model | mode = EnlargeMode model.mousePos }
         KeyChanged False k (Character 'a') -> 
-            -- if not k.ctrl then
+            if not k.ctrl then
              Modes.NewArrow.initialise <| pushHistory model 
-            -- else
-            --  noCmd <| { model | graph = GraphDefs.selectAll model.graph}
+            else
+              noCmd <| { model | graph = GraphDefs.selectAll model.graph}
         CopyGraph ->
               (model,
                clipboardWriteGraph <| 
@@ -872,7 +872,7 @@ helpMsg model =
             -- msg <| "Default mode. couc[c]" 
             msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle, "
                 ++ "[shift] to keep previous selection)" 
-                -- ++ ", [C-a] select all" 
+                ++ ", [C-a] select all" 
                 ++ ", [C-z] undo" 
                 ++ ", [C-c] copy selection" 
                 ++ ", [C-v] paste" 
