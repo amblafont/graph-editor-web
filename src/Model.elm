@@ -40,7 +40,7 @@ type alias Model =
     -- real dimensions of nodes
     -- , dimNodes : Dict NodeId Point
     -- quickInput : Maybe NonEmptyChain
-    -- mouseOnCanvas : Bool
+    , mouseOnCanvas : Bool
     -- blitzFlag : Bool
     , bottomText : String
     }
@@ -78,6 +78,7 @@ createModel sizeGrid g =
     , history = []
     , mode = DefaultMode
     , statusMsg = ""
+    , mouseOnCanvas = False
     , -- Debug.toString ([pointToAngle (0,1), pointToAngle (0.001,1),
       --                    pointToAngle (1,0), pointToAngle(0,-1),
       --                        pointToAngle (-1, 0.01)]),

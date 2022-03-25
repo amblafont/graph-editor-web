@@ -271,13 +271,16 @@ switch_RenameMode model =
  -}
 -- Now, deal with incoming messages
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg modeli =
-    let model = case msg of
+update msg0 modeli =
+    let model = case msg0 of
                 FileName s -> { modeli | fileName = s }
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
-                MouseMoveRaw _ keys -> { modeli | specialKeys = keys }
+                MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
                 MouseMove p -> { modeli | mousePos = p} -- , mouseOnCanvas = True}
                 MouseDown e -> { modeli | specialKeys = e.keys }
+                MouseLeaveCanvas -> 
+                   let _ = Debug.log "mouseleave" () in
+                    { modeli | mouseOnCanvas = False }
                 {- FindInitial -> selectInitial model -}
                 QuickInput s -> let _ = Debug.log "coucou1!" () in
                      { modeli | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
@@ -294,6 +297,13 @@ update msg modeli =
  
                -- MouseClick -> let _ = Debug.log "Mouse Click !" () in model
                 _ -> modeli            
+    in
+    let msg = 
+          case msg0 of
+              KeyChanged False _ (Control "Escape") -> msg0
+              KeyChanged _ _ _ ->
+                 if model.mouseOnCanvas then msg0 else Msg.noOp
+              _ -> msg0
     in
     case msg of
      Save ->               
@@ -983,7 +993,8 @@ view model =
                              Html.Attributes.id HtmlDefs.canvasId,
                              Html.Attributes.style "border-style" "solid",
                              Html.Events.on "mousemove"
-                             (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder)                   
+                               (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder),
+                             Html.Events.onMouseLeave MouseLeaveCanvas                               
                             ,                 
                            MouseEvents.onWithOptions "mousedown" 
                             { stopPropagation = False, preventDefault = False }

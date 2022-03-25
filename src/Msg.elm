@@ -30,6 +30,7 @@ type Msg
     -- which sends back a MouseMove message with the relative position to 
     -- the canvas
   | MouseMoveRaw JE.Value HtmlDefs.Keys
+  | MouseLeaveCanvas
   | KeyChanged Bool HtmlDefs.Keys Key
   | MouseMove Point
   | MouseClick 
