@@ -107,7 +107,7 @@ port clipboardWriteGraph : LastFormat.Graph -> Cmd a
 port pasteGraph : JE.Value -> Cmd a
 -- JS would then calls us back with the decoded graph
 port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
-
+port findReplace : ({ search: String, replace:String} -> a) -> Sub a
 
 
 
@@ -126,6 +126,7 @@ subscriptions : Model -> Sub Msg
 subscriptions m = 
     Sub.batch 
     [
+      findReplace FindReplace,
       -- upload a graph (triggered by js)
       
       loadedGraph0 (\ r -> Loaded (Format.Version0.fromJSGraph r.graph) r.fileName),
@@ -333,6 +334,8 @@ update msg0 modeli =
      Loaded g fileName -> noCmd <| { model | graph = g, 
                                              fileName = fileName,
                                              mode = DefaultMode }
+     FindReplace req -> noCmd <| setSaveGraph model 
+                          <| GraphDefs.findReplaceInSelected model.graph req
      _ ->
       case model.mode of
         QuickInputMode c -> update_QuickInput c msg model 

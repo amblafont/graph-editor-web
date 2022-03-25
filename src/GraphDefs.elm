@@ -10,7 +10,8 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram, cloneSelected,
-   centerOfNodes, mergeWithSameLoc
+   centerOfNodes, mergeWithSameLoc,
+   findReplaceInSelected
    )
 
 import IntDict
@@ -242,3 +243,15 @@ mergeWithSameLoc n g =
          [ i ] -> (Graph.removeLoops 
               <| Graph.merge i n.id g, True)
          _ -> (g, False)
+
+findReplaceInSelected : Graph NodeLabel EdgeLabel -> {search : String, replace: String} ->  Graph NodeLabel EdgeLabel
+findReplaceInSelected g r =
+  let repl sel s = 
+       if sel then
+          String.replace r.search r.replace s
+       else
+          s
+  in
+  Graph.map (\ _ n -> { n | label = repl n.selected n.label })
+     (\ _ e -> { e | label = repl e.selected e.label })
+     g

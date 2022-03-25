@@ -54,6 +54,7 @@ type Msg
   | Clear
   | SizeGrid Int
   | ToggleHideGrid
+  | FindReplace { search: String, replace:String}
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String

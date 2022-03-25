@@ -127,6 +127,13 @@
 	    <p>
         </p>
         <button onclick="loadGraph()" >Load graph</button>
+        <p>
+            <button onclick="findReplace(document.getElementById('grep-search').value, document.getElementById('grep-replace').value)">
+                Replace in selection</button>
+        <input type="text" id="grep-search" placeholder="Search"/>
+        <input type="text" id="grep-replace" placeholder="Replace"/>
+        
+    </p>
     <!--     <button onclick="dispatchRenderedChildren(document)">
             Recompute the layer
         </button> -->
@@ -298,6 +305,11 @@
                           dispatchRendered(children[i]);
                       }   
          });
+
+
+         function findReplace(search, replace) {
+         app.ports.findReplace.send({'search':search, 'replace': replace});
+         }
 
          // Elm browser keydown handler is passive
          // and thus cannot prevent default behaviour
