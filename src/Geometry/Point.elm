@@ -1,11 +1,11 @@
 module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
   normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList,
   angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
-  countRounds, name, unname, NamedPoint, isInPoly,
+  countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
   -- from quiver
   lerp, lendir, rotate, scale, inv_scale)
 
-
+import ListExtraExtra as List
 
 type alias Point = (Float, Float)
 type alias NamedPoint = { x : Float, y : Float}
@@ -152,8 +152,11 @@ sumAngles l =
 
 -- count the number of rounds with respect to the angles
 countRounds : List Float -> Int
-countRounds l =  
-   sumAngles l / (2 * pi) |> round 
+countRounds l =    
+   sumAngles l |> countRoundsAngle
+
+countRoundsAngle : Float -> Int
+countRoundsAngle a = a / (2 * pi) |> round
 
 
 -- Note: Quiver has a more efficient implementation
@@ -162,13 +165,12 @@ countRounds l =
 isInPoly : Point -> List Point -> Bool
 isInPoly pos l = 
    let angles = List.map (subtract pos >> pointToAngle) l in
-   let anglesLoop = 
-         case angles of
-            t :: _ -> angles ++ [ t ]
-            [] -> []
+   let anglesLoop = List.succCyclePairs angles
+         |> List.map (\ (a, b) -> distanceAngleSigned a b)
+         |> List.sum
    in
       --Debug.log "isInPoly" 
-      (countRounds anglesLoop) == 1
+      (countRoundsAngle anglesLoop) == 1
 
 -- fron quiver
 lerp : Point -> Point -> Float -> Point

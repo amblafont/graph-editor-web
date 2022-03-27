@@ -10,7 +10,8 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      incomings, outgoings, drop, 
      normalise,
      union, edgeMap,
-     {- findInitial, sourceNode, -} removeLoops)
+     {- findInitial, sourceNode, -} removeLoops,
+     incidence)
 import IntDict exposing (IntDict)
 import IntDictExtra 
 import Svg.Attributes exposing (from)
@@ -487,6 +488,23 @@ normalise g =
    List.map (\(id, o) -> (getId id, updateId o))
    |> IntDict.fromList
    |> Graph
+
+incidence : Graph n e -> IntDict { incomings : List (Edge e), outgoings : List (Edge e) }
+incidence g =
+   let es = edges g in
+   let emptyInfo = { incomings = [], outgoings = []} in
+   let insertIn e i = { i | incomings = e :: i.incomings} in
+   let insertOut e i = { i | outgoings = e :: i.outgoings} in
+   let aux l d =
+         case l of 
+           [] -> d
+           e :: q ->
+              aux q 
+              <| IntDict.update e.from (Maybe.withDefault emptyInfo >> insertOut e >> Just)
+              <| IntDict.update e.to (Maybe.withDefault emptyInfo >> insertIn e >> Just)
+              <| d
+   in
+     aux es IntDict.empty
    
 {- sourceNode : Graph n e -> Id -> NodeId
 sourceNode (Graph g) id =

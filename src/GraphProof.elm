@@ -8,6 +8,7 @@ module GraphProof exposing (loopFrom, getAllValidDiagrams,
 import Polygraph as Graph exposing (Graph, NodeId, Edge, Node)
 import Geometry.Point as Point exposing (Point)
 import List.Extra as List
+import ListExtraExtra as List
 import Tuple exposing (first, second)
 import Debug exposing (toString)
 import IntDict exposing (IntDict)
@@ -64,8 +65,6 @@ diagramFrom dir g e =
      let loopEdges = loopFrom dir g e in
           loopToDiagram loopEdges
 
-isValidDiagram : Diagram -> Bool
-isValidDiagram d = d.lhs /= [] && d.rhs /= []
    
 type alias Diagram = { lhs : List (Edge LoopEdge), 
                        rhs : List (Edge LoopEdge)
@@ -109,24 +108,62 @@ loopToDiagram edges =
     { lhs = lhs,
       rhs = rhs }
 
--- edges: remaining edges to examine
-getDiagrams : Graph LoopNode LoopEdge -> List (Edge LoopEdge, Bool) ->
-           List Diagram
-getDiagrams g edges =
-   case edges of
-      [] -> []
-      (e, dir) :: tail -> 
-         let d = diagramFrom dir g e in
-         -- let loopEdges = loopFrom dir g e in
-         let fromIds = d.lhs |> List.map .id in
-         let toIds = d.rhs |> List.map .id in
-         let tailBis = List.filterNot 
-                        (\ (e2, dir2) -> List.member e2.id
-                           (if dir2 then fromIds else toIds)
-                        )  
-                        tail 
-         in
-          d :: getDiagrams g tailBis
+getAllValidDiagrams : Graph LoopNode LoopEdge -> List Diagram
+getAllValidDiagrams g =
+   let inc = Graph.incidence g 
+         |> IntDict.map 
+          (\ _ i -> List.map (\e -> { edge = e, incoming = True } ) i.incomings
+                 ++ List.map (\e -> { edge = e, incoming = False} ) i.outgoings
+                 |> List.sortBy 
+                     (\{edge, incoming} -> 
+                         if incoming then edge.label.angle else 
+                         Point.flipAngle edge.label.angle
+                     )
+                 |> List.succCyclePairs
+          )
+   in
+   -- il faut deux next pour les deux sens
+   let treatEdge (e1 ,e2) (start, next1, next2) =         
+         case (e1.incoming, e2.incoming) of
+           (True, True) -> (start, next1, next2)
+           (False, False) -> 
+              -- let _ = Debug.log "startEdge " (e1.edge.label.label, e2.edge.label.label) in
+               ((e2.edge, e1.edge) :: start, next1, next2)
+           (True, False) -> 
+             -- let _ = Debug.log "succEdge " (e1.edge.label.label, e2.edge.label.label) in
+              (start, IntDict.insert e1.edge.id e2.edge next1, next2)
+           (False, True) -> 
+              --let _ = Debug.log "AutresuccEdge'" (e1.edge.label.label, e2.edge.label.label) in
+               (start, next1, IntDict.insert e2.edge.id e1.edge next2)
+   in
+   let buildNextStarts es (start, next1, next2) =
+         List.foldl treatEdge (start, next1, next2) es
+   in
+   let (start, next1, next2) = IntDict.foldl (\ _ -> buildNextStarts) 
+                     ([], IntDict.empty, IntDict.empty) inc 
+   in
+   let buildBranch next startEdge =
+        case IntDict.get startEdge.id next of
+          Nothing -> [ startEdge ]
+          Just e -> startEdge :: buildBranch next e
+   in
+   let diags = List.map 
+         (\ (rhs, lhs) -> 
+           {rhs = buildBranch next1 rhs, 
+            lhs = buildBranch next2 lhs})
+         start
+   in
+   --let _ = List.map (statementToString >> Debug.log "a ") diags in
+   let validDiag { lhs, rhs } =
+        case (List.last lhs, List.last rhs) of
+         (Just e1, Just e2) -> e1.to == e2.to
+         _ -> False
+   in
+   let validDiags = List.filter validDiag diags in
+   -- let _ = List.map (statementToString >> Debug.log "d ") validDiags in
+    validDiags
+     
+                
 
 {-
 Returns the one diagram that the given input list of edges represents
@@ -187,17 +224,6 @@ generateIncompleteProofStepFromDiagram g d =
    in
       step
 
-
-getAllValidDiagrams : Graph LoopNode LoopEdge -> 
-           List Diagram
-getAllValidDiagrams g =
-   let edges = Graph.edges g in
-   let edgesR = List.map (\ e -> (e, True)) edges
-       edgesL = List.map (\ e -> (e, False)) edges
-   in
-   let edgesFull = edgesR ++ edgesL in
-     getDiagrams g edgesFull
-     |> List.filter isValidDiagram
 
 type alias ProofStep = { diag : Diagram, startOffset : Int,
    backOffset : Int, endChain : List Graph.Id }
