@@ -12,6 +12,7 @@ import HtmlDefs
 
 import Modes exposing (Mode(..))
 
+import Format.GraphInfo exposing (defaultGridSize)
 import ParseLatex
 
 
@@ -98,8 +99,6 @@ createModel sizeGrid g =
     -- quickInput = Nothing
     -- blitzFlag = False
     }
-
-defaultGridSize = 200
 
 iniModel : Model
 iniModel = 

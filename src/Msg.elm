@@ -5,6 +5,7 @@ import Collage exposing (Point)
 -- import Graph exposing (Graph, NodeId)
 -- import GraphExtra exposing (EdgeId)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph)
+import Format.GraphInfo exposing (GraphInfo)
 
 import HtmlDefs exposing (Key)
 import Task
@@ -43,10 +44,10 @@ type Msg
   | EdgeClick EdgeId MouseEvents.Event
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
-  | Loaded (Graph NodeLabel EdgeLabel) String
+  | Loaded GraphInfo String
   | CopyGraph
   -- a graph is pasted
-  | PasteGraph (Graph NodeLabel EdgeLabel)
+  | PasteGraph GraphInfo
   | QuickInput String
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point

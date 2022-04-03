@@ -72,11 +72,13 @@ import InputPosition exposing (InputPosition(..))
 import Format.Version0
 import Format.Version1
 import Format.Version2
+import Format.Version3
 import Format.LastVersion as LastFormat
 
 import List.Extra
 import GraphDefs exposing (exportQuiver)
 import GraphProof
+import Format.GraphInfo
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -101,6 +103,7 @@ port jumpToId : String -> Cmd a
 port loadedGraph0 : ({ graph : Format.Version0.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph1 : ({ graph : Format.Version1.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph2 : ({ graph : Format.Version2.Graph, fileName : String } -> a) -> Sub a
+port loadedGraph3 : ({ graph : Format.Version3.Graph, fileName : String } -> a) -> Sub a
 
 port clipboardWriteGraph : LastFormat.Graph -> Cmd a
 -- tells JS we got a paste event with such data
@@ -133,6 +136,7 @@ subscriptions m =
       loadedGraph0 (\ r -> Loaded (Format.Version0.fromJSGraph r.graph) r.fileName),
       loadedGraph1 (\ r -> Loaded (Format.Version1.fromJSGraph r.graph) r.fileName),
       loadedGraph2 (\ r -> Loaded (Format.Version2.fromJSGraph r.graph) r.fileName),
+      loadedGraph3 (\ r -> Loaded (Format.Version3.fromJSGraph r.graph) r.fileName),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick)
@@ -304,7 +308,10 @@ update msg modeli =
     in
     case msg of
      Save ->               
-          (model, saveGraph { graph = LastFormat.toJSGraph model.graph, 
+          (model, saveGraph { graph = LastFormat.toJSGraph 
+                                    <| Format.GraphInfo.makeGraphInfo
+                                       model.graph 
+                                       model.sizeGrid ,
                               fileName = model.fileName,
                               version = LastFormat.version})
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
@@ -327,7 +334,8 @@ update msg modeli =
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
      Do cmd -> (model, cmd)
-     Loaded g fileName -> noCmd <| { model | graph = g, 
+     Loaded g fileName -> noCmd <| { model | graph = g.graph,
+                                             sizeGrid = g.sizeGrid, 
                                              fileName = fileName,
                                              mode = DefaultMode }
      FindReplace req -> noCmd <| setSaveGraph model 
@@ -527,7 +535,10 @@ update_DefaultMode msg model =
         CopyGraph ->
               (model,
                clipboardWriteGraph <| 
-                 LastFormat.toJSGraph <| GraphDefs.selectedGraph model.graph)
+                 LastFormat.toJSGraph 
+                   <| Format.GraphInfo.makeGraphInfo
+                      (GraphDefs.selectedGraph model.graph)
+                       model.sizeGrid)
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged False _ (Character 'g') -> 
@@ -618,7 +629,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                <|  setSaveGraph model <|              
                 Graph.union 
                   (GraphDefs.clearSelection model.graph)
-                  (GraphDefs.selectAll g)
+                  (GraphDefs.selectAll g.graph)
                
         KeyChanged False k (Character 'z') -> 
              if k.ctrl then noCmd <| undo model else noCmd model

@@ -3,7 +3,7 @@ module Format.Version0 exposing (Graph, fromJSGraph, version)
 import Polygraph as Graph
 import Geometry.Point exposing (Point)
 import Format.Version1 as NextVersion
-import GraphDefs exposing (NodeLabel, EdgeLabel)
+import Format.GraphInfo exposing (GraphInfo)
 
 version = 0
 
@@ -28,5 +28,5 @@ toNextVersion (nodes, edges) =
     { nodes = nodes, 
       edges = List.map (Graph.edgeMap toNextEdge) edges }
 
-fromJSGraph : Graph -> Graph.Graph NodeLabel EdgeLabel
+fromJSGraph : Graph -> GraphInfo
 fromJSGraph g = g |> toNextVersion |> NextVersion.fromJSGraph

@@ -1,9 +1,9 @@
-module Format.Version1 exposing (Graph, Edge, fromJSGraph, version)
+module Format.Version1 exposing (Graph, Edge, fromJSGraph, version, ArrowStyle)
 
 import Polygraph as Graph
 import Geometry.Point exposing (Point)
 import Format.Version2 as NextVersion
-import GraphDefs exposing (NodeLabel, EdgeLabel)
+import Format.GraphInfo exposing (GraphInfo)
 
 version = 1
 
@@ -23,7 +23,7 @@ toNextVersion { nodes, edges } =
     { nodes = nodes, 
       edges = List.map (Graph.edgeMap toNextEdge) edges }
 
-fromJSGraph : Graph -> Graph.Graph NodeLabel EdgeLabel
+fromJSGraph : Graph -> GraphInfo
 fromJSGraph g = g |> toNextVersion |> NextVersion.fromJSGraph
 
 type alias ArrowStyle = { tail : String, head : String, double : Bool
