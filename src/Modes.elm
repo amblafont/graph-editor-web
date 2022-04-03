@@ -25,6 +25,17 @@ type Mode
     | EnlargeMode Point
     | CutHead Graph.EdgeId Bool -- the head or the tail?
     | CloneMode
+    | ResizeMode ResizeState -- current sizegrid
+
+isResizeMode : Mode -> Bool
+isResizeMode m = case m of 
+   ResizeMode _ -> True
+   _ -> False
+
+type alias ResizeState = 
+   { sizeGrid : Int,
+     onlyGrid : Bool
+   }
 
 type alias MoveState = 
    { orig : Point,  -- mouse original point at the beginning of the move mode

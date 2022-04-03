@@ -54,7 +54,7 @@ import Maybe exposing (withDefault)
 import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
-import Modes exposing (Mode(..))
+import Modes exposing (Mode(..), isResizeMode, ResizeState)
 
 import ArrowStyle
 
@@ -149,7 +149,7 @@ subscriptions m =
                         else (Msg.noOp, False))
                          HtmlDefs.tabDecoder), -} ]
     ++
-    if not m.mouseOnCanvas then [] else
+    if not m.mouseOnCanvas && not (isResizeMode m.mode) then [] else
     [  E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
@@ -309,14 +309,11 @@ update msg modeli =
     case msg of
      Save ->               
           (model, saveGraph { graph = LastFormat.toJSGraph 
-                                    <| Format.GraphInfo.makeGraphInfo
-                                       model.graph 
-                                       model.sizeGrid ,
+                                    <| Model.toGraphInfo model,
                               fileName = model.fileName,
                               version = LastFormat.version})
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
-     ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}
-     SizeGrid s -> noCmd { model | sizeGrid = s }
+     ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ExportQuiver -> (model,  
                     exportQuiver <| 
                      GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
@@ -356,6 +353,7 @@ update msg modeli =
         SplitArrow state -> Modes.SplitArrow.update state msg model
         CutHead id head -> update_CutHead id head msg model
         CloneMode -> update_Clone msg model
+        ResizeMode s -> update_Resize s msg model
 
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
@@ -587,7 +585,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                                                    
                in
                      fillBottom s "No selected subdiagram found!"
-        
+        KeyChanged False _ (Character 'R') -> 
+            noCmd <| initialise_Resize model
         KeyChanged False _ (Character 'r') -> rename model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise <| pushHistory model 
@@ -662,7 +661,15 @@ initialiseMoveMode model =
                           -- Nothing is selected
                           DefaultMode
                         else Move { orig = model.mousePos, pos = InputPosMouse }
-                     }                 
+                     }    
+
+initialise_Resize : Model -> Model
+initialise_Resize model =
+         { model | mode = 
+                       ResizeMode { sizeGrid = model.sizeGrid,
+                                    onlyGrid = False
+                                  }
+                     }                
 
 update_DebugMode : Msg -> Model -> (Model, Cmd Msg)
 update_DebugMode msg model =
@@ -688,7 +695,8 @@ update_CutHead id head msg m =
 update_Clone : Msg -> Model -> (Model, Cmd Msg)
 update_Clone msg m =
   let finalise () = 
-         ({m | mode = DefaultMode, graph = graphClone m}, Cmd.none)
+        let m2 = pushHistory m in
+         ({m2 | mode = DefaultMode, graph = graphClone m}, Cmd.none)
          -- computeLayout())
   in
   case msg of
@@ -697,6 +705,32 @@ update_Clone msg m =
         MouseClick -> finalise ()        
         _ -> noCmd m
 
+update_Resize : ResizeState -> Msg -> Model -> (Model, Cmd Msg)
+update_Resize st msg m =
+  let finalise () = 
+        let m2 = pushHistory m in
+         ({m2 | mode = DefaultMode, graph = graphResize st m,
+                sizeGrid = st.sizeGrid}, Cmd.none)
+         -- computeLayout())
+  in
+  -- let _ = Debug.log "msg resize" msg in
+  let increment = 10 in
+  let newState st2 = 
+       noCmd {m | mode = ResizeMode st2 }
+  in
+  let newSize si =
+       let s = max minSizeGrid <| min maxSizeGrid si in
+       newState { st | sizeGrid = s}       
+  in
+  case msg of
+        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
+        KeyChanged False _ (Control "Enter") -> finalise ()
+        -- MouseClick -> finalise ()        
+        KeyChanged False _ (Character 'k') -> newSize (st.sizeGrid + increment)
+        KeyChanged False _ (Character 'j') -> newSize (st.sizeGrid - increment)
+        KeyChanged False _ (Character 'g') -> newState { st | onlyGrid = not st.onlyGrid}
+        SizeGrid s -> newSize s
+        _ -> noCmd m
 
 
 -- functions that turns a model graph into one with more information
@@ -767,6 +801,7 @@ graphDrawingFromModel m =
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
         CutHead id head -> graphCutHead id head m |> GraphDrawing.toDrawingGraph
         CloneMode -> graphClone m |> GraphDrawing.toDrawingGraph
+        ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
 
 
 graphCutHead : Graph.EdgeId -> Bool -> Model -> Graph NodeLabel EdgeLabel
@@ -797,7 +832,16 @@ graphClone m =
    let nodes = allSelectedNodes m in
    let mouseDelta = Point.subtract m.mousePos <| GraphDefs.centerOfNodes nodes in
    GraphDefs.cloneSelected m.graph mouseDelta 
- 
+
+graphResize : ResizeState -> Model -> Graph NodeLabel EdgeLabel
+graphResize st m =
+   if st.onlyGrid then m.graph else
+   let ratio = toFloat st.sizeGrid / toFloat m.sizeGrid in
+   Graph.map (\_ n -> { n | pos = Point.resize ratio n.pos}) 
+      (\_ -> identity)
+    m.graph
+   
+
 
 graphQuickInput : Model -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabel
 graphQuickInput model ch = 
@@ -896,6 +940,7 @@ helpMsg model =
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [r]ename selected object (or double click)" 
+                ++ ", [R]esize canvas and grid size" 
                 ++ ", [g] move selected objects (also merge, if wanted)"
                 ++ ", [/] split arrow" 
                 ++ ", [c]ut head of selected arrow" 
@@ -952,6 +997,15 @@ helpMsg model =
                           ++ "where one branch is a single arrow with empty label)"
                           ++ " is selected, it will replace the empty branch with"
                           ++ " the lhs or the rhs (depending on the orientation)."
+        ResizeMode { onlyGrid } -> msg <| "Resize mode. [k]/[j] to increase/decrease, "
+                         ++ "or use the slider above. "
+                         ++ 
+                         if onlyGrid then 
+                         "[g] to resize the objects as well as the grid. "
+                         else 
+                         "[g] to resize the grid only. "
+                         ++ "[ESC] to cancel, "
+                         ++ "[RET] to confirm"
 
         _ -> let txt = "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"
                    ++ " mode."
@@ -988,7 +1042,7 @@ view : Model -> Html Msg
 view model =
     let missings = Graph.invalidEdges model.graph in
     let drawings= graphDrawing (graphDrawingFromModel model) in
-    let grid = if model.hideGrid then Drawing.empty else Drawing.grid model.sizeGrid in
+    let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.modedSizeGrid model) in
     let nmissings = List.length missings in
     let svg =   Drawing.group [grid,
                  drawings,
@@ -1013,36 +1067,43 @@ view model =
                           --    , Msg.onTabAttribute
                        ]
     in
-    Html.div [] [
-           Html.button [Html.Events.onClick Save] [Html.text "Save"]
-         , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
-         {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),
-                Html.Attributes.title "Should not be necessary"
-         ] [Html.text "Recompute labels"] -}
-        --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
-         , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
-        , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"]
-         , HtmlDefs.slider SizeGrid "Grid size" 2 500 model.sizeGrid
-          ,   Html.text model.statusMsg,
-         -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
-         -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
-         Html.p [] 
-         [(helpMsg model),
-          quickInputView model
-         ],
-         Html.p [] [ Html.text <| if nmissings > 0 then 
-            String.fromInt nmissings ++ " nodes or edges could not be rendered."
-            else "" ]
-         , HtmlDefs.makePasteCapture (Do << pasteGraph) []
-             [   svg  ]
-        , Html.p []
-        [ Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
-           Html.Attributes.value model.bottomText, 
-           Html.Attributes.id HtmlDefs.bottomTextId
-          {- Html.Events.onInput EditBottomText -}]
-         [{- Html.text model.bottomText -} ]
-        ]  
-             ]
+    let contents = 
+          [  Html.button [Html.Events.onClick Save] [Html.text "Save"]
+           , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
+            {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),
+                   Html.Attributes.title "Should not be necessary"
+            ] [Html.text "Recompute labels"] -}
+           --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
+           , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
+           , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
+           ]
+          ++ 
+           (if isResizeMode model.mode then
+               [ HtmlDefs.slider SizeGrid "Grid size" minSizeGrid maxSizeGrid (Model.modedSizeGrid model) ]
+            else
+               [])
+          ++ [ Html.text model.statusMsg,
+            -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
+            -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
+            Html.p [] 
+            [(helpMsg model),
+             quickInputView model
+            ],
+            Html.p [] [ Html.text <| if nmissings > 0 then 
+               String.fromInt nmissings ++ " nodes or edges could not be rendered."
+               else "" ]
+            , HtmlDefs.makePasteCapture (Do << pasteGraph) []
+                [   svg  ]
+           , Html.p []
+           [ Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
+              Html.Attributes.value model.bottomText, 
+              Html.Attributes.id HtmlDefs.bottomTextId
+             {- Html.Events.onInput EditBottomText -}]
+            [{- Html.text model.bottomText -} ]
+           ]
+          ]
+    in
+    Html.div [] contents
 
 
 

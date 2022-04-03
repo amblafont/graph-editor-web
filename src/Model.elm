@@ -12,7 +12,7 @@ import HtmlDefs
 
 import Modes exposing (Mode(..))
 
-import Format.GraphInfo exposing (defaultGridSize)
+import Format.GraphInfo exposing (defaultGridSize, GraphInfo)
 import ParseLatex
 
 
@@ -22,10 +22,12 @@ import ParseLatex
 -- core data that will be saved
 
 depthHistory = 20
+minSizeGrid = 2
+maxSizeGrid = 500
 
 type alias Model =
     { graph : Graph NodeLabel EdgeLabel
-    , history : List (Graph NodeLabel EdgeLabel)
+    , history : List GraphInfo
     -- , selectedObjs : List Obj
     , mousePos : Point
     , specialKeys : HtmlDefs.Keys
@@ -48,17 +50,30 @@ type alias Model =
 
 
 undo : Model -> Model
-undo m = popHistory { m | graph = peekHistory m }               
+undo m = popHistory <| updateWithGraphInfo m <| peekHistory m
 
-peekHistory : Model -> Graph NodeLabel EdgeLabel
-peekHistory m = List.head m.history |> Maybe.withDefault m.graph
+toGraphInfo : Model -> GraphInfo
+toGraphInfo m = { graph = m.graph, sizeGrid = m.sizeGrid }
+
+updateWithGraphInfo : Model -> GraphInfo -> Model
+updateWithGraphInfo m {graph, sizeGrid} = 
+   { m | graph = graph, sizeGrid = sizeGrid}
+
+
+peekHistory : Model -> GraphInfo
+peekHistory m = List.head m.history |> Maybe.withDefault (toGraphInfo m)
 
 pushHistory : Model -> Model
-pushHistory m = { m | history = List.take depthHistory (m.graph :: m.history)}
+pushHistory m = { m | history = List.take depthHistory (toGraphInfo m :: m.history)}
 
 popHistory : Model -> Model
 popHistory m = { m | history = List.tail m.history |> Maybe.withDefault []}
 
+modedSizeGrid : Model -> Int
+modedSizeGrid m = 
+  case m.mode of
+      ResizeMode s -> s.sizeGrid
+      _ -> m.sizeGrid
 
 setSaveGraph : Model -> Graph NodeLabel EdgeLabel -> Model
 setSaveGraph m g = 
