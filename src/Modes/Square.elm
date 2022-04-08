@@ -185,11 +185,18 @@ moveNodeViewInfo m data =
            if str1 == "" || str2 == "" then
               [ ""]
            else
-                   MyDiff.swapDiffStr (data.n1ToChosen == data.n2ToChosen) str1 
+                   MyDiff.swapDiffStr (data.n1ToChosen == data.n2ToChosen) 
+                       str1 
                        data.chosenLabel
                        str2 |> atLeast1                      
                        
     in
+    -- basic idea:
+    -- we want to close Gx <- Fx -> Fy by naturality
+    -- the wanted final node label is Gy
+    -- it amounts to permuting the two diff F y -> F x -> Gx
+    -- (each arrow represents a diff) and applying the first diff
+    -- to F y
     let labelsNode = commute data.n1Label data.n2Label
         labelsEdge1 = commute data.n1Label data.e2.label.label 
         labelsEdge2 = commute data.e1.label.label data.n2Label                       
