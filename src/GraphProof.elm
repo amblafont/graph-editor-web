@@ -117,7 +117,7 @@ getAllValidDiagrams g =
                  |> List.sortBy 
                      (\{edge, incoming} -> 
                          if incoming then edge.label.angle else 
-                         Point.flipAngle edge.label.angle
+                         Point.flipAngle edge.label.angle |> Point.normaliseAngle
                      )
                  |> List.succCyclePairs
           )

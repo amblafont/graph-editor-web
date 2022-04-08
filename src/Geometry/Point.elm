@@ -3,7 +3,7 @@ module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
   angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
   countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
   -- from quiver
-  lerp, lendir, rotate, scale, inv_scale)
+  lerp, lendir, rotate, scale, inv_scale, normaliseAngle)
 
 import ListExtraExtra as List
 
