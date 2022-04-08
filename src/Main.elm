@@ -629,6 +629,11 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                 Graph.union 
                   (GraphDefs.clearSelection model.graph)
                   (GraphDefs.selectAll g.graph)
+        KeyChanged False _ (Character 'u') ->
+            noCmd <| initialise_RenameMode 
+              (GraphDefs.closestUnnamed model.mousePos model.graph)
+               <| pushHistory model
+             
                
         KeyChanged False k (Character 'z') -> 
              if k.ctrl then noCmd <| undo model else noCmd model
@@ -925,8 +930,9 @@ helpMsg model =
     case model.mode of
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
-            msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle, "
-                ++ "[shift] to keep previous selection)" 
+            msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle"
+                ++ ", rename closest [u]nnamed objects (then [TAB] to alternate)"
+                ++ ", [shift] to keep previous selection)" 
                 ++ ", [C-a] select all" 
                 ++ ", [C-z] undo" 
                 ++ ", [C-c] copy selection" 

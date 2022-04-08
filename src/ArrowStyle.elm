@@ -18,6 +18,7 @@ import Geometry.QuadraticBezier exposing (QuadraticBezier)
 import Geometry.Epsilon exposing (norm0)
 import Json.Encode as JEncode
 import List.Extra as List
+import ListExtraExtra exposing (nextInList)
 import Maybe.Extra exposing (next)
 
 imgDir : String
@@ -104,20 +105,10 @@ isDouble { double } = double
 type HeadStyle = DefaultHead | TwoHeads | NoHead
 type TailStyle = DefaultTail | Hook | HookAlt
 
-prevInList : List a -> a -> a
-prevInList l a = case l of
-      [] -> a
-      [c] -> c
-      b :: c :: t ->
-         if a == c then
-            b
-         else
-            prevInList (c :: t) a
 
 
 
-nextInList : List a -> a -> a
-nextInList l a = prevInList (List.reverse l) a
+
 
 toggleHead : Style -> Style
 toggleHead s =  { s | head = nextInList [DefaultHead, NoHead, TwoHeads] s.head }

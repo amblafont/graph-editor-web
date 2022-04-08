@@ -11,7 +11,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram, cloneSelected,
    centerOfNodes, mergeWithSameLoc,
-   findReplaceInSelected
+   findReplaceInSelected, closestUnnamed
    )
 
 import IntDict
@@ -23,6 +23,8 @@ import GraphProof exposing (LoopNode, LoopEdge, Diagram)
 
 import Json.Encode as JEncode
 import List.Extra as List
+import ListExtraExtra
+import Maybe.Extra as Maybe
 
 
 type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
@@ -255,3 +257,36 @@ findReplaceInSelected g r =
   Graph.map (\ _ n -> { n | label = repl n.selected n.label })
      (\ _ e -> { e | label = repl e.selected e.label })
      g
+
+
+unnamedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+unnamedGraph = 
+   Graph.keepBelow (.label >> String.isEmpty)
+     (.label >> String.isEmpty)
+
+
+closestUnnamed : Point -> Graph NodeLabel EdgeLabel -> List Graph.Id
+-- ordered by distance to Point
+closestUnnamed pos g = 
+   let ug = unnamedGraph g in
+   -- we need the pos
+   let ug2 = Graph.mapRecAll .pos .pos 
+         (\ _ n -> { empty = String.isEmpty n.label, pos = n.pos})
+         (\ _ p1 p2 e -> { empty = String.isEmpty e.label, pos = Point.middle p1 p2})
+         ug
+   in
+   let getEmptysDistance l = l
+          |> List.filter (.label >> .empty)
+          |> List.map (\ o -> 
+                       {  id = o.id, 
+                          distance = Point.distance o.label.pos pos})
+          
+   in
+   let unnamedEdges = Graph.edges ug2 |> getEmptysDistance in
+   let unnamedNodes = Graph.nodes ug2 |> getEmptysDistance in
+   -- TODO: order them by distance to mousepos?
+   let unnamedAll = unnamedEdges ++ unnamedNodes 
+        |> List.sortBy .distance 
+        |> List.map .id
+   in
+   unnamedAll
