@@ -1,19 +1,25 @@
-module MyDiff exposing (swapDiff, swapDiffStr, failingTests)
+module MyDiff exposing (Change, diff, swapDiff, swapDiffStr, failingTests, 
+  applyStr, removeAdds)
 
 import List.Extra as List
 import Diff
+import String
+import Maybe.Extra as Maybe
+import ArrowStyle exposing (controlChars)
+
+type alias Change a = { index : Int, length : Int, 
+  {- removed : List a, -} rep : List a }
 
 
-
-type alias Change a = { index : Int, length : Int, rep : List a }
-
+diff : List a -> List a -> List (Change a)
+diff l1 l2 = Diff.diff l1 l2 |> compile 0
 
 compile : Int -> List (Diff.Change a) -> List (Change a)
 compile i l =
     case l of
        [] -> []
        Diff.NoChange _ :: q -> compile (i + 1) q
-       _ -> compileChange i l { index = i, length = 0, rep = []}
+       _ -> compileChange i l { index = i, length = 0, {- removed = [], -} rep = []}
         
 
 compileChange : Int -> List (Diff.Change a) -> Change a -> List (Change a)
@@ -21,7 +27,9 @@ compileChange i l c =
     case l of
        [] -> [c]
        Diff.Added x   :: q  -> compileChange (i + 1) q { c | rep = x :: c.rep} 
-       Diff.Removed _ :: q  -> compileChange i q { c | length = c.length + 1} 
+       Diff.Removed x :: q  -> compileChange i q 
+                   { c | {- removed = x :: c.removed, -}
+                         length = c.length + 1} 
        Diff.NoChange _ :: q -> c :: compile (i + 1) q  
 {- 
 flip : (a, b) -> (b, a)
@@ -31,6 +39,11 @@ apply : Change a -> List a -> List a
 apply c l =    
           let (l1, l2) = List.splitAt c.index l in
            l1 ++ List.reverse c.rep ++ List.drop c.length l2
+
+applyStr : Change Char -> String -> String
+applyStr c s = 
+   apply c (String.toList s) |>
+                  String.fromList
 
 applyAll : List a -> List (Change a) -> List a
 applyAll = List.foldl apply
@@ -87,11 +100,8 @@ commuteAll lr l cl =
 
 swapDiff : Bool -> List a -> List a -> List a -> List (List a)
 swapDiff lr l1 l2 l3 =           
-     let d2 = Diff.diff l2 l3 in
-     let d1 = if lr then Diff.diff l2 l1 else Diff.diff l1 l2 in
-     let cl1 =  d1 |> compile 0
-         cl2 = d2 |> compile 0
-     in 
+     let cl2 = diff l2 l3 in
+     let cl1 = if lr then diff l2 l1 else diff l1 l2 in     
       commuteAll lr cl2 cl1
        |> List.map (applyAll l1)
 
@@ -152,3 +162,36 @@ checkTest t =
 
 failingTests : List (Test, List String)
 failingTests = List.filterMap checkTest tests
+
+-- assuming that the changes do not overlap
+-- and that they are in order
+tryRemoveAdds : List (Change a) -> List a -> List (Change a)
+tryRemoveAdds l s =
+  case l of 
+    [] -> []
+    c :: q ->
+        let finalIdx = c.index + List.length c.rep - c.length in
+        let l2 = tryRemoveAdds
+                (List.map (\c2 -> {c2 | index = c2.index - finalIdx}) q)
+                (List.drop finalIdx s)
+                |> List.map (\c2 -> { c2 | index = c2.index + finalIdx })
+        in
+        if c.length == 0 then
+           { length = c.index,
+             index = 0,
+             rep = List.take c.index s
+            } :: l2
+        else
+           c :: l2
+           
+
+removeAdds : List a -> List (Change a) -> Maybe (List (Change a))
+removeAdds s l =
+   let l2 = tryRemoveAdds l s in
+   if List.any (\ c -> c.length == 0) l2 then
+   Nothing
+   else Just l2
+
+
+
+  

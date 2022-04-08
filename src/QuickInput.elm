@@ -1,5 +1,7 @@
 module QuickInput exposing (equalityParser, Equation, HandSide
-   , splitWithChain, graphEquation)
+   , splitWithChain, graphEquation,
+   handsideStrings, edgesToHandside, edgeMapString,
+   splitWithChainBetweenNodes)
 -- This is not used anymore
 import Parser exposing (Parser, variable, map, (|.), (|=), succeed, symbol, spaces, oneOf, end, lazy, andThen, backtrackable)
 import ParserExtra as Parser
@@ -16,11 +18,19 @@ startSymbol = "--"
 endSymbol = "->"
 
 
-type alias Edge =  { edge : String, to : String } 
-type alias HandSide = { start : String, edges : List Edge }
+-- type alias EdgeTo a =  { a | edge : String, to : String } 
+type alias Edge = {from : String, label : String, to : String } -- { from : String, to : String, edge : String }
+type alias HandSide = List Edge -- { start : String, edges : List (EdgeTo a) }
 
+{- consHandSide : String -> String -> HandSide -> HandSide
+consHandSide source label h =
+   { start = source, edges = {edge = label, to = h.start}}
+ -}
+emptyHandSide : HandSide
+emptyHandSide = [] -- { start = "", edges = []}
 
 type alias Equation = (HandSide, HandSide)
+
 
 correctLabelChar : List Char -> Char -> Bool
 correctLabelChar fb c = not <| List.member c <| fb -- ++ ['|', '-', '<', '>'] 
@@ -39,10 +49,19 @@ vertexParser : Parser String
 vertexParser = labelParser ['-', '='] -- specialChars
 
 
-edgeParser : Parser Edge
+type alias EdgeTo = { label : String, to : String } 
+makeHandSide : String -> List EdgeTo -> List Edge
+makeHandSide from l =
+   case l of
+      [] -> []
+      {to, label} :: q -> { from = from, to = to, label = label} ::
+                           makeHandSide to q
+       
+
+edgeParser : Parser EdgeTo
 edgeParser = 
              oneOf[
-               succeed Edge
+               succeed EdgeTo
            |. symbol startSymbol
            |. spaces
               -- some label?
@@ -55,7 +74,7 @@ edgeParser =
 
 handSideParser : Parser HandSide
 handSideParser =
-    succeed HandSide
+    succeed makeHandSide
         |= vertexParser
         |= Parser.repeat edgeParser
             
@@ -78,23 +97,30 @@ splitWithChain : Graph NodeLabel EdgeLabel -> HandSide -> EdgeId -> Graph NodeLa
 splitWithChain g ch id =
    -- to get the position
    -- let gd = GraphDrawing.toDrawingGraph g in
-   Graph.getEdge id g |> Maybe.map (\ edge ->
-    let on1 = Graph.getNode edge.from g
-        on2 = Graph.getNode edge.to g
-    in
-    case (on1, on2) of
-        (Just n1, Just n2) ->
-            buildGraphSegment 
-            { from = n1.pos, to = n2.pos,
-              fromId = edge.from, toId = edge.to,
-              edges = ch.edges,
-              alignLeft = True           
-            }
-            <| (Graph.removeEdge id g)            
-        _ -> g
+   Graph.getEdge id g |> Maybe.andThen (\ edge ->
+     splitWithChainBetweenNodes g ch edge.from edge.to
+     |> Maybe.map (Graph.removeEdge id)
     )
     |> Maybe.withDefault g
    -- let g2 = Graph.s
+
+splitWithChainBetweenNodes : Graph NodeLabel EdgeLabel -> HandSide -> NodeId -> NodeId -> Maybe (Graph NodeLabel EdgeLabel)
+splitWithChainBetweenNodes g ch id1 id2 = 
+    let on1 = Graph.getNode id1 g
+        on2 = Graph.getNode id2 g
+    in
+    case (on1, on2) of
+        (Just n1, Just n2) ->
+            Just <| buildGraphSegment 
+            { from = n1.pos, to = n2.pos,
+              fromId = id1, toId = id2,
+              edges = ch,
+              alignLeft = True           
+            } g                 
+        _ -> Nothing
+    
+    
+    
 
 buildGraphSegment : Segment 
      -> Graph NodeLabel EdgeLabel 
@@ -119,12 +145,12 @@ buildGraphEdges g offset alignment pos from to ch =
        [] -> g
        [ e ] -> 
           Tuple.first <| Graph.newEdge g from to
-                        <| GraphDefs.newEdgeLabel e.edge style
+                        <| GraphDefs.newEdgeLabel e.label style
        e :: tail -> 
           let posf = Point.add offset pos in          
           let (g2, idto, _ ) = GraphDefs.createNodeLabel g e.to posf in          
           let (g3, _) = Graph.newEdge g2 from idto
-                        <| GraphDefs.newEdgeLabel e.edge
+                        <| GraphDefs.newEdgeLabel e.label
                         <| style
           in
             buildGraphEdges g3 offset alignment posf idto to tail
@@ -139,15 +165,15 @@ orientEquation : Point -> Equation -> Float -> Graph NodeLabel EdgeLabel ->
                    List Segment)
 orientEquation iniP (source, but) offset g =
    
-   let nsource = List.length source.edges
-       nbut    = List.length but.edges
+   let nsource = List.length source
+       nbut    = List.length but
    in
    
    let ni1 = (nsource + 1) // 2
        nf1 = (nbut + 1) // 2
    in
-   let (source1, source2) = List.splitAt ni1 source.edges
-       (but1, but2) = List.splitAt nf1 but.edges
+   let (source1, source2) = List.splitAt ni1 source
+       (but1, but2) = List.splitAt nf1 but
    in
    let ni2 = nsource - ni1
        nf2 = nbut - nf1
@@ -165,9 +191,9 @@ orientEquation iniP (source, but) offset g =
        topRightPos = (rightX, topY)
        bottomLeftPos = (leftX, bottomY)
    in
-   let startLabel = source.start in
+   let startLabel = source |> List.head |> Maybe.map .from |> Maybe.withDefault ""  in
    let lastLabel = List.last >> Maybe.map .to >> Maybe.withDefault "" in
-   let endLabel = lastLabel source.edges
+   let endLabel = lastLabel source
        topRightLabel = lastLabel source1 
        bottomLeftLabel = lastLabel but1
    in
@@ -200,6 +226,59 @@ graphEquation pos offset eq gi =
     List.foldl 
        buildGraphSegment
        gf l
-    
 
+
+
+edgesToHandside : Graph NodeLabel EdgeLabel -> List EdgeId -> HandSide
+edgesToHandside g l =  
+    let g2 = Graph.keepBelow l g in
+    let g3 = Graph.mapRecAll identity .label 
+         (always .label)
+         (\ _ s t e -> {from = s, to = t, label = e.label} )
+         g2
+    in
+    let edges = Graph.getEdges l g3 in
+    if Graph.isPolyLine edges then
+       List.map .label edges
+    else
+       []
+
+handsideStrings : HandSide -> List String
+handsideStrings l = 
+  case l of 
+    [] -> []
+    [ t ] -> [t.from, t.label, t.to ]
+    t :: q -> t.from :: t.label :: handsideStrings q
+
+edgeMapString : (String -> String) -> Edge -> Edge
+edgeMapString f { from, label, to } =
+    { from = f from, label = f label, to = f to }
+
+
+{- 
+labelledEdgesToHandSide : List { source : String, but : String, label : String} 
+   -> HandSide
+labelledEdgesToHandSide l =
+   let l2 = List.map (\ e -> {edge = e.label, to = e.but}) in
+   case l of
+       [] -> emptyHandSide
+       t :: q -> { start = t.start, edges = l2}
+
+edgesToHandside : List EdgeId -> Graph NodeLabel EdgeLabel -> HandSide
+edgesToHandside l g =  
+    let g2 = Graph.keepBelow l g in
+    let g3 = Graph.mapRecAll identity .label 
+         (always .label)
+         (\ _ s t e -> {source = s, but = t, label = e.label} )
+         g2
+    in
+    let edges = Graph.getEdges l g3 in
+    labelledEdgesToHandSide edges
+
+-- maybe not necessary?
+diagramToHandside : Diagram -> Graph NodeLabel EdgeLabel -> (HandSide, HandSide)
+diagramToHandside d g =
+  let make_handSide l = edgeToHandside (List.map .id l) g in
+   (make_handSide d.lhs, 
+    make_handSide d.rhs) -}
    

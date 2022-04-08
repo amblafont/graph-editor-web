@@ -131,7 +131,7 @@ selectAll : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectAll g = addNodesSelection g (always True)
 
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
-selectedGraph = Graph.keepBelow .selected .selected
+selectedGraph = Graph.keepBelowFilter .selected .selected
 
 selectedNodes : Graph NodeLabel EdgeLabel -> List (Node NodeLabel)
 selectedNodes g = Graph.nodes g |> List.filter (.label >> .selected)

@@ -78,7 +78,11 @@ import Format.LastVersion as LastFormat
 import List.Extra
 import GraphDefs exposing (exportQuiver)
 import GraphProof
-import Format.GraphInfo
+import Format.GraphInfo exposing (GraphInfo)
+import ListExtraExtra
+import UnifyDiag
+import Dict
+import StringReplace
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -624,11 +628,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
         KeyChanged False _ (Character 'l') -> move 0       
-        PasteGraph g -> noCmd <| initialiseMoveMode
-               <|  setSaveGraph model <|              
-                Graph.union 
-                  (GraphDefs.clearSelection model.graph)
-                  (GraphDefs.selectAll g.graph)
+        PasteGraph g -> pasteEvent g model
                
         KeyChanged False k (Character 'z') -> 
              if k.ctrl then noCmd <| undo model else noCmd model
@@ -651,6 +651,46 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                  )
                  |> Maybe.withDefault model
                  |> noCmd
+
+pasteEvent : GraphInfo -> Model -> (Model, Cmd Msg)
+pasteEvent g model =
+    let pastedGraph = g.graph in
+    let defaultRet =       noCmd <| initialiseMoveMode
+               <|  setSaveGraph model <|              
+                Graph.union 
+                  (GraphDefs.clearSelection model.graph)
+                  (GraphDefs.selectAll pastedGraph)
+    in
+    GraphDefs.toProofGraph pastedGraph |>
+    GraphProof.getAllValidDiagrams |> ListExtraExtra.toMaybe
+    |> Maybe.andThen (\ diagram ->
+    
+    
+    let selEdges = GraphDefs.selectedEdges model.graph
+           |> List.map .id
+           |> QuickInput.edgesToHandside model.graph 
+    in
+    let unifyEdges = List.map .id diagram.lhs 
+           |>  QuickInput.edgesToHandside model.graph 
+    in
+    
+    UnifyDiag.unifyStringList
+    (QuickInput.handsideStrings unifyEdges)
+    (QuickInput.handsideStrings selEdges)
+    Dict.empty
+
+    |> Maybe.map (\dict -> 
+    
+    let otherEdges = List.map .id diagram.rhs 
+           |> QuickInput.edgesToHandside model.graph
+           |> List.map (QuickInput.edgeMapString  
+             <| StringReplace.replaceIn dict)
+           
+    in
+          
+    noCmd {model | graph = QuickInput.splitWithChainBetweenNodes model.graph otherEdges 0 0}
+    ))
+    |> Maybe.withDefault defaultRet
 
                
 initialiseMoveMode : Model -> Model

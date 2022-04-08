@@ -5,16 +5,15 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      getNode, getNodes, getEdge, getEdges, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
-     filterNodes, keepBelow,
+     filterNodes, keepBelow, keepBelowFilter,
      Node, Edge, nextId,
      incomings, outgoings, drop, 
      normalise,
      union, edgeMap,
      {- findInitial, sourceNode, -} removeLoops,
-     incidence)
+     incidence, isPolyLine)
 import IntDict exposing (IntDict)
 import IntDictExtra 
-import Svg.Attributes exposing (from)
 
 
 
@@ -360,17 +359,21 @@ drop fn fe (Graph g) =
 
 -- if an edge is kept, all its descendants will also be
 -- whether or not they are explicitely kept
-keepBelow : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
-keepBelow fn fe (Graph g) =
-   let g2 = rawFilter fn fe g
-   in
-   let dict = mapRec (always ()) (always ()) (\_ -> identity) (\_ _ _ -> identity)
-        
+keepBelowFilter : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
+keepBelowFilter fn fe (Graph g) =
+   let g2 = rawFilter fn fe g in
+   keepBelow         
         (IntDict.keys g2) 
         (Graph g)
-   in
-   
-   dict
+
+keepBelow : List Id -> Graph n e -> Graph n e
+keepBelow l (Graph g) =
+     let dict = mapRec (always ()) (always ()) (\_ -> identity) (\_ _ _ -> identity)
+          l 
+          (Graph g)
+     in
+     
+     dict
    -- IntDict.intersect g dictIds |> Graph 
 
 -- generates the full embedded subgraph containing
@@ -505,6 +508,14 @@ incidence g =
               <| d
    in
      aux es IntDict.empty
+
+isPolyLine : List (Edge a) -> Bool
+isPolyLine l =
+   case l of 
+      [] -> True
+      [ _ ] -> True
+      t1 :: t2 :: q -> 
+          t1.to == t2.from && isPolyLine (t2 :: q)
    
 {- sourceNode : Graph n e -> Id -> NodeId
 sourceNode (Graph g) id =
