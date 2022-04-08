@@ -16,10 +16,20 @@ import Collage.Layout exposing (debug)
 import Set exposing (Set)
 import Maybe.Extra as Maybe
 
-type alias LoopEdge = { pos : Point, angle : Float, label : String }
-type alias LoopNode = { pos : Point }
+type alias LoopEdge = { pos : Point, angle : Float, label : String, identity : Bool }
+type alias LoopNode = { pos : Point, label : String }
 
 
+nameIdentities : Graph LoopNode LoopEdge -> Graph LoopNode LoopEdge 
+nameIdentities =
+  Graph.mapRecAll (\n -> n.label)
+             (\n -> n.label)
+             (\ _ n -> n)
+             (\ _ fromLabel _ l -> 
+                        { l | label = 
+                           if l.label == "" && l.identity then
+                             "|" ++ fromLabel ++ "|" 
+                           else l.label })
 
 angleDir : Bool -> LoopEdge -> Float
 angleDir dir edge = if dir then edge.angle else Point.flipAngle edge.angle
@@ -258,7 +268,8 @@ finishedProof { statement, proof } =
   |> Maybe.withDefault False
 
 fullProofs : Graph LoopNode LoopEdge -> List ProofStatement
-fullProofs g =
+fullProofs g0 =
+   let g = nameIdentities g0 in
    let diags = getAllValidDiagrams g in
    let (bigDiags, smallDiags) = List.partition isBorder diags in
    -- let _ = List.map (Debug.log " stat:" << statementToString) diags in

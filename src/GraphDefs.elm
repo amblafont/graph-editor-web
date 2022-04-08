@@ -32,13 +32,14 @@ type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selec
 
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
-    Graph.mapRecAll .pos 
-             .pos
-             (\ _ n -> { pos = n.pos })
+    Graph.mapRecAll (\n -> n.pos)
+             (\n -> n.pos)
+             (\ _ n -> { pos = n.pos, label = n.label })
              (\ _ fromP toP l -> 
                         { angle = Point.subtract toP fromP |> Point.pointToAngle ,
-                          label = l.label,
-                          pos = Point.middle fromP toP })
+                          label = l.label, -- (if l.label == "" && l.style.double then fromLabel else l.label),
+                          pos = Point.middle fromP toP,
+                          identity = l.style.double })
 
 selectedIncompleteDiagram : Graph NodeLabel EdgeLabel -> Maybe Diagram
 selectedIncompleteDiagram g = 
