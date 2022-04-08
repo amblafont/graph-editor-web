@@ -11,7 +11,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram, cloneSelected,
    centerOfNodes, mergeWithSameLoc,
-   findReplaceInSelected, closestUnnamed
+   findReplaceInSelected, closestUnnamed, unselect
    )
 
 import IntDict
@@ -208,6 +208,11 @@ addOrSetSel keep o gi =
           OEdge id -> Graph.updateEdge id (\n -> {n | selected = True}) g
     in -}
    g2
+
+unselect : Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+unselect id = Graph.update id 
+               (\ n -> { n | selected = False})
+               (\ e -> { e | selected = False})
 
 selectEdges : Graph NodeLabel EdgeLabel -> List EdgeId -> Graph NodeLabel EdgeLabel
 selectEdges = List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True}))

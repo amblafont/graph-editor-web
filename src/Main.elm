@@ -54,7 +54,7 @@ import Maybe exposing (withDefault)
 import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
-import Modes exposing (Mode(..), isResizeMode, ResizeState)
+import Modes exposing (Mode(..), isResizeMode, ResizeState, CutHeadState)
 
 import ArrowStyle
 
@@ -351,7 +351,7 @@ update msg modeli =
        -- NewNode -> update_NewNode msg model
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
-        CutHead id head -> update_CutHead id head msg model
+        CutHead state -> update_CutHead state msg model
         CloneMode -> update_Clone msg model
         ResizeMode s -> update_Resize s msg model
 
@@ -570,7 +570,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             else if k.alt then noCmd { model | mode = CloneMode } else
             case GraphDefs.selectedEdgeId model.graph of
               Nothing -> noCmd model
-              Just id -> noCmd {  model | mode = CutHead id True }              
+              Just id -> noCmd {  model | mode = CutHead { id = id, head = True, duplicate = False } }              
         KeyChanged False _ (Character 'C') -> 
                let gc = GraphDefs.toProofGraph model.graph in
                let s = 
@@ -684,17 +684,19 @@ update_DebugMode msg model =
 
 
 
-update_CutHead : Graph.EdgeId -> Bool -> Msg -> Model -> (Model, Cmd Msg)
-update_CutHead id head msg m =
+update_CutHead : CutHeadState -> Msg -> Model -> (Model, Cmd Msg)
+update_CutHead state msg m =
   let finalise () = 
-         ({m | mode = DefaultMode, graph = graphCutHead id head m}, Cmd.none)
+         ({m | mode = DefaultMode, graph = graphCutHead state m}, Cmd.none)
          -- computeLayout())
   in
+  let changeState s = { m | mode = CutHead s } in
   case msg of
         KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
         KeyChanged False _ (Control "Enter") -> finalise ()
         MouseClick -> finalise ()
-        KeyChanged False _ (Character 'c') -> ({ m | mode = CutHead id (not head)}, Cmd.none)
+        KeyChanged False _ (Character 'c') -> (changeState { state | head = (not state.head)} , Cmd.none)
+        KeyChanged False _ (Character 'd') -> (changeState { state | duplicate = (not state.duplicate)} , Cmd.none)
         _ -> noCmd m
 
 update_Clone : Msg -> Model -> (Model, Cmd Msg)
@@ -804,19 +806,19 @@ graphDrawingFromModel m =
         SquareMode state ->
             Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
-        CutHead id head -> graphCutHead id head m |> GraphDrawing.toDrawingGraph
+        CutHead state -> graphCutHead state m |> GraphDrawing.toDrawingGraph
         CloneMode -> graphClone m |> GraphDrawing.toDrawingGraph
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
 
 
-graphCutHead : Graph.EdgeId -> Bool -> Model -> Graph NodeLabel EdgeLabel
-graphCutHead id head m = 
+graphCutHead : CutHeadState -> Model -> Graph NodeLabel EdgeLabel
+graphCutHead {id, head, duplicate} m = 
    let pos = m.mousePos in
     Graph.getEdge id m.graph 
     |> Maybe.andThen (\e -> Graph.getNode (if head then e.to else e.from)
          m.graph 
     |> Maybe.map (\ nto -> 
-    let g1 = Graph.removeEdge id m.graph in
+    let g1 = if duplicate then GraphDefs.unselect id m.graph else Graph.removeEdge id m.graph in
     let label = {nto | pos = pos } in
     let (g2, newId) = Graph.newNode g1 label in
     let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
@@ -989,9 +991,10 @@ helpMsg model =
                 ++ "Use mouse or h,j,k,l. [RET] or [click] to confirm."
                 ++ " Hold [ctrl] to merge the selected point onto another node."                
                   |> msg
-        CutHead _ _ -> "Mode cut arrow."
+        CutHead _ -> "Mode cut arrow."
                 ++ " [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
-                ++ "[c] to switch between head/tail."                
+                ++ "[c] to switch between head/tail"                
+                ++ ", [d] to duplicate (or not) the arrow."
                   |> msg
         RenameMode _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
         EnlargeMode _ -> msg "Enlarge mode: draw a rectangle to create space"

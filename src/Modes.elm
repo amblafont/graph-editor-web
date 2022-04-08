@@ -23,9 +23,14 @@ type Mode
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
     | EnlargeMode Point
-    | CutHead Graph.EdgeId Bool -- the head or the tail?
+    | CutHead CutHeadState
     | CloneMode
     | ResizeMode ResizeState -- current sizegrid
+
+type alias CutHeadState = { id: Graph.EdgeId
+    , head : Bool -- the head or the tail?
+    , duplicate : Bool -- duplicate the arrow? 
+    }
 
 isResizeMode : Mode -> Bool
 isResizeMode m = case m of 
