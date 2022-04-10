@@ -42,6 +42,7 @@ type Msg
   | NodeClick NodeId MouseEvents.Event
   | EltDoubleClick Graph.Id MouseEvents.Event
   | EdgeClick EdgeId MouseEvents.Event
+ -- | EltHover Graph.Id 
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
   | Loaded GraphInfo String

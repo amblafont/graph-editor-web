@@ -46,7 +46,8 @@ toEdgeLabel { label, style} =
                                  |> max 0.1                                 
                }
      , dims = Nothing
-     , selected = False          
+     , selected = False
+     , weaklySelected = False
      }
 
 
@@ -56,7 +57,7 @@ fromNodeLabel { pos, label } = { pos = pos, label = label}
 
 toNodeLabel : Node -> NodeLabel
 toNodeLabel { pos, label } = { pos = pos, label = label
-   , dims = Nothing, selected = False}
+   , dims = Nothing, selected = False, weaklySelected = False}
 
 
 

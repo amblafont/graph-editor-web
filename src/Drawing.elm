@@ -1,7 +1,7 @@
 module Drawing exposing (Drawing,   
   fromString, circle, html, group, arrow, rect,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
-  svg, Color, red, black, class, empty, grid
+  svg, Color, red, black, blue, class, empty, grid
   )
 
 import Svg exposing (Svg)
@@ -44,18 +44,22 @@ type Attribute msg =
     | OnClick (MouseEvents.Event -> msg)
     | OnDoubleClick (MouseEvents.Event -> msg)      
 
-type Color = Black | Red
+type Color = Black | Red | Blue
 
 colorToString : Color -> String
 colorToString c = case c of
   Black -> "black"
   Red -> "red"
+  Blue -> "blue"
 
 black : Color
 black = Black
 
 red : Color
 red = Red
+
+blue : Color
+blue = Blue
 
 class : String -> Attribute msg
 class = Class

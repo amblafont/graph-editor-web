@@ -20,43 +20,54 @@ import Html.Events.Extra.Mouse as MouseEvents
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias EdgeDrawingLabel = 
-   { label : String, editable : Bool, isActive : Bool, 
+   { label : String, editable : Bool, isActive : Activity, 
    style : ArrowStyle, dims : Point }
 type alias NodeDrawingLabel =
-    { pos : Point, label : String, editable : Bool, isActive : Bool,
+    { pos : Point, label : String, editable : Bool, isActive : Activity,
           dims : Point 
           -- whether I should watch entering and leaving 
           -- node
           -- watchEnterLeave : Bool
     }
 
+type Activity = 
+     MainActive
+   | WeakActive
+   | NoActive
+
 toDrawingGraph : Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
 toDrawingGraph =
+    let makeActivity r =
+           if r.selected then MainActive
+           else if r.weaklySelected then WeakActive
+           else NoActive
+    in
     Graph.map
         (\ _ n ->  make_nodeDrawingLabel
           { editable = False
-         , isActive = n.selected
+         , isActive = makeActivity n
           } n)
         (\ _ e ->  make_edgeDrawingLabel
                     { editable = False, 
-                      isActive = e.selected
+                      isActive = makeActivity e
                     } e
         )
 
 makeActive : List Graph.Id -> Graph NodeDrawingLabel EdgeDrawingLabel ->  Graph NodeDrawingLabel EdgeDrawingLabel
 makeActive l = Graph.updateList l 
-             (\ n -> { n | isActive = True})
-             (\ e -> { e | isActive = True})
+             (\ n -> { n | isActive = MainActive})
+             (\ e -> { e | isActive = MainActive})
              
 
-make_edgeDrawingLabel : {editable : Bool, isActive : Bool} 
+make_edgeDrawingLabel : {editable : Bool, isActive : Activity} 
                       -> EdgeLabel-> EdgeDrawingLabel
 make_edgeDrawingLabel {editable, isActive} ({label, style} as l) =
-    { label = label, editable = editable, isActive = isActive, style = style,
+    { label = label, editable = editable, isActive = isActive,
+      style = style,
       dims = GraphDefs.getEdgeDims l
     }
 
-make_nodeDrawingLabel : {editable : Bool, isActive : Bool} -> NodeLabel ->  NodeDrawingLabel
+make_nodeDrawingLabel : {editable : Bool, isActive : Activity} -> NodeLabel ->  NodeDrawingLabel
 make_nodeDrawingLabel {editable, isActive} ({label, pos} as l) =
     { label = label, pos = pos, editable = editable, isActive = isActive,
     dims = GraphDefs.getNodeDims l }
@@ -77,12 +88,25 @@ make_input pos label onChange =
                       []
              |> Drawing.html pos (100,16)
 
+activityToColor : Activity -> Drawing.Color
+activityToColor a =
+   case a of
+     MainActive -> Drawing.red 
+     WeakActive -> Drawing.blue
+     _ -> Drawing.black
+
+activityToClasses : Activity -> List String
+activityToClasses a =
+   case a of
+     MainActive -> ["active-label"] 
+     WeakActive -> ["weak-active-label"]
+     _ -> []
 
 nodeLabelDrawing : List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
 nodeLabelDrawing attrs node =
     let n = node.label in
     let id = node.id in
-    let color = if n.isActive then Drawing.red else Drawing.black in
+    let color = activityToColor node.label.isActive in
     (
      if n.editable then
          make_input n.pos n.label (NodeLabelEdit id)
@@ -94,8 +118,9 @@ nodeLabelDrawing attrs node =
             <| HtmlDefs.makeLatex
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
+                 -- Html.Events.on "mousemove" (D.succeed (EltHover id))
             ] ++ 
-            (if n.isActive then [Html.Attributes.class "active-label" ] else [])
+            (activityToClasses n.isActive |> List.map Html.Attributes.class)        
             ++
             HtmlDefs.onRendered (Msg.NodeRendered id)
             )
@@ -172,8 +197,9 @@ segmentLabel q edgeId label curve =
             ([   MouseEvents.onClick (EdgeClick edgeId),
                  MouseEvents.onDoubleClick (EltDoubleClick edgeId),
                  MouseEvents.onMove  (always (MouseOn edgeId))
+                -- Html.Events.onMouseOver (EltHover edgeId)
             ] ++ 
-            (if label.isActive then [Html.Attributes.class "active-label" ] else [])
+            (activityToClasses label.isActive |> List.map Html.Attributes.class)        
              ++
              HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
             )
@@ -186,7 +212,7 @@ edgeDrawing : Graph.EdgeId
 -- -> Geometry.PosDims -> Geometry.PosDims
      -> EdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
 edgeDrawing edgeId {- from to -} label q curve =
-    let c = if label.isActive then Drawing.red else Drawing.black in
+    let c = activityToColor label.isActive in
     
     
     -- let q = Geometry.segmentRectBent from to 
@@ -197,6 +223,7 @@ edgeDrawing edgeId {- from to -} label q curve =
           [Drawing.color c,
            Drawing.onClick (EdgeClick edgeId),
            Drawing.onDoubleClick (EltDoubleClick edgeId),
+          -- Drawing.onHover (EltHover edgeId),
            Drawing.simpleOn "mousemove" (MouseOn edgeId)
           ] 
           label.style

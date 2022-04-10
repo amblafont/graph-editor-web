@@ -40,6 +40,9 @@ type alias Model =
     , hideGrid : Bool
     , sizeGrid : Int
     , fileName : String
+    -- whether there is an id which is "hovered on"
+   -- , hoverId : Maybe Graph.Id
+    -- , selOnMove : Bool
     -- real dimensions of nodes
     -- , dimNodes : Dict NodeId Point
     -- quickInput : Maybe NonEmptyChain
@@ -105,6 +108,10 @@ createModel sizeGrid g =
     , sizeGrid = sizeGrid
     , fileName = "graph.json"
     , bottomText = ""
+    --, hoverId = Nothing
+    -- whether we should select the closest object 
+    -- when moving the mouse
+   -- , selOnMove = True
    -- , mousePointOver = ONothing
   --  , selectedObjs = []
     -- , dimNodes = Dict.empty
@@ -256,7 +263,8 @@ switch_Default m =
 
 collageGraphFromGraph : Model -> Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
 collageGraphFromGraph _ g =
-    GraphDrawing.toDrawingGraph g
+   GraphDrawing.toDrawingGraph <| GraphDefs.makeSelection g
+    
 
 
 keyboardPosToPoint : Model -> NodeId -> (Int, Int) -> Point

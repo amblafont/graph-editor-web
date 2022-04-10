@@ -523,12 +523,37 @@ update_DefaultMode msg model =
            fillBottom s "No diagram found!"
            
     in
+    let weaklySelect id =
+             noCmd <|              
+                if model.specialKeys.shift then
+                { model | graph = GraphDefs.addOrSetSel True id model.graph }
+                else 
+               -- if model.hoverId == Nothing then model else                    
+               { model | graph = GraphDefs.weaklySelect  
+                                        id
+                                         model.graph 
+                                         }
+    in
+    
     {- let updateStr =
        GraphProof.proofStatementToString  -}
     -- Tuples.mapFirst (changeModel model) <|
     case msg of
-       
+        MouseOn id ->
+              weaklySelect id
+             
+        MouseClick -> 
+           noCmd <| { model | graph = GraphDefs.addWeaklySelected <|
+                      if model.specialKeys.shift then 
+                        model.graph 
+                      else
+                       GraphDefs.clearSelection model.graph }           
+        MouseMove _ -> 
+             weaklySelect <| GraphDefs.closest model.mousePos model.graph             
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
+        KeyChanged False _ (Control "Escape") ->
+            noCmd <| { model | graph = GraphDefs.clearSelection model.graph
+                             } -- , hoverId = Nothing }
         KeyChanged False _ (Character 'e') -> noCmd <| pushHistory { model | mode = EnlargeMode model.mousePos }
         KeyChanged False k (Character 'a') -> 
             if not k.ctrl then
@@ -941,6 +966,7 @@ helpMsg model =
                 ++ ", rename closest [u]nnamed objects (then [TAB] to alternate)"
                 ++ ", [shift] to keep previous selection)" 
                 ++ ", [C-a] select all" 
+                ++ ", [ESC] clear selection" 
                 ++ ", [C-z] undo" 
                 ++ ", [C-c] copy selection" 
                 ++ ", [C-v] paste" 

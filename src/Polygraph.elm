@@ -11,10 +11,9 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      normalise,
      union, edgeMap,
      {- findInitial, sourceNode, -} removeLoops,
-     incidence)
+     incidence, any)
 import IntDict exposing (IntDict)
 import IntDictExtra 
-import Svg.Attributes exposing (from)
 
 
 
@@ -505,6 +504,14 @@ incidence g =
               <| d
    in
      aux es IntDict.empty
+
+any : (n -> Bool) -> (e -> Bool) -> Graph n e -> Bool
+any fn fe (Graph g) =
+   IntDictExtra.any 
+   (\ o -> case o of 
+             NodeObj n -> fn n
+             EdgeObj _ _ e -> fe e) g
+  
    
 {- sourceNode : Graph n e -> Id -> NodeId
 sourceNode (Graph g) id =

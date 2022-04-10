@@ -11,7 +11,8 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram, cloneSelected,
    centerOfNodes, mergeWithSameLoc,
-   findReplaceInSelected, closestUnnamed, unselect
+   findReplaceInSelected, closestUnnamed, unselect, closest,
+   makeSelection, addWeaklySelected, weaklySelect
    )
 
 import IntDict
@@ -27,8 +28,21 @@ import ListExtraExtra
 import Maybe.Extra as Maybe
 
 
-type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool}
-type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool}
+type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool,
+                   weaklySelected : Bool}
+type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool, weaklySelected : Bool}
+{- 
+computeEdgePos : Point -> Point -> EdgeLabel -> Point
+computeEdgePos from to e = e.style.bend
+    let q = Geometry.segmentRectBent from to e.style.bend in
+    if Bez.isLine q then
+              Point.diamondPx q.from q.to offset
+              
+            else 
+              let m = Bez.middle q in
+              Point.add m <|
+              Point.normalise offset <|        
+               Point.subtract q.controlPoint <| m -}
 
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
@@ -73,10 +87,10 @@ exportQuiver sizeGrid g =
   [JEncode.int 0, JEncode.int <| List.length nodes] ++ jnodes ++ jedges
 
 newNodeLabel : Point -> String -> NodeLabel
-newNodeLabel p s = NodeLabel p s Nothing False
+newNodeLabel p s = NodeLabel p s Nothing False False
 
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
-newEdgeLabel s style = { label = s, style = style, dims = Nothing, selected = False}
+newEdgeLabel s style = { label = s, style = style, dims = Nothing, selected = False, weaklySelected = False}
 
 emptyEdge : EdgeLabel
 emptyEdge = newEdgeLabel "" ArrowStyle.empty
@@ -134,16 +148,17 @@ selectAll : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectAll g = addNodesSelection g (always True)
 
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
-selectedGraph = Graph.keepBelow .selected .selected
+selectedGraph = makeSelection >> Graph.keepBelow .selected .selected
 
 selectedNodes : Graph NodeLabel EdgeLabel -> List (Node NodeLabel)
-selectedNodes g = Graph.nodes g |> List.filter (.label >> .selected)
+selectedNodes g = makeSelection g |> Graph.nodes |> List.filter (.label >> .selected)
 
 selectedEdges : Graph NodeLabel EdgeLabel -> List (Edge EdgeLabel)
-selectedEdges g = Graph.edges g |> List.filter (.label >> .selected)
+selectedEdges g = makeSelection g |>  Graph.edges |> List.filter (.label >> .selected)
 
 isEmptySelection : Graph NodeLabel EdgeLabel -> Bool
-isEmptySelection g = 
+isEmptySelection go =
+   let g = makeSelection go in 
    List.isEmpty (selectedNodes g) && List.isEmpty (selectedEdges g)
 
 selectedNode : Graph NodeLabel EdgeLabel -> Maybe (Node NodeLabel)
@@ -170,7 +185,7 @@ selectedId g =
 
 
 removeSelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
-removeSelected =  Graph.drop .selected .selected
+removeSelected = makeSelection >> Graph.drop .selected .selected
 
 clearSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 clearSelection g =
@@ -214,6 +229,17 @@ unselect : Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 unselect id = Graph.update id 
                (\ n -> { n | selected = False})
                (\ e -> { e | selected = False})
+
+weaklySelect : Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+weaklySelect id = 
+      Graph.map 
+         (\_ n -> { n | weaklySelected = False})
+         (\_ e -> { e | weaklySelected = False})
+         >>
+      Graph.update id 
+               (\ n -> { n | weaklySelected = True})
+               (\ e -> { e | weaklySelected = True}) 
+
 
 selectEdges : Graph NodeLabel EdgeLabel -> List EdgeId -> Graph NodeLabel EdgeLabel
 selectEdges = List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True}))
@@ -262,13 +288,44 @@ findReplaceInSelected g r =
   in
   Graph.map (\ _ n -> { n | label = repl n.selected n.label })
      (\ _ e -> { e | label = repl e.selected e.label })
-     g
+     <| makeSelection g
 
 
 unnamedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 unnamedGraph = 
    Graph.keepBelow (.label >> String.isEmpty)
      (.label >> String.isEmpty)
+
+closest : Point -> Graph NodeLabel EdgeLabel -> Graph.Id
+-- ordered by distance to Point
+closest pos ug =
+   
+   case getNodesAt ug pos of
+     t :: _ -> t
+     _ -> 
+   
+   
+         -- we need the pos
+         let ug2 = Graph.mapRecAll .pos .pos 
+               (\ _ n -> { pos = n.pos})
+               (\ _ p1 p2 e -> { pos = Point.middle p1 p2})
+               ug
+         in
+         let getEmptysDistance l = l
+               -- |> List.filter (.label >> .empty)
+               |> List.map (\ o -> 
+                           {  id = o.id, 
+                              distance = Point.distance o.label.pos pos})
+               
+         in
+         let unnamedEdges = Graph.edges ug2 |> getEmptysDistance in
+         let unnamedNodes = Graph.nodes ug2 |> getEmptysDistance in
+         let unnamedAll = unnamedEdges ++ unnamedNodes 
+               |> List.minimumBy .distance 
+               |> Maybe.map .id
+               |> Maybe.withDefault 0
+         in
+         unnamedAll
 
 
 closestUnnamed : Point -> Graph NodeLabel EdgeLabel -> List Graph.Id
@@ -296,3 +353,16 @@ closestUnnamed pos g =
         |> List.map .id
    in
    unnamedAll
+
+addWeaklySelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+addWeaklySelected =
+  Graph.map (\ _ n -> { n | selected = n.weaklySelected || n.selected})
+     (\ _ n -> { n | selected = n.weaklySelected || n.selected})
+
+makeSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+makeSelection g =
+   if Graph.any .selected .selected g then
+      g
+   else
+      addWeaklySelected g
+
