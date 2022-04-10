@@ -149,7 +149,12 @@ subscriptions m =
                         else (Msg.noOp, False))
                          HtmlDefs.tabDecoder), -} ]
     ++
-    if not m.mouseOnCanvas && not (isResizeMode m.mode) then [] else
+    if case m.mode of
+        ResizeMode _ -> True
+        QuickInputMode _ -> True
+        _ -> not m.mouseOnCanvas
+    then [] 
+    else
     [  E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
