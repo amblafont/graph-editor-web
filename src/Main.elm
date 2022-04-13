@@ -224,6 +224,7 @@ info_MoveNode : Model -> Modes.MoveState ->
    -- and no object is pointed at
      valid : Bool }
 info_MoveNode model { orig, pos } =
+    
     let merge = model.specialKeys.ctrl in
     let nodes = allSelectedNodes model in
     let updNode delta {id, label} = 
@@ -231,7 +232,11 @@ info_MoveNode model { orig, pos } =
     in
     let moveNodes delta = nodes |> List.map (updNode delta) in
    --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) model.graph in
-    let mkRet movedNodes = { graph = Graph.updateNodes movedNodes model.graph, valid = not merge } in
+    let mkRet movedNodes = 
+            let _ = Debug.log "selected" model.graph in
+            let g = Graph.updateNodes movedNodes model.graph in
+            let _ = Debug.log "mkRet" g in 
+            { graph =  g, valid = not merge } in
     let retMerge movedNodes =                  
            case movedNodes of
               [ n ] ->        
@@ -446,7 +451,11 @@ update_RectSelect msg orig keep model =
       KeyChanged False _ (Control "Escape") -> switch_Default model
       {- MouseUp -> switch_Default 
                   { model | graph = selectGraph model orig keep } -}
-      MouseClick -> switch_Default 
+      MouseClick ->
+          if model.mousePos == orig then
+           switch_Default <| selectByClick model
+          else
+           switch_Default 
                   { model | graph = selectGraph model orig keep }
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
@@ -544,12 +553,8 @@ update_DefaultMode msg model =
         MouseOn id ->
               weaklySelect id
              
-        MouseClick -> 
-           noCmd <| { model | graph = GraphDefs.addWeaklySelected <|
-                      if model.specialKeys.shift then 
-                        model.graph 
-                      else
-                       GraphDefs.clearSelection model.graph }           
+        MouseClick -> noCmd <| selectByClick model
+           
         MouseMove _ -> 
              weaklySelect <| GraphDefs.closest model.mousePos model.graph             
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
@@ -692,6 +697,16 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                  |> Maybe.withDefault model
                  |> noCmd
 
+selectByClick : Model -> Model
+selectByClick model =  
+    if model.mouseOnCanvas then           
+           { model | graph = GraphDefs.addWeaklySelected <|
+                      if model.specialKeys.shift then 
+                        model.graph 
+                      else
+                       GraphDefs.clearSelection model.graph }
+    else
+            model
                
 initialiseMoveMode : Model -> Model
 initialiseMoveMode model =

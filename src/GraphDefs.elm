@@ -4,6 +4,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    createNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
+   selectedNodes,
    isEmptySelection,
    selectedEdgeId, selectedNode, selectedId,
    removeSelected, getLabelLabel,
@@ -147,19 +148,24 @@ addNodesSelection g f =
 selectAll : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectAll g = addNodesSelection g (always True)
 
+fieldSelect : Graph NodeLabel EdgeLabel -> ({ a | selected : Bool, weaklySelected : Bool} -> Bool)
+fieldSelect g = if Graph.any .selected .selected g then .selected else .weaklySelected
+
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
-selectedGraph = makeSelection >> Graph.keepBelow .selected .selected
+selectedGraph g = 
+   let f = fieldSelect g in
+   Graph.keepBelow f f g
 
 selectedNodes : Graph NodeLabel EdgeLabel -> List (Node NodeLabel)
-selectedNodes g = makeSelection g |> Graph.nodes |> List.filter (.label >> .selected)
+selectedNodes g = Graph.nodes g |> List.filter (.label >> fieldSelect g)
 
 selectedEdges : Graph NodeLabel EdgeLabel -> List (Edge EdgeLabel)
-selectedEdges g = makeSelection g |>  Graph.edges |> List.filter (.label >> .selected)
+selectedEdges g = Graph.edges g |> List.filter (.label >> fieldSelect g)
 
 isEmptySelection : Graph NodeLabel EdgeLabel -> Bool
 isEmptySelection go =
-   let g = makeSelection go in 
-   List.isEmpty (selectedNodes g) && List.isEmpty (selectedEdges g)
+   not (Graph.any .selected .selected go) && 
+   not (Graph.any .weaklySelected .weaklySelected go)
 
 selectedNode : Graph NodeLabel EdgeLabel -> Maybe (Node NodeLabel)
 selectedNode g = 
@@ -185,7 +191,9 @@ selectedId g =
 
 
 removeSelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
-removeSelected = makeSelection >> Graph.drop .selected .selected
+removeSelected g = 
+   let f = fieldSelect g in
+   Graph.drop f f g
 
 clearSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 clearSelection g =
@@ -286,9 +294,10 @@ findReplaceInSelected g r =
        else
           s
   in
-  Graph.map (\ _ n -> { n | label = repl n.selected n.label })
-     (\ _ e -> { e | label = repl e.selected e.label })
-     <| makeSelection g
+  let f = fieldSelect g in
+  Graph.map (\ _ n -> { n | label = repl (f n) n.label })
+     (\ _ e -> { e | label = repl (f e) e.label })
+      g
 
 distanceToNode : Point -> NodeLabel -> Float
 distanceToNode p n = 
@@ -375,4 +384,3 @@ makeSelection g =
       g
    else
       addWeaklySelected g
-

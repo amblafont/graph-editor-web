@@ -205,8 +205,7 @@ addOrSetSel keep o m =
 
 allSelectedNodes : Model -> List (Node NodeLabel)
 allSelectedNodes m = 
-    m.graph |> GraphDefs.selectedGraph
-    |> Graph.nodes
+    m.graph |> GraphDefs.selectedNodes    
     
 --     let (l1, l2) = selectedEdges m
 --            |> List.map (\e -> (e.from, e.to)) |> List.unzip
