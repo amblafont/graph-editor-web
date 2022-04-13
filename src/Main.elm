@@ -639,12 +639,15 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                      
         KeyChanged False _ (Control "Delete") ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
-        NodeClick n e ->
-            noCmd <| addOrSetSel e.keys.shift n model
+        {- NodeClick n e ->
+            
+            let _ = Debug.log "nodeclick" () in
+            noCmd <| addOrSetSel e.keys.shift n model -}
         EltDoubleClick n e ->
             noCmd <| initialise_RenameMode [n] model
-        EdgeClick n e ->
-             noCmd <| addOrSetSel e.keys.shift n model 
+        {- EdgeClick n e ->
+            let _ = Debug.log "edgeclick" () in
+             noCmd <| addOrSetSel e.keys.shift n model  -}
         KeyChanged False _ (Character 'f') -> noCmd
               <| setSaveGraph model 
               <| Graph.map 
