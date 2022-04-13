@@ -290,6 +290,11 @@ findReplaceInSelected g r =
      (\ _ e -> { e | label = repl e.selected e.label })
      <| makeSelection g
 
+distanceToNode : Point -> NodeLabel -> Float
+distanceToNode p n = 
+   let posDims = { pos = n.pos, dims = getNodeDims n } in
+   let rect = Geometry.rectFromPosDims posDims in 
+   Geometry.distanceToRect p rect
 
 unnamedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 unnamedGraph = 
@@ -307,15 +312,20 @@ closest pos ug =
    
          -- we need the pos
          let ug2 = Graph.mapRecAll .pos .pos 
-               (\ _ n -> { pos = n.pos})
-               (\ _ p1 p2 e -> { pos = Point.middle p1 p2})
+               (\ _ n -> { distance = distanceToNode pos n, pos = n.pos})
+               (\ _ p1 p2 e -> 
+                  let epos = Point.middle p1 p2 in
+                  { pos = epos,
+                    distance = Point.distance pos <| Point.middle p1 p2
+                  })
+                  
                ug
          in
          let getEmptysDistance l = l
                -- |> List.filter (.label >> .empty)
                |> List.map (\ o -> 
                            {  id = o.id, 
-                              distance = Point.distance o.label.pos pos})
+                              distance = o.label.distance})
                
          in
          let unnamedEdges = Graph.edges ug2 |> getEmptysDistance in

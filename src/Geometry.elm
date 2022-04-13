@@ -6,6 +6,8 @@ module Geometry exposing (raytraceRect, PosDims, Rect, pad, makeRect,
    -- , diamondPointPx 
    -- from Quiver
    , determine_label_position
+   , rectFromPosDims
+   , distanceToRect
   )
 
 import Geometry.Point as Point exposing (Point)
@@ -20,6 +22,18 @@ import ArrowStyle exposing (LabelAlignment(..))
 
 type alias PosDims = { pos : Point, dims : Point }
 type alias Rect = { topLeft : Point, bottomRight : Point }
+
+-- https://stackoverflow.com/questions/5254838/calculating-distance-between-a-point-and-a-rectangular-box-nearest-point
+distanceToRect : Point -> Rect -> Float
+distanceToRect (px, py) r =
+    let (minx, miny) = r.topLeft 
+        (maxx, maxy) = r.bottomRight
+    in
+    let dx = max (minx - px) <| max 0 (px - maxx)
+        dy = max (miny - py) <| max 0 (py - maxy)
+    in
+      sqrt (dx * dx + dy * dy)
+  
 
 rectEnveloppe : List Point -> Rect
 rectEnveloppe l =
