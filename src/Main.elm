@@ -444,7 +444,9 @@ update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
 update_RectSelect msg orig keep model =
    case msg of
       KeyChanged False _ (Control "Escape") -> switch_Default model
-      MouseUp -> switch_Default 
+      {- MouseUp -> switch_Default 
+                  { model | graph = selectGraph model orig keep } -}
+      MouseClick -> switch_Default 
                   { model | graph = selectGraph model orig keep }
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
