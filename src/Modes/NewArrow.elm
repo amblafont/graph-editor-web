@@ -47,7 +47,10 @@ nextStep : Model -> Bool -> NewArrowState -> ( Model, Cmd Msg )
 nextStep model finish state =
      let info = moveNodeInfo model state in
      
-     let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
+     -- let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
+     let m2 = { model | graph = GraphDefs.clearSelection info.graph
+                             |> GraphDefs.weaklySelect info.movedNode }
+     in
      
      if finish then switch_Default m2 else
         let ids = if info.created then 
