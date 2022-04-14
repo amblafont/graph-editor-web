@@ -150,8 +150,8 @@ subscriptions m =
                          HtmlDefs.tabDecoder), -} ]
     ++
     if case m.mode of
-        ResizeMode _ -> True
-        QuickInputMode _ -> True
+        ResizeMode _ -> False
+        QuickInputMode _ -> False
         _ -> not m.mouseOnCanvas
     then [] 
     else
