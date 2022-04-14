@@ -828,7 +828,7 @@ graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
     case m.mode of
         DefaultMode -> collageGraphFromGraph m m.graph
-        RectSelect p -> collageGraphFromGraph m <| selectGraph m p m.specialKeys.shift
+        RectSelect p -> GraphDrawing.toDrawingGraph  <| selectGraph m p m.specialKeys.shift
         EnlargeMode p ->
              enlargeGraph m p
              |> collageGraphFromGraph m
