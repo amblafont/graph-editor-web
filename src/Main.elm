@@ -226,7 +226,7 @@ info_MoveNode : Model -> Modes.MoveState ->
 info_MoveNode model { orig, pos } =
     
     let merge = model.specialKeys.ctrl in
-    let nodes = allSelectedNodes model in
+    let nodes = model.graph |> GraphDefs.selectedGraph |> Graph.nodes in
     let updNode delta {id, label} = 
           {id = id, label = { label | pos = Point.add label.pos delta }}
     in
@@ -886,7 +886,7 @@ graphCutHead {id, head, duplicate} m =
 
 graphClone : Model -> Graph NodeLabel EdgeLabel
 graphClone m =       
-   let nodes = allSelectedNodes m in
+   let nodes = GraphDefs.selectedGraph m.graph |> Graph.nodes in
    let mouseDelta = Point.subtract m.mousePos <| GraphDefs.centerOfNodes nodes in
    GraphDefs.cloneSelected m.graph mouseDelta 
 
