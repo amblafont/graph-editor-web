@@ -22,6 +22,9 @@ template.innerHTML = `
     :host {
       display: inline-block;
     }
+    * {
+      user-select:none;
+    }
   </style>
   <div id="container"></div>
   <div hidden><slot></slot></div>
