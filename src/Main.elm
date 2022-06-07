@@ -111,7 +111,7 @@ port pasteGraph : JE.Value -> Cmd a
 -- JS would then calls us back with the decoded graph
 port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
 port findReplace : ({ search: String, replace:String} -> a) -> Sub a
-
+port promptFindReplace : () -> Cmd a
 
 
 
@@ -622,6 +622,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                                                    
                in
                      fillBottom s "No selected subdiagram found!"
+        KeyChanged False _ (Character 'q') -> 
+            (model, promptFindReplace ())
         KeyChanged False _ (Character 'R') -> 
             noCmd <| initialise_Resize model
         KeyChanged False _ (Character 'r') -> rename model
@@ -998,6 +1000,7 @@ helpMsg model =
                --  ++ ", [q]ickInput mode" 
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
+                ++ ", [q] find and replace in selection" 
                 ++ ", [r]ename selected object (or double click)" 
                 ++ ", [R]esize canvas and grid size" 
                 ++ ", [g] move selected objects (also merge, if wanted)"

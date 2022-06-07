@@ -136,10 +136,6 @@
 	    <p>
         </p>
         <button onclick="loadGraph()" >Load graph</button>
-            <button onclick="findReplace(document.getElementById('grep-search').value, document.getElementById('grep-replace').value)">
-                Replace in selection</button>
-        <input type="text" id="grep-search" placeholder="Search"/>
-        <input type="text" id="grep-replace" placeholder="Replace"/>
         
     <!--     <button onclick="dispatchRenderedChildren(document)">
             Recompute the layer
@@ -313,6 +309,16 @@
                       }   
          });
 
+         app.ports.promptFindReplace.subscribe(function(a) {             
+             var rep = window.prompt("Replace in selection (/find/replace, where '/' can be replaced by any character)", 
+                  "/find/replace") ;
+             if (rep && rep.length > 2) {
+                reps = rep.split(rep[0])
+                if (reps[1] && reps[2])
+                    findReplace(reps[1], reps[2])
+             }             
+             
+         });
 
          function findReplace(search, replace) {
          app.ports.findReplace.send({'search':search, 'replace': replace});
