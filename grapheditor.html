@@ -313,8 +313,8 @@
              var rep = window.prompt("Replace in selection (/find/replace, where '/' can be replaced by any character)", 
                   "/find/replace") ;
              if (rep && rep.length > 2) {
-                reps = rep.split(rep[0])
-                if (reps[1] && reps[2])
+                reps = rep.split(rep[0])                
+                if (reps && reps.length == 3 && reps[1])
                     findReplace(reps[1], reps[2])
              }             
              
