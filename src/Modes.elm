@@ -22,7 +22,11 @@ type Mode
     -- Bool -- keep previous selection?
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
-    | EnlargeMode Point
+    {-
+    We should enlarge vertices below right the origin
+    and vertices on the right and bottom that are connected to these
+    -}
+    | EnlargeMode EnlargeState
     | CutHead CutHeadState
     | CloneMode
     | ResizeMode ResizeState -- current sizegrid
@@ -49,6 +53,12 @@ type alias MoveState =
       pos : InputPosition
       -- , merge : Bool 
       }
+
+type alias EnlargeState = 
+   { orig : Point, -- mouse original point at the beginning of the move mode
+     -- onlySubdiag : Bool,
+     pos : InputPosition
+   }
 
 type alias SplitArrowState =
     { chosenEdge : EdgeId

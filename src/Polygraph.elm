@@ -11,9 +11,10 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      normalise,
      union, edgeMap,
      {- findInitial, sourceNode, -} removeLoops,
-     incidence, any)
+     incidence, any, connectedClosure)
 import IntDict exposing (IntDict)
 import IntDictExtra 
+import Maybe.Extra as Maybe
 
 
 
@@ -489,8 +490,8 @@ normalise g =
    |> Graph
 
 incidence : Graph n e -> IntDict { incomings : List (Edge e), outgoings : List (Edge e) }
-incidence g =
-   let es = edges g in
+incidence (Graph g) =
+   let es = edges (Graph g) in
    let emptyInfo = { incomings = [], outgoings = []} in
    let insertIn e i = { i | incomings = e :: i.incomings} in
    let insertOut e i = { i | outgoings = e :: i.outgoings} in
@@ -503,14 +504,48 @@ incidence g =
               <| IntDict.update e.to (Maybe.withDefault emptyInfo >> insertIn e >> Just)
               <| d
    in
-     aux es IntDict.empty
+   let di = IntDict.map (\_ _ -> {incomings = [], outgoings = []}) g in
+     aux es di
+
+connectedClosure : (n -> Bool) -> (e -> Bool) -> Graph n e
+                   -> Graph { n : n, isIn : Bool} { e : e, isIn : Bool}
+connectedClosure fn fe (Graph g) =
+   let li = rawFilter fn fe g |> IntDict.keys in
+   let inc = incidence (Graph g) in   
+   let aux d l =         
+         case l of
+          [] -> d
+          t :: q ->            
+            case IntDict.get t d of
+              Nothing -> aux d q              
+              Just i ->
+                  let lsuite =
+                         (case getEdge t (Graph g) of
+                            Nothing -> []
+                            Just { from, to } -> [ from, to ]
+                           )
+                       ++ List.map .id i.incomings
+                       ++ List.map .id i.outgoings
+                       ++ q
+                   in
+                   aux (IntDict.remove t d) lsuite
+   in
+   
+   let ids = aux inc li |> IntDict.keys in
+   
+   map (\id n -> { n = n, isIn = True})
+       (\id e -> { e = e, isIn = True})
+   (Graph g)
+   |> updateList ids 
+   (\{n} -> { n = n, isIn = False})(\{e} -> { e = e, isIn = False})
+
 
 any : (n -> Bool) -> (e -> Bool) -> Graph n e -> Bool
 any fn fe (Graph g) =
-   IntDictExtra.any 
-   (\ o -> case o of 
-             NodeObj n -> fn n
-             EdgeObj _ _ e -> fe e) g
+       IntDictExtra.any 
+       (\ o -> case o of 
+                 NodeObj n -> fn n
+                 EdgeObj _ _ e -> fe e) g
   
    
 {- sourceNode : Graph n e -> Id -> NodeId

@@ -39,7 +39,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Maybe.Extra as Maybe
-
+import IntDict
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
@@ -54,7 +54,7 @@ import Maybe exposing (withDefault)
 import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
-import Modes exposing (Mode(..), isResizeMode, ResizeState, CutHeadState)
+import Modes exposing (Mode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
 
 import ArrowStyle
 
@@ -352,7 +352,7 @@ update msg modeli =
         QuickInputMode c -> update_QuickInput c msg model 
         DefaultMode -> update_DefaultMode msg model
         RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
-        EnlargeMode orig -> update_Enlarge msg orig model
+        EnlargeMode state -> update_Enlarge msg state model
         NewArrow astate -> Modes.NewArrow.update astate msg model
             -- update_Modes.NewArrow astate msg m
         RenameMode l -> update_RenameMode l msg model
@@ -462,16 +462,19 @@ update_RectSelect msg orig keep model =
       --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
       _ -> noCmd model
 
-update_Enlarge : Msg -> Point -> Model -> (Model, Cmd Msg)
-update_Enlarge msg orig model =
+update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
+update_Enlarge msg state model =
    case msg of
       KeyChanged False _ (Control "Escape") -> switch_Default model
+      {- KeyChanged False _ (Character 's') -> 
+                          noCmd <| { model | mode =
+                                  EnlargeMode { state | onlySubdiag = not state.onlySubdiag }} -}
       MouseUp -> switch_Default 
-                  { model | graph = enlargeGraph model orig }
+                  { model | graph = enlargeGraph model state }
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
       --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
-      _ -> noCmd model
+      _ -> noCmd <| { model | mode = EnlargeMode { state | pos = InputPosition.update state.pos msg }}
 
 selectLoop : Bool -> Model -> Model
 selectLoop direction model =
@@ -561,7 +564,8 @@ update_DefaultMode msg model =
         KeyChanged False _ (Control "Escape") ->
             noCmd <| { model | graph = GraphDefs.clearSelection model.graph
                              } -- , hoverId = Nothing }
-        KeyChanged False _ (Character 'e') -> noCmd <| pushHistory { model | mode = EnlargeMode model.mousePos }
+        KeyChanged False _ (Character 'e') ->
+           noCmd <| initialiseEnlarge <| pushHistory model
         KeyChanged False k (Character 'a') -> 
             if not k.ctrl then
              Modes.NewArrow.initialise <| pushHistory model 
@@ -594,8 +598,15 @@ update_DefaultMode msg model =
 s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'L') -> 
            noCmd <| selectLoop True model
-        KeyChanged False _ (Character 'K') -> 
+        KeyChanged False _ (Character 'H') -> 
            noCmd <| selectLoop False model
+        KeyChanged False _ (Character 'K') -> 
+           let f = GraphDefs.fieldSelect model.graph in
+           noCmd <| { model | 
+               graph = Graph.connectedClosure f f model.graph
+                       |> Graph.map (\ _ {n , isIn} -> {n | selected = isIn})
+                                    (\ _ {e , isIn} -> {e | selected = isIn}) }
+        
         KeyChanged False _ (Character 'G') -> 
            generateProof GraphProof.proofStatementToString            
         KeyChanged False _ (Character 'T') -> 
@@ -726,7 +737,16 @@ initialise_Resize model =
                        ResizeMode { sizeGrid = model.sizeGrid,
                                     onlyGrid = False
                                   }
-                     }                
+                     }             
+
+initialiseEnlarge : Model -> Model
+initialiseEnlarge model =
+   { model | mode = EnlargeMode 
+             {orig = model.mousePos,
+             -- onlySubdiag = True,
+              pos = InputPosMouse
+       }
+   }
 
 update_DebugMode : Msg -> Model -> (Model, Cmd Msg)
 update_DebugMode msg model =
@@ -803,20 +823,38 @@ selectGraph m orig keep =
    let isSel n = Geometry.isInRect selRect n.pos in
    GraphDefs.addNodesSelection g isSel
    
-enlargeGraph : Model -> Point -> Graph NodeLabel EdgeLabel
-enlargeGraph m orig =
-   let (ox, oy) = Point.subtract m.mousePos orig in
-   let (xi, yi) = orig in
-   let mkp n i o = if n >= i then n + o else n in
+enlargeGraph : Model -> EnlargeState -> Graph NodeLabel EdgeLabel
+enlargeGraph m state =
+   let (ox, oy) = case state.pos of      
+          InputPosKeyboard p -> InputPosition.deltaKeyboardPos m.sizeGrid p
+          _ -> Point.subtract m.mousePos state.orig 
+   in   
+   let diags = GraphDefs.getSurroundingDiagrams state.orig m.graph in
+   let edgesId = List.concatMap (GraphProof.edgesOfDiag >> IntDict.keys) diags
+   in
+   let gcon = 
+          Graph.map (\ _ _ -> False) (\ _ _ -> False) m.graph
+          |> Graph.updateList edgesId (always True) (always True)
+          |> Graph.connectedClosure identity identity
+   in
+   let noSurround = not (Graph.any .isIn .isIn gcon) in
+
+   let (xi, yi) = state.orig in
+   let mkp id n i o = 
+        if n >= i && 
+            (noSurround || (Graph.get id .isIn .isIn gcon
+            |> Maybe.withDefault False))
+                  then n + o else n 
+   in
     
-   let mapNode n =
+   let mapNode id n =
         let (nx, ny) = n.pos in        
-          { n | pos = (mkp nx xi ox, mkp ny yi oy)}
+          { n | pos = (mkp id nx xi ox, mkp id ny yi oy)}
          
    in
        
    let g = Graph.map 
-            (always mapNode)
+            mapNode
             (always identity)
             m.graph
    in
@@ -1013,10 +1051,11 @@ helpMsg model =
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, [i]nvert arrow."               
                 ++ ", [S]elect pointer surrounding subdiagram"
+                ++ ", [K] select connected component"
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [C] generate Coq script to address selected incomplete subdiagram "
                 ++ "(i.e., a subdiagram with an empty branch)"
-                ++ ", [L] and [K]: select subdiagram adjacent to selected edge"
+                ++ ", [L] and [H]: select subdiagram adjacent to selected edge"
                 
                    
                       -- b "b",
@@ -1051,7 +1090,13 @@ helpMsg model =
                 ++ ", [d] to duplicate (or not) the arrow."
                   |> msg
         RenameMode _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
-        EnlargeMode _ -> msg "Enlarge mode: draw a rectangle to create space"
+        EnlargeMode s -> msg <| "Enlarge mode: draw a rectangle to create space. "
+                            ++ "Use mouse or h,j,k,l. "
+                         {-    ++ (if s.onlySubdiag then
+                                    "Only extending surrounding subdiagram"
+                               else
+                                    "Moving all right and bottom vertices") -}
+                            ++ " (press [s] to toggle)."
         QuickInputMode _ -> msg <| "Equation mode: enter equation in the textfield "
                           -- ++ "(e.g., a - f ⟩ b - g ⟩ c =  a - h ⟩ d - k ⟩ c)"
                           ++ "(e.g., a -- f -> b -- g -> c =  a -- h -> d -- k -> c)"
@@ -1094,10 +1139,17 @@ quickInputView m =
 
 additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m = 
-   let drawSel orig = Drawing.rect (Geometry.makeRect orig m.mousePos) in
+   let drawSel pos orig = 
+   
+            Drawing.rect <| Geometry.makeRect orig
+            <| Point.add (1,1) -- to make the rectangle appear even if one dim is empty
+            <| case pos of
+              InputPosKeyboard p -> Point.add orig <| InputPosition.deltaKeyboardPos m.sizeGrid p
+              _ -> m.mousePos
+   in
    case m.mode of
-      RectSelect orig -> drawSel orig
-      EnlargeMode orig -> drawSel orig
+      RectSelect orig -> drawSel InputPosMouse orig
+      EnlargeMode state -> drawSel state.pos state.orig
       _ -> --GraphDrawing.make_input (100.0,100.0) "coucou" (always Msg.noOp)
           Drawing.empty
 

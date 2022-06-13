@@ -4,6 +4,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    createNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
+   fieldSelect,
    selectedNodes,
    isEmptySelection,
    selectedEdgeId, selectedNode, selectedId,
@@ -13,7 +14,8 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    selectSurroundingDiagram, cloneSelected,
    centerOfNodes, mergeWithSameLoc,
    findReplaceInSelected, closestUnnamed, unselect, closest,
-   makeSelection, addWeaklySelected, weaklySelect
+   makeSelection, addWeaklySelected, weaklySelect,
+   getSurroundingDiagrams
    )
 
 import IntDict
@@ -252,19 +254,25 @@ weaklySelect id =
 selectEdges : Graph NodeLabel EdgeLabel -> List EdgeId -> Graph NodeLabel EdgeLabel
 selectEdges = List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True}))
 
+getSurroundingDiagrams : Point -> Graph NodeLabel EdgeLabel -> List Diagram
+getSurroundingDiagrams pos gi =   
+   let gp = toProofGraph gi in
+   let isInDiag d =
+           Graph.getNodes (GraphProof.nodesOfDiag d)
+               gi |> List.map (.label >> .pos) |> Point.isInPoly pos
+   in     
+   GraphProof.getAllValidDiagrams gp 
+            |> List.filter isInDiag
+   
+
 selectSurroundingDiagram : Point -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectSurroundingDiagram pos gi =   
-   let gp = toProofGraph gi in
-   let diags = GraphProof.getAllValidDiagrams gp 
-            |> List.map (\d -> 
-              (Graph.getNodes (GraphProof.nodesOfDiag d)
-               gi |> List.map (.label >> .pos),
-               GraphProof.edgesOfDiag d |> IntDict.keys
-                  ))
-   in 
-   let d = List.find (Tuple.first >> Point.isInPoly pos) diags in
-   let gf = d |> Maybe.map (Tuple.second >> selectEdges (clearSelection gi)) in
-   Maybe.withDefault gi gf
+   case getSurroundingDiagrams pos gi of
+       [] -> gi
+       d :: _ ->
+          let edges = GraphProof.edgesOfDiag d |> IntDict.keys in
+          selectEdges (clearSelection gi) edges
+
 
 cloneSelected : Graph NodeLabel EdgeLabel -> Point -> 
                 Graph NodeLabel EdgeLabel
