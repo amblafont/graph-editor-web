@@ -549,6 +549,9 @@ update_DefaultMode msg model =
                                          model.graph 
                                          }
     in
+    let clearSel = noCmd <| { model | graph = GraphDefs.clearSelection 
+                        model.graph } 
+    in
     
     {- let updateStr =
        GraphProof.proofStatementToString  -}
@@ -562,9 +565,8 @@ update_DefaultMode msg model =
         MouseMove _ -> 
              weaklySelect <| GraphDefs.closest model.mousePos model.graph             
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
-        KeyChanged False _ (Control "Escape") ->
-            noCmd <| { model | graph = GraphDefs.clearSelection model.graph
-                             } -- , hoverId = Nothing }
+        KeyChanged False _ (Control "Escape") -> clearSel
+        KeyChanged False _ (Character 'w') -> clearSel
         KeyChanged False _ (Character 'e') ->
            noCmd <| initialiseEnlarge <| pushHistory model
         KeyChanged False k (Character 'a') -> 
@@ -1027,7 +1029,7 @@ helpMsg model =
                 ++ ", rename closest [u]nnamed objects (then [TAB] to alternate)"
                 ++ ", [shift] to keep previous selection)" 
                 ++ ", [C-a] select all" 
-                ++ ", [ESC] clear selection" 
+                ++ ", [ESC] or [w] clear selection" 
                 ++ ", [C-z] undo" 
                 ++ ", [C-c] copy selection" 
                 ++ ", [C-v] paste" 
