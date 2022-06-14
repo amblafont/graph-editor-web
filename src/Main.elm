@@ -464,13 +464,14 @@ update_RectSelect msg orig keep model =
 
 update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
 update_Enlarge msg state model =
+   let fin = switch_Default { model | graph = enlargeGraph model state } in
    case msg of
       KeyChanged False _ (Control "Escape") -> switch_Default model
       {- KeyChanged False _ (Character 's') -> 
                           noCmd <| { model | mode =
                                   EnlargeMode { state | onlySubdiag = not state.onlySubdiag }} -}
-      MouseUp -> switch_Default 
-                  { model | graph = enlargeGraph model state }
+      MouseUp -> fin
+      KeyChanged False _ (Control "Enter") -> fin
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
       --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
@@ -1091,12 +1092,12 @@ helpMsg model =
                   |> msg
         RenameMode _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
         EnlargeMode s -> msg <| "Enlarge mode: draw a rectangle to create space. "
-                            ++ "Use mouse or h,j,k,l. "
+                            ++ "Use mouse or h,j,k,l. [RET] or click to confirm."
                          {-    ++ (if s.onlySubdiag then
                                     "Only extending surrounding subdiagram"
                                else
                                     "Moving all right and bottom vertices") -}
-                            ++ " (press [s] to toggle)."
+                            -- ++ " (press [s] to toggle)."
         QuickInputMode _ -> msg <| "Equation mode: enter equation in the textfield "
                           -- ++ "(e.g., a - f ⟩ b - g ⟩ c =  a - h ⟩ d - k ⟩ c)"
                           ++ "(e.g., a -- f -> b -- g -> c =  a -- h -> d -- k -> c)"
