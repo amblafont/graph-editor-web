@@ -109,13 +109,15 @@ keysDecoder = D.map3 (\ alt ctrl shift -> { alt = alt, ctrl = ctrl, shift = shif
      (D.field "altKey" D.bool) (D.field "ctrlKey" D.bool) (D.field "shiftKey" D.bool)
 
 -- copied from https://github.com/dwyl/learn-elm/blob/master/examples/checkboxes.elm
-checkbox : msg -> String -> Bool -> Html.Html msg
-checkbox msg name checked =
+checkbox : msg -> String -> String -> Bool -> Html.Html msg
+checkbox msg name tooltip checked =
     Html.label
-        [ {- Html.Attributes.style "padding" "20px" -} ]
+        [ Html.Attributes.title tooltip {- Html.Attributes.style "padding" "20px" -} ]
         [ Html.input [ Html.Attributes.type_ "checkbox", 
            Html.Events.onClick msg,
-           Html.Attributes.checked checked ] []
+           Html.Attributes.checked checked,
+           Html.Attributes.title tooltip
+            ] []
         , Html.text name
         ]
 

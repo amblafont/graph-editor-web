@@ -139,7 +139,7 @@
 	    <p>
         </p>
         <button onclick="loadGraph()" >Load graph</button>
-        <button onclick="quickloadGraph()" >QuickLoad graph (Local storage)</button>
+        <button title="Local or session storage" onclick="quickloadGraph()" >QuickLoad graph</button>
         
     <!--     <button onclick="dispatchRenderedChildren(document)">
             Recompute the layer
@@ -253,8 +253,12 @@
         function quickloadGraph() {
              // Check browser support
              if (typeof(Storage) !== "undefined") {
-               // Store
-               var result = localStorage.getItem(storageKey);
+               // we first try loading from the current
+               // session storage, to avoid conflicts with
+               // other possibly opened tabs
+               var result = sessionStorage.getItem(storageKey);
+               if (!result) 
+                  result = localStorage.getItem(storageKey);
                if (result) {
                   var json = JSON.parse(result);
                   var fileName = json.fileName;                  
@@ -304,16 +308,25 @@
              }
          });
 
-         app.ports.quicksaveGraph.subscribe(function(a) {
+         app.ports.quicksaveGraph.subscribe(function(arg) {
+            console.log("Quicksaving...");
+            var a = arg.info
             var d = fromElmGraph(a);
             d.fileName = a.fileName;
              // Check browser support
              if (typeof(Storage) !== "undefined") {               
-               // Store
+               // Store even if the browser is closed
                localStorage.setItem(storageKey, JSON.stringify(d));
+               // we put it also in a temporary session storage
+               // in case multiple tabs are opened
+               sessionStorage.setItem(storageKey, JSON.stringify(d));
+               if (arg.feedback)
+                   alert("Successful quicksave");               
                alert("Successful quicksave");               
+                   alert("Successful quicksave");               
              } else {
-               alert("Sorry, your browser does not support Web Storage.");
+                if (arg.feedback)
+                    alert("Sorry, your browser does not support Web Storage.");
              }
              
          });

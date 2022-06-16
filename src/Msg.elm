@@ -56,7 +56,9 @@ type Msg
   | Clear
   | SizeGrid Int
   | ToggleHideGrid
+  | ToggleAutosave
   | FindReplace { search: String, replace:String}
+  | MinuteTick
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String

@@ -49,6 +49,7 @@ type alias Model =
     , mouseOnCanvas : Bool
     -- blitzFlag : Bool
     , bottomText : String
+    , autoSave : Bool
     }
 
 
@@ -108,6 +109,7 @@ createModel sizeGrid g =
     , sizeGrid = sizeGrid
     , fileName = "graph.json"
     , bottomText = ""
+    , autoSave = True
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse

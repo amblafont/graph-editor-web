@@ -23,6 +23,7 @@ import Browser
 import Browser.Events as E
 
 import Task
+import Time
 import Browser.Dom as Dom
 
 
@@ -94,7 +95,8 @@ port onKeyDownActive : (JE.Value -> a) -> Sub a
 -- tell js to save the graph, version  is the format version
 type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
 port saveGraph : JsGraphInfo -> Cmd a
-port quicksaveGraph : JsGraphInfo -> Cmd a
+-- feedback: do we want a confirmation alert box?
+port quicksaveGraph : { info : JsGraphInfo, feedback : Bool} -> Cmd a
 -- filename
 port savedGraph : (String -> a) -> Sub a
 port exportQuiver : JE.Value -> Cmd a
@@ -150,6 +152,11 @@ subscriptions m =
                                       (TabInput, True) 
                         else (Msg.noOp, False))
                          HtmlDefs.tabDecoder), -} ]
+    ++
+    (if m.autoSave then
+        -- every minute
+       [ Time.every 60000 (always MinuteTick) ]
+    else [])
     ++
     if case m.mode of
         ResizeMode _ -> False
@@ -327,8 +334,12 @@ update msg modeli =
     in
     case msg of
      Save -> (model, saveGraph <| toJsGraphInfo model)
+     MinuteTick -> if model.autoSave then 
+                         (model, quicksaveGraph { info = toJsGraphInfo model, feedback = False }) 
+                   else noCmd model
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
+     ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
                     exportQuiver <| 
                      GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
@@ -646,7 +657,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
         KeyChanged False _ (Character 'Q') -> 
-            (model, quicksaveGraph <| toJsGraphInfo model)
+            (model, quicksaveGraph { info = toJsGraphInfo model, feedback = True })
         KeyChanged False _ (Character 'R') -> 
             noCmd <| initialise_Resize model
         KeyChanged False _ (Character 'r') -> rename model
@@ -1202,7 +1213,8 @@ view model =
                    Html.Attributes.title "Should not be necessary"
             ] [Html.text "Recompute labels"] -}
            --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
-           , HtmlDefs.checkbox ToggleHideGrid "Show grid"  (not model.hideGrid)           
+           , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)           
+           , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
            ]
           ++ 
