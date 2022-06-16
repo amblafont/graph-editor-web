@@ -112,7 +112,7 @@ keysDecoder = D.map3 (\ alt ctrl shift -> { alt = alt, ctrl = ctrl, shift = shif
 checkbox : msg -> String -> Bool -> Html.Html msg
 checkbox msg name checked =
     Html.label
-        [ Html.Attributes.style "padding" "20px" ]
+        [ {- Html.Attributes.style "padding" "20px" -} ]
         [ Html.input [ Html.Attributes.type_ "checkbox", 
            Html.Events.onClick msg,
            Html.Attributes.checked checked ] []
