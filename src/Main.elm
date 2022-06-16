@@ -621,13 +621,6 @@ s                  (GraphDefs.clearSelection model.graph) } -}
            noCmd <| selectLoop True model
         KeyChanged False _ (Character 'H') -> 
            noCmd <| selectLoop False model
-        KeyChanged False _ (Character 'K') -> 
-           let f = GraphDefs.fieldSelect model.graph in
-           noCmd <| { model | 
-               graph = Graph.connectedClosure f f model.graph
-                       |> Graph.map (\ _ {n , isIn} -> {n | selected = isIn})
-                                    (\ _ {e , isIn} -> {e | selected = isIn}) }
-        
         KeyChanged False _ (Character 'G') -> 
            generateProof GraphProof.proofStatementToString            
         KeyChanged False _ (Character 'T') -> 
@@ -706,9 +699,11 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                   (GraphDefs.clearSelection model.graph)
                   (GraphDefs.selectAll g.graph)
         KeyChanged False _ (Character 'u') ->
-            noCmd <| initialise_RenameMode 
-              (GraphDefs.closestUnnamed model.mousePos model.graph)
-               <| pushHistory model
+             let f = GraphDefs.fieldSelect model.graph in
+           noCmd <| { model | 
+               graph = Graph.connectedClosure f f model.graph
+                       |> Graph.map (\ _ {n , isIn} -> {n | selected = isIn})
+                                    (\ _ {e , isIn} -> {e | selected = isIn}) }
              
                
         KeyChanged False k (Character 'z') -> 
@@ -1046,7 +1041,7 @@ helpMsg model =
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
             msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle"
-                ++ ", rename closest [u]nnamed objects (then [TAB] to alternate)"
+                -- ++ ", rename closest [u]nnamed objects (then [TAB] to alternate)"
                 ++ ", [shift] to keep previous selection)" 
                 ++ ", [C-a] select all" 
                 ++ ", [ESC] or [w] clear selection" 
@@ -1075,7 +1070,7 @@ helpMsg model =
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, [i]nvert arrow."               
                 ++ ", [S]elect pointer surrounding subdiagram"
-                ++ ", [K] select connected component"
+                ++ ", [u] expand selection to connected component"
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [C] generate Coq script to address selected incomplete subdiagram "
                 ++ "(i.e., a subdiagram with an empty branch)"

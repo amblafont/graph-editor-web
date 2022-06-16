@@ -13,7 +13,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram, cloneSelected,
    centerOfNodes, mergeWithSameLoc,
-   findReplaceInSelected, closestUnnamed, unselect, closest,
+   findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect,
    getSurroundingDiagrams
    )
@@ -353,7 +353,7 @@ closest pos ug =
                |> Maybe.withDefault 0
          in
          unnamedAll
-
+{- 
 
 closestUnnamed : Point -> Graph NodeLabel EdgeLabel -> List Graph.Id
 -- ordered by distance to Point
@@ -379,7 +379,7 @@ closestUnnamed pos g =
         |> List.sortBy .distance 
         |> List.map .id
    in
-   unnamedAll
+   unnamedAll -}
 
 addWeaklySelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 addWeaklySelected =
