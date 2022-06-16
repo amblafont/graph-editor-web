@@ -92,7 +92,9 @@ port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
 -- tell js to save the graph, version  is the format version
-port saveGraph : { graph : LastFormat.Graph, fileName : String, version : Int } -> Cmd a
+type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
+port saveGraph : JsGraphInfo -> Cmd a
+port quicksaveGraph : JsGraphInfo -> Cmd a
 -- filename
 port savedGraph : (String -> a) -> Sub a
 port exportQuiver : JE.Value -> Cmd a
@@ -288,6 +290,13 @@ switch_RenameMode model =
              {model | mode = RenameMode l}, Cmd.none {- focusLabelInput -})
  -}
 -- Now, deal with incoming messages
+
+toJsGraphInfo : Model -> JsGraphInfo
+toJsGraphInfo model= { graph = LastFormat.toJSGraph 
+                                    <| Model.toGraphInfo model,
+                              fileName = model.fileName,
+                              version = LastFormat.version}
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg modeli =
     let model = case msg of
@@ -317,11 +326,7 @@ update msg modeli =
                 _ -> modeli            
     in
     case msg of
-     Save ->               
-          (model, saveGraph { graph = LastFormat.toJSGraph 
-                                    <| Model.toGraphInfo model,
-                              fileName = model.fileName,
-                              version = LastFormat.version})
+     Save -> (model, saveGraph <| toJsGraphInfo model)
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ExportQuiver -> (model,  
@@ -341,10 +346,12 @@ update msg modeli =
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
      Do cmd -> (model, cmd)
-     Loaded g fileName -> noCmd <| { model | graph = g.graph,
+     Loaded g fileName -> ({ model | graph = g.graph,
                                              sizeGrid = g.sizeGrid, 
                                              fileName = fileName,
-                                             mode = DefaultMode }
+                                             mode = DefaultMode },
+                     -- we need drawn elements to resend their size
+                                             computeLayout() )
      FindReplace req -> noCmd <| setSaveGraph model 
                           <| GraphDefs.findReplaceInSelected model.graph req
      _ ->
@@ -638,6 +645,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                      fillBottom s "No selected subdiagram found!"
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
+        KeyChanged False _ (Character 'Q') -> 
+            (model, quicksaveGraph <| toJsGraphInfo model)
         KeyChanged False _ (Character 'R') -> 
             noCmd <| initialise_Resize model
         KeyChanged False _ (Character 'r') -> rename model
@@ -1042,6 +1051,7 @@ helpMsg model =
                 ++ ", [d]ebug mode" 
                 -- ++ ", [u]named flag (no labelling on point creation)" 
                 ++ ", [q] find and replace in selection" 
+                ++ ", [Q]uicksave" 
                 ++ ", [r]ename selected object (or double click)" 
                 ++ ", [R]esize canvas and grid size" 
                 ++ ", [g] move selected objects (also merge, if wanted)"
