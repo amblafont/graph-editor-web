@@ -1043,7 +1043,7 @@ helpMsg model =
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
             msg <| "Default mode (the basic tutorial can be completed before reading this). "
-                ++ "Sumary of commands:\n\n"
+                ++ "Sumary of commands:\n"
 
                 ++ "Selection:"
                 ++ "  [click] for point/edge selection (hold for selection rectangle)"
@@ -1055,22 +1055,22 @@ helpMsg model =
                 ++ ", [H] and [L]: select subdiagram adjacent to selected edge"             
                 ++ ", [hjkl] move the selection from a point to another"
 
-                ++ "\n\nHistory: "
+                ++ "\nHistory: "
                 ++ "[C-z] undo" 
                 ++ ", [Q]uicksave" 
-                ++ "\n\nCopy/Paste: "
+                ++ "\nCopy/Paste: "
                 ++ "[C-c] copy selection" 
                 ++ ", [C-v] paste" 
                 ++ ", [M-c] clone selection (same as C-c C-v)"                
 
-                ++ "\n\n Basic editing: "
+                ++ "\n Basic editing: "
                 ++ "new [p]oint"
                 ++ ", [del]ete selected object (also [x])"               
                 ++ ", [q] find and replace in selection"                 
                 ++ ", [r]ename selected object (or double click)" 
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
 
-                ++ "\n\nArrows: "
+                ++ "\nArrows: "
                 ++ "new [a]rrow from selected point"                
                 ++ ", [/] split arrow" 
                 ++ ", [c]ut head of selected arrow" 
@@ -1078,7 +1078,7 @@ helpMsg model =
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, [i]nvert arrow."               
 
-                ++ "\n\nMoving objects:"
+                ++ "\nMoving objects:"
                 ++ "[g] move selected objects (also merge, if wanted)"
                 ++ ", [f]ix (snap) selected objects on the grid" 
                 ++ ", [e]nlarge diagram (create row/column spaces)"                 
