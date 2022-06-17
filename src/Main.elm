@@ -1022,7 +1022,9 @@ helpStr_collage : (String, HelpStrType) -> Html msg
 helpStr_collage (s , h) =
     case h of
         Bold -> Html.span [] [Html.text "[", Html.b [] [Html.text s], Html.text"]"]
-        Plain -> Html.text s
+        Plain -> String.lines s |> List.map Html.text
+                           |> List.intersperse (Html.br [] [])
+                           |> Html.span []
         
 
 helpMsg : Model -> Html Msg
@@ -1040,41 +1042,68 @@ helpMsg model =
     case model.mode of
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
-            msg <| "Default mode (the basic tutorial can be completed before reading this). Commands: [click] for point/edge selection (hold for selection rectangle"
-                -- ++ ", rename closest [u]nnamed objects (then [TAB] to alternate)"
-                ++ ", [shift] to keep previous selection)" 
+            msg <| "Default mode (the basic tutorial can be completed before reading this). "
+                ++ "Sumary of commands:\n\n"
+
+                ++ "Selection:"
+                ++ "  [click] for point/edge selection (hold for selection rectangle)"
+                ++ ", [shift] to keep previous selection" 
                 ++ ", [C-a] select all" 
-                ++ ", [ESC] or [w] clear selection" 
-                ++ ", [C-z] undo" 
-                ++ ", [C-c] copy selection" 
-                ++ ", [C-v] paste" 
-                ++ ", [M-c] clone selection (same as C-c C-v)"
-                ++ ", new [a]rrow from selected point"
-                ++ ", new [p]oint"
-                ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
-                ++ ", [del]ete selected object (also [x])"
-               --  ++ ", [q]ickInput mode" 
-                ++ ", [d]ebug mode" 
-                -- ++ ", [u]named flag (no labelling on point creation)" 
-                ++ ", [q] find and replace in selection" 
+                ++ ", [S]elect pointer surrounding subdiagram"
+                ++ ", [u] expand selection to connected component"
+                ++ ", [ESC] or [w] clear selection"    
+                ++ ", [H] and [L]: select subdiagram adjacent to selected edge"             
+                ++ ", [hjkl] move the selection from a point to another"
+
+                ++ "\n\nHistory: "
+                ++ "[C-z] undo" 
                 ++ ", [Q]uicksave" 
+                ++ "\n\nCopy/Paste: "
+                ++ "[C-c] copy selection" 
+                ++ ", [C-v] paste" 
+                ++ ", [M-c] clone selection (same as C-c C-v)"                
+
+                ++ "\n\n Basic editing: "
+                ++ "new [p]oint"
+                ++ ", [del]ete selected object (also [x])"               
+                ++ ", [q] find and replace in selection"                 
                 ++ ", [r]ename selected object (or double click)" 
-                ++ ", [R]esize canvas and grid size" 
-                ++ ", [g] move selected objects (also merge, if wanted)"
+                ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
+
+                ++ "\n\nArrows: "
+                ++ "new [a]rrow from selected point"                
                 ++ ", [/] split arrow" 
                 ++ ", [c]ut head of selected arrow" 
-                ++ ", [f]ix (snap) selected objects on the grid" 
-                ++ ", [e]nlarge diagram (create row/column spaces)" 
-                ++ ", [hjkl] to move the selection from a point to another"                 
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, [i]nvert arrow."               
-                ++ ", [S]elect pointer surrounding subdiagram"
-                ++ ", [u] expand selection to connected component"
+
+                ++ "\n\nMoving objects:"
+                ++ "[g] move selected objects (also merge, if wanted)"
+                ++ ", [f]ix (snap) selected objects on the grid" 
+                ++ ", [e]nlarge diagram (create row/column spaces)"                 
+
+
+                
+                
+                           
+                
+                 
+
+                
+                
+                
+                
+                
+                ++ "\n\nMiscelleanous: "
+                ++ "[R]esize canvas and grid size" 
+                ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [C] generate Coq script to address selected incomplete subdiagram "
                 ++ "(i.e., a subdiagram with an empty branch)"
-                ++ ", [L] and [H]: select subdiagram adjacent to selected edge"
+                
+                   --  ++ ", [q]ickInput mode" 
+                
                 
                    
                       -- b "b",
@@ -1202,7 +1231,14 @@ view model =
                        ]
     in
     let contents = 
-          [  Html.button [Html.Events.onClick Save] [Html.text "Save"]
+          [ Html.text model.statusMsg,
+            -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
+            -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
+            Html.p [] 
+            [(helpMsg model),
+             quickInputView model
+            ],
+            Html.button [Html.Events.onClick Save] [Html.text "Save"]
            , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
             {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),
                    Html.Attributes.title "Should not be necessary"
@@ -1217,13 +1253,7 @@ view model =
                [ HtmlDefs.slider SizeGrid "Grid size" minSizeGrid maxSizeGrid (Model.modedSizeGrid model) ]
             else
                [])
-          ++ [ Html.text model.statusMsg,
-            -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
-            -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
-            Html.p [] 
-            [(helpMsg model),
-             quickInputView model
-            ],
+          ++ [ 
             Html.p [] [ Html.text <| if nmissings > 0 then 
                String.fromInt nmissings ++ " nodes or edges could not be rendered."
                else "" ]
