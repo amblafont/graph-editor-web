@@ -1,7 +1,7 @@
 module Drawing exposing (Drawing,   
   fromString, circle, html, group, arrow, rect,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
-  svg, Color, red, black, blue, class, empty, grid
+  svg, Color, red, black, blue, class, empty, grid, htmlAnchor
   )
 
 import Svg exposing (Svg)
@@ -221,11 +221,13 @@ circle attrs (cx, cy) n =
 
 
 html : Point -> Point -> Html.Html a -> Drawing a
-html (x1, y1) (width, height) h = 
+html p d h = 
+  htmlAnchor p d True h
+
+htmlAnchor : Point -> Point -> Bool -> Html.Html a -> Drawing a
+htmlAnchor (x1, y1) (width, height) center h = 
   let f = String.fromFloat in
-  let x = x1 - width / 2
-      y = y1 - height / 2
-  in
+  let (x, y) = if center then (x1 - width / 2, y1 - height / 2) else (x1, y1) in
    Svg.foreignObject 
    [Svg.x <| f x, Svg.y <| f y
    -- otherwise, katex breaks lines

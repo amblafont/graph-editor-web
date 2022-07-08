@@ -9,7 +9,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      Node, Edge, nextId,
      incomings, outgoings, drop, 
      normalise,
-     union, edgeMap,
+     union, edgeMap, nodeMap,
      {- findInitial, sourceNode, -} removeLoops,
      incidence, any, connectedClosure)
 import IntDict exposing (IntDict)
@@ -37,6 +37,10 @@ type alias Edge e =
 edgeMap : (a -> b) -> Edge a -> Edge b
 edgeMap f {id, from, to, label} = 
    { id = id, from = from, to = to, label = f label}
+
+nodeMap : (a -> b) -> Node a -> Node b
+nodeMap f {id, label} = { id = id, label = f label}
+
 
 {- objUniv : (n -> a) -> (e -> a) -> Object n e -> a
 objUniv fn fe o =

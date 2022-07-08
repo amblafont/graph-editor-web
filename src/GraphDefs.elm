@@ -33,7 +33,8 @@ import Maybe.Extra as Maybe
 
 type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool,
                    weaklySelected : Bool}
-type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool, weaklySelected : Bool}
+type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool, weaklySelected : Bool,
+                         isMath : Bool}
 {- 
 computeEdgePos : Point -> Point -> EdgeLabel -> Point
 computeEdgePos from to e = e.style.bend
@@ -89,8 +90,10 @@ exportQuiver sizeGrid g =
   JEncode.list identity <|
   [JEncode.int 0, JEncode.int <| List.length nodes] ++ jnodes ++ jedges
 
-newNodeLabel : Point -> String -> NodeLabel
-newNodeLabel p s = NodeLabel p s Nothing False False
+newNodeLabel : Point -> String -> Bool -> NodeLabel
+newNodeLabel p s isMath = 
+    { pos = p , label = s, dims = Nothing, selected = False, weaklySelected = False,
+                         isMath = isMath}
 
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
 newEdgeLabel s style = { label = s, style = style, dims = Nothing, selected = False, weaklySelected = False}
@@ -102,7 +105,7 @@ emptyEdge = newEdgeLabel "" ArrowStyle.empty
 createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)
 createNodeLabel g s p =
-    let label = newNodeLabel p s in
+    let label = newNodeLabel p s True in
     let (g2, id) = Graph.newNode g label in
      (g2, id, p)
 

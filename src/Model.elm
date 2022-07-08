@@ -235,7 +235,7 @@ mayCreateTargetNodeAt m pos s =
       [ n ] -> ((m.graph, n), False)
       _ ->
             ( Graph.newNode m.graph 
-              <| newNodeLabel pos s
+              <| newNodeLabel pos s True
             , True )
 
 -- only Nodes ?

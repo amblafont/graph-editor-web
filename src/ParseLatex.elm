@@ -198,7 +198,7 @@ buildGraph offset (nodes, edges) =
     let nodesPos = List.indexedMap (\ x -> 
                   List.indexedMap (\ y s -> { id =  mkId (x + 1, y + 1)
                   , label = 
-                      GraphDefs.newNodeLabel (mkPos x y) s} ))
+                      GraphDefs.newNodeLabel (mkPos x y) s True} ))
                   nodes |> List.concat
                   |> List.filter (\ { label } -> label.label /= "")  
                   |> Debug.log "nodes"

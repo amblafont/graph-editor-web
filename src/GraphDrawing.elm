@@ -24,6 +24,7 @@ type alias EdgeDrawingLabel =
    style : ArrowStyle, dims : Point }
 type alias NodeDrawingLabel =
     { pos : Point, label : String, editable : Bool, isActive : Activity,
+      isMath : Bool,
           dims : Point 
           -- whether I should watch entering and leaving 
           -- node
@@ -68,8 +69,9 @@ make_edgeDrawingLabel {editable, isActive} ({label, style} as l) =
     }
 
 make_nodeDrawingLabel : {editable : Bool, isActive : Activity} -> NodeLabel ->  NodeDrawingLabel
-make_nodeDrawingLabel {editable, isActive} ({label, pos} as l) =
-    { label = label, pos = pos, editable = editable, isActive = isActive,
+make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
+    { label = label {- if l.isMath || editable then label else "\\text{" ++ label ++ "}" -}
+    , pos = pos, editable = editable, isActive = isActive, isMath = isMath,
     dims = GraphDefs.getNodeDims l }
 
 
@@ -105,26 +107,29 @@ activityToClasses a =
 nodeLabelDrawing : List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
 nodeLabelDrawing attrs node =
     let n = node.label in
+    let _ = Debug.log "pos" n.pos in
     let id = node.id in
     let color = activityToColor node.label.isActive in
     (
      if n.editable then
          make_input n.pos n.label (NodeLabelEdit id)
      else
-         if  n.label == "" then
+         if n.label == "" then
              (Drawing.circle (Drawing.color color :: attrs ) n.pos 5)
          else 
-            Drawing.html n.pos n.dims
+            let label = if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
+            Drawing.htmlAnchor n.pos n.dims n.isMath            
             <| HtmlDefs.makeLatex
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
                  -- Html.Events.on "mousemove" (D.succeed (EltHover id))
             ] ++ 
-            (activityToClasses n.isActive |> List.map Html.Attributes.class)        
+            (activityToClasses n.isActive |> List.map Html.Attributes.class)
+           -- ++ (if n.isMath then [] else  [Html.Attributes.class "text-node"])
             ++
             HtmlDefs.onRendered (Msg.NodeRendered id)
             )
-             n.label
+             label
                 
 
              {- Drawing.fromString 

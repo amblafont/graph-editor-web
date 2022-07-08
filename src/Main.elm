@@ -74,6 +74,7 @@ import Format.Version0
 import Format.Version1
 import Format.Version2
 import Format.Version3
+import Format.Version4
 import Format.LastVersion as LastFormat
 
 import List.Extra
@@ -108,6 +109,7 @@ port loadedGraph0 : ({ graph : Format.Version0.Graph, fileName : String } -> a) 
 port loadedGraph1 : ({ graph : Format.Version1.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph2 : ({ graph : Format.Version2.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph3 : ({ graph : Format.Version3.Graph, fileName : String } -> a) -> Sub a
+port loadedGraph4 : ({ graph : Format.Version4.Graph, fileName : String } -> a) -> Sub a
 
 port clipboardWriteGraph : LastFormat.Graph -> Cmd a
 -- tells JS we got a paste event with such data
@@ -141,6 +143,7 @@ subscriptions m =
       loadedGraph1 (\ r -> Loaded (Format.Version1.fromJSGraph r.graph) r.fileName),
       loadedGraph2 (\ r -> Loaded (Format.Version2.fromJSGraph r.graph) r.fileName),
       loadedGraph3 (\ r -> Loaded (Format.Version3.fromJSGraph r.graph) r.fileName),
+      loadedGraph4 (\ r -> Loaded (Format.Version4.fromJSGraph r.graph) r.fileName),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick)
@@ -570,6 +573,15 @@ update_DefaultMode msg model =
     let clearSel = noCmd <| { model | graph = GraphDefs.clearSelection 
                         model.graph } 
     in
+    let createPoint isMath =
+            let (newGraph, newId) = Graph.newNode model.graph 
+                    (newNodeLabel model.mousePos "" isMath)
+                newModel = addOrSetSel False newId
+                   <| setSaveGraph model newGraph                    
+            in
+            noCmd <| initialise_RenameMode [ newId ] newModel
+    in
+      
     
     {- let updateStr =
        GraphProof.proofStatementToString  -}
@@ -656,14 +668,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'r') -> rename model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise <| pushHistory model 
-        
-        KeyChanged False _ (Character 'p') -> 
-            let (newGraph, newId) = Graph.newNode model.graph 
-                    (newNodeLabel model.mousePos "")
-                newModel = addOrSetSel False newId
-                   <| setSaveGraph model newGraph                    
-            in
-            noCmd <| initialise_RenameMode [ newId ] newModel
+        KeyChanged False _ (Character 't') -> createPoint False
+        KeyChanged False _ (Character 'p') -> createPoint True
            --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
         --                                            Msg.focusId quickInputId)
@@ -1065,6 +1071,7 @@ helpMsg model =
 
                 ++ "\n Basic editing: "
                 ++ "new [p]oint"
+                ++ ", new [t]ext"               
                 ++ ", [del]ete selected object (also [x])"               
                 ++ ", [q] find and replace in selection"                 
                 ++ ", [r]ename selected object (or double click)" 
