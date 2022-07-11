@@ -244,6 +244,7 @@
                      sendGraphToElm(json, file.name);
                  }
                  fr.readAsText(file);
+                 document.title = file.name;
              }
 
              input.click();
@@ -309,6 +310,7 @@
              if (name) {
                download(JSON.stringify(d), name /* + '.json' */, 'application/json');
                app.ports.savedGraph.send(name);
+               document.title = name;
              }
          });
 
