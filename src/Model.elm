@@ -50,6 +50,7 @@ type alias Model =
     -- blitzFlag : Bool
     , bottomText : String
     , autoSave : Bool
+    , latexPreamble : String
     }
 
 
@@ -57,11 +58,11 @@ undo : Model -> Model
 undo m = popHistory <| updateWithGraphInfo m <| peekHistory m
 
 toGraphInfo : Model -> GraphInfo
-toGraphInfo m = { graph = m.graph, sizeGrid = m.sizeGrid }
+toGraphInfo m = { graph = m.graph, sizeGrid = m.sizeGrid, latexPreamble = m.latexPreamble }
 
 updateWithGraphInfo : Model -> GraphInfo -> Model
-updateWithGraphInfo m {graph, sizeGrid} = 
-   { m | graph = graph, sizeGrid = sizeGrid}
+updateWithGraphInfo m {graph, sizeGrid, latexPreamble} = 
+   { m | graph = graph, sizeGrid = sizeGrid, latexPreamble = latexPreamble}
 
 
 peekHistory : Model -> GraphInfo
@@ -110,6 +111,7 @@ createModel sizeGrid g =
     , fileName = "graph.json"
     , bottomText = ""
     , autoSave = True
+    , latexPreamble = ""
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse

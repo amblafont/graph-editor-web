@@ -1,7 +1,7 @@
 port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown, makePasteCapture,
-   bottomTextId, computeLayout)
+   bottomTextId, computeLayout, latexPreambleId)
 import Html
 import Html.Attributes
 import Html.Events
@@ -21,6 +21,9 @@ canvasId = "canvas"
 
 bottomTextId : String
 bottomTextId = "bottom-text"
+
+latexPreambleId : String
+latexPreambleId = "latex-preamble"
 
 pasteElement = "paste-capture"
 latexElement = "math-latex"

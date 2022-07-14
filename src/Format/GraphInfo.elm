@@ -6,8 +6,9 @@ import GraphDefs exposing (EdgeLabel, NodeLabel)
 defaultGridSize : Int
 defaultGridSize = 200
 
-type alias GraphInfo = { graph : Graph.Graph NodeLabel EdgeLabel, sizeGrid : Int}
+type alias GraphInfo = { graph : Graph.Graph NodeLabel EdgeLabel, sizeGrid : Int,
+                         latexPreamble : String}
 
 makeGraphInfo : Graph.Graph NodeLabel EdgeLabel -> Int -> GraphInfo
-makeGraphInfo = GraphInfo
+makeGraphInfo g s = GraphInfo g s ""
 

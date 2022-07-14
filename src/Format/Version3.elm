@@ -1,15 +1,8 @@
 module Format.Version3 exposing (Graph, Edge, fromJSGraph, version, ArrowStyle)
 
-{- import Polygraph as Graph exposing (Graph)
-import Geometry.Point exposing (Point)
-import ArrowStyle
-import GraphDefs exposing (EdgeLabel, NodeLabel)
-import ArrowStyle exposing (LabelAlignment(..))
-import Format.GraphInfo exposing (GraphInfo)
- -}
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
-import Format.GraphInfo exposing (GraphInfo, defaultGridSize)
+import Format.GraphInfo exposing (GraphInfo)
 import ArrowStyle exposing (LabelAlignment(..))
 import Format.Version4 as NextVersion
 

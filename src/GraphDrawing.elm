@@ -31,6 +31,8 @@ type alias NodeDrawingLabel =
           -- watchEnterLeave : Bool
     }
 
+type alias Config = { latexPreamble : String }
+
 type Activity = 
      MainActive
    | WeakActive
@@ -104,8 +106,8 @@ activityToClasses a =
      WeakActive -> ["weak-active-label"]
      _ -> []
 
-nodeLabelDrawing : List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
-nodeLabelDrawing attrs node =
+nodeLabelDrawing : Config -> List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
+nodeLabelDrawing cfg attrs node =
     let n = node.label in
     let _ = Debug.log "pos" n.pos in
     let id = node.id in
@@ -117,7 +119,7 @@ nodeLabelDrawing attrs node =
          if n.label == "" then
              (Drawing.circle (Drawing.color color :: attrs ) n.pos 5)
          else 
-            let label = if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
+            let label = cfg.latexPreamble ++ "\n" ++ if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
             Drawing.htmlAnchor n.pos n.dims n.isMath            
             <| HtmlDefs.makeLatex
             ([   MouseEvents.onClick (NodeClick id),
@@ -143,22 +145,22 @@ nodeLabelDrawing attrs node =
              
         ) 
 
-nodeDrawing : Node NodeDrawingLabel -> Drawing Msg
-nodeDrawing n =
+nodeDrawing : Config -> Node NodeDrawingLabel -> Drawing Msg
+nodeDrawing cfg n =
   {-  let watch = if n.label.watchEnterLeave then
         [Drawing.onMouseEnter (NodeEnter n.id),
          Drawing.onMouseLeave (NodeLeave n.id) ]
          else []
    in  -}
-    nodeLabelDrawing
+    nodeLabelDrawing cfg
     [Drawing.onClick (NodeClick n.id)]
     
     n
         
 
 
-segmentLabel : QuadraticBezier -> Graph.EdgeId -> EdgeDrawingLabel -> Float -> Drawing Msg
-segmentLabel q edgeId label curve =
+segmentLabel : Config -> QuadraticBezier -> Graph.EdgeId -> EdgeDrawingLabel -> Float -> Drawing Msg
+segmentLabel cfg q edgeId label curve =
     let offset = 10 + (if ArrowStyle.isDouble label.style then ArrowStyle.doubleSize else 0) in
     let labelpos =              
               -- Quiver algorithm, following redraw_label
@@ -208,15 +210,15 @@ segmentLabel q edgeId label curve =
              ++
              HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
             )
-             label.label
+            <| cfg.latexPreamble ++ "\n" ++ label.label
             {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
               labelpos label.label  -}
          
 
-edgeDrawing : Graph.EdgeId 
+edgeDrawing : Config -> Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims
      -> EdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
-edgeDrawing edgeId {- from to -} label q curve =
+edgeDrawing cfg edgeId {- from to -} label q curve =
     let c = activityToColor label.isActive in
     
     
@@ -233,7 +235,7 @@ edgeDrawing edgeId {- from to -} label q curve =
           ] 
           label.style
          q, 
-          segmentLabel q edgeId label curve]
+          segmentLabel cfg q edgeId label curve]
 
 {- type alias DrawingDims msg =
     { drawing : Drawing msg
@@ -241,13 +243,13 @@ edgeDrawing edgeId {- from to -} label q curve =
     } -}
 
 
-graphDrawing : Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
-graphDrawing g0 =
+graphDrawing : Config -> Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
+graphDrawing cfg g0 =
      
       let padding = 5 in
       let g = Graph.mapRecAll     
               identity identity      
-              (\id n -> { drawing = nodeDrawing (Node id n), 
+              (\id n -> { drawing = nodeDrawing cfg (Node id n), 
                       posDims = {
                       dims = 
                       
@@ -259,7 +261,7 @@ graphDrawing g0 =
                        } )
                (\id n1 n2 e -> 
                    let q = Geometry.segmentRectBent n1.posDims n2.posDims e.style.bend in
-                   { drawing = edgeDrawing id e q e.style.bend,                     
+                   { drawing = edgeDrawing cfg id e q e.style.bend,                     
                     -- TODO
                      posDims = {
                          pos = Bez.middle q,

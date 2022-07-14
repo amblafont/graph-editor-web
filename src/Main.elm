@@ -75,6 +75,7 @@ import Format.Version1
 import Format.Version2
 import Format.Version3
 import Format.Version4
+import Format.Version5
 import Format.LastVersion as LastFormat
 
 import List.Extra
@@ -110,6 +111,7 @@ port loadedGraph1 : ({ graph : Format.Version1.Graph, fileName : String } -> a) 
 port loadedGraph2 : ({ graph : Format.Version2.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph3 : ({ graph : Format.Version3.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph4 : ({ graph : Format.Version4.Graph, fileName : String } -> a) -> Sub a
+port loadedGraph5 : ({ graph : Format.Version5.Graph, fileName : String } -> a) -> Sub a
 
 port clipboardWriteGraph : LastFormat.Graph -> Cmd a
 -- tells JS we got a paste event with such data
@@ -144,6 +146,7 @@ subscriptions m =
       loadedGraph2 (\ r -> Loaded (Format.Version2.fromJSGraph r.graph) r.fileName),
       loadedGraph3 (\ r -> Loaded (Format.Version3.fromJSGraph r.graph) r.fileName),
       loadedGraph4 (\ r -> Loaded (Format.Version4.fromJSGraph r.graph) r.fileName),
+      loadedGraph5 (\ r -> Loaded (Format.Version5.fromJSGraph r.graph) r.fileName),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick)
@@ -321,6 +324,7 @@ update msg modeli =
                 {- FindInitial -> selectInitial model -}
                 QuickInput s -> let _ = Debug.log "coucou1!" () in
                      { modeli | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
+                LatexPreambleEdit s -> { modeli | latexPreamble = s }
                 -- EditBottomText s -> 
                 --     let _ = Debug.log "bottomText" model.bottomText in
                 --     { model | bottomText = {- Debug.log "bottomText" -} s}
@@ -360,10 +364,7 @@ update msg modeli =
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
      Do cmd -> (model, cmd)
-     Loaded g fileName -> ({ model | graph = g.graph,
-                                             sizeGrid = g.sizeGrid, 
-                                             fileName = fileName,
-                                             mode = DefaultMode },
+     Loaded g fileName -> (updateWithGraphInfo { model | mode = DefaultMode } g,
                      -- we need drawn elements to resend their size
                                              computeLayout() )
      FindReplace req -> noCmd <| setSaveGraph model 
@@ -691,10 +692,15 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             let _ = Debug.log "edgeclick" () in
              noCmd <| addOrSetSel e.keys.shift n model  -}
         KeyChanged False _ (Character 'f') -> noCmd
-              <| setSaveGraph model 
-              <| Graph.map 
-                (\ _ n -> if n.selected then GraphDefs.snapNodeToGrid model.sizeGrid n else n )
-                (always identity) model.graph 
+            <| let isSel = GraphDefs.fieldSelect model.graph  in
+                case GraphDefs.selectedNodes model.graph of
+                 [] -> model
+                 _ -> setSaveGraph model 
+                       <| 
+                        Graph.map 
+                         (\ _ n -> if isSel n then GraphDefs.snapNodeToGrid model.sizeGrid n else n )
+                        (always identity) model.graph 
+              
         KeyChanged False _ (Character 'h') -> move pi
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
@@ -1210,8 +1216,9 @@ additionnalDrawing m =
 
 view : Model -> Html Msg
 view model =
-    let missings = Graph.invalidEdges model.graph in
-    let drawings= graphDrawing (graphDrawingFromModel model) in
+    let missings = Graph.invalidEdges model.graph in   
+    let cfg = { latexPreamble = model.latexPreamble } in
+    let drawings= graphDrawing cfg (graphDrawingFromModel model) in
     let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.modedSizeGrid model) in
     let nmissings = List.length missings in
     let svg =   Drawing.group [grid,
@@ -1247,6 +1254,7 @@ view model =
             ],
             Html.button [Html.Events.onClick Save] [Html.text "Save"]
            , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
+           , Html.a [Html.Attributes.href  ("#" ++ HtmlDefs.latexPreambleId)] [Html.text "Latex preamble"]
             {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),
                    Html.Attributes.title "Should not be necessary"
             ] [Html.text "Recompute labels"] -}
@@ -1271,7 +1279,14 @@ view model =
               Html.Attributes.value model.bottomText, 
               Html.Attributes.id HtmlDefs.bottomTextId
              {- Html.Events.onInput EditBottomText -}]
-            [{- Html.text model.bottomText -} ]
+            [{- Html.text model.bottomText -} ],
+            Html.text "latex preamble",
+            Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
+              Html.Attributes.placeholder "latex Preamble",
+              Html.Attributes.value model.latexPreamble, 
+              Html.Attributes.id HtmlDefs.latexPreambleId,
+              Html.Events.onInput LatexPreambleEdit
+            ] [ ]
            ]
           ]
     in

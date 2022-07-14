@@ -59,6 +59,7 @@ type Msg
   | ToggleAutosave
   | FindReplace { search: String, replace:String}
   | MinuteTick
+  | LatexPreambleEdit String
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String
