@@ -1,4 +1,4 @@
-module Format.GraphInfo exposing (GraphInfo, defaultGridSize, makeGraphInfo)
+module Format.GraphInfo exposing (GraphInfo, defaultGridSize)
 -- the data that we want to copy/save
 import Polygraph as Graph
 import GraphDefs exposing (EdgeLabel, NodeLabel)
@@ -8,7 +8,4 @@ defaultGridSize = 200
 
 type alias GraphInfo = { graph : Graph.Graph NodeLabel EdgeLabel, sizeGrid : Int,
                          latexPreamble : String}
-
-makeGraphInfo : Graph.Graph NodeLabel EdgeLabel -> Int -> GraphInfo
-makeGraphInfo g s = GraphInfo g s ""
 

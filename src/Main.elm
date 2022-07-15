@@ -113,7 +113,7 @@ port loadedGraph3 : ({ graph : Format.Version3.Graph, fileName : String } -> a) 
 port loadedGraph4 : ({ graph : Format.Version4.Graph, fileName : String } -> a) -> Sub a
 port loadedGraph5 : ({ graph : Format.Version5.Graph, fileName : String } -> a) -> Sub a
 
-port clipboardWriteGraph : LastFormat.Graph -> Cmd a
+port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
 -- tells JS we got a paste event with such data
 port pasteGraph : JE.Value -> Cmd a
 -- JS would then calls us back with the decoded graph
@@ -608,10 +608,12 @@ update_DefaultMode msg model =
         CopyGraph ->
               (model,
                clipboardWriteGraph <| 
-                 LastFormat.toJSGraph 
-                   <| Format.GraphInfo.makeGraphInfo
-                      (GraphDefs.selectedGraph model.graph)
-                       model.sizeGrid)
+                 { graph = LastFormat.toJSGraph 
+                    { graph = GraphDefs.selectedGraph model.graph
+                      , sizeGrid = model.sizeGrid 
+                      , latexPreamble = model.latexPreamble
+                      }
+                    , version = LastFormat.version } )
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged False _ (Character 'g') -> 

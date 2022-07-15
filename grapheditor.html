@@ -304,15 +304,19 @@
          function fromElmGraph(a) {
              return {graph : a.graph, version : a.version };;
          }
-         app.ports.saveGraph.subscribe(function(a) {
-             var d = fromElmGraph(a);
+
+         function saveGraph(a) {
+             
              var name = window.prompt("Filename?", a.fileName) ;
              if (name) {
+                var d = fromElmGraph(a);
                download(JSON.stringify(d), name /* + '.json' */, 'application/json');
                app.ports.savedGraph.send(name);
                document.title = name;
              }
-         });
+         }
+         
+         app.ports.saveGraph.subscribe(saveGraph);
 
          app.ports.quicksaveGraph.subscribe(function(arg) {
             console.log("Quicksaving...");
@@ -352,7 +356,7 @@
             try { json = JSON.parse(paste); }
             catch (e) { json = false; }
             if (json) 
-              app.ports.clipboardGraph.send(json);
+              app.ports.clipboardGraph.send(json.graph);
          }
 
          app.ports.pasteGraph.subscribe(handlePasteGraph);
