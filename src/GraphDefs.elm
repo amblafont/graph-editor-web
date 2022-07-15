@@ -21,7 +21,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
 import IntDict
 import Geometry.Point as Point exposing (Point)
 import Geometry
-import ArrowStyle exposing (ArrowStyle)
+import ArrowStyle exposing (ArrowStyle, LabelAlignment(..))
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 import GraphProof exposing (LoopNode, LoopEdge, Diagram)
 
@@ -80,7 +80,7 @@ exportQuiver sizeGrid g =
                [JEncode.int e.from
                , JEncode.int e.to
                , JEncode.string e.label.label
-               , JEncode.int 0 -- alignment
+               , JEncode.int (if e.label.style.labelAlignment == Right then 2 else 0) -- alignment
                , JEncode.object <| ArrowStyle.quiverStyle e.label.style
                   -- [("level", if e.label.style.double then JEncode.int 2 else JEncode.int 1)] --options
                 ] in
