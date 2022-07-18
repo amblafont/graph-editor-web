@@ -370,6 +370,11 @@
              elmnt.scrollIntoView(); 
          });
 
+         app.ports.select.subscribe(function(id) {
+            var elmnt = document.getElementById(id);
+            elmnt.select();
+         });
+
          app.ports.computeLayout.subscribe(function(s) {                         
              var children = document.getElementsByClassName(renderedClass);             
              for (var i = 0; i < children.length; ++i) {

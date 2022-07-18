@@ -88,8 +88,10 @@ make_input pos label onChange =
                        Html.Attributes.style "width"
                            <| String.fromInt (String.length label + 1) ++ "ch"
                     ] ++ 
-                    HtmlDefs.onRendered (always <| Do <| Msg.focusId HtmlDefs.idInput ))
-                      []
+                    HtmlDefs.onRendered (always <| Do <| Msg.focusId HtmlDefs.idInput )
+                    ++
+                    HtmlDefs.onRendered (always <| Do <| HtmlDefs.select HtmlDefs.idInput )
+                    ) []                                        
              |> Drawing.html pos (100,16)
 
 activityToColor : Activity -> Drawing.Color

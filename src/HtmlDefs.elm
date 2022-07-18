@@ -1,7 +1,7 @@
 port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown, makePasteCapture,
-   bottomTextId, computeLayout, latexPreambleId)
+   bottomTextId, computeLayout, latexPreambleId, select)
 import Html
 import Html.Attributes
 import Html.Events
@@ -9,6 +9,7 @@ import Geometry.Point exposing (Point)
 import Json.Decode as D
 
 port computeLayout : () -> Cmd a
+port select : String -> Cmd a
 
 
 
