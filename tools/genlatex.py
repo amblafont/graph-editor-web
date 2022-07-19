@@ -11,6 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementNotInteractableException
+from selenium.common.exceptions import UnexpectedAlertPresentException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
@@ -36,7 +37,10 @@ if(len(sys.argv) != 2):
 
 filename = sys.argv[1]
 
-capabilities = DesiredCapabilities.FIREFOX
+
+options = webdriver.FirefoxOptions()
+# let the user handle modal dialog boxes when executing async js scripts
+options.unhandled_prompt_behavior = 'ignore'
 browser = None 
 
 def ctrlKey(actions,key):
@@ -47,34 +51,44 @@ def editDiag(diag):
   global browser
 
   # we only launch firefox once, if needed
-  if browser == None:
-    browser = webdriver.Firefox(capabilities=capabilities)
+  if browser == None:    
+    browser = webdriver.Firefox(options=options)
 
   browser.get(urlYade)
   if (diag.strip() == ""):
       print("Creating new diagram")
-      browser.find_element_by_xpath('//button[text()="Clear"]').click()
+      browser.find_element(By.XPATH, '//button[text()="Clear"]').click()
   else:
       print("Loading diagram ")
       cmd = 'sendGraphToElm('+ diag + ", 'python');"
       browser.execute_script(cmd)
-# we need to unsubscribe the implemented saveGraph procedure because it pops a modal box, which
-# interrupts the script execution
-  cmd = "var callback = arguments[arguments.length - 1]; " \
-   'app.ports.saveGraph.unsubscribe(saveGraph);' \
-   'app.ports.saveGraph.subscribe(function(a) { callback(JSON.stringify(fromElmGraph(a))); });'
+  # we unsubscribe the implemented saveGraph procedure 
+  browser.execute_script("app.ports.saveGraph.unsubscribe(saveGraph);")
+  # browser.execute_script('var
+
   print("Save to continue")
-  graph = browser.execute_async_script(cmd)
+  graph = None
+  # graph = None: it may be that the script was interrupted because
+  # of a modal dialog box
+  cmd = "var callback = arguments[arguments.length - 1]; " \
+   "var mysave = function(a) {  callback(JSON.stringify(fromElmGraph(a))); } ;" \
+   'app.ports.saveGraph.subscribe(mysave);'
+  while graph == None:
+    try:
+       graph = browser.execute_async_script(cmd)
+    except UnexpectedAlertPresentException:
+        continue
+
   print("Exporting to latex")
   # Restoring the usual saveGraph procedure
   browser.execute_script("app.ports.saveGraph.subscribe(saveGraph);")
   
-  canvas = browser.find_element_by_id("canvas")
+  canvas = browser.find_element(By.ID, "canvas")
   canvas.click()
   actions = ActionChains(browser)
   actions.move_to_element(canvas).move_by_offset(10,10).perform()
   ctrlKey(actions,'a').perform()
-  browser.find_element_by_xpath('//button[text()="Export selection to quiver"]').click()
+  browser.find_element(By.XPATH, '//button[text()="Export selection to quiver"]').click()
   # switch to new tab
   browser.switch_to.window(browser.window_handles[1])
   
