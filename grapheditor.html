@@ -397,6 +397,15 @@
          app.ports.findReplace.send({'search':search, 'replace': replace});
          }
 
+         app.ports.promptEquation.subscribe(function(a) {             
+             var rep = window.prompt("Enter equation", 
+                  "a -- f -> b -- g -> c = a -- h -> d -- k -> c") ;
+             if (rep && rep.length > 0) {                
+                    app.ports.promptedEquation.send(rep);
+             }             
+             
+         });
+
          // Elm browser keydown handler is passive
          // and thus cannot prevent default behaviour
          // so we make our custom event listener.

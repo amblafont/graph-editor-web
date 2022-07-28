@@ -49,7 +49,7 @@ type Msg
   | CopyGraph
   -- a graph is pasted
   | PasteGraph GraphInfo
-  | QuickInput String
+  | QuickInput Bool String -- flag: is it the final string?
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
   | MouseOn Graph.Id

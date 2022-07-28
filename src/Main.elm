@@ -82,6 +82,7 @@ import List.Extra
 import GraphDefs exposing (exportQuiver)
 import GraphProof
 import Format.GraphInfo
+import Html exposing (a)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -120,6 +121,8 @@ port pasteGraph : JE.Value -> Cmd a
 port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
 port findReplace : ({ search: String, replace:String} -> a) -> Sub a
 port promptFindReplace : () -> Cmd a
+port promptEquation : () -> Cmd a
+port promptedEquation : (String -> a) -> Sub a
 
 
 
@@ -171,6 +174,7 @@ subscriptions m =
     then [] 
     else
     [  E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
+      promptedEquation (QuickInput True),
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
            (\e -> e |> D.decodeValue (D.map2 ( \ks k -> 
@@ -322,7 +326,7 @@ update msg modeli =
                    let _ = Debug.log "mouseleave" () in
                     { modeli | mouseOnCanvas = False }
                 {- FindInitial -> selectInitial model -}
-                QuickInput s -> let _ = Debug.log "coucou1!" () in
+                QuickInput final s -> let _ = Debug.log "coucou1!" () in
                      { modeli | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                 LatexPreambleEdit s -> { modeli | latexPreamble = s }
                 -- EditBottomText s -> 
@@ -390,12 +394,8 @@ update msg modeli =
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
-    case msg of
-        KeyChanged False _ (Control "Escape") ->
-            ({model | mode = DefaultMode}, 
-                 Task.attempt (\_ -> Msg.noOp) (Dom.blur quickInputId))
-        KeyChanged False _ (Control "Enter") ->
-            ({model | graph = graphQuickInput model ch, 
+    let finalRet chain = 
+            ({model | graph = graphQuickInput model chain, 
                      quickInput = "",
                      mode = DefaultMode }, 
                      Cmd.batch
@@ -408,13 +408,23 @@ update_QuickInput ch msg model =
                      computeLayout (),
                      Msg.unfocusId HtmlDefs.quickInputId                     
                      ])
-        QuickInput s ->
+    in
+    case msg of
+        KeyChanged False _ (Control "Escape") ->
+            ({model | mode = DefaultMode}, 
+                 Task.attempt (\_ -> Msg.noOp) (Dom.blur quickInputId))
+        KeyChanged False _ (Control "Enter") ->
+            finalRet ch
+        QuickInput final s ->
                 let (statusMsg, chain) =
                         case Parser.run equalityParser s of
                             Ok l -> (Debug.toString l, Just l)
                             Err e -> (Parser.deadEndsToString e, Nothing)
                 in
-                noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
+                if final then
+                    finalRet chain 
+                else
+                  noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
         _ -> noCmd model
 
 
@@ -603,6 +613,8 @@ update_DefaultMode msg model =
         KeyChanged False _ (Character 'w') -> clearSel
         KeyChanged False _ (Character 'e') ->
            noCmd <| initialiseEnlarge <| pushHistory model
+        KeyChanged False _ (Character 'E') ->
+           (model, promptEquation ())
         KeyChanged False k (Character 'a') -> 
             if not k.ctrl then
              Modes.NewArrow.initialise <| pushHistory model 
@@ -1119,6 +1131,7 @@ helpMsg model =
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [C] generate Coq script to address selected incomplete subdiagram "
                 ++ "(i.e., a subdiagram with an empty branch)"
+                ++ ", [E] enter an equation (prompt)"
                 
                    --  ++ ", [q]ickInput mode" 
                 
@@ -1193,7 +1206,7 @@ quickInputView m =
          Html.text "Enter equation: ",
          Html.input  [Html.Attributes.type_ "text",
                        Html.Attributes.id quickInputId,
-                     Html.Events.onInput QuickInput,
+                     Html.Events.onInput (QuickInput False),
                      -- Html.Events.onFocus (QuickInput ""),
                      Html.Attributes.value m.quickInput
                      ]
