@@ -364,7 +364,7 @@ update msg modeli =
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
      Do cmd -> (model, cmd)
-     Loaded g fileName -> (updateWithGraphInfo { model | mode = DefaultMode } g,
+     Loaded g fileName -> (updateWithGraphInfo { model | mode = DefaultMode, fileName = fileName } g,
                      -- we need drawn elements to resend their size
                                              computeLayout() )
      FindReplace req -> noCmd <| setSaveGraph model 

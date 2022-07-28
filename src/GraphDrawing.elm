@@ -110,8 +110,7 @@ activityToClasses a =
 
 nodeLabelDrawing : Config -> List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
 nodeLabelDrawing cfg attrs node =
-    let n = node.label in
-    let _ = Debug.log "pos" n.pos in
+    let n = node.label in    
     let id = node.id in
     let color = activityToColor node.label.isActive in
     (
