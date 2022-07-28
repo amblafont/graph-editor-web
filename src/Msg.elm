@@ -1,4 +1,4 @@
-module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, 
+module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, unfocusId,
   onTabPreventDefault, mayUpdateArrowStyle)
 
 import Collage exposing (Point)
@@ -74,6 +74,10 @@ noOp = Do Cmd.none
 
 focusId : String -> Cmd Msg
 focusId s = Task.attempt (\_ -> noOp) (Dom.focus s)
+
+unfocusId : String -> Cmd Msg
+unfocusId s = Task.attempt (\_ -> noOp) (Dom.blur s)
+
 
 mayUpdateArrowStyle : Msg -> ArrowStyle -> Maybe ArrowStyle
 mayUpdateArrowStyle m style =

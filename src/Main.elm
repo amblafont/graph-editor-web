@@ -398,13 +398,16 @@ update_QuickInput ch msg model =
             ({model | graph = graphQuickInput model ch, 
                      quickInput = "",
                      mode = DefaultMode }, 
-                     -- new nodes may have sent their dimensions
+                     Cmd.batch
+                     [-- new nodes may have sent their dimensions
                      -- but the model graph did not contain
                      -- them at this time
                      -- so we need to compute them again
                      -- TODO: take these dimensions into account
                      -- even before
-                     computeLayout ())
+                     computeLayout (),
+                     Msg.unfocusId HtmlDefs.quickInputId                     
+                     ])
         QuickInput s ->
                 let (statusMsg, chain) =
                         case Parser.run equalityParser s of
