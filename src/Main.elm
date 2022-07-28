@@ -95,6 +95,8 @@ port onMouseMoveFromJS : (Point -> a) -> Sub a
 port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
+port onCopy : (() -> a) -> Sub a
+
 -- tell js to save the graph, version  is the format version
 type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
 port saveGraph : JsGraphInfo -> Cmd a
@@ -174,6 +176,7 @@ subscriptions m =
     then [] 
     else
     [  E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
+      onCopy (always CopyGraph),
       promptedEquation (QuickInput True),
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
@@ -1258,7 +1261,7 @@ view model =
                             MouseDown
                             -- MouseEvents.onDown MouseDown
                      , Html.Events.onMouseUp MouseUp
-                     , Html.Events.on "copy" (D.succeed CopyGraph)
+                   --  , Html.Events.on "copy" (D.succeed CopyGraph)
                           --    , Msg.onTabAttribute
                        ]
     in

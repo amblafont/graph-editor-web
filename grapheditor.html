@@ -411,8 +411,12 @@
          // so we make our custom event listener.
          document.addEventListener("keydown", function(event)  {
                     app.ports.onKeyDownActive.send(event);
-         }
-        );
+         });
+
+         document.addEventListener("copy", function(event) {
+                    app.ports.onCopy.send(null);
+         });
+        
         </script>
     </body>
 </html>
