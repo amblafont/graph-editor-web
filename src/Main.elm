@@ -479,7 +479,8 @@ next_RenameMode finish labels model =
       { m2 | mode = DefaultMode }
     else
       case labels of
-        [] ->   { m2 | mode = DefaultMode }
+        [] -> { m2 | mode = DefaultMode }
+        [_] -> { m2 | mode = DefaultMode }
         _ :: q -> { m2 | mode = RenameMode q }
         
 
