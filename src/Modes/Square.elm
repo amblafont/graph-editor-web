@@ -17,7 +17,7 @@ import ArrowStyle
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import MyDiff
-import Html exposing (q)
+import Geometry.Point exposing (Point)
 
 
 
@@ -63,7 +63,8 @@ possibleSquareStates g id =
                 , configuration = 0
                 , labelConfiguration = 0
                 , n1Label = l1
-                , n2Label = l2                
+                , n2Label = l2
+                , guessPos = False      
                 }
             )
 
@@ -89,10 +90,10 @@ square_setPossibility idx g chosenNode =
             
 
 
-square_updatePossibility : Model -> Int -> NodeId -> ( Model, Cmd Msg )
-square_updatePossibility m idx node =
+square_updatePossibility : Model -> Int -> Bool -> NodeId -> ( Model, Cmd Msg )
+square_updatePossibility m idx guessPos node =
     square_setPossibility idx m.graph node
-        |> Maybe.map (\state -> { m | mode = SquareMode state })
+        |> Maybe.map (\state -> { m | mode = SquareMode { state | guessPos = guessPos } })
         |> Maybe.withDefault m
         |> noCmd
 
@@ -104,7 +105,7 @@ square_updatePossibility m idx node =
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
     GraphDefs.selectedNode m.graph
-        |> Maybe.map (.id >> square_updatePossibility m 0)
+        |> Maybe.map (.id >> square_updatePossibility m 0 True)
         -- |> Maybe.map
         -- -- prevent bugs (if the mouse is thought
         -- -- to be kept on a point)
@@ -170,7 +171,14 @@ chooseAmong l n =
       t :: q -> modBy t n :: (chooseAmong q (n // t))
       [] -> []
 
-
+guessPosition : Model -> SquareState -> Point
+guessPosition m s = 
+     case Graph.getNodes [s.n1, s.chosenNode, s.n2] m.graph
+                        |> List.map (.label >> .pos)  of
+       [p1, p2, p3] -> Geometry.Point.diamondPave p1 p2 p3
+       _ -> m.mousePos
+    
+   -- case Graph.getNodes
 
 moveNodeViewInfo : Model -> SquareState -> ( ViewInfo, NodeId, Bool )
 moveNodeViewInfo m data =
@@ -222,9 +230,11 @@ moveNodeViewInfo m data =
             [a,b,c] -> (a,b,c)
             _ -> ("!","!","!") --this should never happen
     in
+    let newPos = if data.guessPos then guessPosition m data else m.mousePos in
     let
         ( ( g, n ), created ) =
-            mayCreateTargetNode m labelNode
+            mayCreateTargetNodeAt m newPos labelNode
+            -- mayCreateTargetNode m labelNode
     in
     {- let
         edges =
@@ -318,12 +328,14 @@ update state msg model =
 
    
         KeyChanged False _ (Character 's') ->            
-                    square_updatePossibility model state.configuration state.chosenNode
+                    square_updatePossibility model state.configuration state.guessPos state.chosenNode
         KeyChanged False _ (Character 'a') ->
                     noCmd  { model | mode = SquareMode { state | labelConfiguration = state.labelConfiguration + 1}}                    
 
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
+        MouseMove _ -> 
+                 noCmd  { model | mode = SquareMode { state | guessPos = False}}                    
         KeyChanged False _ (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next False

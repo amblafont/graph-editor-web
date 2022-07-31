@@ -15,6 +15,7 @@ import Model exposing (..)
 import InputPosition exposing (InputPosition(..))
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
+import Geometry.Point exposing (Point)
 
 
 
@@ -30,7 +31,8 @@ initialise m =
         (\ e -> noCmd {m | mode = SplitArrow 
         { chosenEdge = id, source = e.from, target = e.to, pos = InputPosMouse,
           label = e.label,
-          labelOnSource = True}
+          labelOnSource = True,
+          guessPos = True}
         })
         
         -- |> Maybe.map
@@ -88,6 +90,12 @@ type alias Info = { graph : Graph NodeLabel EdgeLabel,
                     -- default label for renaming
                     le2 : String }
 
+guessPosition : Model -> SplitArrowState -> Point
+guessPosition m s = 
+     case Graph.getNodes [s.source, s.target] m.graph
+                        |> List.map (.label >> .pos)  of
+       [p1, p2] -> Geometry.Point.middle p1 p2
+       _ -> m.mousePos
 
 stateInfo : Model -> SplitArrowState -> Info
 stateInfo m state =
@@ -101,7 +109,10 @@ stateInfo m state =
     let
         ( ( g, n ), created ) =
           let makeInfo pos = mayCreateTargetNodeAt m pos otherLabel in
-           case state.pos of
+           if state.guessPos then
+             makeInfo (guessPosition m state)
+           else
+            case state.pos of
               InputPosGraph id -> ((m.graph, id), False)
               _ -> makeInfo m.mousePos                              
            
@@ -142,6 +153,7 @@ update : SplitArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let next finish = nextStep model finish state in
     let updateState st = { model | mode = SplitArrow st } in
+    let updatePos st = InputPosition.updateNoKeyboard st.pos msg in
     case msg of  
         KeyChanged False _ (Control "Escape") -> switch_Default model
         KeyChanged False _ (Character '/') -> noCmd <| updateState
@@ -150,10 +162,17 @@ update state msg model =
         KeyChanged False _ (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next False
-        
-        _ -> noCmd 
+        _ ->
+           let newPos = InputPosition.updateNoKeyboard state.pos msg in
+           let guessPos = case (msg, newPos) of 
+                      (MouseMove _, _) -> False
+                      (_, InputPosMouse) -> state.guessPos
+                      _ -> False                      
+           in          
+           
+            noCmd 
              <| updateState 
-             { state | pos = InputPosition.updateNoKeyboard state.pos msg } 
+             { state | pos = newPos, guessPos = guessPos } 
            
 help : String
 help =

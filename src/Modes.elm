@@ -67,6 +67,7 @@ type alias SplitArrowState =
     , pos : InputPosition
     , label : GraphDefs.EdgeLabel -- original edge label
     , labelOnSource : Bool -- shall we transfer the existing label from the source
+    , guessPos : Bool -- do we try guessing the position of the new node
     }
 
 
@@ -93,4 +94,7 @@ type alias SquareState =
     , configuration : Int
     -- next possibility of labels to be tested
     , labelConfiguration : Int
+
+    -- should it guess the position of the new node
+    , guessPos : Bool
     }

@@ -1,4 +1,4 @@
-module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx,
+module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx, diamondPave,
   normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList,
   angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
   countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
@@ -49,6 +49,10 @@ diamondPx p1 p2 d =
   let mid = middle p1 p2 in
   add mid <| orthoVectPx p1 p2 d
 
+diamondPave : Point -> Point -> Point -> Point
+diamondPave p1 p2 p3 =
+  add p1 <| subtract p3 p2
+  
 
 flip : Point -> Point
 flip ( x, y ) =
