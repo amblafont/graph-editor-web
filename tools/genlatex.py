@@ -19,8 +19,9 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from os.path import exists
 from collections import namedtuple
+import pyperclip
 
-Diag = namedtuple('Diag' , 'content isFile isEdit isNew isGenerate')
+Diag = namedtuple('Diag' , 'content isFile isEdit isNew isLatex isGenerate isClipboard')
 Command = namedtuple('Command' , 'content prefix command')
 
 import sys
@@ -30,13 +31,14 @@ import in_place
 MAGIC_STRING = "YADE DIAGRAM"
 URL_YADE = 'https://amblafont.github.io/graph-editor/index.html'
 
-if(len(sys.argv) != 2):
-    print('Usage: %s filename' % sys.argv[0])
+if(len(sys.argv) != 2 or (len(sys.argv) == 3 and sys.argv[2] != '-q')):
+    print('Usage: %s filename [-q]' % sys.argv[0])
     print()
+    print("The option -q makes the script close the browser at the end.")
     print("This script looks for lines ending with YADE DIAGRAM '[commands] [diagram]")
     print("where")
     print("- [diagram] is empty, a json encoded diagram (pasted from the editor by using C-c on some selected diagram, or from the content of a saved file) or a filename")
-    print("- [commands] is either n (for new), e (for edit), g (for latex generation), or eg (edit and generation) ")
+    print("- [commands] is either n (for new), e (for edit), g (for latex generation), eg (edit and generation), or c (for copy latex to clipboard)")
     print("(a new diagram is always edited)")
     print("When LaTeX generation is required, the script loads the diagram in the diagram editor, "\
            + " then wait for the user to save the diagram (if edit command is enabled) before generating latex which is then inserted in the file after the line.")
@@ -44,6 +46,10 @@ if(len(sys.argv) != 2):
     
 
     exit(0)
+
+quitAtEnd = len(sys.argv) >= 3 and sys.argv[2] == "-q"
+if quitAtEnd:
+    print("Exiting browser at the end")
 
 
 
@@ -59,7 +65,7 @@ def ctrlKey(actions,key):
 
 
 def parseMagic(line):
-    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *'([nge]+)"
+    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *'([ngec]+)"
     search = re.search(searchPrefix + r" +(.*)$", line)
     if not search:
         # in this case, content is empty
@@ -73,6 +79,23 @@ def parseMagic(line):
     else:
         return None
 
+def makeDiag(cmd):
+      content = cmd.content
+      command = cmd.command
+      isNew = 'n' in command
+      isEdit = 'e' in command
+      isGenerate = 'g' in command
+      isClipboard = 'c' in command
+      return (Diag(content= content,
+                  # prefix = prefix,
+                  isFile = len(content) > 0 and (content[0] != '{'),
+                  isEdit = isEdit or isNew,
+                  isNew = isNew,
+                  isGenerate = isGenerate,
+                  isLatex = isClipboard or isGenerate,
+                  isClipboard = isClipboard
+               ))         
+
 def listDiags(filename):
     # Opening file
     file = open(filename, 'r')
@@ -85,13 +108,7 @@ def listDiags(filename):
            if search:               
                command = search.command
                content = search.content               
-               diags.append(Diag(content= content,
-                  # prefix = prefix,
-                  isFile = len(content) > 0 and (content[0] != '{'),
-                  isEdit = 'e' in command or 'n' in command,
-                  isNew = 'n' in command,
-                  isGenerate = 'g' in command
-               ))         
+               diags.append(makeDiag(search))         
     file.close()
     return diags
 
@@ -190,7 +207,7 @@ def handleDiag(diag):
     latex = None
     if diag.isEdit:
        content = waitSaveDiag()
-    if diag.isGenerate:
+    if diag.isLatex:
        latex = genLatex()
     return (content, latex)
 
@@ -213,13 +230,16 @@ def remakeDiags(fileName):
        print("Handling a diagram")
        if not diag.isEdit:
           print("- No user editing")
-       if diag.isGenerate:
+       if diag.isLatex:
           print("- Latex generation")
        if diag.isFile:
           print("- filename : " + diag.content)
        #print(diag)
        #exit(0)
        (graph, latex) = handleDiag(diag)
+
+       if diag.isClipboard and latex:
+          pyperclip.copy(latex)
 
        if diag.isFile:
            fileName = diag.content
@@ -250,3 +270,5 @@ def remakeDiags(fileName):
 
 filename = sys.argv[1]
 remakeDiags(filename)
+if quitAtEnd:
+  browser.quit()
