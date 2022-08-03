@@ -358,14 +358,16 @@ update msg modeli =
                     exportQuiver <| 
                      GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
      MouseMoveRaw v _ -> (model, onMouseMove v)
-     NodeRendered n dims ->
+     NodeRendered n (x,y) ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
+                let dims = (x, if y == 0 then 12 else y) in
                 noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (n, dims),
                       graph = 
                       Graph.updateNode n (\l -> {l | dims = Just dims }) model.graph                      
                 }
-     EdgeRendered e dims ->
+     EdgeRendered e (x, y) ->
                 -- let _ = Debug.log "nouvelle dims !" (e, dims) in
+                let dims = (x, if y == 0 then 12 else y) in
                 noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (e, dims),
                       graph = 
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
