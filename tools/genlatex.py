@@ -19,38 +19,50 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from os.path import exists
 from collections import namedtuple
+import os
 import pyperclip
 
-Diag = namedtuple('Diag' , 'content isFile isEdit isNew isLatex isGenerate isClipboard')
+Diag = namedtuple('Diag' , 'content isFile isEdit isNew isLatex isGenerate isClipboard isMake')
 Command = namedtuple('Command' , 'content prefix command')
 
 import sys
 import re
 import in_place
+import argparse
 
 MAGIC_STRING = "YADE DIAGRAM"
-URL_YADE = 'https://amblafont.github.io/graph-editor/index.html'
+URL_YADE = os.getenv('YADE_URL')
+if not URL_YADE:
+    URL_YADE = 'https://amblafont.github.io/graph-editor/index.html'
 
-if(len(sys.argv) != 2 or (len(sys.argv) == 3 and sys.argv[2] != '-q')):
-    print('Usage: %s filename [-q]' % sys.argv[0])
-    print()
-    print("The option -q makes the script close the browser at the end.")
-    print("This script looks for lines ending with YADE DIAGRAM '[commands] [diagram]")
-    print("where")
-    print("- [diagram] is empty, a json encoded diagram (pasted from the editor by using C-c on some selected diagram, or from the content of a saved file) or a filename")
-    print("- [commands] is either n (for new), e (for edit), g (for latex generation), eg (edit and generation), or c (for copy latex to clipboard)")
-    print("(a new diagram is always edited)")
-    print("When LaTeX generation is required, the script loads the diagram in the diagram editor, "\
-           + " then wait for the user to save the diagram (if edit command is enabled) before generating latex which is then inserted in the file after the line.")
-    print("The edited diagram is also saved either as a json encoded diagram or in the specified filename")
-    
+DESCRIPTION = """
+This script looks for lines ending with YADE DIAGRAM 'commands [diagram]")
 
-    exit(0)
+- [diagram] (optional) is a filename, or a json encoded diagram (pasted from the editor by 
+  using C-c  on some selected diagram, or from the content of a saved file).
+- "commands" is a string where each char has a specific meaning (some of them are incompatible):
+    GENERAL COMMANDS
+    * n : new diagram (which is edited)
+    * e : edit diagram
+          The edited diagram is saved either as a json encoded diagram or in the specified filename
+    * q : quit browser at the end of script
+    * m : make using the provided make command at 
+    LATEX COMMANDS (executed after the user has saved the diagram, unless no editing was required)
+    * g : latex generation inserted after the matching line    
+    * c : latex copied to the clipboard    
+"""
+#print(DESCRIPTION)
+parser = argparse.ArgumentParser(description = DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("filename")
+parser.add_argument("-m", "--make", help="Make command")
+args = parser.parse_args()
 
-quitAtEnd = len(sys.argv) >= 3 and sys.argv[2] == "-q"
-if quitAtEnd:
-    print("Exiting browser at the end")
+filename = args.filename
+makeCmd = args.make
 
+
+
+quitAtEnd = False
 
 
 
@@ -65,7 +77,7 @@ def ctrlKey(actions,key):
 
 
 def parseMagic(line):
-    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *'([ngec]+)"
+    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *'([ngecmq]+)"
     search = re.search(searchPrefix + r" +(.*)$", line)
     if not search:
         # in this case, content is empty
@@ -80,12 +92,15 @@ def parseMagic(line):
         return None
 
 def makeDiag(cmd):
+      global quitAtEnd
       content = cmd.content
       command = cmd.command
       isNew = 'n' in command
       isEdit = 'e' in command
       isGenerate = 'g' in command
       isClipboard = 'c' in command
+      isMake = 'm' in command
+      quitAtEnd = quitAtEnd or 'q' in command
       return (Diag(content= content,
                   # prefix = prefix,
                   isFile = len(content) > 0 and (content[0] != '{'),
@@ -93,7 +108,8 @@ def makeDiag(cmd):
                   isNew = isNew,
                   isGenerate = isGenerate,
                   isLatex = isClipboard or isGenerate,
-                  isClipboard = isClipboard
+                  isClipboard = isClipboard,
+                  isMake = isMake
                ))         
 
 def listDiags(filename):
@@ -105,9 +121,7 @@ def listDiags(filename):
     for line in file:           
            search = parseMagic(line)
            
-           if search:               
-               command = search.command
-               content = search.content               
+           if search:                            
                diags.append(makeDiag(search))         
     file.close()
     return diags
@@ -265,10 +279,12 @@ def remakeDiags(fileName):
                             fp.write("\n% GENERATED LATEX\n")
                             fp.write(latex)
                             fp.write("\n% END OF GENERATED LATEX\n")
+       if diag.isMake:
+            os.system(makeCmd)
         
 
 
-filename = sys.argv[1]
+
 remakeDiags(filename)
 if quitAtEnd:
   browser.quit()
