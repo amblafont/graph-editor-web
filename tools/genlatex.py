@@ -23,7 +23,7 @@ import os
 import pyperclip
 
 Diag = namedtuple('Diag' , 'content isFile isEdit isNew isLatex isGenerate isClipboard isMake')
-Command = namedtuple('Command' , 'content prefix command')
+Command = namedtuple('Command' , 'content prefix command negcommand')
 
 import sys
 import re
@@ -36,33 +36,44 @@ if not URL_YADE:
     URL_YADE = 'https://amblafont.github.io/graph-editor/index.html'
 
 DESCRIPTION = """
-This script looks for lines ending with YADE DIAGRAM -commands [diagram]")
+This script looks for lines ending with YADE DIAGRAM -commands +commands [diagram]")
 
 - [diagram] (optional) is a filename, or a json encoded diagram (pasted from the editor by 
   using C-c  on some selected diagram, or from the content of a saved file).
-- "commands" is a string where each char has a specific meaning (some of them are incompatible):
+- "commands" is a string where each char has a specific meaning (some of them are incompatible)
+   Prefixing with - disable them (to override the default behaviour), + enable them.
     GENERAL COMMANDS
     * n : new diagram (which is edited)
     * e : edit diagram
           The edited diagram is saved either as a json encoded diagram or in the specified filename
     * q : quit browser at the end of script
-    * m : make using the provided make command at 
+    * m : make using the provided command 
     LATEX COMMANDS (executed after the user has saved the diagram, unless no editing was required)
     * g : latex generation inserted after the matching line    
     * c : latex copied to the clipboard    
 """
 #print(DESCRIPTION)
-parser = argparse.ArgumentParser(description = DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
+parser = argparse.ArgumentParser(description = DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter, prefix_chars='-+')
 parser.add_argument("filename")
-parser.add_argument("-m", "--make", help="Make command")
+parser.add_argument("--make-cmd", help="make command to be executed")
+group = parser.add_argument_group("Specifying default behaviour")
+group.add_argument("+m", action="store_true")
+group.add_argument("+q", action="store_true")
+group.add_argument("+c", action="store_true")
+group.add_argument("+g", action="store_true")
 args = parser.parse_args()
 
+defaultCmd = {
+    "isMake" : args.m, 
+    "isQuit" : args.q,
+    "isClipboard" : args.c,
+    "isGenerate": args.g
+}
 filename = args.filename
-makeCmd = args.make
+makeCmd = args.make_cmd
 
 
-
-quitAtEnd = False
+quitAtEnd = defaultCmd["isQuit"]
 
 
 
@@ -77,17 +88,19 @@ def ctrlKey(actions,key):
 
 
 def parseMagic(line):
-    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *-([ngecmq]+)"
-    search = re.search(searchPrefix + r" +(.*)$", line)
+    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *((?:[-+][ngecmq]+ )+)"
+    search = re.search(searchPrefix + r"+(.*)$", line)
     if not search:
         # in this case, content is empty
         search = re.search(searchPrefix + r"(.*)$", line)
 
     if search:
         prefix = search.group(1)
-        command = search.group(2)
+        commands = search.group(2).split()
+        command =    ''.join([x[1:] for x in commands if x[0] == '+'])
+        negcommand = ''.join([x[1:] for x in commands if x[0] == '-'])        
         content = search.group(3)
-        return Command(content=content, prefix=prefix, command=command)
+        return Command(content=content, prefix=prefix, command=command, negcommand = negcommand)
     else:
         return None
 
@@ -95,12 +108,16 @@ def makeDiag(cmd):
       global quitAtEnd
       content = cmd.content
       command = cmd.command
+      negcommand = cmd.negcommand
+  
       isNew = 'n' in command
       isEdit = 'e' in command
-      isGenerate = 'g' in command
-      isClipboard = 'c' in command
-      isMake = 'm' in command
-      quitAtEnd = quitAtEnd or 'q' in command
+      def makeFlag(char, key):
+        return (defaultCmd[key] and char not in negcommand) or char in command
+      isGenerate = makeFlag('g', "isGenerate")
+      isClipboard = makeFlag('c', "isClipboard")
+      isMake = makeFlag('m', "isMake")      
+      quitAtEnd = makeFlag('q', "isQuit")
       return (Diag(content= content,
                   # prefix = prefix,
                   isFile = len(content) > 0 and (content[0] != '{'),
@@ -287,4 +304,5 @@ def remakeDiags(fileName):
 
 remakeDiags(filename)
 if quitAtEnd:
-  browser.quit()
+  if browser != None:
+     browser.quit()

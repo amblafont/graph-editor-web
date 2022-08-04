@@ -1,0 +1,13 @@
+cell.level : quel type
+vertex
+.position 
+label
+label_colour
+
+d'apres
+import
+
+[version, number of vertices,
+[x,y,"label"],
+[idx_source,idx_target]
+..
