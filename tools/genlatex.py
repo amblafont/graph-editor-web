@@ -36,7 +36,7 @@ if not URL_YADE:
     URL_YADE = 'https://amblafont.github.io/graph-editor/index.html'
 
 DESCRIPTION = """
-This script looks for lines ending with YADE DIAGRAM 'commands [diagram]")
+This script looks for lines ending with YADE DIAGRAM -commands [diagram]")
 
 - [diagram] (optional) is a filename, or a json encoded diagram (pasted from the editor by 
   using C-c  on some selected diagram, or from the content of a saved file).
@@ -77,7 +77,7 @@ def ctrlKey(actions,key):
 
 
 def parseMagic(line):
-    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *'([ngecmq]+)"
+    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *-([ngecmq]+)"
     search = re.search(searchPrefix + r" +(.*)$", line)
     if not search:
         # in this case, content is empty
