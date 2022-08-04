@@ -225,6 +225,7 @@ quiverStyle st =
    (makeIf double ("level", JEncode.int 2))  
    ++ [("style", JEncode.object style )]
    ++ (makeIf (st.bend /= 0) ("curve", JEncode.int <| floor (st.bend * 10)))
+   ++ (makeIf (st.labelPosition /= 0.5) ("label_position", JEncode.int <| floor (st.labelPosition * 100)))
 
 -- from Quiver
 type LabelAlignment =
