@@ -64,7 +64,7 @@ possibleSquareStates g id =
                 , labelConfiguration = 0
                 , n1Label = l1
                 , n2Label = l2
-                , guessPos = False      
+                , guessPos = True      
                 }
             )
 
@@ -90,10 +90,10 @@ square_setPossibility idx g chosenNode =
             
 
 
-square_updatePossibility : Model -> Int -> Bool -> NodeId -> ( Model, Cmd Msg )
-square_updatePossibility m idx guessPos node =
+square_updatePossibility : Model -> Int -> NodeId -> ( Model, Cmd Msg )
+square_updatePossibility m idx node =
     square_setPossibility idx m.graph node
-        |> Maybe.map (\state -> { m | mode = SquareMode { state | guessPos = guessPos } })
+        |> Maybe.map (\state -> { m | mode = SquareMode state })
         |> Maybe.withDefault m
         |> noCmd
 
@@ -105,7 +105,7 @@ square_updatePossibility m idx guessPos node =
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
     GraphDefs.selectedNode m.graph
-        |> Maybe.map (.id >> square_updatePossibility m 0 True)
+        |> Maybe.map (.id >> square_updatePossibility m 0)
         -- |> Maybe.map
         -- -- prevent bugs (if the mouse is thought
         -- -- to be kept on a point)
@@ -328,7 +328,7 @@ update state msg model =
 
    
         KeyChanged False _ (Character 's') ->            
-                    square_updatePossibility model state.configuration state.guessPos state.chosenNode
+                    square_updatePossibility model state.configuration state.chosenNode
         KeyChanged False _ (Character 'a') ->
                     noCmd  { model | mode = SquareMode { state | labelConfiguration = state.labelConfiguration + 1}}                    
 
