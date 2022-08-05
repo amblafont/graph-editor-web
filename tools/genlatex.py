@@ -203,11 +203,11 @@ def handleDiag(diag):
         fileName = diag.content
     content = diag.content
     if diag.isNew:
-        
         if diag.isFile:
             if exists(fileName):
                 print("Aborting diagram creation: File %s already exists." % fileName)
                 exit(0)
+            content = ''
         else:
             if content != "":
                 print("Aborting diagram creation: data already provided (%s)." % content)
