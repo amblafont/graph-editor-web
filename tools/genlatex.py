@@ -185,7 +185,7 @@ def genLatex():
   ctrlKey(actions,'a').perform()
   browser.find_element(By.XPATH, '//button[text()="Export selection to quiver"]').click()
   # switch to new tab
-  browser.wait.until(EC.number_of_windows_to_be(2))
+  WebDriverWait(browser, 5).until(EC.number_of_windows_to_be(2))
   browser.switch_to.window(browser.window_handles[1])
   
   WebDriverWait(browser, 5).until(EC.invisibility_of_element((By.CSS_SELECTOR, "div.loading-screen")))
