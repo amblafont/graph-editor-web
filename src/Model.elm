@@ -51,6 +51,7 @@ type alias Model =
     , bottomText : String
     , autoSave : Bool
     , latexPreamble : String
+    , scenario : Scenario
     }
 
 
@@ -64,6 +65,8 @@ updateWithGraphInfo : Model -> GraphInfo -> Model
 updateWithGraphInfo m {graph, sizeGrid, latexPreamble} = 
    { m | graph = graph, sizeGrid = sizeGrid, latexPreamble = latexPreamble}
 
+clearHistory : Model -> Model
+clearHistory m = { m | history = [] }
 
 peekHistory : Model -> GraphInfo
 peekHistory m = List.head m.history |> Maybe.withDefault (toGraphInfo m)
@@ -112,6 +115,7 @@ createModel sizeGrid g =
     , bottomText = ""
     , autoSave = True
     , latexPreamble = ""
+    , scenario = Standard
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse

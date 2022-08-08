@@ -47,7 +47,7 @@ import Set
 import QuickInput exposing (equalityParser)
 
 import GraphDrawing exposing (..)
-import Msg exposing (Msg(..))
+import Msg exposing (Msg(..), Scenario(..), LoadGraphInfo, mapLoadGraphInfo, scenarioOfString)
 
 import Tuple
 import Maybe exposing (withDefault)
@@ -62,14 +62,10 @@ import ArrowStyle
 import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDefs exposing (newNodeLabel)
-import GraphDefs exposing (getNodeLabelOrCreate)
-import GraphDefs exposing (newEdgeLabel)
 import Html
-import Geometry exposing (Rect)
-import Geometry exposing (rectEnveloppe)
 import Html.Events
-import Modes exposing (SplitArrowState)
 import InputPosition exposing (InputPosition(..))
+import Geometry
 import Format.Version0
 import Format.Version1
 import Format.Version2
@@ -81,8 +77,6 @@ import Format.LastVersion as LastFormat
 import List.Extra
 import GraphDefs exposing (exportQuiver)
 import GraphProof
-import Format.GraphInfo
-import Html exposing (a)
 
 -- we tell js about some mouse move event
 port onMouseMove : JE.Value -> Cmd a
@@ -109,12 +103,12 @@ port alert : String -> Cmd a
 port jumpToId : String -> Cmd a
 
 -- js tells us to load the graph
-port loadedGraph0 : ({ graph : Format.Version0.Graph, fileName : String } -> a) -> Sub a
-port loadedGraph1 : ({ graph : Format.Version1.Graph, fileName : String } -> a) -> Sub a
-port loadedGraph2 : ({ graph : Format.Version2.Graph, fileName : String } -> a) -> Sub a
-port loadedGraph3 : ({ graph : Format.Version3.Graph, fileName : String } -> a) -> Sub a
-port loadedGraph4 : ({ graph : Format.Version4.Graph, fileName : String } -> a) -> Sub a
-port loadedGraph5 : ({ graph : Format.Version5.Graph, fileName : String } -> a) -> Sub a
+port loadedGraph0 : (LoadGraphInfo Format.Version0.Graph -> a) -> Sub a
+port loadedGraph1 : (LoadGraphInfo Format.Version1.Graph -> a) -> Sub a
+port loadedGraph2 : (LoadGraphInfo Format.Version2.Graph -> a) -> Sub a
+port loadedGraph3 : (LoadGraphInfo Format.Version3.Graph -> a) -> Sub a
+port loadedGraph4 : (LoadGraphInfo Format.Version4.Graph -> a) -> Sub a
+port loadedGraph5 : (LoadGraphInfo Format.Version5.Graph -> a) -> Sub a
 
 port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
 -- tells JS we got a paste event with such data
@@ -132,12 +126,6 @@ port promptedEquation : (String -> a) -> Sub a
 
 
 
-
-
-
-
-
-
 subscriptions : Model -> Sub Msg
 subscriptions m = 
     Sub.batch 
@@ -146,12 +134,12 @@ subscriptions m =
       findReplace FindReplace,
       -- upload a graph (triggered by js)
       
-      loadedGraph0 (\ r -> Loaded (Format.Version0.fromJSGraph r.graph) r.fileName),
-      loadedGraph1 (\ r -> Loaded (Format.Version1.fromJSGraph r.graph) r.fileName),
-      loadedGraph2 (\ r -> Loaded (Format.Version2.fromJSGraph r.graph) r.fileName),
-      loadedGraph3 (\ r -> Loaded (Format.Version3.fromJSGraph r.graph) r.fileName),
-      loadedGraph4 (\ r -> Loaded (Format.Version4.fromJSGraph r.graph) r.fileName),
-      loadedGraph5 (\ r -> Loaded (Format.Version5.fromJSGraph r.graph) r.fileName),
+      loadedGraph0 (mapLoadGraphInfo Format.Version0.fromJSGraph >> Loaded),
+      loadedGraph1 (mapLoadGraphInfo Format.Version1.fromJSGraph >> Loaded),
+      loadedGraph2 (mapLoadGraphInfo Format.Version2.fromJSGraph >> Loaded),
+      loadedGraph3 (mapLoadGraphInfo Format.Version3.fromJSGraph >> Loaded),
+      loadedGraph4 (mapLoadGraphInfo Format.Version4.fromJSGraph >> Loaded),
+      loadedGraph5 (mapLoadGraphInfo Format.Version5.fromJSGraph >> Loaded),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick)
@@ -317,6 +305,23 @@ toJsGraphInfo model= { graph = LastFormat.toJSGraph
                               fileName = model.fileName,
                               version = LastFormat.version}
 
+updateIntercept : Msg -> Model -> (Model, Cmd Msg)
+updateIntercept msg modeli =
+  case modeli.scenario of
+     Exercise1 -> 
+        let nothing = noCmd modeli in
+        case msg of
+           MouseMove _  -> nothing
+           MouseDown _ -> nothing
+           NodeClick _ _ -> nothing
+           EdgeClick _ _ -> nothing
+           EltDoubleClick _ _ -> nothing
+           MouseOn _ -> nothing
+           MouseClick -> nothing
+           _ -> update msg modeli
+           
+     _ -> update msg modeli
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg modeli =
     let model = case msg of
@@ -373,7 +378,25 @@ update msg modeli =
                       Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
                 }
      Do cmd -> (model, cmd)
-     Loaded g fileName -> (updateWithGraphInfo { model | mode = DefaultMode, fileName = fileName } g,
+     Loaded g -> 
+        let _ = Debug.log "scenario" g.scenario in
+        let scenario = scenarioOfString g.scenario in
+        let m = clearHistory <| updateWithGraphInfo { model | 
+                                              mode = DefaultMode, 
+                                              fileName = g.fileName,
+                                              scenario = scenario
+                                            } g.graph 
+        in
+        let graph = 
+             if scenario == Exercise1 then
+               Graph.map 
+                  (\ _ n -> { n | selected = String.contains "\\bullet" n.label})
+                  (always identity)
+                  m.graph
+             else
+              m.graph
+        in
+        ({ m | graph = graph },
                      -- we need drawn elements to resend their size
                                              computeLayout() )
      FindReplace req -> noCmd <| setSaveGraph model 
@@ -1241,7 +1264,14 @@ additionnalDrawing m =
 view : Model -> Html Msg
 view model =
     let missings = Graph.invalidEdges model.graph in   
-    let cfg = { latexPreamble = model.latexPreamble } in
+    let cfg = { latexPreamble = case model.scenario of
+                                   Exercise1 -> 
+                                       "\\newcommand{\\depthHistory}{"
+                                       ++ String.fromInt (List.length model.history)
+                                       ++ "}"                                       
+                                   _ -> model.latexPreamble 
+              } 
+    in
     let drawings= graphDrawing cfg (graphDrawingFromModel model) in
     let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.modedSizeGrid model) in
     let nmissings = List.length missings in
@@ -1320,5 +1350,5 @@ view model =
 
 main : Program () Model Msg
 main = Browser.element { init = \ _ -> (iniModel, Cmd.none),
-                         view = view, update = update,
+                         view = view, update = updateIntercept,
                          subscriptions = subscriptions}

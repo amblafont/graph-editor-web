@@ -1,5 +1,5 @@
 module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, unfocusId,
-  onTabPreventDefault, mayUpdateArrowStyle)
+  onTabPreventDefault, mayUpdateArrowStyle, Scenario(..), scenarioOfString, LoadGraphInfo, mapLoadGraphInfo)
 
 import Collage exposing (Point)
 -- import Graph exposing (Graph, NodeId)
@@ -17,7 +17,19 @@ import Html.Events.Extra.Mouse as MouseEvents
 import Html
 import Json.Encode as JE
 
+type Scenario = Standard | Exercise1
 
+scenarioOfString : String -> Scenario
+scenarioOfString s =
+  case s of
+      "exercise1" -> Exercise1
+      _ -> Standard
+
+type alias LoadGraphInfo a = { graph : a, fileName : String, scenario : String }
+
+mapLoadGraphInfo : (a -> b) -> LoadGraphInfo a -> LoadGraphInfo b 
+mapLoadGraphInfo f { graph, fileName, scenario } =
+   { graph = f graph, fileName = fileName, scenario = scenario }
 
 -- the model automatically updates its record of HtmlDefs.Keys (shift,alt,ctrl status) in any case
 -- when the message gives it, so there is a kind of redundancy on this matter
@@ -45,7 +57,7 @@ type Msg
  -- | EltHover Graph.Id 
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
-  | Loaded GraphInfo String
+  | Loaded (LoadGraphInfo GraphInfo)
   | CopyGraph
   -- a graph is pasted
   | PasteGraph GraphInfo
