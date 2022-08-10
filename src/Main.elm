@@ -78,26 +78,21 @@ import List.Extra
 import GraphDefs exposing (exportQuiver)
 import GraphProof
 
--- we tell js about some mouse move event
-port onMouseMove : JE.Value -> Cmd a
--- we then get back the relative position of the mouse
--- (this cannot be done in pure elm because it requires
--- to access to the currentTarget field of the event,
--- which is a js object)
-port onMouseMoveFromJS : (Point -> a) -> Sub a
+
 
 port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
-port onCopy : (() -> a) -> Sub a
+
 
 -- tell js to save the graph, version  is the format version
 type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
-port saveGraph : JsGraphInfo -> Cmd a
+
 -- feedback: do we want a confirmation alert box?
 port quicksaveGraph : { info : JsGraphInfo, feedback : Bool} -> Cmd a
--- filename
-port savedGraph : (String -> a) -> Sub a
+
+
+
 port exportQuiver : JE.Value -> Cmd a
 port alert : String -> Cmd a
 port jumpToId : String -> Cmd a
@@ -110,14 +105,41 @@ port loadedGraph3 : (LoadGraphInfo Format.Version3.Graph -> a) -> Sub a
 port loadedGraph4 : (LoadGraphInfo Format.Version4.Graph -> a) -> Sub a
 port loadedGraph5 : (LoadGraphInfo Format.Version5.Graph -> a) -> Sub a
 
-port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
+
+
+
+
+-- we tell js about some mouse move event
+port onMouseMove : JE.Value -> Cmd a
+-- we then get back the relative position of the mouse
+-- (this cannot be done in pure elm because it requires
+-- to access to the currentTarget field of the event,
+-- which is a js object)
+port onMouseMoveFromJS : (Point -> a) -> Sub a
+
 -- tells JS we got a paste event with such data
 port pasteGraph : JE.Value -> Cmd a
 -- JS would then calls us back with the decoded graph
 port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
-port findReplace : ({ search: String, replace:String} -> a) -> Sub a
+
+-- we receive a copy event
+port onCopy : (() -> a) -> Sub a
+-- we return the stuff to be written
+port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
+
+-- we ask js to save the graph
+port saveGraph : JsGraphInfo -> Cmd a
+-- it returns the filename
+port savedGraph : (String -> a) -> Sub a
+
+-- ask js to prompt find and replace
 port promptFindReplace : () -> Cmd a
+-- it returns the data
+port findReplace : ({ search: String, replace:String} -> a) -> Sub a
+
+-- ask js to prompt Equation
 port promptEquation : () -> Cmd a
+-- return the equation
 port promptedEquation : (String -> a) -> Sub a
 
 

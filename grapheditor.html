@@ -219,6 +219,23 @@
          var app = Elm.Main.init({
              node: appDiv
          });
+         // we send a signal [keyInput] to elm and recieve
+         // the answer on [keyOutput]
+         function makeElmRequest(keyInput, keyOutput, f) {
+            app.ports[keyOutput].subscribe(f);
+            return function (data) {
+            app.ports[keyInput].send(data);
+            }
+         }
+         // when receiving a signal [keyInput] from Elm
+         // we answer by applying [f] and send the result to [keyOutput]
+         function answerElmRequest(keyInput, keyOutput, f) {
+            app.ports[keyInput].subscribe(function (data) {
+               var outData = f(data);
+               if (outData)   
+                  app.ports[keyOutput].send(outData);
+            });
+         }
 
          
          
@@ -293,23 +310,34 @@
              
              
          };
-         // this event handler computes the relative position
-         // of the mouse with respect to the current target
-         // (the one to which the event is attached)
-         app.ports.onMouseMove.subscribe(function(e) {
-             if ( e.currentTarget) {
-                 var rect = e.currentTarget.getBoundingClientRect();
-                 var x = e.clientX - rect.left; //x position within the element.
-                 var y = e.clientY - rect.top;  //y position within the element.
-                 app.ports.onMouseMoveFromJS.send([x, y]);
-             }
+
+         app.ports.alert.subscribe(function(s) {
+             alert(s);
+         });
+
+         app.ports.jumpToId.subscribe(function(s) {             
+             var elmnt = document.getElementById(s);
+             elmnt.scrollIntoView(); 
+         });
+
+         app.ports.select.subscribe(function(id) {
+            var elmnt = document.getElementById(id);
+            elmnt.select();
+         });
+
+         app.ports.computeLayout.subscribe(function(s) {                         
+             var children = document.getElementsByClassName(renderedClass);             
+             for (var i = 0; i < children.length; ++i) {
+                          dispatchRendered(children[i]);
+                      }   
          });
 
          app.ports.preventDefault.subscribe(function (e) {
              e.preventDefault();
          });
-         // asks the user to download some file, generated from content
-         function download(content, fileName, contentType) {
+
+                  // asks the user to download some file, generated from content
+                  function download(content, fileName, contentType) {
              var a = document.createElement("a");
              var file = new Blob([content], {type: contentType});
              a.href = URL.createObjectURL(file);
@@ -320,19 +348,6 @@
          function fromElmGraph(a) {
              return {graph : a.graph, version : a.version };;
          }
-
-         function saveGraph(a) {
-             
-             var name = window.prompt("Filename?", a.fileName) ;
-             if (name) {
-                var d = fromElmGraph(a);
-               download(JSON.stringify(d), name /* + '.json' */, 'application/json');
-               app.ports.savedGraph.send(name);
-               document.title = name;
-             }
-         }
-         
-         app.ports.saveGraph.subscribe(saveGraph);
 
          app.ports.quicksaveGraph.subscribe(function(arg) {
             console.log("Quicksaving...");
@@ -362,65 +377,82 @@
               window.open(s);             
          });
 
-         app.ports.clipboardWriteGraph.subscribe(function(g) {
-            navigator.clipboard.writeText(JSON.stringify(g));                     
+
+         // this event handler computes the relative position
+         // of the mouse with respect to the current target
+         // (the one to which the event is attached)
+         answerElmRequest('onMouseMove', 'onMouseMoveFromJS', function(e) {
+             if ( e.currentTarget) {
+                 var rect = e.currentTarget.getBoundingClientRect();
+                 var x = e.clientX - rect.left; //x position within the element.
+                 var y = e.clientY - rect.top;  //y position within the element.
+                 return [x, y];
+             }
          });
+
+      
+
+
+         
+        answerElmRequest('saveGraph', 'savedGraph', function (a) {
+            var name = window.prompt("Filename?", a.fileName) ;
+             if (name) {
+                var d = fromElmGraph(a);
+               download(JSON.stringify(d), name /* + '.json' */, 'application/json');
+               
+               document.title = name;
+               return name;
+             }
+         })
+       
         
-         function handlePasteGraph(event) {   
+      
+
+         answerElmRequest('pasteGraph', 'clipboardGraph', function (event) {
             const paste = event.detail;
             var json;
             try { json = JSON.parse(paste); }
             catch (e) { json = false; }
             if (json) 
-              app.ports.clipboardGraph.send(json.graph);
-         }
+               return json.graph
+              
+         })
+        
 
-         app.ports.pasteGraph.subscribe(handlePasteGraph);
 
-         app.ports.alert.subscribe(function(s) {
-             alert(s);
-         });
+        
 
-         app.ports.jumpToId.subscribe(function(s) {             
-             var elmnt = document.getElementById(s);
-             elmnt.scrollIntoView(); 
-         });
-
-         app.ports.select.subscribe(function(id) {
-            var elmnt = document.getElementById(id);
-            elmnt.select();
-         });
-
-         app.ports.computeLayout.subscribe(function(s) {                         
-             var children = document.getElementsByClassName(renderedClass);             
-             for (var i = 0; i < children.length; ++i) {
-                          dispatchRendered(children[i]);
-                      }   
-         });
-
-         app.ports.promptFindReplace.subscribe(function(a) {             
-             var rep = window.prompt("Replace in selection (/find/replace, where '/' can be replaced by any character)", 
+         answerElmRequest('promptFindReplace', 'findReplace', function (a)
+         {
+            var rep = window.prompt("Replace in selection (/find/replace, where '/' can be replaced by any character)", 
                   "/find/replace") ;
              if (rep && rep.length > 2) {
                 reps = rep.split(rep[0])                
-                if (reps && reps.length == 3 && reps[1])
-                    findReplace(reps[1], reps[2])
-             }             
-             
-         });
-
-         function findReplace(search, replace) {
-         app.ports.findReplace.send({'search':search, 'replace': replace});
+                if (reps && reps.length == 3 && reps[1]) {
+                    var search = reps[1];
+                    var replace = reps[2];
+                    return {'search':search, 'replace': replace};
+                }
+             }
          }
+         );
 
-         app.ports.promptEquation.subscribe(function(a) {             
+         answerElmRequest('promptEquation', 'promptedEquation', function(a) {
              var rep = window.prompt("Enter equation", 
                   "a -- f -> b -- g -> c = a -- h -> d -- k -> c") ;
              if (rep && rep.length > 0) {                
-                    app.ports.promptedEquation.send(rep);
+                    return rep;
              }             
-             
          });
+
+         triggerElmCopy = makeElmRequest('onCopy', 'clipboardWriteGraph', function(g) {
+            navigator.clipboard.writeText(JSON.stringify(g));                     
+         })
+         document.addEventListener("copy", function(event) {
+                    triggerElmCopy(null);
+         });
+      
+
 
          // Elm browser keydown handler is passive
          // and thus cannot prevent default behaviour
@@ -428,10 +460,8 @@
          document.addEventListener("keydown", function(event)  {
                     app.ports.onKeyDownActive.send(event);
          });
-
-         document.addEventListener("copy", function(event) {
-                    app.ports.onCopy.send(null);
-         });
+        
+         
         
         </script>
     </body>
