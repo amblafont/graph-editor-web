@@ -5,6 +5,7 @@ print()
 
 
 
+from curses import KEY_COPY
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -22,13 +23,15 @@ from collections import namedtuple
 import os
 import pyperclip
 
-Diag = namedtuple('Diag' , 'content isFile isEdit isNew isLatex isGenerate isClipboard isMake')
-Command = namedtuple('Command' , 'content prefix command negcommand')
+# Diag = namedtuple('Diag' , 'content isFile isEdit isNew isLatex isGenerate isClipboard isMake')
+Diag = namedtuple('Diag' , 'content isFile command')
+Command = namedtuple('Command' , 'content prefix command')
 
 import sys
 import re
 import in_place
 import argparse
+from enum import Enum, auto
 
 MAGIC_STRING = "YADE DIAGRAM"
 URL_YADE = os.getenv('YADE_URL')
@@ -36,44 +39,68 @@ if not URL_YADE:
     URL_YADE = 'https://amblafont.github.io/graph-editor/index.html'
 
 DESCRIPTION = """
-This script looks for lines ending with YADE DIAGRAM -commands +commands [diagram]")
+This script looks for lines ending with YADE DIAGRAM +command [diagram]")
 
 - [diagram] (optional) is a filename, or a json encoded diagram (pasted from the editor by 
   using C-c  on some selected diagram, or from the content of a saved file).
-- "commands" is a string where each char has a specific meaning (some of them are incompatible)
-   Prefixing with - disable them (to override the default behaviour), + enable them.
+- "command" is a character with specific meaning
     GENERAL COMMANDS
     * n : new diagram (which is edited)
     * e : edit diagram
           The edited diagram is saved either as a json encoded diagram or in the specified filename
-    * q : quit browser at the end of script
-    * m : make using the provided command 
-    LATEX COMMANDS (executed after the user has saved the diagram, unless no editing was required)
-    * g : latex generation inserted after the matching line    
+          Latex generation is available after editing
+    * m : latex generation inserted after the matching line, and make
     * c : latex copied to the clipboard    
 """
+
+ID_SAVE_BUTTON = 'save-button'
+ID_LOAD_BUTTON = 'load-button'
+
+
+
+class Cmd(Enum):
+    NEW = auto()
+    EDIT = auto()
+    MAKE = auto()
+    COPY = auto()
+    def isLatex(self):
+        return self == self.MAKE or self == self.COPY
+    def isInteractive(self):
+        return self == self.NEW or self == self.EDIT
+
+EXIT_KEY = 'e'
+MAKE_KEY = 'm'
+COPY_KEY = 'c'
+
+CMD_DICT = { 'c': Cmd.COPY, 'e': Cmd.EDIT, 'm': Cmd.MAKE, 'n':Cmd.NEW}
+CMD_CHARS = ''.join(CMD_DICT.keys())
+    
+    
+
+
 #print(DESCRIPTION)
 parser = argparse.ArgumentParser(description = DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter, prefix_chars='-+')
 parser.add_argument("filename")
 parser.add_argument("--make-cmd", help="make command to be executed")
-group = parser.add_argument_group("Specifying default behaviour")
-group.add_argument("+m", action="store_true")
-group.add_argument("+q", action="store_true")
-group.add_argument("+c", action="store_true")
-group.add_argument("+g", action="store_true")
+# group = parser.add_mutually_exclusive_group()
+# # parser.add_argument_group("Specifying default behaviour")
+# group.add_argument("+m", action="store_true")
+# #group.add_argument("+q", action="store_true")
+# group.add_argument("+c", action="store_true")
+# group.add_argument("+g", action="store_true")
 args = parser.parse_args()
 
-defaultCmd = {
-    "isMake" : args.m, 
-    "isQuit" : args.q,
-    "isClipboard" : args.c,
-    "isGenerate": args.g
-}
+# defaultCmd = {
+#     "isMake" : args.m, 
+#     "isQuit" : args.q,
+#     "isClipboard" : args.c,
+#     "isGenerate": args.g
+# }
 filename = args.filename
 makeCmd = args.make_cmd
 
 
-quitAtEnd = defaultCmd["isQuit"]
+quitAtEnd = True # defaultCmd["isQuit"]
 
 
 
@@ -88,45 +115,41 @@ def ctrlKey(actions,key):
 
 
 def parseMagic(line):
-    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *((?:[-+][ngecmq]+ )+)"
-    search = re.search(searchPrefix + r"+(.*)$", line)
+    # searchPrefix = r"^(.*)" + MAGIC_STRING + r" *((?:[-+][ngecmq]+ *)+)"
+    searchPrefix = r"^(.*)" + MAGIC_STRING + r" *\+([" + CMD_CHARS + "])"
+    search = re.search(searchPrefix + r" (.*)$", line)
     if not search:
         # in this case, content is empty
         search = re.search(searchPrefix + r"(.*)$", line)
 
     if search:
         prefix = search.group(1)
-        commands = search.group(2).split()
-        command =    ''.join([x[1:] for x in commands if x[0] == '+'])
-        negcommand = ''.join([x[1:] for x in commands if x[0] == '-'])        
-        content = search.group(3)
-        return Command(content=content, prefix=prefix, command=command, negcommand = negcommand)
+        command = CMD_DICT[search.group(2)]
+        #command =    ''.join([x[1:] for x in commands if x[0] == '+'])
+        #negcommand = ''.join([x[1:] for x in commands if x[0] == '-'])        
+        content = search.group(3).strip()
+        return Command(content=content, prefix=prefix, command=command)
     else:
         return None
 
 def makeDiag(cmd):
       global quitAtEnd
       content = cmd.content
-      command = cmd.command
-      negcommand = cmd.negcommand
+    #   command = cmd.command
+      # negcommand = cmd.negcommand
   
-      isNew = 'n' in command
-      isEdit = 'e' in command
-      def makeFlag(char, key):
-        return (defaultCmd[key] and char not in negcommand) or char in command
-      isGenerate = makeFlag('g', "isGenerate")
-      isClipboard = makeFlag('c', "isClipboard")
-      isMake = makeFlag('m', "isMake")      
-      quitAtEnd = makeFlag('q', "isQuit")
+    #   isNew = 'n' in command
+    #   isEdit = 'e' in command
+    #   def makeFlag(char, key):
+    #     return (defaultCmd[key] and char not in negcommand) or char in command
+    #   isGenerate = makeFlag('g', "isGenerate")
+    #   isClipboard = makeFlag('c', "isClipboard")
+    #   isMake = makeFlag('m', "isMake")      
+    #   quitAtEnd = makeFlag('q', "isQuit")
       return (Diag(content= content,
                   # prefix = prefix,
                   isFile = len(content) > 0 and (content[0] != '{'),
-                  isEdit = isEdit or isNew,
-                  isNew = isNew,
-                  isGenerate = isGenerate,
-                  isLatex = isClipboard or isGenerate,
-                  isClipboard = isClipboard,
-                  isMake = isMake
+                  command = cmd.command
                ))         
 
 def listDiags(filename):
@@ -145,33 +168,65 @@ def listDiags(filename):
 
 def loadEditor(diag):
   browser.get(URL_YADE)
-  if (diag.strip() == ""):
+  stripped_diag = diag.strip()
+  print("debut" + stripped_diag + "fin")
+  if (stripped_diag.strip() == ""):
       print("Creating new diagram")
       browser.find_element(By.XPATH, '//button[text()="Clear"]').click()
   else:
       print("Loading diagram ")
-      cmd = 'sendGraphToElm('+ diag + ", 'python');"
+      cmd = 'sendGraphToElm('+ stripped_diag + ", 'python');"
       browser.execute_script(cmd)
+
 def waitSaveDiag():
-    # we unsubscribe the implemented saveGraph procedure 
-  browser.execute_script("app.ports.saveGraph.unsubscribe(saveGraph);")
+  
   # browser.execute_script('var
 
-  print("Save to continue")  
-  # graph = None: it may be that the script was interrupted because
-  # of a modal dialog box
-  cmd =  "var mysave = function(a) {  window.saveSelenium(JSON.stringify(fromElmGraph(a))); } ;" 
-  cmd = cmd + 'app.ports.saveGraph.subscribe(mysave);'
-  browser.execute_script(cmd)
+  print("Save to continue")
+  #loadButton = browser.find_element(By.XPATH, '//button[text()="Save"]')
 
-  cmd = "window.saveSelenium = arguments[arguments.length - 1]; "
-  graph = None
-  while graph == None:
+  def createSaveButton(text, key):
+    browser.execute_script("""
+
+  saveButton = document.createElement("button");
+  saveButton.innerText = '{text}';
+  saveButton.addEventListener("click", function () {{ window.handleSave('{key}');}});
+  var loadButton = document.getElementById('{idload}');
+  loadButton.parentNode.insertBefore(saveButton, loadButton);
+  """.format(text=text, idload = ID_LOAD_BUTTON, key = key))
+
+
+
+  createSaveButton('Save & Exit', EXIT_KEY)
+  createSaveButton('Save & make Latex', MAKE_KEY)
+  createSaveButton('Save & copy Latex', COPY_KEY)
+
+  # browser.find_element(By.ID, "save-button").click()
+  browser.execute_script('document.styleSheets[0].insertRule("#{idsave}  {{ display : none;}}", 0 );'.format(idsave=ID_SAVE_BUTTON))
+  
+
+ 
+
+  cmd = "window.handleSave = arguments[arguments.length - 1]; "
+  key = None
+  while key == None:
     try:
-        graph = browser.execute_async_script(cmd)
+        key = browser.execute_async_script(cmd)
     except UnexpectedAlertPresentException:
         continue
-  return graph
+
+  
+   # browser.execute_script('document.getElementById("save-button").click()')
+
+
+  # we unsubscribe the implemented saveGraph procedure 
+  return (key, browser.execute_async_script('''     
+     callback = arguments[arguments.length - 1];
+     app.ports.saveGraph.unsubscribe(saveGraph);
+     app.ports.saveGraph.subscribe(function(a) {{ callback(JSON.stringify(fromElmGraph(a))); }});
+     document.getElementById('{idsave}').click();
+  '''.format(idsave = ID_SAVE_BUTTON)))
+
 
 def genLatex():
   print("Exporting to latex")
@@ -202,7 +257,7 @@ def handleDiag(diag):
     if diag.isFile:        
         fileName = diag.content
     content = diag.content
-    if diag.isNew:
+    if diag.command == Cmd.NEW:
         if diag.isFile:
             if exists(fileName):
                 print("Aborting diagram creation: File %s already exists." % fileName)
@@ -237,11 +292,17 @@ def handleDiag(diag):
 
     loadEditor(content)
     latex = None
-    if diag.isEdit:
-       content = waitSaveDiag()
-    if diag.isLatex:
+    cmd = diag.command
+    if diag.command.isInteractive():
+       (key, content) = waitSaveDiag()       
+       if key == MAKE_KEY:
+          cmd = Cmd.MAKE
+       if key == COPY_KEY:
+          cmd = Cmd.COPY
+       
+    if cmd.isLatex():
        latex = genLatex()
-    return (content, latex)
+    return (cmd, content, latex)
 
             
 
@@ -260,17 +321,17 @@ def remakeDiags(fileName):
        diag = diags[0]
        
        print("Handling a diagram")
-       if not diag.isEdit:
+       if not diag.command.isInteractive():
           print("- No user editing")
-       if diag.isLatex:
+       if diag.command.isLatex():
           print("- Latex generation")
        if diag.isFile:
           print("- filename : " + diag.content)
        #print(diag)
        #exit(0)
-       (graph, latex) = handleDiag(diag)
+       (cmd, graph, latex) = handleDiag(diag)
 
-       if diag.isClipboard and latex:
+       if cmd == Cmd.COPY and latex:
           pyperclip.copy(latex)
 
        if diag.isFile:
@@ -293,11 +354,11 @@ def remakeDiags(fileName):
                         done = True
                         suffix = diag.content if diag.isFile else graph
                         fp.write(search.prefix + MAGIC_STRING + " " + suffix + "\n")
-                        if diag.isGenerate:
+                        if cmd == Cmd.MAKE:
                             fp.write("\n% GENERATED LATEX\n")
                             fp.write(latex)
                             fp.write("\n% END OF GENERATED LATEX\n")
-       if diag.isMake:
+       if cmd == Cmd.MAKE and makeCmd:
             os.system(makeCmd)
         
 
