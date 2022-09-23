@@ -1328,7 +1328,7 @@ view model =
             [(helpMsg model),
              quickInputView model
             ],
-            Html.button [Html.Events.onClick Save] [Html.text "Save"]
+            Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button"] [Html.text "Save"]
            , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
            , Html.a [Html.Attributes.href  ("#" ++ HtmlDefs.latexPreambleId)] [Html.text "Latex preamble"]
             {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),

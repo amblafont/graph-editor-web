@@ -143,7 +143,7 @@
 	    <p>
             Read the tutorial first, and then try some <a href="?scenario=exercise1">exercise</a>.
         </p>
-        <button onclick="loadGraph()" >Load graph</button>
+        <button onclick="loadGraph()" id="load-button" >Load graph</button>
         <button title="Local or session storage" onclick="quickloadGraph()" >QuickLoad graph</button>
         
     <!--     <button onclick="dispatchRenderedChildren(document)">
@@ -230,11 +230,13 @@
          // when receiving a signal [keyInput] from Elm
          // we answer by applying [f] and send the result to [keyOutput]
          function answerElmRequest(keyInput, keyOutput, f) {
-            app.ports[keyInput].subscribe(function (data) {
+            var answer = function (data) {
                var outData = f(data);
                if (outData)   
                   app.ports[keyOutput].send(outData);
-            });
+            };
+            app.ports[keyInput].subscribe(answer);
+            return answer;
          }
 
          
@@ -394,7 +396,7 @@
 
 
          
-        answerElmRequest('saveGraph', 'savedGraph', function (a) {
+        saveGraph = answerElmRequest('saveGraph', 'savedGraph', function (a) {
             var name = window.prompt("Filename?", a.fileName) ;
              if (name) {
                 var d = fromElmGraph(a);
