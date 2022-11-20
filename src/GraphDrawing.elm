@@ -23,7 +23,10 @@ type alias EdgeDrawingLabel =
    { label : String, editable : Bool, isActive : Activity, 
    style : ArrowStyle, dims : Point }
 type alias NodeDrawingLabel =
-    { pos : Point, label : String, editable : Bool, isActive : Activity,
+    { pos : Point,
+      inputPos : Point, -- where the input text should be located
+      -- (differ from pos in the case the node is a text)
+     label : String, editable : Bool, isActive : Activity,
       isMath : Bool,
           dims : Point 
           -- whether I should watch entering and leaving 
@@ -72,9 +75,12 @@ make_edgeDrawingLabel {editable, isActive} ({label, style} as l) =
 
 make_nodeDrawingLabel : {editable : Bool, isActive : Activity} -> NodeLabel ->  NodeDrawingLabel
 make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
+    let nodePos = GraphDefs.getNodePos l in
     { label = label {- if l.isMath || editable then label else "\\text{" ++ label ++ "}" -}
-    , pos = pos, editable = editable, isActive = isActive, isMath = isMath,
-    dims = GraphDefs.getNodeDims l }
+    , pos = nodePos
+    , inputPos = pos
+    , editable = editable, isActive = isActive, isMath = isMath,
+      dims = GraphDefs.getNodeDims l }
 
 
 -- create an input with id curIdInput
@@ -115,13 +121,13 @@ nodeLabelDrawing cfg attrs node =
     let color = activityToColor node.label.isActive in
     (
      if n.editable then
-         make_input n.pos n.label (NodeLabelEdit id)
+         make_input n.inputPos n.label (NodeLabelEdit id)
      else
          if n.label == "" then
              (Drawing.circle (Drawing.color color :: attrs ) n.pos 5)
          else 
             let label = cfg.latexPreamble ++ "\n" ++ if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
-            Drawing.htmlAnchor n.pos n.dims n.isMath            
+            Drawing.htmlAnchor n.pos n.dims True {- n.isMath -}            
             <| HtmlDefs.makeLatex
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)

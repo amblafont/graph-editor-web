@@ -2,7 +2,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    newNodeLabel, newEdgeLabel, emptyEdge,
    selectedEdges, 
    createNodeLabel,
-   getNodeLabelOrCreate, getNodeDims, getEdgeDims,
+   getNodeLabelOrCreate, getNodeDims, getNodePos, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
    fieldSelect,
    selectedNodes,
@@ -133,6 +133,11 @@ getNodeDims n =
         Nothing -> defaultDims n.label
         Just p -> p
 
+getNodePos : NodeLabel -> Point
+getNodePos n =
+   if n.isMath then n.pos else
+   Point.add n.pos (Point.resize 0.5 (getNodeDims n))
+    
 getEdgeDims : EdgeLabel -> Point
 getEdgeDims n =
     case  n.dims of
@@ -209,7 +214,7 @@ clearSelection g =
 getNodesAt : Graph NodeLabel e -> Point -> List NodeId
 getNodesAt g p =
   Graph.filterNodes g
-    (\n -> Geometry.isInPosDims { pos = n.pos, 
+    (\n -> Geometry.isInPosDims { pos = getNodePos n, 
                                   dims = getNodeDims n} p)
   |> List.map .id
 
