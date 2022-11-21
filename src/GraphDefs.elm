@@ -37,7 +37,8 @@ type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selec
 
 type alias EdgeLabel = GenericEdge EdgeType
 type alias GenericEdge a = { details : a, selected : Bool,
-                   weaklySelected : Bool}
+                   weaklySelected : Bool,
+                   zindex : Int}
 
 
 type EdgeType = 
@@ -80,7 +81,8 @@ mapDetails : (a -> b) -> GenericEdge a -> GenericEdge b
 mapDetails f e = 
     { weaklySelected = e.weaklySelected
     , selected = e.selected
-    , details = f e.details}
+    , details = f e.details
+    , zindex = e.zindex}
 
 isNormal : EdgeLabel -> Bool
 isNormal = not << isPullback
@@ -167,13 +169,17 @@ newNodeLabel p s isMath =
     { pos = p , label = s, dims = Nothing, selected = False, weaklySelected = False,
                          isMath = isMath}
 
+newGenericLabel : a -> GenericEdge a
+newGenericLabel d = { details = d,
+                      selected = False,
+                      weaklySelected = False,
+                      zindex = 0}
+
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
-newEdgeLabel s style = { details = NormalEdge { label = s, style = style, dims = Nothing }, 
-                       selected = False, weaklySelected = False}
+newEdgeLabel s style = newGenericLabel <| NormalEdge { label = s, style = style, dims = Nothing }
 
 newPullback : EdgeLabel
-newPullback = { details = PullbackEdge, 
-                       selected = False, weaklySelected = False}
+newPullback = newGenericLabel PullbackEdge
 
 
 emptyEdge : EdgeLabel

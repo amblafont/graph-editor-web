@@ -17,6 +17,7 @@ import HtmlDefs
 import Json.Decode as D
 import Html.Events.Extra.Mouse as MouseEvents
 
+foregroundZ = 10000
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias NormalEdgeDrawingLabel = 
@@ -27,11 +28,12 @@ type EdgeType =
     PullbackEdge
   | NormalEdge NormalEdgeDrawingLabel
 
-type alias EdgeDrawingLabel = { details : EdgeType, isActive : Activity}
+type alias EdgeDrawingLabel = { details : EdgeType, isActive : Activity, zindex : Int}
 
 mapNormalEdge : (NormalEdgeDrawingLabel -> NormalEdgeDrawingLabel) -> EdgeDrawingLabel -> EdgeDrawingLabel
 mapNormalEdge f e = 
   {isActive = e.isActive,
+   zindex = e.zindex,
    details = case e.details of
                PullbackEdge -> PullbackEdge
                NormalEdge l -> NormalEdge <| f l
@@ -84,7 +86,7 @@ makeActive l = Graph.updateList l
 make_edgeDrawingLabel : {editable : Bool, isActive : Activity} 
                       -> EdgeLabel -> EdgeDrawingLabel
 make_edgeDrawingLabel {editable, isActive} e =
-   { isActive = isActive,
+   { isActive = isActive, zindex = e.zindex,
      details = case e.details of 
         GraphDefs.PullbackEdge -> PullbackEdge
         GraphDefs.NormalEdge ({label, style} as l) ->
@@ -122,7 +124,7 @@ make_input pos label onChange =
                     ++
                     HtmlDefs.onRendered (always <| Do <| HtmlDefs.select HtmlDefs.idInput )
                     ) []                                        
-             |> Drawing.html pos (100,16)
+             |> Drawing.html foregroundZ pos (100,16)
 
 activityToColor : Activity -> Drawing.Color
 activityToColor a =
@@ -148,10 +150,10 @@ nodeLabelDrawing cfg attrs node =
          make_input n.inputPos n.label (NodeLabelEdit id)
      else
          if n.label == "" then
-             (Drawing.circle (Drawing.color color :: attrs ) n.pos 5)
+             (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
          else 
             let label = cfg.latexPreamble ++ "\n" ++ if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
-            Drawing.htmlAnchor n.pos n.dims True {- n.isMath -}            
+            Drawing.htmlAnchor foregroundZ n.pos n.dims True {- n.isMath -}            
             <| HtmlDefs.makeLatex
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
@@ -230,7 +232,7 @@ segmentLabel cfg q edgeId activity label curve =
          if  label.label == "" then
              Drawing.empty
          else 
-            Drawing.html labelpos label.dims -- n.dims
+            Drawing.html foregroundZ labelpos label.dims -- n.dims
             <| HtmlDefs.makeLatex
             ([   MouseEvents.onClick (EdgeClick edgeId),
                  MouseEvents.onDoubleClick (EltDoubleClick edgeId),
@@ -249,8 +251,9 @@ segmentLabel cfg q edgeId activity label curve =
 normalEdgeDrawing : Config -> Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims
      -> Activity 
+     -> Int
      -> NormalEdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
-normalEdgeDrawing cfg edgeId activity {- from to -} label q curve =
+normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     let c = activityToColor activity in
     
     
@@ -259,7 +262,7 @@ normalEdgeDrawing cfg edgeId activity {- from to -} label q curve =
     -- in
     Drawing.group [
          Drawing.arrow 
-          [Drawing.color c,
+          [Drawing.zindexAttr z, Drawing.color c,
            Drawing.onClick (EdgeClick edgeId),
            Drawing.onDoubleClick (EltDoubleClick edgeId),
           -- Drawing.onHover (EltHover edgeId),
@@ -313,7 +316,7 @@ graphDrawing cfg g0 =
                                }
                NormalEdge l ->
                    let q = Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
-                       { drawing = normalEdgeDrawing cfg id e.isActive l q l.style.bend,                     
+                       { drawing = normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend,                     
                         -- TODO
                          posDims = {
                              pos = Bez.middle q,

@@ -2,7 +2,8 @@ module Drawing exposing (Drawing,
   fromString, circle, html, group, arrow, rect,
   line,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
-  svg, Color, red, black, blue, class, empty, grid, htmlAnchor
+  svg, Color, red, black, blue, class, empty, grid, htmlAnchor,
+  zindexAttr
   )
 
 import Svg exposing (Svg)
@@ -20,10 +21,15 @@ import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import Svg
 import Collage.Layout exposing (bottomRight)
 import Html.Events.Extra.Mouse as MouseEvents
+import List.Extra
+import Msg exposing (Msg)
 
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
 svg l d =
-  d |> drawingToSvgs |> Svg.svg l
+  d |> drawingToZSvgs
+  |> List.sortBy .zindex 
+  |> List.map .svg
+  |> Svg.svg l
 
 
 attrToSvgAttr : (String -> Svg.Attribute a) -> Attribute a -> Maybe (Svg.Attribute a)
@@ -33,7 +39,8 @@ attrToSvgAttr col a =
      Class s -> Svg.class s |> Just
      On e d -> Svg.Events.on e d |> Just
      OnClick f -> MouseEvents.onClick f |> Just
-     OnDoubleClick f -> MouseEvents.onDoubleClick f |> Just             
+     OnDoubleClick f -> MouseEvents.onDoubleClick f |> Just
+     ZIndex _ -> Nothing          
 
 attrsToSvgAttrs : (String -> Svg.Attribute a) -> List (Attribute a) -> List (Svg.Attribute a)
 attrsToSvgAttrs f = List.filterMap (attrToSvgAttr f)
@@ -43,7 +50,18 @@ type Attribute msg =
     | Color Color
     | Class String
     | OnClick (MouseEvents.Event -> msg)
-    | OnDoubleClick (MouseEvents.Event -> msg)      
+    | OnDoubleClick (MouseEvents.Event -> msg) 
+    | ZIndex Int     
+
+attributeToZIndex : Attribute msg -> Maybe Int
+attributeToZIndex a = case a of
+      ZIndex n -> Just n
+      _ -> Nothing
+
+attributesToZIndex : List (Attribute msg) -> Int
+attributesToZIndex =
+  List.Extra.findMap attributeToZIndex
+  >> Maybe.withDefault defaultZ
 
 type Color = Black | Red | Blue
 
@@ -87,18 +105,27 @@ onMouseLeave = simpleOn "mouseleave"  -}
 color : Color -> Attribute msg
 color = Color
 
+zindexAttr : Int -> Attribute Msg
+zindexAttr = ZIndex
+
 type Drawing a
-    = Drawing (List (Svg a))
+    = Drawing (List { svg : Svg a, zindex : Int})
+
+defaultZ = 0
 
 empty : Drawing a
 empty = Drawing []
 
-ofSvg : Svg a -> Drawing a
-ofSvg s = Drawing [ s ]
+ofSvgs : Int -> List (Svg a) -> Drawing a
+ofSvgs z l = Drawing <| List.map (\s -> { svg = s, zindex = z }) l 
 
-drawingToSvgs : Drawing a -> List (Svg a)
-drawingToSvgs d = case d of 
-    Drawing c -> c
+
+ofSvg : Int -> Svg a -> Drawing a
+ofSvg z s = ofSvgs z [ s ]
+
+drawingToZSvgs : Drawing a -> List { svg : Svg a, zindex : Int}
+drawingToZSvgs (Drawing c) = c
+
 
 dashedToAttrs : Bool -> List (Svg.Attribute a)
 dashedToAttrs dashed =  
@@ -143,24 +170,29 @@ mkPath dashed attrs q =
 
 arrow : List (Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
 arrow attrs style q =
+    let zindex = attributesToZIndex attrs in
     let imgs = ArrowStyle.makeHeadTailImgs q style in    
-    let mkl = mkPath style.dashed attrs in
+    let mkgen d l = mkPath d (l ++ attrs) in
+    let mkl = mkgen style.dashed [] in
+    let mkshadow = mkgen False [class "shadow-line"] in
+    let mkall l = List.map mkshadow l ++ List.map mkl l in
     let lines = if ArrowStyle.isDouble style then
                 -- let delta = Point.subtract q.to q.controlPoint 
                 --             |> Point.orthogonal
                 --             |> Point.normalise ArrowStyle.doubleSize
                 -- in
               
-                [ mkl (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
-                  mkl (Bez.orthoVectPx ArrowStyle.doubleSize q)
+                mkall [ (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
+                    (Bez.orthoVectPx ArrowStyle.doubleSize q)
                 ]
         
                 else
-                    [ mkl q ]
-    in lines ++ imgs |> Drawing
+                    mkall [ q ]
+    in lines ++ imgs |> ofSvgs zindex
 
 line : List (Attribute a) -> Point -> Point -> Drawing a
 line l (fromx, fromy) (tox, toy) = 
+   let z = attributesToZIndex l in
    let f = String.fromFloat in
       Svg.line 
       ([Svg.x1 <| f fromx
@@ -169,7 +201,7 @@ line l (fromx, fromy) (tox, toy) =
       , Svg.y2 <| f toy
       ] ++ attrsToSvgAttrs Svg.stroke l)
       []
-      |> ofSvg
+      |> ofSvg z
 
 
 
@@ -187,7 +219,7 @@ rect { topLeft, bottomRight } =
        Svg.class "rect-select"
        ]
        [] 
-       |> ofSvg
+       |> ofSvg defaultZ
 
 
 grid : Int -> Drawing a
@@ -205,7 +237,7 @@ grid n =
         ],
         Svg.rect [Svg.width "100%", Svg.height "100%", Svg.fill "url(#grid)"] []
         ]         
-        |> Drawing
+        |> ofSvgs defaultZ
 
 
 
@@ -215,30 +247,30 @@ grid n =
 
 fromString : List (Attribute msg) -> Point -> String-> Drawing msg
 fromString attrs (x,y) str = 
-   
+  let z = attributesToZIndex attrs in
   let f = String.fromFloat in
    Svg.text_ 
      ([Svg.x <| f x, Svg.y <| f y, Svg.textAnchor "middle",
       Svg.dominantBaseline "middle"
      ] ++ attrsToSvgAttrs Svg.fill attrs)
      [Svg.text str]      
-       |> ofSvg
+       |> ofSvg z
 
 circle : List (Attribute msg) ->  Point -> Float -> Drawing msg
 circle attrs (cx, cy) n = 
-  
+  let z = attributesToZIndex attrs in
   let f = String.fromFloat in
   Svg.circle ([Svg.cx <| f cx, Svg.cy <| f cy, Svg.r <| f n ] ++ attrsToSvgAttrs Svg.fill attrs) 
   []
-     |> ofSvg
+     |> ofSvg z
 
 
-html : Point -> Point -> Html.Html a -> Drawing a
-html p d h = 
-  htmlAnchor p d True h
+html : Int -> Point -> Point -> Html.Html a -> Drawing a
+html z p d h = 
+  htmlAnchor z p d True h
 
-htmlAnchor : Point -> Point -> Bool -> Html.Html a -> Drawing a
-htmlAnchor (x1, y1) (width, height) center h = 
+htmlAnchor : Int -> Point -> Point -> Bool -> Html.Html a -> Drawing a
+htmlAnchor z (x1, y1) (width, height) center h = 
   let f = String.fromFloat in
   let (x, y) = if center then (x1 - width / 2, y1 - height / 2) else (x1, y1) in
    Svg.foreignObject 
@@ -249,8 +281,8 @@ htmlAnchor (x1, y1) (width, height) center h =
      -- , Svg.width <| f width, Svg.height <| f height
      ]
    [h]
-    |> ofSvg
+    |> ofSvg z
 
 group : List (Drawing a) -> Drawing a
 group l =
-  (List.map drawingToSvgs l) |> List.concat |> Drawing
+  (List.map drawingToZSvgs l) |> List.concat |> Drawing

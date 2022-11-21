@@ -74,6 +74,7 @@ import Format.Version3
 import Format.Version4
 import Format.Version5
 import Format.Version6
+import Format.Version7
 import Format.LastVersion as LastFormat
 
 import List.Extra
@@ -107,6 +108,7 @@ port loadedGraph3 : (LoadGraphInfo Format.Version3.Graph -> a) -> Sub a
 port loadedGraph4 : (LoadGraphInfo Format.Version4.Graph -> a) -> Sub a
 port loadedGraph5 : (LoadGraphInfo Format.Version5.Graph -> a) -> Sub a
 port loadedGraph6 : (LoadGraphInfo Format.Version6.Graph -> a) -> Sub a
+port loadedGraph7 : (LoadGraphInfo Format.Version7.Graph -> a) -> Sub a
 
 
 
@@ -166,6 +168,7 @@ subscriptions m =
       loadedGraph4 (mapLoadGraphInfo Format.Version4.fromJSGraph >> Loaded),
       loadedGraph5 (mapLoadGraphInfo Format.Version5.fromJSGraph >> Loaded),
       loadedGraph6 (mapLoadGraphInfo Format.Version6.fromJSGraph >> Loaded),
+      loadedGraph7 (mapLoadGraphInfo Format.Version7.fromJSGraph >> Loaded),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick)
@@ -797,7 +800,23 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False k (Character 'z') -> 
              if k.ctrl then noCmd <| undo model else noCmd model
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise model.graph
-   
+        KeyChanged False k (Character '+') ->
+            case GraphDefs.selectedEdgeId model.graph of
+              Nothing -> noCmd model
+              Just id -> 
+                    noCmd <| setSaveGraph model <|
+                   Graph.updateEdge id 
+                    (\ e -> { e | zindex = e.zindex + 1})
+                    model.graph
+        KeyChanged False k (Character '<') ->
+            case GraphDefs.selectedEdgeId model.graph of
+              Nothing -> noCmd model
+              Just id -> 
+                    noCmd <| setSaveGraph model <|
+                   Graph.updateEdge id 
+                    (\ e -> { e | zindex = e.zindex - 1})
+                    model.graph
+     
         _ ->
 
             case GraphDefs.selectedEdgeId model.graph of
@@ -1167,7 +1186,8 @@ helpMsg model =
                 ++ ", [c]ut head of selected arrow" 
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
-                ++ "\"] alternate between different arrow styles, [i]nvert arrow."               
+                ++ "\"] alternate between different arrow styles, [i]nvert arrow, "
+                ++ "[+<] move to the foreground/background."
 
                 ++ "\nMoving objects:"
                 ++ "[g] move selected objects (also merge, if wanted)"
