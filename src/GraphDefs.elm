@@ -1,6 +1,9 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
-   newNodeLabel, newEdgeLabel, emptyEdge,
-   selectedEdges, 
+   NormalEdgeLabel, EdgeType(..), GenericEdge,
+   filterLabelNormal, filterEdgeNormal, isNormalId, isPullback,
+   filterNormalEdges,
+   newNodeLabel, newEdgeLabel, newPullback, emptyEdge,
+   selectedEdges, mapNormalEdge,  mapDetails, 
    createNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getNodePos, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, selectedGraph,
@@ -15,7 +18,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    centerOfNodes, mergeWithSameLoc,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect,
-   getSurroundingDiagrams
+   getSurroundingDiagrams, updateNormalEdge
    )
 
 import IntDict
@@ -27,15 +30,77 @@ import GraphProof exposing (LoopNode, LoopEdge, Diagram)
 
 import Json.Encode as JEncode
 import List.Extra as List
-import ListExtraExtra
 import Maybe.Extra as Maybe
 
-
-type alias EdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point, selected : Bool,
-                   weaklySelected : Bool}
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool, weaklySelected : Bool,
                          isMath : Bool}
-{- 
+
+type alias EdgeLabel = GenericEdge EdgeType
+type alias GenericEdge a = { details : a, selected : Bool,
+                   weaklySelected : Bool}
+
+
+type EdgeType = 
+     PullbackEdge
+   | NormalEdge NormalEdgeLabel
+
+type alias NormalEdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point}
+
+filterNormalEdges : EdgeType -> Maybe NormalEdgeLabel
+filterNormalEdges d =  case d of
+             PullbackEdge -> Nothing
+             NormalEdge l -> Just l
+
+filterLabelNormal : EdgeLabel -> Maybe (GenericEdge NormalEdgeLabel)
+filterLabelNormal =
+    mapDetails filterNormalEdges
+             >> flattenDetails
+
+filterEdgeNormal : Edge EdgeLabel -> Maybe (Edge (GenericEdge NormalEdgeLabel))
+filterEdgeNormal e =
+      filterLabelNormal e.label |>
+                    Maybe.map (
+                        \ l -> 
+                        Graph.edgeMap (always l) e
+                    )
+       
+
+keepNormalEdges : Graph NodeLabel EdgeLabel -> Graph NodeLabel (GenericEdge NormalEdgeLabel)
+keepNormalEdges = Graph.filterMap Just
+   filterLabelNormal
+   
+
+
+mapEdgeType : (NormalEdgeLabel -> NormalEdgeLabel) -> EdgeType -> EdgeType
+mapEdgeType f e = case e of
+    PullbackEdge -> PullbackEdge
+    NormalEdge l -> NormalEdge (f l)
+
+mapDetails : (a -> b) -> GenericEdge a -> GenericEdge b
+mapDetails f e = 
+    { weaklySelected = e.weaklySelected
+    , selected = e.selected
+    , details = f e.details}
+
+isNormal : EdgeLabel -> Bool
+isNormal = not << isPullback
+
+isPullback : EdgeLabel -> Bool
+isPullback e = e.details == PullbackEdge
+
+isNormalId : Graph NodeLabel EdgeLabel -> Graph.Id -> Bool
+isNormalId g id = Graph.get id (always True)
+    isNormal g |> Maybe.withDefault False
+
+mapNormalEdge : (NormalEdgeLabel -> NormalEdgeLabel) -> EdgeLabel -> EdgeLabel
+mapNormalEdge = mapEdgeType >> mapDetails
+
+flattenDetails : GenericEdge (Maybe a) -> Maybe (GenericEdge a)
+flattenDetails e = 
+   e.details |> Maybe.map
+   (\d -> mapDetails (always d) e)
+
+{-   
 computeEdgePos : Point -> Point -> EdgeLabel -> Point
 computeEdgePos from to e = e.style.bend
     let q = Geometry.segmentRectBent from to e.style.bend in
@@ -50,14 +115,16 @@ computeEdgePos from to e = e.style.bend
 
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
+    keepNormalEdges >>
+   
     Graph.mapRecAll (\n -> n.pos)
              (\n -> n.pos)
              (\ _ n -> { pos = n.pos, label = n.label })
-             (\ _ fromP toP l -> 
+             (\ _ fromP toP {details}  -> 
                         { angle = Point.subtract toP fromP |> Point.pointToAngle ,
-                          label = l.label, -- (if l.label == "" && l.style.double then fromLabel else l.label),
+                          label = details.label, -- (if l.label == "" && l.style.double then fromLabel else l.label),
                           pos = Point.middle fromP toP,
-                          identity = l.style.double })
+                          identity = details.style.double })
 
 selectedIncompleteDiagram : Graph NodeLabel EdgeLabel -> Maybe Diagram
 selectedIncompleteDiagram g = 
@@ -65,10 +132,15 @@ selectedIncompleteDiagram g =
     GraphProof.getIncompleteDiagram gc
      <| Graph.getEdges (selectedEdges g |> List.map .id) gc
 
+updateNormalEdge : EdgeId -> (NormalEdgeLabel -> NormalEdgeLabel) -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+updateNormalEdge id f =
+    Graph.updateEdge id 
+     (mapNormalEdge f)
+
 
 exportQuiver : Int -> Graph NodeLabel EdgeLabel -> JEncode.Value
 exportQuiver sizeGrid g =
-  let gnorm = Graph.normalise g in
+  let gnorm = g |> keepNormalEdges |> Graph.normalise in
   let nodes = Graph.nodes gnorm
       edges = Graph.edges gnorm
   in
@@ -79,9 +151,9 @@ exportQuiver sizeGrid g =
   let encodeEdge e = JEncode.list identity <| 
                [JEncode.int e.from
                , JEncode.int e.to
-               , JEncode.string e.label.label
-               , JEncode.int (if e.label.style.labelAlignment == Right then 2 else 0) -- alignment
-               , JEncode.object <| ArrowStyle.quiverStyle e.label.style
+               , JEncode.string e.label.details.label
+               , JEncode.int (if e.label.details.style.labelAlignment == Right then 2 else 0) -- alignment
+               , JEncode.object <| ArrowStyle.quiverStyle e.label.details.style
                   -- [("level", if e.label.style.double then JEncode.int 2 else JEncode.int 1)] --options
                 ] in
   let jnodes = nodes |> List.map encodeNode
@@ -96,7 +168,13 @@ newNodeLabel p s isMath =
                          isMath = isMath}
 
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
-newEdgeLabel s style = { label = s, style = style, dims = Nothing, selected = False, weaklySelected = False}
+newEdgeLabel s style = { details = NormalEdge { label = s, style = style, dims = Nothing }, 
+                       selected = False, weaklySelected = False}
+
+newPullback : EdgeLabel
+newPullback = { details = PullbackEdge, 
+                       selected = False, weaklySelected = False}
+
 
 emptyEdge : EdgeLabel
 emptyEdge = newEdgeLabel "" ArrowStyle.empty
@@ -138,7 +216,7 @@ getNodePos n =
    if n.isMath then n.pos else
    Point.add n.pos (Point.resize 0.5 (getNodeDims n))
     
-getEdgeDims : EdgeLabel -> Point
+getEdgeDims : NormalEdgeLabel -> Point
 getEdgeDims n =
     case  n.dims of
         Nothing -> defaultDims n.label
@@ -226,8 +304,10 @@ snapToGrid : Int -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 snapToGrid sizeGrid g =
    Graph.map (\_ -> snapNodeToGrid sizeGrid) (\_ -> identity ) g
 
-getLabelLabel : Graph.Id -> Graph NodeLabel EdgeLabel -> String
-getLabelLabel id g = g |> Graph.get id .label .label |> Maybe.withDefault ""
+getLabelLabel : Graph.Id -> Graph NodeLabel EdgeLabel -> Maybe String
+getLabelLabel id g = g |> Graph.get id (Just << .label) 
+          (.details >> filterNormalEdges >> Maybe.map .label)
+          |> Maybe.join
 
 addOrSetSel : Bool -> Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 addOrSetSel keep o gi =
@@ -312,7 +392,11 @@ findReplaceInSelected g r =
   in
   let f = fieldSelect g in
   Graph.map (\ _ n -> { n | label = repl (f n) n.label })
-     (\ _ e -> { e | label = repl (f e) e.label })
+     (\_  e -> mapNormalEdge 
+           (\ l -> { l |  label = repl (f e) l.label })
+           e
+           ) 
+           
       g
 
 distanceToNode : Point -> NodeLabel -> Float
@@ -321,10 +405,10 @@ distanceToNode p n =
    let rect = Geometry.rectFromPosDims posDims in 
    Geometry.distanceToRect p rect
 
-unnamedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+{- unnamedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 unnamedGraph = 
    Graph.keepBelow (.label >> String.isEmpty)
-     (.label >> String.isEmpty)
+     (.label >> String.isEmpty) -}
 
 closest : Point -> Graph NodeLabel EdgeLabel -> Graph.Id
 -- ordered by distance to Point

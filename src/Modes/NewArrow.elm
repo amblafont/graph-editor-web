@@ -11,6 +11,9 @@ import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Modes exposing ( NewArrowState, Mode(..))
 import InputPosition exposing (InputPosition(..))
 import Model exposing (..)
+import Modes exposing (PullbackKind(..))
+import Modes.Pullback
+import Maybe.Extra
 
 
 
@@ -21,7 +24,8 @@ updateState m state = {m | mode = NewArrow state}
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    GraphDefs.selectedId m.graph        
+    GraphDefs.selectedId m.graph           
+        |> Maybe.Extra.filter (GraphDefs.isNormalId m.graph)
         |> Maybe.map
             (\chosenNode ->               
                 { m
@@ -57,7 +61,9 @@ nextStep model finish state =
                      [ info.movedNode , info.edgeId ] 
                   else [ info.edgeId ]
         in
-        let label = GraphDefs.getLabelLabel state.chosenNode info.graph in
+        let label = GraphDefs.getLabelLabel state.chosenNode info.graph
+                    |> Maybe.withDefault ""
+        in
         let ids_labels = List.map (\ id -> (id, label)) ids in
         noCmd <| 
         initialise_RenameModeWithDefault ids_labels m2
@@ -90,6 +96,11 @@ update state msg model =
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next False
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
+        KeyChanged False _ (Character 'p') -> noCmd <| { model | mode =
+                          Modes.Pullback.initialise model.graph state.chosenNode Pullback
+                          |> Maybe.map PullbackMode
+                          |> Maybe.withDefault (NewArrow state)
+                       }
         _ ->          
                    let st2 = { state | style = Msg.updateArrowStyle msg state.style } in
                    let st3 = { st2 | pos = InputPosition.update st2.pos msg} in
@@ -185,7 +196,8 @@ help  =
              ++ "[\""
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
-             ++ "[i]nvert arrow."
+             ++ "[i]nvert arrow, "
+             ++ "[p]ullback mode."
         -- NewArrowEditNode _ _ ->
         --     "[ESC] empty label, [RET] confirm the label, "
         --     ++ "[TAB] edit the edge label."

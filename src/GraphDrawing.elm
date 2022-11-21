@@ -10,7 +10,7 @@ import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
 import Color exposing (..)
-import GraphDefs exposing (NodeLabel, EdgeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
 import Geometry 
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import HtmlDefs
@@ -19,9 +19,25 @@ import Html.Events.Extra.Mouse as MouseEvents
 
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
-type alias EdgeDrawingLabel = 
-   { label : String, editable : Bool, isActive : Activity, 
-   style : ArrowStyle, dims : Point }
+type alias NormalEdgeDrawingLabel = 
+   { label : String, editable : Bool,
+     style : ArrowStyle, dims : Point }
+
+type EdgeType = 
+    PullbackEdge
+  | NormalEdge NormalEdgeDrawingLabel
+
+type alias EdgeDrawingLabel = { details : EdgeType, isActive : Activity}
+
+mapNormalEdge : (NormalEdgeDrawingLabel -> NormalEdgeDrawingLabel) -> EdgeDrawingLabel -> EdgeDrawingLabel
+mapNormalEdge f e = 
+  {isActive = e.isActive,
+   details = case e.details of
+               PullbackEdge -> PullbackEdge
+               NormalEdge l -> NormalEdge <| f l
+  }
+
+
 type alias NodeDrawingLabel =
     { pos : Point,
       inputPos : Point, -- where the input text should be located
@@ -66,12 +82,20 @@ makeActive l = Graph.updateList l
              
 
 make_edgeDrawingLabel : {editable : Bool, isActive : Activity} 
-                      -> EdgeLabel-> EdgeDrawingLabel
-make_edgeDrawingLabel {editable, isActive} ({label, style} as l) =
-    { label = label, editable = editable, isActive = isActive,
-      style = style,
-      dims = GraphDefs.getEdgeDims l
-    }
+                      -> EdgeLabel -> EdgeDrawingLabel
+make_edgeDrawingLabel {editable, isActive} e =
+   { isActive = isActive,
+     details = case e.details of 
+        GraphDefs.PullbackEdge -> PullbackEdge
+        GraphDefs.NormalEdge ({label, style} as l) ->
+           NormalEdge { label = label, editable = editable, 
+              style = style,
+              dims = GraphDefs.getEdgeDims l
+            }
+   }
+    
+        
+    
 
 make_nodeDrawingLabel : {editable : Bool, isActive : Activity} -> NodeLabel ->  NodeDrawingLabel
 make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
@@ -166,8 +190,8 @@ nodeDrawing cfg n =
         
 
 
-segmentLabel : Config -> QuadraticBezier -> Graph.EdgeId -> EdgeDrawingLabel -> Float -> Drawing Msg
-segmentLabel cfg q edgeId label curve =
+segmentLabel : Config -> QuadraticBezier -> Graph.EdgeId -> Activity -> NormalEdgeDrawingLabel -> Float -> Drawing Msg
+segmentLabel cfg q edgeId activity label curve =
     let offset = 10 + (if ArrowStyle.isDouble label.style then ArrowStyle.doubleSize else 0) in
     let labelpos =              
               -- Quiver algorithm, following redraw_label
@@ -213,7 +237,7 @@ segmentLabel cfg q edgeId label curve =
                  MouseEvents.onMove  (always (MouseOn edgeId))
                 -- Html.Events.onMouseOver (EltHover edgeId)
             ] ++ 
-            (activityToClasses label.isActive |> List.map Html.Attributes.class)        
+            (activityToClasses activity |> List.map Html.Attributes.class)        
              ++
              HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
             )
@@ -222,11 +246,12 @@ segmentLabel cfg q edgeId label curve =
               labelpos label.label  -}
          
 
-edgeDrawing : Config -> Graph.EdgeId 
+normalEdgeDrawing : Config -> Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims
-     -> EdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
-edgeDrawing cfg edgeId {- from to -} label q curve =
-    let c = activityToColor label.isActive in
+     -> Activity 
+     -> NormalEdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
+normalEdgeDrawing cfg edgeId activity {- from to -} label q curve =
+    let c = activityToColor activity in
     
     
     -- let q = Geometry.segmentRectBent from to 
@@ -242,21 +267,72 @@ edgeDrawing cfg edgeId {- from to -} label q curve =
           ] 
           label.style
          q, 
-          segmentLabel cfg q edgeId label curve]
+          segmentLabel cfg q edgeId activity label curve]
 
 {- type alias DrawingDims msg =
     { drawing : Drawing msg
     , posDims : Geometry.PosDims    
     } -}
 
+drawPullback : Graph.EdgeId -> Activity -> (Point, Point) -> (Point, Point) -> Drawing Msg
+drawPullback edgeId a (p1, p2) (q1, q2) =
+     let shift = 30 in
+     let smallshift = 5 in
+
+     let r1 = Point.add p1 <| Point.normalise shift 
+              <| Point.subtract q2 q1
+     in
+     let r2 = Point.add p1 <| Point.normalise shift 
+              <| Point.subtract p2 p1 
+     in
+     let extrem = Point.diamondPave r1 p1 r2 in
+     let s1 = Point.add r1 <| Point.normalise smallshift 
+             <| Point.subtract extrem r1
+     in
+     let s2 = Point.add r2 <| Point.normalise smallshift 
+             <| Point.subtract extrem r2
+     in
+     let blackline = Drawing.line 
+               [Drawing.color <| activityToColor a,
+                Drawing.onClick (EdgeClick edgeId)]
+     in
+     Drawing.group 
+     [blackline s1 extrem, blackline extrem s2] 
+
+{-
+
+Fin
+
+-}
 
 graphDrawing : Config -> Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 graphDrawing cfg g0 =
      
       let padding = 5 in
+      let drawEdge id n1 n2 e = 
+             case e.details of
+               PullbackEdge -> { drawing = 
+                                   Maybe.map2 (drawPullback id e.isActive) n1.extrems n2.extrems
+                                   |> Maybe.withDefault Drawing.empty
+                               , posDims = { pos = (0, 0), dims = (0, 0)}
+                               , extrems = Just (n1.posDims.pos, n2.posDims.pos)
+                               }
+               NormalEdge l ->
+                   let q = Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
+                       { drawing = normalEdgeDrawing cfg id e.isActive l q l.style.bend,                     
+                        -- TODO
+                         posDims = {
+                             pos = Bez.middle q,
+                             dims = (padding, padding) |> Point.resize 4
+
+                         },
+                         extrems = Just (n1.posDims.pos, n2.posDims.pos)
+                       }
+      in
       let g = Graph.mapRecAll     
               identity identity      
               (\id n -> { drawing = nodeDrawing cfg (Node id n), 
+                      extrems = Nothing,
                       posDims = {
                       dims = 
                       
@@ -266,17 +342,7 @@ graphDrawing cfg g0 =
                       pos = n.pos
                       } |> Geometry.pad padding
                        } )
-               (\id n1 n2 e -> 
-                   let q = Geometry.segmentRectBent n1.posDims n2.posDims e.style.bend in
-                   { drawing = edgeDrawing cfg id e q e.style.bend,                     
-                    -- TODO
-                     posDims = {
-                         pos = Bez.middle q,
-                         dims = (padding, padding) |> Point.resize 4
-
-                     }
-                   }
-              )
+               drawEdge
               g0 
       in
       let nodes = Graph.nodes g |> List.map (.label >> .drawing)

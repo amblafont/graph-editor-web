@@ -30,6 +30,7 @@ type Mode
     | CutHead CutHeadState
     | CloneMode
     | ResizeMode ResizeState -- current sizegrid
+    | PullbackMode PullbackState
 
 type alias CutHeadState = { id: Graph.EdgeId
     , head : Bool -- the head or the tail?
@@ -65,11 +66,22 @@ type alias SplitArrowState =
     , source : Graph.Id
     , target : Graph.Id
     , pos : InputPosition
-    , label : GraphDefs.EdgeLabel -- original edge label
+    , label : GraphDefs.GenericEdge GraphDefs.NormalEdgeLabel -- original edge label
     , labelOnSource : Bool -- shall we transfer the existing label from the source
     , guessPos : Bool -- do we try guessing the position of the new node
     }
 
+
+type alias PullbackState =
+    { chosenEdge : EdgeId
+    , source : Graph.Id
+    , target : Graph.Id
+    , kind : PullbackKind
+    , currentDest : EdgeId
+    , possibilities : List EdgeId
+    }
+
+type PullbackKind = Pullback | Pushout
 
 
 
@@ -84,11 +96,11 @@ type alias SquareState =
     , n1 : NodeId
     , n1Label : String
     , n1ToChosen : Bool
-    , e1 : Graph.Edge GraphDefs.EdgeLabel
+    , e1 : Graph.Edge (GraphDefs.GenericEdge GraphDefs.NormalEdgeLabel)
     , n2 : NodeId
     , n2Label : String
     , n2ToChosen : Bool
-    , e2 : Graph.Edge GraphDefs.EdgeLabel
+    , e2 : Graph.Edge (GraphDefs.GenericEdge GraphDefs.NormalEdgeLabel)
 
     -- next possibility of square to be tested (to determine the orientation)
     , configuration : Int

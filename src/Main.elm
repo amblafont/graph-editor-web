@@ -55,6 +55,7 @@ import Maybe exposing (withDefault)
 import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
+import Modes.Pullback
 import Modes exposing (Mode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
 
 import ArrowStyle
@@ -72,12 +73,13 @@ import Format.Version2
 import Format.Version3
 import Format.Version4
 import Format.Version5
+import Format.Version6
 import Format.LastVersion as LastFormat
 
 import List.Extra
 import GraphDefs exposing (exportQuiver)
 import GraphProof
-
+import GraphDrawing
 
 
 port preventDefault : JE.Value -> Cmd a
@@ -104,6 +106,7 @@ port loadedGraph2 : (LoadGraphInfo Format.Version2.Graph -> a) -> Sub a
 port loadedGraph3 : (LoadGraphInfo Format.Version3.Graph -> a) -> Sub a
 port loadedGraph4 : (LoadGraphInfo Format.Version4.Graph -> a) -> Sub a
 port loadedGraph5 : (LoadGraphInfo Format.Version5.Graph -> a) -> Sub a
+port loadedGraph6 : (LoadGraphInfo Format.Version6.Graph -> a) -> Sub a
 
 
 
@@ -162,6 +165,7 @@ subscriptions m =
       loadedGraph3 (mapLoadGraphInfo Format.Version3.fromJSGraph >> Loaded),
       loadedGraph4 (mapLoadGraphInfo Format.Version4.fromJSGraph >> Loaded),
       loadedGraph5 (mapLoadGraphInfo Format.Version5.fromJSGraph >> Loaded),
+      loadedGraph6 (mapLoadGraphInfo Format.Version6.fromJSGraph >> Loaded),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick)
@@ -247,7 +251,7 @@ graph_RenameMode l m =
       [] -> m.graph
       (id, s) :: _ ->   Graph.update id 
                         (\ n -> {n | label = s })  
-                               (\ e -> {e | label = s })                               
+                         (GraphDefs.mapNormalEdge (\e -> {e | label = s }))
                                m.graph 
 
 info_MoveNode : Model -> Modes.MoveState -> 
@@ -397,7 +401,9 @@ update msg modeli =
                 let dims = (x, if y == 0 then 12 else y) in
                 noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (e, dims),
                       graph = 
-                      Graph.updateEdge e (\l -> {l | dims = Just dims }) model.graph                      
+                      GraphDefs.updateNormalEdge e 
+                        (\l -> {l | dims = Just dims })
+                          model.graph
                 }
      Do cmd -> (model, cmd)
      Loaded g -> 
@@ -430,6 +436,7 @@ update msg modeli =
         RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
         EnlargeMode state -> update_Enlarge msg state model
         NewArrow astate -> Modes.NewArrow.update astate msg model
+        PullbackMode astate -> Modes.Pullback.update astate msg model
             -- update_Modes.NewArrow astate msg m
         RenameMode l -> update_RenameMode l msg model
         Move s -> update_MoveNode msg s model
@@ -711,7 +718,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False k (Character 'c') -> 
             if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
             else if k.alt then noCmd { model | mode = CloneMode } else
-            case GraphDefs.selectedEdgeId model.graph of
+            case GraphDefs.selectedEdgeId model.graph 
+                |> Maybe.filter (GraphDefs.isNormalId model.graph) of
               Nothing -> noCmd model
               Just id -> noCmd {  model | mode = CutHead { id = id, head = True, duplicate = False } }              
         KeyChanged False _ (Character 'C') -> 
@@ -796,12 +804,13 @@ s                  (GraphDefs.clearSelection model.graph) } -}
               Nothing -> noCmd model
               Just id -> 
                  Graph.getEdge id model.graph
+                 |> Maybe.andThen GraphDefs.filterEdgeNormal
                  |> Maybe.andThen (\e ->
-                    Msg.mayUpdateArrowStyle msg e.label.style
+                    Msg.mayUpdateArrowStyle msg e.label.details.style
                    )
                  |> Maybe.map ( \style ->
                   setSaveGraph model <| 
-                   Graph.updateEdge id 
+                   GraphDefs.updateNormalEdge id 
                     (\e -> {e | style = style})
                     model.graph
                  )
@@ -981,7 +990,8 @@ graphDrawingFromModel m =
                 (id, _) :: _ ->
                     Graph.update id 
                     (\n -> {n | editable = True })
-                    (\e -> {e | editable = True })
+                    (GraphDrawing.mapNormalEdge
+                     <| \e ->  {e | editable = True })
                     g2
                 _ -> g2
               
@@ -991,9 +1001,9 @@ graphDrawingFromModel m =
                    (\id n ->  {n | label = String.fromInt id}) 
                    (\_ -> identity)
         NewArrow astate -> Modes.NewArrow.graphDrawing m astate
-        SquareMode state ->
-            Modes.Square.graphDrawing m state
+        SquareMode state -> Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
+        PullbackMode state -> Modes.Pullback.graphDrawing m state
         CutHead state -> graphCutHead state m |> GraphDrawing.toDrawingGraph
         CloneMode -> graphClone m |> GraphDrawing.toDrawingGraph
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
@@ -1205,6 +1215,9 @@ helpMsg model =
         NewArrow _ -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
                            ++  Modes.NewArrow.help |> msg
+        PullbackMode _ -> "Mode Pullback. "
+                          -- ++ Debug.toString model 
+                           ++  Modes.Pullback.help |> msg
         SquareMode _ -> "Mode Commutative square. "
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "

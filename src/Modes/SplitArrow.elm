@@ -8,7 +8,7 @@ import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe
 import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..), computeLayout)
-import GraphDefs exposing (NodeLabel, EdgeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..))
 
 import Modes exposing ( Mode(..), SplitArrowState)
 import Model exposing (..)
@@ -23,17 +23,19 @@ import Geometry.Point exposing (Point)
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    case GraphDefs.selectedEdgeId m.graph of
-      Nothing -> switch_Default m
-      Just id ->        
+    GraphDefs.selectedEdgeId m.graph 
+    |> Maybe.andThen (\id ->      
         Graph.getEdge id m.graph
-        |> Maybe.map 
-        (\ e -> noCmd {m | mode = SplitArrow 
-        { chosenEdge = id, source = e.from, target = e.to, pos = InputPosMouse,
-          label = e.label,
-          labelOnSource = True,
-          guessPos = True}
-        })
+        |> Maybe.andThen (\ e -> 
+          GraphDefs.filterNormalEdges e.label.details
+          |> Maybe.map (\ l -> 
+            noCmd {m | mode = SplitArrow 
+                   { chosenEdge = id, source = e.from, target = e.to, 
+                     pos = InputPosMouse,
+                     label = GraphDefs.mapDetails (always l) e.label,
+                     labelOnSource = True,
+                     guessPos = True}
+                   })))
         
         -- |> Maybe.map
         -- -- prevent bugs (if the mouse is thought
@@ -60,7 +62,8 @@ nextStep model finish state =
         in
         let ids = 
               if info.created then 
-                [ (info.movedNode, GraphDefs.getLabelLabel info.movedNode info.graph),
+                [ (info.movedNode, GraphDefs.getLabelLabel info.movedNode info.graph
+                   |> Maybe.withDefault ""),
                   ne1, ne2 ]
               else
                  [ ne1, ne2 ]
@@ -105,6 +108,7 @@ stateInfo m state =
                  state.target 
                else 
                  state.source)
+                |> Maybe.withDefault ""
     in
     let
         ( ( g, n ), created ) =
@@ -118,7 +122,7 @@ stateInfo m state =
            
     in
     let ((l1, d1), (l2, d2)) = 
-           let existingLabels = (state.label, state.label.label) in
+           let existingLabels = (GraphDefs.mapDetails NormalEdge state.label, state.label.details.label) in
            let newLabel = (GraphDefs.emptyEdge, otherLabel) in                  
            if state.labelOnSource then 
              (existingLabels, newLabel)

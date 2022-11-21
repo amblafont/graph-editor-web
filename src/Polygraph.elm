@@ -5,7 +5,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      getNode, getNodes, getEdge, getEdges, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
-     filterNodes, keepBelow,
+     filterNodes, keepBelow, filterMap,
      Node, Edge, nextId,
      incomings, outgoings, drop, 
      normalise,
@@ -335,19 +335,29 @@ mapRec cn ce fn fe ids (Graph g) =
    Graph gf
    
 
-rawFilterIds : (n -> Bool) -> (Id -> Id -> e -> Bool) -> GraphRep n e -> GraphRep n e
-rawFilterIds fn fe =
-     IntDict.filter
+rawFilterMapIds : (n -> Maybe n2) -> (Id -> Id -> e -> Maybe e2) -> GraphRep n e -> GraphRep n2 e2
+rawFilterMapIds fn fe =
+     IntDictExtra.filterMap
         (\_ o -> 
            case o of
-               EdgeObj id1 id2 e -> fe id1 id2 e 
-               NodeObj n -> fn n
+               EdgeObj id1 id2 e -> fe id1 id2 e
+                  |> Maybe.map (EdgeObj id1 id2)
+               NodeObj n -> (fn n) |> Maybe.map NodeObj
+
          )
 
+rawFilterIds : (n -> Bool) -> (Id -> Id -> e -> Bool) -> GraphRep n e -> GraphRep n e
+rawFilterIds fn fe =
+     rawFilterMapIds (Just >> Maybe.filter fn)
+        (\id1 id2 -> (Just >> Maybe.filter (fe id1 id2)))
 
 
 rawFilter : (n -> Bool) -> (e -> Bool) -> GraphRep n e -> GraphRep n e
 rawFilter fn fe = rawFilterIds fn (\ _ _ -> fe)
+
+rawFilterMap : (n -> Maybe n2) -> (e -> Maybe e2) -> GraphRep n e -> GraphRep n2 e2
+rawFilterMap fn fe = rawFilterMapIds fn (\ _ _ -> fe)
+
 
 
 
@@ -356,11 +366,18 @@ rawFilter fn fe = rawFilterIds fn (\ _ _ -> fe)
 -- (dual of filter)
 
 drop : (n -> Bool) -> (e -> Bool) -> Graph n e -> Graph n e
-drop fn fe (Graph g) =
-   let g2 = rawFilter fn fe g
-   in
-   removeList (IntDict.keys g2) (Graph g)
+drop fn fe =
+   filterMap (Just >> Maybe.filter (not << fn))
+     (Just >> Maybe.filter (not << fe))
 
+-- if an element is dropped, all its ascendants will be dropped
+-- as well
+-- (dual of filter)
+filterMap : (n -> Maybe n2) -> (e -> Maybe e2) -> Graph n e -> Graph n2 e2
+filterMap fn fe (Graph g) =
+   let g2 = rawFilterMap fn fe g
+   in
+   Graph g2 |> sanitise
 
 -- if an edge is kept, all its descendants will also be
 -- whether or not they are explicitely kept

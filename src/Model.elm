@@ -198,7 +198,12 @@ initialise_RenameModeWithDefault l m =
 
 initialise_RenameMode : List Graph.Id -> Model -> Model
 initialise_RenameMode l m =
-    let ls =  List.map (\id -> (id, GraphDefs.getLabelLabel id m.graph)) l
+    let ls =  List.filterMap 
+              (\id -> 
+                GraphDefs.getLabelLabel id m.graph
+                |> Maybe.map (\s -> (id, s))
+              
+              ) l
     in
         initialise_RenameModeWithDefault ls m
         

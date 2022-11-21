@@ -1,4 +1,4 @@
-module Format.Version5 exposing (Graph, Node, Edge, toJSGraph, fromJSGraph, version)
+module Format.Version5 exposing (Graph, Node, Edge, fromJSGraph, version)
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
@@ -6,6 +6,7 @@ import ArrowStyle
 import GraphDefs exposing (EdgeLabel, NodeLabel)
 import ArrowStyle exposing (LabelAlignment(..))
 import Format.GraphInfo exposing (GraphInfo)
+import Format.Version6 as NextVersion
 
 version = 5
 
@@ -21,69 +22,19 @@ type alias Graph = {
       sizeGrid : Int,
       latexPreamble : String}
 
-fromEdgeLabel : EdgeLabel -> Edge
-fromEdgeLabel { label, style } = 
-     { label = label,       
-       style = { tail = ArrowStyle.tailToString style.tail
-               , head = ArrowStyle.headToString style.head
-               , alignment = ArrowStyle.alignmentToString style.labelAlignment
-               , double = style.double
-               , dashed = style.dashed
-               , bend = style.bend
-               , position = style.labelPosition
-               }
-     }
-toEdgeLabel : Edge -> EdgeLabel
-toEdgeLabel { label, style} = 
-     { label = label,       
-       style = { tail = ArrowStyle.tailFromString style.tail
-               , head = ArrowStyle.headFromString style.head
-               , double = style.double
-               , dashed = style.dashed
-               , bend = style.bend
-               , labelAlignment = ArrowStyle.alignmentFromString style.alignment
-               , labelPosition = style.position 
-                                 |> min 0.9
-                                 |> max 0.1                                 
-               }
-     , dims = Nothing
-     , selected = False
-     , weaklySelected = False
-     }
+toNextEdge : Edge -> NextVersion.Edge
+toNextEdge { label, style } = 
+  { label = label, style = style, isPullback = False }
 
 
-
-fromNodeLabel : NodeLabel -> Node
-fromNodeLabel { pos, label, isMath } = { pos = pos, label = label, isMath = isMath}
-
-toNodeLabel : Node -> NodeLabel
-toNodeLabel { pos, label, isMath } = { pos = pos, label = label
-   , dims = Nothing, selected = False, weaklySelected = False, isMath = isMath}
-
-
-
-
-
-toJSGraph : GraphInfo -> Graph
-toJSGraph m =
-          let g = m.graph in
-          let gjs = g
-                   |> Graph.map 
-                    (\_ -> fromNodeLabel)
-                    (\_ -> fromEdgeLabel) 
-                   |> Graph.normalise           
-          in
-          let nodes = Graph.nodes gjs
-              edges = Graph.edges gjs
-          in
-          {nodes = nodes, edges = edges, sizeGrid = m.sizeGrid,
-          latexPreamble = m.latexPreamble}
-
+toNextVersion : Graph -> NextVersion.Graph
+toNextVersion { nodes, edges, sizeGrid, latexPreamble } = 
+    { nodes = nodes, 
+      edges =  List.map (Graph.edgeMap toNextEdge) edges,
+      sizeGrid = sizeGrid,
+      latexPreamble = latexPreamble }
 
 
 fromJSGraph : Graph -> GraphInfo
-fromJSGraph { nodes, edges, sizeGrid, latexPreamble } = 
-       { graph = Graph.fromNodesAndEdges nodes edges
-                  |> Graph.map (\_ -> toNodeLabel) (\_ -> toEdgeLabel),
-         sizeGrid = sizeGrid,
-         latexPreamble = latexPreamble }
+fromJSGraph g = 
+     g |> toNextVersion |> NextVersion.fromJSGraph

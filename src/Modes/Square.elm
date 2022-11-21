@@ -23,24 +23,27 @@ import Geometry.Point exposing (Point)
 
 possibleSquareStates : Graph GraphDefs.NodeLabel GraphDefs.EdgeLabel -> Graph.NodeId {- NodeContext a b -} -> List SquareState
 possibleSquareStates g id =
-    let chosenLabel = Graph.get id .label .label g |> Maybe.withDefault "" in
-    
+ case GraphDefs.getLabelLabel id g of
+  Nothing -> []
+  Just chosenLabel ->
     -- Boolean: is it going to the node?
     let
         ins = Graph.incomings id g
+             |> List.filterMap GraphDefs.filterEdgeNormal
             -- IntDict.keys nc.incoming
              |> List.filterMap 
              (\x -> 
-             Graph.get x.from .label .label g |>
+             GraphDefs.getLabelLabel x.from g |>
              Maybe.map (\ labelNode -> 
              ( x, (labelNode, x.from), 
              True )))
 
         outs = Graph.outgoings id g
+            |> List.filterMap GraphDefs.filterEdgeNormal
             -- IntDict.keys nc.outgoing 
             |> List.filterMap 
              (\x -> 
-             Graph.get x.to .label .label g |>
+             GraphDefs.getLabelLabel x.to g |>
              Maybe.map (\ labelNode -> 
              ( x, (labelNode, x.to), 
              False )))
@@ -65,8 +68,8 @@ possibleSquareStates g id =
                 , n1Label = l1
                 , n2Label = l2
                 , guessPos = True      
-                }
-            )
+                })
+            
 
 
 
@@ -206,8 +209,8 @@ moveNodeViewInfo m data =
     -- (each arrow represents a diff) and applying the first diff
     -- to F y
     let labelsNode = commute data.n1Label data.n2Label
-        labelsEdge1 = commute data.n1Label data.e2.label.label 
-        labelsEdge2 = commute data.e1.label.label data.n2Label                       
+        labelsEdge1 = commute data.n1Label data.e2.label.details.label 
+        labelsEdge2 = commute data.e1.label.details.label data.n2Label                       
     in
       
            

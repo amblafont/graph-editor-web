@@ -1,5 +1,6 @@
 module Drawing exposing (Drawing,   
   fromString, circle, html, group, arrow, rect,
+  line,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
   svg, Color, red, black, blue, class, empty, grid, htmlAnchor
   )
@@ -157,6 +158,18 @@ arrow attrs style q =
                 else
                     [ mkl q ]
     in lines ++ imgs |> Drawing
+
+line : List (Attribute a) -> Point -> Point -> Drawing a
+line l (fromx, fromy) (tox, toy) = 
+   let f = String.fromFloat in
+      Svg.line 
+      ([Svg.x1 <| f fromx
+      , Svg.y1 <| f fromy
+      , Svg.x2 <| f tox
+      , Svg.y2 <| f toy
+      ] ++ attrsToSvgAttrs Svg.stroke l)
+      []
+      |> ofSvg
 
 
 
