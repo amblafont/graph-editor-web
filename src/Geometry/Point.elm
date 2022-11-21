@@ -1,4 +1,4 @@
-module Geometry.Point exposing (Point, radius, orthoVectPx, diamondPx, diamondPave,
+module Geometry.Point exposing (Point, radius, orthoVectPx, towards, diamondPx, diamondPave,
   normalise, orthogonal, flip, flipY, subtract, add, resize, middle, pointToAngle, toList,
   angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
   countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
@@ -37,6 +37,10 @@ normalise len ( x, y ) =
 orthogonal : Point -> Point
 orthogonal ( x, y ) =
     ( 0 - y, x )
+
+towards : Point -> Point -> Float -> Point
+towards source to shift =
+  add source <| normalise shift <| subtract to source 
 
 orthoVectPx : Point -> Point -> Float -> Point
 orthoVectPx from to px =

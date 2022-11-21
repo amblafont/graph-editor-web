@@ -279,18 +279,12 @@ drawPullback edgeId a (p1, p2) (q1, q2) =
      let shift = 30 in
      let smallshift = 5 in
 
-     let r1 = Point.add p1 <| Point.normalise shift 
-              <| Point.subtract q2 q1
-     in
-     let r2 = Point.add p1 <| Point.normalise shift 
-              <| Point.subtract p2 p1 
+     let r1 = Point.towards p1 p2 shift
+         r2 = Point.towards q1 q2 shift
      in
      let extrem = Point.diamondPave r1 p1 r2 in
-     let s1 = Point.add r1 <| Point.normalise smallshift 
-             <| Point.subtract extrem r1
-     in
-     let s2 = Point.add r2 <| Point.normalise smallshift 
-             <| Point.subtract extrem r2
+     let s1 = Point.towards r1 extrem smallshift
+         s2 = Point.towards r2 extrem smallshift
      in
      let blackline = Drawing.line 
                [Drawing.color <| activityToColor a,
