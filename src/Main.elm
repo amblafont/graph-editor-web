@@ -55,7 +55,7 @@ import Maybe exposing (withDefault)
 import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
-import Modes.Pullback
+import Modes.Pullshout
 import Modes exposing (Mode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
 
 import ArrowStyle
@@ -75,6 +75,7 @@ import Format.Version4
 import Format.Version5
 import Format.Version6
 import Format.Version7
+import Format.Version8
 import Format.LastVersion as LastFormat
 
 import List.Extra
@@ -109,6 +110,7 @@ port loadedGraph4 : (LoadGraphInfo Format.Version4.Graph -> a) -> Sub a
 port loadedGraph5 : (LoadGraphInfo Format.Version5.Graph -> a) -> Sub a
 port loadedGraph6 : (LoadGraphInfo Format.Version6.Graph -> a) -> Sub a
 port loadedGraph7 : (LoadGraphInfo Format.Version7.Graph -> a) -> Sub a
+port loadedGraph8 : (LoadGraphInfo Format.Version8.Graph -> a) -> Sub a
 
 
 
@@ -169,6 +171,7 @@ subscriptions m =
       loadedGraph5 (mapLoadGraphInfo Format.Version5.fromJSGraph >> Loaded),
       loadedGraph6 (mapLoadGraphInfo Format.Version6.fromJSGraph >> Loaded),
       loadedGraph7 (mapLoadGraphInfo Format.Version7.fromJSGraph >> Loaded),
+      loadedGraph8 (mapLoadGraphInfo Format.Version8.fromJSGraph >> Loaded),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       savedGraph FileName,
       E.onClick (D.succeed MouseClick)
@@ -439,7 +442,7 @@ update msg modeli =
         RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
         EnlargeMode state -> update_Enlarge msg state model
         NewArrow astate -> Modes.NewArrow.update astate msg model
-        PullbackMode astate -> Modes.Pullback.update astate msg model
+        PullshoutMode astate -> Modes.Pullshout.update astate msg model
             -- update_Modes.NewArrow astate msg m
         RenameMode b l -> update_RenameMode b l msg model
         Move s -> update_MoveNode msg s model
@@ -1021,7 +1024,7 @@ graphDrawingFromModel m =
         NewArrow astate -> Modes.NewArrow.graphDrawing m astate
         SquareMode state -> Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
-        PullbackMode state -> Modes.Pullback.graphDrawing m state
+        PullshoutMode state -> Modes.Pullshout.graphDrawing m state
         CutHead state -> graphCutHead state m |> GraphDrawing.toDrawingGraph
         CloneMode -> graphClone m |> GraphDrawing.toDrawingGraph
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
@@ -1234,9 +1237,9 @@ helpMsg model =
         NewArrow _ -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
                            ++  Modes.NewArrow.help |> msg
-        PullbackMode _ -> "Mode Pullback. "
+        PullshoutMode _ -> "Mode Pullback/Pullshout. "
                           -- ++ Debug.toString model 
-                           ++  Modes.Pullback.help |> msg
+                           ++  Modes.Pullshout.help |> msg
         SquareMode _ -> "Mode Commutative square. "
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "

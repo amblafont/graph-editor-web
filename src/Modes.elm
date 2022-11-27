@@ -32,7 +32,7 @@ type Mode
     | CutHead CutHeadState
     | CloneMode
     | ResizeMode ResizeState -- current sizegrid
-    | PullbackMode PullbackState
+    | PullshoutMode PullshoutState
 
 type alias CutHeadState = { id: Graph.EdgeId
     , head : Bool -- the head or the tail?
@@ -76,16 +76,16 @@ type alias SplitArrowState =
     }
 
 
-type alias PullbackState =
+type alias PullshoutState =
     { chosenEdge : EdgeId
     , source : Graph.Id
     , target : Graph.Id
-    , kind : PullbackKind
+    , kind : PullshoutKind
     , currentDest : EdgeId
     , possibilities : List EdgeId
     }
 
-type PullbackKind = Pullback | Pushout
+type PullshoutKind = Pullback | Pushout
 
 
 

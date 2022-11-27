@@ -1,8 +1,8 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
    NormalEdgeLabel, EdgeType(..), GenericEdge,
-   filterLabelNormal, filterEdgeNormal, isNormalId, isPullback,
+   filterLabelNormal, filterEdgeNormal, isNormalId, isPullshout,
    filterNormalEdges,
-   newNodeLabel, newEdgeLabel, newPullback, emptyEdge,
+   newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
    selectedEdges, mapNormalEdge,  mapDetails, 
    createNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getNodePos, getEdgeDims,
@@ -42,14 +42,14 @@ type alias GenericEdge a = { details : a, selected : Bool,
 
 
 type EdgeType = 
-     PullbackEdge
+     PullshoutEdge
    | NormalEdge NormalEdgeLabel
 
 type alias NormalEdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point}
 
 filterNormalEdges : EdgeType -> Maybe NormalEdgeLabel
 filterNormalEdges d =  case d of
-             PullbackEdge -> Nothing
+             PullshoutEdge -> Nothing
              NormalEdge l -> Just l
 
 filterLabelNormal : EdgeLabel -> Maybe (GenericEdge NormalEdgeLabel)
@@ -74,7 +74,7 @@ keepNormalEdges = Graph.filterMap Just
 
 mapEdgeType : (NormalEdgeLabel -> NormalEdgeLabel) -> EdgeType -> EdgeType
 mapEdgeType f e = case e of
-    PullbackEdge -> PullbackEdge
+    PullshoutEdge -> PullshoutEdge
     NormalEdge l -> NormalEdge (f l)
 
 mapDetails : (a -> b) -> GenericEdge a -> GenericEdge b
@@ -85,10 +85,10 @@ mapDetails f e =
     , zindex = e.zindex}
 
 isNormal : EdgeLabel -> Bool
-isNormal = not << isPullback
+isNormal = not << isPullshout
 
-isPullback : EdgeLabel -> Bool
-isPullback e = e.details == PullbackEdge
+isPullshout : EdgeLabel -> Bool
+isPullshout e = e.details == PullshoutEdge
 
 isNormalId : Graph NodeLabel EdgeLabel -> Graph.Id -> Bool
 isNormalId g id = Graph.get id (always True)
@@ -178,8 +178,8 @@ newGenericLabel d = { details = d,
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
 newEdgeLabel s style = newGenericLabel <| NormalEdge { label = s, style = style, dims = Nothing }
 
-newPullback : EdgeLabel
-newPullback = newGenericLabel PullbackEdge
+newPullshout : EdgeLabel
+newPullshout = newGenericLabel PullshoutEdge
 
 
 emptyEdge : EdgeLabel

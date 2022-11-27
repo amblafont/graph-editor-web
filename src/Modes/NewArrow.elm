@@ -11,8 +11,8 @@ import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Modes exposing ( NewArrowState, Mode(..))
 import InputPosition exposing (InputPosition(..))
 import Model exposing (..)
-import Modes exposing (PullbackKind(..))
-import Modes.Pullback
+import Modes exposing (PullshoutKind(..))
+import Modes.Pullshout
 import Maybe.Extra
 
 
@@ -86,6 +86,13 @@ keyToAction k step =
 update : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let next finish = nextStep model finish state in
+    let pullshoutMode k = 
+           noCmd <| { model | mode =
+                          Modes.Pullshout.initialise model.graph state.chosenNode k
+                          |> Maybe.map PullshoutMode
+                          |> Maybe.withDefault (NewArrow state)
+                       }
+    in
     case msg of
       
 
@@ -96,11 +103,8 @@ update state msg model =
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next False
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
-        KeyChanged False _ (Character 'p') -> noCmd <| { model | mode =
-                          Modes.Pullback.initialise model.graph state.chosenNode Pullback
-                          |> Maybe.map PullbackMode
-                          |> Maybe.withDefault (NewArrow state)
-                       }
+        KeyChanged False _ (Character 'p') -> pullshoutMode Pullback
+        KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
         _ ->          
                    let st2 = { state | style = Msg.updateArrowStyle msg state.style } in
                    let st3 = { st2 | pos = InputPosition.update st2.pos msg} in
@@ -197,7 +201,7 @@ help  =
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
              ++ "[i]nvert arrow, "
-             ++ "[p]ullback mode."
+             ++ "[p]ullback/[P]ushout mode."
         -- NewArrowEditNode _ _ ->
         --     "[ESC] empty label, [RET] confirm the label, "
         --     ++ "[TAB] edit the edge label."

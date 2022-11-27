@@ -25,7 +25,7 @@ type alias NormalEdgeDrawingLabel =
      style : ArrowStyle, dims : Point }
 
 type EdgeType = 
-    PullbackEdge
+    PullshoutEdge
   | NormalEdge NormalEdgeDrawingLabel
 
 type alias EdgeDrawingLabel = { details : EdgeType, isActive : Activity, zindex : Int}
@@ -35,7 +35,7 @@ mapNormalEdge f e =
   {isActive = e.isActive,
    zindex = e.zindex,
    details = case e.details of
-               PullbackEdge -> PullbackEdge
+               PullshoutEdge -> PullshoutEdge
                NormalEdge l -> NormalEdge <| f l
   }
 
@@ -88,7 +88,7 @@ make_edgeDrawingLabel : {editable : Bool, isActive : Activity}
 make_edgeDrawingLabel {editable, isActive} e =
    { isActive = isActive, zindex = e.zindex,
      details = case e.details of 
-        GraphDefs.PullbackEdge -> PullbackEdge
+        GraphDefs.PullshoutEdge -> PullshoutEdge
         GraphDefs.NormalEdge ({label, style} as l) ->
            NormalEdge { label = label, editable = editable, 
               style = style,
@@ -277,9 +277,14 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     , posDims : Geometry.PosDims    
     } -}
 
-drawPullback : Graph.EdgeId -> Activity -> (Point, Point) -> (Point, Point) -> Drawing Msg
-drawPullback edgeId a (p1, p2) (q1, q2) =
+-- draw a pullback or a pushout, depending on whehter the sources 
+-- or the targets are equal
+drawPullshout : Graph.EdgeId -> Activity -> (Point, Point) -> (Point, Point) -> Drawing Msg
+drawPullshout edgeId a (x1, x2) (y1, y2) =
      let shift = 30 in
+     let (p1, p2) = if x1 == y1 then (x1, x2) else (x2, x1)
+         (q1, q2) = if x1 == y1 then (y1, y2) else (y2, y1)
+     in
      let smallshift = 5 in
 
      let r1 = Point.towards p1 p2 shift
@@ -308,8 +313,8 @@ graphDrawing cfg g0 =
       let padding = 5 in
       let drawEdge id n1 n2 e = 
              case e.details of
-               PullbackEdge -> { drawing = 
-                                   Maybe.map2 (drawPullback id e.isActive) n1.extrems n2.extrems
+               PullshoutEdge -> { drawing = 
+                                   Maybe.map2 (drawPullshout id e.isActive) n1.extrems n2.extrems
                                    |> Maybe.withDefault Drawing.empty
                                , posDims = { pos = (0, 0), dims = (0, 0)}
                                , extrems = Just (n1.posDims.pos, n2.posDims.pos)
