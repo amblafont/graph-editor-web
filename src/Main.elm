@@ -600,7 +600,7 @@ rename model =
             |> Maybe.map List.singleton 
             |> Maybe.withDefault []
     in
-        noCmd <| initialise_RenameMode True ids <| pushHistory model
+        noCmd <| initialise_RenameMode True ids model
             
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
@@ -659,6 +659,15 @@ update_DefaultMode msg model =
                    <| setSaveGraph model newGraph                    
             in
             noCmd <| initialise_RenameMode False [ newId ] newModel
+    in
+    let increaseZBy offset =
+           case GraphDefs.selectedEdgeId model.graph of
+              Nothing -> noCmd model
+              Just id -> 
+                    noCmd <| setSaveGraph model <|
+                   Graph.updateEdge id 
+                    (\ e -> { e | zindex = e.zindex + offset})
+                    model.graph
     in
       
     
@@ -751,7 +760,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             noCmd <| initialise_Resize model
         KeyChanged False _ (Character 'r') -> rename model
         KeyChanged False _ (Character 's') -> 
-            Modes.Square.initialise <| pushHistory model 
+            Modes.Square.initialise model 
         KeyChanged False _ (Character 't') -> createPoint False
         KeyChanged False _ (Character 'p') -> createPoint True
            --noCmd <| { model | mode = NewNode }
@@ -759,7 +768,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         --                                            Msg.focusId quickInputId)
 
         
-        KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise <| pushHistory model 
+        KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise model
         KeyChanged False _ (Character 'x') ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph
                      
@@ -804,22 +813,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False k (Character 'z') -> 
              if k.ctrl then noCmd <| undo model else noCmd model
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise model.graph
-        KeyChanged False k (Character '+') ->
-            case GraphDefs.selectedEdgeId model.graph of
-              Nothing -> noCmd model
-              Just id -> 
-                    noCmd <| setSaveGraph model <|
-                   Graph.updateEdge id 
-                    (\ e -> { e | zindex = e.zindex + 1})
-                    model.graph
-        KeyChanged False k (Character '<') ->
-            case GraphDefs.selectedEdgeId model.graph of
-              Nothing -> noCmd model
-              Just id -> 
-                    noCmd <| setSaveGraph model <|
-                   Graph.updateEdge id 
-                    (\ e -> { e | zindex = e.zindex - 1})
-                    model.graph
+        KeyChanged False k (Character '+') -> increaseZBy 1
+        KeyChanged False k (Character '<') -> increaseZBy (-1)
      
         _ ->
 

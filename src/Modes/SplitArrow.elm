@@ -55,7 +55,7 @@ nextStep model finish state =
         info =
             stateInfo model state
     in
-    let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
+    let m2 = addOrSetSel False info.movedNode <| setSaveGraph model info.graph in
      if finish then ({ m2 | mode = DefaultMode }, computeLayout())  else
         let ne1 = (info.ne1, info.le1)
             ne2 = (info.ne2, info.le2)
