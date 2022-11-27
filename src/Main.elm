@@ -1308,7 +1308,7 @@ additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m = 
    let drawSel pos orig = 
    
-            Drawing.rect <| Geometry.makeRect orig
+            Drawing.rect foregroundZ <| Geometry.makeRect orig
             <| Point.add (1,1) -- to make the rectangle appear even if one dim is empty
             <| case pos of
               InputPosKeyboard p -> Point.add orig <| InputPosition.deltaKeyboardPos m.sizeGrid p

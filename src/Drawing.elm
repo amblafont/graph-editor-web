@@ -205,8 +205,8 @@ line l (fromx, fromy) (tox, toy) =
 
 
 
-rect : Geometry.Rect -> Drawing a
-rect { topLeft, bottomRight } =
+rect : Int -> Geometry.Rect -> Drawing a
+rect z { topLeft, bottomRight } =
    let (fromx, fromy) = topLeft
        (tox, toy) = bottomRight
        f = String.fromFloat 
@@ -219,7 +219,7 @@ rect { topLeft, bottomRight } =
        Svg.class "rect-select"
        ]
        [] 
-       |> ofSvg defaultZ
+       |> ofSvg z
 
 
 grid : Int -> Drawing a
