@@ -133,7 +133,7 @@ nextStep model finish state =
                          if created then [ movedNode , info.edges.ne1, info.edges.ne2 ]
                                     else [ info.edges.ne1, info.edges.ne2 ]
         in
-        (initialise_RenameMode ids m2, computeLayout ())
+        (initialise_RenameMode False ids m2, computeLayout ())
                           
 
 

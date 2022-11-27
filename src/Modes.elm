@@ -14,7 +14,9 @@ type Mode
     | Move MoveState
       -- the list of ids to be edited, with associated default labels 
       -- (which may differ from the labels of the objects in the model)
-    | RenameMode (List (Graph.Id, String))
+      -- the boolean specifies whether we need to save the state at the
+      -- end
+    | RenameMode Bool (List (Graph.Id, String))
     | DebugMode    
     | QuickInputMode (Maybe QuickInput.Equation)
     | SquareMode SquareState
@@ -53,6 +55,8 @@ type alias MoveState =
      -- is no longer used
       pos : InputPosition
       -- , merge : Bool 
+      -- should we save at the end
+      , save : Bool
       }
 
 type alias EnlargeState = 

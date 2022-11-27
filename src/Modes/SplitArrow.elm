@@ -68,7 +68,7 @@ nextStep model finish state =
               else
                  [ ne1, ne2 ]
         in
-        (initialise_RenameModeWithDefault ids m2, computeLayout ())
+        (initialise_RenameModeWithDefault False ids m2, computeLayout ())
                           
 
 

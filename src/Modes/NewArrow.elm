@@ -52,8 +52,8 @@ nextStep model finish state =
      let info = moveNodeInfo model state in
      
      -- let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
-     let m2 = { model | graph = GraphDefs.clearSelection info.graph
-                             |> GraphDefs.weaklySelect info.movedNode }
+     let m2 = setSaveGraph model <| GraphDefs.weaklySelect info.movedNode
+                                 <| GraphDefs.clearSelection info.graph
      in
      
      if finish then switch_Default m2 else
@@ -66,7 +66,7 @@ nextStep model finish state =
         in
         let ids_labels = List.map (\ id -> (id, label)) ids in
         noCmd <| 
-        initialise_RenameModeWithDefault ids_labels m2
+        initialise_RenameModeWithDefault False ids_labels m2
        
 
 {- eyToAction : Msg -> NewArrowStep -> Maybe Action

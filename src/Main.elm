@@ -441,7 +441,7 @@ update msg modeli =
         NewArrow astate -> Modes.NewArrow.update astate msg model
         PullbackMode astate -> Modes.Pullback.update astate msg model
             -- update_Modes.NewArrow astate msg m
-        RenameMode l -> update_RenameMode l msg model
+        RenameMode b l -> update_RenameMode b l msg model
         Move s -> update_MoveNode msg s model
         DebugMode -> update_DebugMode msg model
        -- NewNode -> update_NewNode msg model
@@ -493,7 +493,11 @@ update_MoveNode msg state model =
     let movedRet = 
            let info = info_MoveNode model state in
            if info.valid then
-              switch_Default {model | graph = info.graph}
+              switch_Default 
+              <| if state.save then
+                   setSaveGraph model info.graph
+                 else
+                   {model | graph = info.graph}
            else
               noCmd model
     in
@@ -508,10 +512,10 @@ update_MoveNode msg state model =
 
 
         
-update_RenameMode : List (Graph.Id, String) -> Msg -> Model -> (Model, Cmd Msg)
-update_RenameMode labels msg model =
+update_RenameMode : Bool -> List (Graph.Id, String) -> Msg -> Model -> (Model, Cmd Msg)
+update_RenameMode save labels msg model =
    let edit_label s = 
-         noCmd {model | mode = RenameMode <| 
+         noCmd {model | mode = RenameMode save <| 
          case labels of
            (id, _) :: q -> (id, s) :: q
            _ -> labels -- should not happen
@@ -519,8 +523,8 @@ update_RenameMode labels msg model =
    in 
     case msg of
       KeyChanged False _ (Control "Escape") -> switch_Default model
-      KeyChanged False _ (Control "Enter") -> noCmd <| next_RenameMode True labels model
-      KeyChanged False _ (Control "Tab") -> noCmd <| next_RenameMode False labels  model
+      KeyChanged False _ (Control "Enter") -> noCmd <| next_RenameMode True save labels model
+      KeyChanged False _ (Control "Tab") -> noCmd <| next_RenameMode False save labels  model
     --   MouseClick -> finalise_RenameMode label model
       NodeLabelEdit _ s -> edit_label s
       EdgeLabelEdit _ s -> edit_label s
@@ -528,17 +532,17 @@ update_RenameMode labels msg model =
 
 
 
-next_RenameMode : Bool -> List (Graph.Id, String) -> Model -> Model
-next_RenameMode finish labels model =
+next_RenameMode : Bool -> Bool -> List (Graph.Id, String) -> Model -> Model
+next_RenameMode finish save labels model =
     let g = graph_RenameMode labels model in
-    let m2 =  {model | graph = g} in
+    let m2 = if save then setSaveGraph model g else { model | graph = g} in
     if finish then
       { m2 | mode = DefaultMode }
     else
       case labels of
         [] -> { m2 | mode = DefaultMode }
         [_] -> { m2 | mode = DefaultMode }
-        _ :: q -> { m2 | mode = RenameMode q }
+        _ :: q -> { m2 | mode = RenameMode save q }
         
 
 update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
@@ -560,7 +564,7 @@ update_RectSelect msg orig keep model =
 
 update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
 update_Enlarge msg state model =
-   let fin = switch_Default { model | graph = enlargeGraph model state } in
+   let fin = switch_Default <| setSaveGraph model <| enlargeGraph model state in
    case msg of
       KeyChanged False _ (Control "Escape") -> switch_Default model
       {- KeyChanged False _ (Character 's') -> 
@@ -596,7 +600,7 @@ rename model =
             |> Maybe.map List.singleton 
             |> Maybe.withDefault []
     in
-        noCmd <| initialise_RenameMode ids <| pushHistory model
+        noCmd <| initialise_RenameMode True ids <| pushHistory model
             
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
@@ -654,7 +658,7 @@ update_DefaultMode msg model =
                 newModel = addOrSetSel False newId
                    <| setSaveGraph model newGraph                    
             in
-            noCmd <| initialise_RenameMode [ newId ] newModel
+            noCmd <| initialise_RenameMode False [ newId ] newModel
     in
       
     
@@ -673,12 +677,12 @@ update_DefaultMode msg model =
         KeyChanged False _ (Control "Escape") -> clearSel
         KeyChanged False _ (Character 'w') -> clearSel
         KeyChanged False _ (Character 'e') ->
-           noCmd <| initialiseEnlarge <| pushHistory model
+           noCmd <| initialiseEnlarge model
         KeyChanged False _ (Character 'E') ->
            (model, promptEquation ())
         KeyChanged False k (Character 'a') -> 
             if not k.ctrl then
-             Modes.NewArrow.initialise <| pushHistory model 
+              Modes.NewArrow.initialise model 
             else
               noCmd <| { model | graph = GraphDefs.selectAll model.graph}
         CopyGraph ->
@@ -693,7 +697,7 @@ update_DefaultMode msg model =
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged False _ (Character 'g') -> 
-            noCmd <| initialiseMoveMode <| pushHistory model
+            noCmd <| initialiseMoveMode True model
         KeyChanged False _ (Character 'i') -> 
            noCmd <| case GraphDefs.selectedEdgeId model.graph of
                       Just id -> setSaveGraph model <| Graph.invertEdge id model.graph
@@ -766,7 +770,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             let _ = Debug.log "nodeclick" () in
             noCmd <| addOrSetSel e.keys.shift n model -}
         EltDoubleClick n e ->
-            noCmd <| initialise_RenameMode [n] model
+            noCmd <| initialise_RenameMode True [n] model
         {- EdgeClick n e ->
             let _ = Debug.log "edgeclick" () in
              noCmd <| addOrSetSel e.keys.shift n model  -}
@@ -784,7 +788,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
         KeyChanged False _ (Character 'l') -> move 0       
-        PasteGraph g -> noCmd <| initialiseMoveMode
+        PasteGraph g -> noCmd <| initialiseMoveMode False
                <|  setSaveGraph model <|              
                 Graph.union 
                   (GraphDefs.clearSelection model.graph)
@@ -847,14 +851,14 @@ selectByClick model =
     else
             model
                
-initialiseMoveMode : Model -> Model
-initialiseMoveMode model =
+initialiseMoveMode : Bool -> Model -> Model
+initialiseMoveMode save model =
          { model | mode = 
                        if GraphDefs.isEmptySelection model.graph
                         then
                           -- Nothing is selected
                           DefaultMode
-                        else Move { orig = model.mousePos, pos = InputPosMouse }
+                        else Move { save = save, orig = model.mousePos, pos = InputPosMouse }
                      }    
 
 initialise_Resize : Model -> Model
@@ -1002,7 +1006,7 @@ graphDrawingFromModel m =
         QuickInputMode ch -> collageGraphFromGraph m <| graphQuickInput m ch
         Move s -> info_MoveNode m s |> .graph |>
             collageGraphFromGraph m 
-        RenameMode l ->
+        RenameMode _ l ->
             let g = graph_RenameMode l m in
             let g2 = collageGraphFromGraph m g in
             case l of
@@ -1252,7 +1256,7 @@ helpMsg model =
                 ++ "[c] to switch between head/tail"                
                 ++ ", [d] to duplicate (or not) the arrow."
                   |> msg
-        RenameMode _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
+        RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
         EnlargeMode s -> msg <| "Enlarge mode: draw a rectangle to create space. "
                             ++ "Use mouse or h,j,k,l. [RET] or click to confirm."
                          {-    ++ (if s.onlySubdiag then
