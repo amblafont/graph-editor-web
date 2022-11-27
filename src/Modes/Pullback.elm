@@ -8,6 +8,7 @@ import HtmlDefs exposing (Key(..))
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import List.Extra
+import Model exposing (setSaveGraph)
 
 initialise : Graph NodeLabel EdgeLabel -> EdgeId -> PullbackKind -> Maybe PullbackState
 initialise g id k =
@@ -69,7 +70,7 @@ update state msg model =
         KeyChanged False _ (Control "Escape") -> switch_Default model  
         KeyChanged False _ (Character 'p') -> noCmd <| updateState <| nextPullback model state 
         KeyChanged False _ (Control "Enter") -> 
-           switch_Default <| { model | graph = graph model state}
+           switch_Default <| setSaveGraph model <| graph model state
         _ -> noCmd model
 
 
