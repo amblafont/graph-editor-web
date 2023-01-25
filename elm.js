@@ -17224,6 +17224,20 @@ var $elm$html$Html$Attributes$cols = function (n) {
 		$elm$core$String$fromInt(n));
 };
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$svg$Svg$foreignObject = $elm$svg$Svg$trustedNode('foreignObject');
+var $author$project$Drawing$emptyForeign = A2(
+	$author$project$Drawing$ofSvg,
+	-10000,
+	A2(
+		$elm$svg$Svg$foreignObject,
+		_List_fromArray(
+			[
+				$elm$svg$Svg$Attributes$x('1'),
+				$elm$svg$Svg$Attributes$y('1'),
+				$elm$svg$Svg$Attributes$width('100%'),
+				$elm$svg$Svg$Attributes$height('100%')
+			]),
+		_List_Nil));
 var $author$project$Msg$EdgeClick = F2(
 	function (a, b) {
 		return {$: 'EdgeClick', a: a, b: b};
@@ -17589,7 +17603,6 @@ var $author$project$Drawing$circle = F3(
 				_List_Nil));
 	});
 var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
-var $elm$svg$Svg$foreignObject = $elm$svg$Svg$trustedNode('foreignObject');
 var $author$project$Drawing$htmlAnchor = F5(
 	function (z, _v0, _v1, center, h) {
 		var x1 = _v0.a;
@@ -19606,7 +19619,8 @@ var $author$project$Main$view = function (model) {
 				[
 					grid,
 					drawings,
-					$author$project$Main$additionnalDrawing(model)
+					$author$project$Main$additionnalDrawing(model),
+					$author$project$Drawing$emptyForeign
 				])));
 	var contents = _Utils_ap(
 		_List_fromArray(

@@ -3,7 +3,7 @@ module Drawing exposing (Drawing,
   line,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
   svg, Color, red, black, blue, class, empty, grid, htmlAnchor,
-  zindexAttr
+  zindexAttr, emptyForeign
   )
 
 import Svg exposing (Svg)
@@ -264,6 +264,17 @@ circle attrs (cx, cy) n =
   []
      |> ofSvg z
 
+-- This is a trick to prevent unwanted scrolling on google chrome
+-- when editing stuff
+emptyForeign : Drawing a
+emptyForeign = 
+  Svg.foreignObject 
+  -- Svg.text_
+   [Svg.x "1", Svg.y "1", Svg.width "100%", Svg.height "100%"
+     ]
+   []
+   -- put it in the background
+    |> ofSvg -10000
 
 html : Int -> Point -> Point -> Html.Html a -> Drawing a
 html z p d h = 

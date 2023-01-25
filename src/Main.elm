@@ -1334,7 +1334,14 @@ view model =
     let nmissings = List.length missings in
     let svg =   Drawing.group [grid,
                  drawings,
-                 additionnalDrawing model
+                 additionnalDrawing model,
+                 -- This is to prevent unwanted scrolling
+                 -- that happened in chrome when editing the graph
+                 -- I don't know why this was happening, neither why
+                 -- this trick fixes the issue.                 
+                 -- The problem only happened with foreignObject (svg.text 
+                 -- was fine)
+                 Drawing.emptyForeign
               ]
               -- |> debug
               |> Drawing.svg [
