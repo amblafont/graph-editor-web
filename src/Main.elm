@@ -101,7 +101,13 @@ port exportQuiver : JE.Value -> Cmd a
 port alert : String -> Cmd a
 port jumpToId : String -> Cmd a
 
--- js tells us to load the graph
+port simpleMsg : (String -> a) -> Sub a
+
+-- we ask js to open a graph file
+port openFile : () -> Cmd a
+-- or to retrieve the saved graph
+port quickLoad : () -> Cmd a
+-- js returns the graph
 port loadedGraph0 : (LoadGraphInfo Format.Version0.Graph -> a) -> Sub a
 port loadedGraph1 : (LoadGraphInfo Format.Version1.Graph -> a) -> Sub a
 port loadedGraph2 : (LoadGraphInfo Format.Version2.Graph -> a) -> Sub a
@@ -161,6 +167,7 @@ subscriptions m =
      <|
     [
       findReplace FindReplace,
+      simpleMsg SimpleMsg,
       -- upload a graph (triggered by js)
       
       loadedGraph0 (mapLoadGraphInfo Format.Version0.fromJSGraph >> Loaded),
@@ -184,6 +191,7 @@ subscriptions m =
                         else (Msg.noOp, False))
                          HtmlDefs.tabDecoder), -} ]
     ++
+    if Msg.isSimpleScenario m.scenario then [] else
     (if m.autoSave then
         -- every minute
        [ Time.every 60000 (always MinuteTick) ]
@@ -412,6 +420,7 @@ update msg modeli =
                           model.graph
                 }
      Do cmd -> (model, cmd)
+     SimpleMsg s -> noCmd { iniModel | scenario = SimpleScenario, statusMsg = s }
      Loaded g -> 
         let _ = Debug.log "scenario" g.scenario in
         let scenario = scenarioOfString g.scenario in
@@ -1319,7 +1328,13 @@ additionnalDrawing m =
           Drawing.empty
 
 view : Model -> Html Msg
-view model =
+view m =
+   case m.scenario of
+       SimpleScenario -> Html.div [] [Html.text m.statusMsg]
+       _ -> viewGraph m
+
+viewGraph : Model -> Html Msg
+viewGraph model =
     let missings = Graph.invalidEdges model.graph in   
     let cfg = { latexPreamble = case model.scenario of
                                    Exercise1 -> 
@@ -1363,7 +1378,18 @@ view model =
                        ]
     in
     let contents = 
-          [ Html.text model.statusMsg,
+          [ Html.div [] 
+            (HtmlDefs.introHtml
+            ++
+            if model.scenario /= NoLoad then [
+            Html.button [Html.Events.onClick (openFile () |> Do),
+               Html.Attributes.id "load-button"] [Html.text "Load graph"] 
+            ,  Html.button [Html.Events.onClick (quickLoad () |> Do),
+               Html.Attributes.title "Local or session storage"] [Html.text "QuickLoad graph"]     
+            ]
+            else []
+            ),
+            Html.text model.statusMsg,
             -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
             -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
             Html.p [] 

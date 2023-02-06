@@ -27,7 +27,6 @@
           "^/ignore$",
           "^/elm-stuff$",
           "^/elm.json$",
-          "^/node_modules$",
           "^/tools$"
         ]
       },
@@ -48,18 +47,26 @@
         }
       ],
       "publishers": [
-	      {
-		      "name": "@electron-forge/publisher-github",
-		      "config": {
-			      "repository": {
-				      "owner": "amblafont",
-				      "name": "graph-editor-web"
-			      },
-			      "prerelease": false,
-			      "draft": true
-		      }
-	      }
+        {
+          "name": "@electron-forge/publisher-github",
+          "platforms": [
+            "linux"
+          ],
+          "config": {
+            "repository": {
+              "owner": "amblafont",
+              "name": "graph-editor-web"
+            },
+            "draft": true
+          }
+        }
       ]
     }
+  },
+  "dependencies": {
+    "@stdlib/utils-escape-regexp-string": "^0.0.9",
+    "argparse": "^2.0.1",
+    "n-readlines": "^1.0.1",
+    "tmp": "^0.2.1"
   }
 }

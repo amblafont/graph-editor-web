@@ -124,7 +124,7 @@
             var tutorial_format_version = fulltutorial["version"];   
             
             scenarios = {
-               "exercise1" : {"graph":{"edges":[{"from":1,"id":12,"label":{"label":"Ff","style":{"alignment":"left","bend":-0.1,"dashed":false,"double":true,"head":"twoheads","position":0.5,"tail":"hook"}},"to":0},{"from":0,"id":13,"label":{"label":"n_y","style":{"alignment":"left","bend":0,"dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"}},"to":2},{"from":1,"id":14,"label":{"label":"n_x","style":{"alignment":"left","bend":0,"dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"}},"to":3},{"from":3,"id":15,"label":{"label":"Gf","style":{"alignment":"left","bend":0,"dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"}},"to":2}],"latexPreamble":"","nodes":[{"id":0,"label":{"isMath":true,"label":"Fy","pos":[531.5,115.33335876464844]}},{"id":1,"label":{"isMath":true,"label":"Fx","pos":[331.5,115.33335876464844]}},{"id":2,"label":{"isMath":true,"label":"Gy","pos":[531.5,315.33335876464844]}},{"id":3,"label":{"isMath":true,"label":"Gx","pos":[331.5,315.33335876464844]}},{"id":4,"label":{"isMath":false,"label":"Number of taken actions so far: \\textbf{$\\depthHistory$}","pos":[82,369.5333251953125]}},{"id":5,"label":{"isMath":false,"label":"Reproduce this square in 4 actions starting from the selected vertex below (mouse is disabled)","pos":[96,30.5333251953125]}},{"id":6,"label":{"isMath":true,"label":"\\bullet","pos":[276,460.18333435058594]}},{"id":7,"label":{"isMath":false,"label":"See hints below.","pos":[82,404.3833312988281]}},{"id":8,"label":{"isMath":false,"label":"- when creating an arrow, use hjkl for keyboard placement, and (>=bB for styling, before validating with TAB (hence jumping to next label)","pos":[126.5,742.3833312988281]}},{"id":9,"label":{"isMath":false,"label":"- to move selection to a close node, use hjkl.","pos":[129.5,786.3833312988281]}},{"id":10,"label":{"isMath":false,"label":"- use 's' to create a square from a node connected to two other nodes","pos":[127,825.2833404541016]}},{"id":11,"label":{"isMath":false,"label":"- rename with 'r'","pos":[130,701.1833343505859]}}],"sizeGrid":200},"version":5}
+               "exercise1" : {"graph":{"edges":[{"from":1,"id":12,"label":{"label":"Ff","style":{"alignment":"left","bend":-0.1,"dashed":false,"double":true,"head":"twoheads","position":0.5,"tail":"hook"}},"to":0},{"from":0,"id":13,"label":{"label":"n_y","style":{"alignment":"left","bend":0,"dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"}},"to":2},{"from":1,"id":14,"label":{"label":"n_x","style":{"alignment":"left","bend":0,"dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"}},"to":3},{"from":3,"id":15,"label":{"label":"Gf","style":{"alignment":"left","bend":0,"dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"}},"to":2}],"latexPreamble":"","nodes":[{"id":0,"label":{"isMath":true,"label":"Fy","pos":[531.5,115.33335876464844]}},{"id":1,"label":{"isMath":true,"label":"Fx","pos":[331.5,115.33335876464844]}},{"id":2,"label":{"isMath":true,"label":"Gy","pos":[531.5,315.33335876464844]}},{"id":3,"label":{"isMath":true,"label":"Gx","pos":[331.5,315.33335876464844]}},{"id":4,"label":{"isMath":false,"label":"Number of taken actions so far: \\textbf{$\\depthHistory$}","pos":[82,369.5333251953125]}},{"id":5,"label":{"isMath":false,"label":"Reproduce this square in 4 actions starting from the selected vertex below (mouse is disabled)","pos":[96,30.5333251953125]}},{"id":6,"label":{"isMath":true,"label":"\\bullet","pos":[276,460.18333435058594]}},{"id":7,"label":{"isMath":false,"label":"See hints below.","pos":[82,404.3833312988281]}},{"id":8,"label":{"isMath":false,"label":"- when creating an arrow, use hjkl for keyboard placement, and (>=bB for styling, before validating with TAB (hence jumping to next label)","pos":[126.5,742.3833312988281]}},{"id":9,"label":{"isMath":false,"label":"- to move selection to a close node, use hjkl.","pos":[129.5,786.3833312988281]}},{"id":10,"label":{"isMath":false,"label":"- use 's' to create a square from a node connected to two other nodes","pos":[127,825.2833404541016]}},{"id":11,"label":{"isMath":false,"label":"- rename with 'r'","pos":[130,701.1833343505859]}}],"sizeGrid":200},"version":5},
             };
         </script>
     </head>
@@ -133,7 +133,7 @@
         <h1>Diagram editor</h1>
    
      
-        <p>
+        <!-- <p>
             A vi-inspired diagram editor, with              
             (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a> (see the code on 
         <a href="https://github.com/amblafont/graph-editor-web">github</a>).
@@ -148,7 +148,7 @@
             Read the tutorial first, and then try some <a href="?scenario=exercise1">exercise</a>.
         </p>
         <button onclick="loadGraph()" id="load-button" >Load graph</button>
-        <button title="Local or session storage" onclick="quickloadGraph()" >QuickLoad graph</button>
+        <button title="Local or session storage" onclick="quickloadGraph()" >QuickLoad graph</button> -->
         
     <!--     <button onclick="dispatchRenderedChildren(document)">
             Recompute the layer
@@ -245,6 +245,22 @@
 
          
          
+
+
+         function sendGraphToElm(json, filename, scenario = "standard") {
+            console.log("hello");
+            var graph = json;
+            var version = 0;
+            if (json.hasOwnProperty('version')) {
+               version = json.version;
+               graph = json.graph;
+            }
+            
+            var args = { graph : graph, fileName : filename, scenario : scenario};
+            console.log(args);
+            app.ports["loadedGraph" + version].send(args);
+         }
+        
          const queryString = window.location.search;
          const urlParams = new URLSearchParams(queryString);
          var tutoData = {"graph" : tutorial, "fileName" : "graph.json", "scenario" : "standard" };
@@ -256,19 +272,6 @@
          else {            
             app.ports["loadedGraph" + tutorial_format_version].send(tutoData);
          }
-
-         function sendGraphToElm(json, filename, scenario = "standard") {
-            var graph = json;
-            var version = 0;
-            if (json.hasOwnProperty('version')) {
-               version = json.version;
-               graph = json.graph;
-            }
-            
-            var args = { graph : graph, fileName : filename, scenario : scenario};
-            app.ports["loadedGraph" + version].send(args);
-         }
-        
          
          // load a json graph file, send it to the elm component
          function loadGraph() {
@@ -316,6 +319,9 @@
              
              
          };
+
+         app.ports.openFile.subscribe(loadGraph);
+         app.ports.quickLoad.subscribe(quickloadGraph);
 
          app.ports.alert.subscribe(function(s) {
              alert(s);
@@ -466,6 +472,20 @@
          document.addEventListener("keydown", function(event)  {
                     app.ports.onKeyDownActive.send(event);
          });
+
+         // Setting up interaction with electron
+         if (window.electronAPI) {
+            console.log("electron detected");
+            // window.electronAPI.loadGraph((event, json, fileName, scenario) => alert('coucou') );
+            window.electronAPI.loadGraph((event, json, fileName, scenario) => sendGraphToElm(json, fileName, scenario));
+            window.electronAPI.simpleMsg((event, msg) => app.ports.simpleMsg.send(msg));
+            app.ports.saveGraph.unsubscribe(saveGraph);
+            app.ports.saveGraph.subscribe(function (d) {
+                // alert("coucu");
+                window.electronAPI.saveGraph(fromElmGraph(d));
+                // fromElmGraph(d)
+            });
+         }
         
          
         

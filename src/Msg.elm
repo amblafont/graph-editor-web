@@ -1,5 +1,6 @@
 module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, unfocusId,
-  onTabPreventDefault, mayUpdateArrowStyle, Scenario(..), scenarioOfString, LoadGraphInfo, mapLoadGraphInfo)
+  onTabPreventDefault, mayUpdateArrowStyle, Scenario(..), scenarioOfString, LoadGraphInfo, mapLoadGraphInfo,
+  isSimpleScenario)
 
 import Collage exposing (Point)
 -- import Graph exposing (Graph, NodeId)
@@ -17,12 +18,16 @@ import Html.Events.Extra.Mouse as MouseEvents
 import Html
 import Json.Encode as JE
 
-type Scenario = Standard | Exercise1
+-- SimpleScenario: just display the model status message
+type Scenario = Standard | Exercise1 | SimpleScenario | NoLoad
 
+isSimpleScenario : Scenario -> Bool
+isSimpleScenario s = s == SimpleScenario
 scenarioOfString : String -> Scenario
 scenarioOfString s =
   case s of
       "exercise1" -> Exercise1
+      "noload" -> NoLoad
       _ -> Standard
 
 type alias LoadGraphInfo a = { graph : a, fileName : String, scenario : String }
@@ -72,6 +77,7 @@ type Msg
   | FindReplace { search: String, replace:String}
   | MinuteTick
   | LatexPreambleEdit String
+  | SimpleMsg String
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String

@@ -1,17 +1,51 @@
 port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown, makePasteCapture,
-   bottomTextId, computeLayout, latexPreambleId, select)
+   bottomTextId, computeLayout, latexPreambleId, select, introHtml)
 import Html
 import Html.Attributes
 import Html.Events
 import Geometry.Point exposing (Point)
 import Json.Decode as D
+import Html.Parser
+import Html.Parser.Util
+
+
 
 port computeLayout : () -> Cmd a
 port select : String -> Cmd a
 
 
+-- https://gist.github.com/joakimk/57b4495fe5a4fd84506b?permalink_comment_id=2862393#gistcomment-2862393
+textHtml : String -> List (Html.Html msg)
+textHtml t =
+    case Html.Parser.run t of
+        Ok nodes ->
+            Html.Parser.Util.toVirtualDom nodes
+
+        Err _ ->
+            []
+
+introHtml : List (Html.Html msg)
+introHtml = (textHtml <| """
+   <p>
+            A vi-inspired diagram editor, with              
+            (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a> (see the code on 
+        <a href="https://github.com/amblafont/graph-editor-web">github</a>).
+            Higher cells are supported.
+	    You can draw anywhere, not just on the grid (whose size can be later adjusted).
+	    </p>
+	    <p>
+	    For a LaTeX export, first export to <a href="https://q.uiver.app">Quiver</a> (beware that vertices will be snapped
+            to the grid in the process).
+	    </p>
+	    <p>
+            Read the tutorial first, and then try some <a href="?scenario=exercise1">exercise</a>.
+        </p>""")
+        -- <button onclick="loadGraph()" id="load-button" >Load graph</button>
+        -- <button title="Local or session storage" onclick="quickloadGraph()" >QuickLoad graph</button>
+
+  
 
 -- id of the text input when the user labels an edge or a node
 idInput : String
