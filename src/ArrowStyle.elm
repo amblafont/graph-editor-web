@@ -1,5 +1,5 @@
 module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
-   tailToString , tailFromString,
+   tikzStyle, tailToString , tailFromString,
    headToString, headFromString, 
    alignmentToString, alignmentFromString, 
    makeHeadTailImgs, isDouble, doubleSize,
@@ -19,7 +19,6 @@ import Geometry.Epsilon exposing (norm0)
 import Json.Encode as JEncode
 import List.Extra as List
 import ListExtraExtra exposing (nextInList)
-import Maybe.Extra exposing (next)
 
 imgDir : String
 imgDir = "img/arrow/"
@@ -233,3 +232,26 @@ type LabelAlignment =
   | Over
   | Left 
   | Right
+
+tikzStyle : ArrowStyle -> String
+tikzStyle stl =
+    (case stl.tail of
+        DefaultTail -> ""
+        Hook -> "into, "
+        HookAlt -> "linto, "
+    )
+        ++ (case stl.head of
+                DefaultHead -> "->, "
+                TwoHeads -> "onto, "
+                NoHead -> "-"
+           )
+        ++ (if stl.double then
+                "cell=0, "
+            else
+                ""
+           )
+        ++ (if stl.dashed then
+                "dashed, "
+            else
+                ""
+           )

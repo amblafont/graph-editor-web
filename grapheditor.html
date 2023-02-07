@@ -406,7 +406,8 @@
 
 
          
-        saveGraph = answerElmRequest('saveGraph', 'savedGraph', function (a) {
+        saveGraph = answerElmRequest('saveGraph', 'savedGraph', function (b) {
+            var a = b.graph
             var name = window.prompt("Filename?", a.fileName) ;
              if (name) {
                 var d = fromElmGraph(a);
@@ -482,7 +483,7 @@
             app.ports.saveGraph.unsubscribe(saveGraph);
             app.ports.saveGraph.subscribe(function (d) {
                 // alert("coucu");
-                window.electronAPI.saveGraph(fromElmGraph(d));
+                window.electronAPI.saveGraph(fromElmGraph(d.graph), d.latex);
                 // fromElmGraph(d)
             });
          }

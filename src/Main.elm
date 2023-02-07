@@ -63,6 +63,7 @@ import ArrowStyle
 import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDefs exposing (newNodeLabel)
+import Tikz exposing (graphToTikz)
 import Html
 import Html.Events
 import InputPosition exposing (InputPosition(..))
@@ -94,7 +95,6 @@ type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version 
 
 -- feedback: do we want a confirmation alert box?
 port quicksaveGraph : { info : JsGraphInfo, feedback : Bool} -> Cmd a
-
 
 
 port exportQuiver : JE.Value -> Cmd a
@@ -141,7 +141,7 @@ port onCopy : (() -> a) -> Sub a
 port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
 
 -- we ask js to save the graph
-port saveGraph : JsGraphInfo -> Cmd a
+port saveGraph : {graph: JsGraphInfo, latex: String} -> Cmd a
 -- it returns the filename
 port savedGraph : (String -> a) -> Sub a
 
@@ -392,7 +392,8 @@ update msg modeli =
                 _ -> modeli            
     in
     case msg of
-     Save -> (model, saveGraph <| toJsGraphInfo model)
+     Save -> (model, saveGraph { graph = toJsGraphInfo model 
+                              , latex = Tikz.graphToTikz model.sizeGrid model.graph})
      MinuteTick -> if model.autoSave then 
                          (model, quicksaveGraph { info = toJsGraphInfo model, feedback = False }) 
                    else noCmd model
@@ -741,7 +742,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
            generateProof GraphProof.proofStatementToString            
         KeyChanged False _ (Character 'T') -> 
            generateProof GraphProof.proofStatementToDebugString   
-        KeyChanged False _ (Character 'S') ->         
+        KeyChanged False _ (Character 'S') ->        
            noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
         KeyChanged False k (Character 'c') -> 
             if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
@@ -783,7 +784,10 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise model
         KeyChanged False _ (Character 'x') ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph
-                     
+        KeyChanged False _ (Character 'X') ->
+            fillBottom (graphToTikz model.sizeGrid 
+              (GraphDefs.selectedGraph model.graph)) 
+            "No diagram found!"            
         KeyChanged False _ (Control "Delete") ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
         {- NodeClick n e ->
@@ -1224,6 +1228,7 @@ helpMsg model =
                 ++ ", [C] generate Coq script to address selected incomplete subdiagram "
                 ++ "(i.e., a subdiagram with an empty branch)"
                 ++ ", [E] enter an equation (prompt)"
+                ++ ", export selection to LaTe[X]"
                 
                    --  ++ ", [q]ickInput mode" 
                 

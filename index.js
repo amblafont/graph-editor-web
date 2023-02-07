@@ -221,7 +221,7 @@ function handleFileOneIteration() {
     }
   
     
-    handleSave = function(newcontent) {
+    handleSave = function(newcontent, latex) {
       resetHandleSave();
       /*
       newtimestamp = os.path.getmtime(filename);
@@ -248,7 +248,7 @@ function handleFileOneIteration() {
         }
       }
       */
-      latex = "nouveau latex"; // genLatex();
+      // latex = "nouveau latex"; // genLatex();
     
       if (diagFile !== null) {
         wfile = contentToFileName(diagFile);
@@ -346,15 +346,10 @@ const createWindow = () => {
   mainWindow.loadFile('grapheditor.html');
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools()
+  // mainWindow.webContents.openDevTools()
   mainWindow.webContents.once('did-finish-load', () => {
-    // console.log("ici");
-    // if (is_watch)
-    //  waitIncompleteMsg();
-  // mainWindow.webContents.send('load-graph', 
-  //  {"graph":{"edges":[],"latexPreamble":"","nodes":[{"id":0,"label":{"isMath":false,"label":"Waiting for uncompleted diagrams in file {filename}","pos":[70,49.633331298828125]}}],"sizeGrid":200},"version":8}
-  //  , 'wait', 'wait')
-  ipcMain.on('save-graph', (e, msg) => handleSave(msg));
+   
+  ipcMain.on('save-graph', (e, data, tex) => handleSave(data,tex));
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)
   {

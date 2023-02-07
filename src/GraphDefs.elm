@@ -69,8 +69,6 @@ filterEdgeNormal e =
 keepNormalEdges : Graph NodeLabel EdgeLabel -> Graph NodeLabel (GenericEdge NormalEdgeLabel)
 keepNormalEdges = Graph.filterMap Just
    filterLabelNormal
-   
-
 
 mapEdgeType : (NormalEdgeLabel -> NormalEdgeLabel) -> EdgeType -> EdgeType
 mapEdgeType f e = case e of
