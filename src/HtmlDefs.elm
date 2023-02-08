@@ -36,8 +36,7 @@ introHtml = (textHtml <| """
 	    You can draw anywhere, not just on the grid (whose size can be later adjusted).
 	    </p>
 	    <p>
-	    For a LaTeX export, first export to <a href="https://q.uiver.app">Quiver</a> (beware that vertices will be snapped
-            to the grid in the process).
+	    For a LaTeX export, press 'X' after selection.
 	    </p>
 	    <p>
             Read the tutorial first, and then try some <a href="?scenario=exercise1">exercise</a>.
