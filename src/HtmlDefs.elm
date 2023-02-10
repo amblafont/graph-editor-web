@@ -36,7 +36,8 @@ introHtml = (textHtml <| """
 	    You can draw anywhere, not just on the grid (whose size can be later adjusted).
 	    </p>
 	    <p>
-	    For a LaTeX export, press 'X' after selection.
+	    For LaTeX export, press (capital) 'X' after selection. The output code relies on
+      a custom <a href="https://raw.githubusercontent.com/amblafont/graph-editor-web/master/tools/yade.sty">latex package</a>.
 	    </p>
 	    <p>
             Read the tutorial first, and then try some <a href="?scenario=exercise1">exercise</a>.

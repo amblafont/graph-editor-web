@@ -1,0 +1,946 @@
+% Copyright 2022 by Tom Hirschowitz
+%
+% This file may be distributed and/or modified
+%
+% 1. under the LaTeX Project Public License and/or
+% 2. under the GNU Public License.
+%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{yade}[2022/06/07 v0.1 tikz categorical diagrams library]
+\RequirePackage{tikz}
+\RequirePackage{ifthen}
+
+
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{shapes.symbols}
+\usetikzlibrary{shapes.arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{matrix}
+\usetikzlibrary{fit}
+\usetikzlibrary{calc}
+\usetikzlibrary{decorations}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{decorations.pathmorphing}
+\usetikzlibrary{arrows}
+\usetikzlibrary{backgrounds}
+\pgfkeys{/pgf/.cd,
+    arity/.initial=4,
+}
+
+
+
+\def\twocell{%
+  \@ifnextchar[{\twocell@i}{\twocell@i[.4]}%
+}
+\def\twocell@i[#1]{%
+  \@ifnextchar[{\twocell@ii[#1]}{\twocell@ii[#1][#1]}%
+}
+\def\twocell@ii[#1][#2]{%
+  \deuxcellule{#1}{#2}%
+}
+
+\newcommand{\deuxcellule}[8]{%
+  \node[coordinate] (a) at (#3) {} ; %
+  \node[coordinate] (b) at (#4) {} ; %
+  \node[coordinate] (c) at (#5) {} ; %
+  \node[coordinate] (d) at (#6) {} ; %
+  \path let 
+  \p1= ($(b) - (a)$) , %
+  \p2= ($(d) - (c)$), %
+  \n1={veclen(\x1,\y1)}, %
+  \n2={veclen(\x2,\y2)}, %
+  \p3=($(\x1/\n1,\y1/\n1)$),%
+  \p4=($(\x2/\n2,\y2/\n2)$),%
+  \n3={#1 * \n1},%
+  \p5=($(\n3 * \x3, \n3 * \y3)$),%
+  \n3={#2 * \n2},%
+  \p6=($(\n3 * \x4, \n3 * \y4)$) in%
+   (a) ++ (\p5)  node[coordinate] (x) {} %%
+   (c) ++ (\p6)  node[coordinate] (y) {} %%
+   ;
+ \draw[#7] (x) -| (y) ; %
+}
+
+% Old macros, for compatibility
+\newcommand{\twocellleft}[5][.4]{\twocell[#1]{#2}{#3}{#4}{#5}{}{cell=0,bend left}}
+\newcommand{\twocellright}[5][.4]{\twocell[#1]{#2}{#3}{#4}{#5}{}{cell=0,bend right}}
+
+\DeclareDocumentCommand{\twocelll}{O{.4} o D(){0} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend right={#3},celllr=#4,label={[left]{$\scriptstyle #9$}}}}
+\DeclareDocumentCommand{\twocellbr}{O{.4} o D(){30} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend right={#3},celllr=#4,label={[below right]{$\scriptstyle #9$}}}}
+\DeclareDocumentCommand{\twocellr}{O{.4} o D(){0} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend right={#3},celllr=#4,label={[right]{$\scriptstyle #9$}}}}
+\DeclareDocumentCommand{\twocellb}{O{.4} o D(){0} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend right={#3},celllr=#4,label={[below]{$\scriptstyle #9$}}}}
+\DeclareDocumentCommand{\twocella}{O{.4} o D(){0} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend right={#3},celllr=#4,label={[above]{$\scriptstyle #9$}}}}
+\DeclareDocumentCommand{\twocellal}{O{.4} o D(){30} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend right={#3},celllr=#4,label={[above left]{$\scriptstyle #9$}}}}
+\DeclareDocumentCommand{\twocellar}{O{.4} o D(){30} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend left={#3},celllr=#4,label={[above right]{$\scriptstyle #9$}}}}
+\DeclareDocumentCommand{\twocellbl}{O{.4} o D(){30} > { \SplitArgument { 1 } { , } } D<>{0.5,0.5}  m m o m m}{%
+\deuxcellule{#1}{\IfNoValueTF{#2}{#1}{#2}}{#5}{#6}{\IfNoValueTF{#7}{#5}{#7}}{#8}{}{bend right={#3},celllr=#4,label={[below left]{$\scriptstyle #9$}}}}
+
+% Two cell bent right
+
+\def\twocellrb{%
+  \@ifnextchar[{\twocellrb@i}{\twocellrb@i[.4]}%
+}
+\def\twocellrb@i[#1]{%
+  \@ifnextchar[{\twocellrb@ii[#1]}{\twocellrb@ii[#1][#1]}%
+}
+\def\twocellrb@ii[#1][#2]{%
+  \deuxcellulerb{#1}{#2}%
+}
+\newcommand{\deuxcellulerb}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend right,labeld={#6}}}
+
+\def\twocellra{%
+  \@ifnextchar[{\twocellra@i}{\twocellra@i[.4]}%
+}
+\def\twocellra@i[#1]{%
+  \@ifnextchar[{\twocellra@ii[#1]}{\twocellra@ii[#1][#1]}%
+}
+\def\twocellra@ii[#1][#2]{%
+  \deuxcellulera{#1}{#2}%
+}
+\newcommand{\deuxcellulera}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend right,labelu={#6}}}
+
+\def\twocellral{%
+  \@ifnextchar[{\twocellral@i}{\twocellral@i[.4]}%
+}
+\def\twocellral@i[#1]{%
+  \@ifnextchar[{\twocellral@ii[#1]}{\twocellral@ii[#1][#1]}%
+}
+\def\twocellral@ii[#1][#2]{%
+  \deuxcelluleral{#1}{#2}%
+}
+\newcommand{\deuxcelluleral}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend right,labelal={#6}}}
+
+\def\twocellro{%
+  \@ifnextchar[{\twocellro@i}{\twocellro@i[.4]}%
+}
+\def\twocellro@i[#1]{%
+  \@ifnextchar[{\twocellro@ii[#1]}{\twocellro@ii[#1][#1]}%
+}
+\def\twocellro@ii[#1][#2]{%
+  \deuxcellulero{#1}{#2}%
+}
+\newcommand{\deuxcellulero}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend right,labelo={#6}}}
+
+\def\twocellrl{%
+  \@ifnextchar[{\twocellrl@i}{\twocellrl@i[.4]}%
+}
+\def\twocellrl@i[#1]{%
+  \@ifnextchar[{\twocellrl@ii[#1]}{\twocellrl@ii[#1][#1]}%
+}
+\def\twocellrl@ii[#1][#2]{%
+  \deuxcellulerl{#1}{#2}%
+}
+\newcommand{\deuxcellulerl}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend right,labell={#6}}}
+
+\def\twocellrr{%
+  \@ifnextchar[{\twocellrr@i}{\twocellrr@i[.4]}%
+}
+\def\twocellrr@i[#1]{%
+  \@ifnextchar[{\twocellrr@ii[#1]}{\twocellrr@ii[#1][#1]}%
+}
+\def\twocellrr@ii[#1][#2]{%
+  \deuxcellulerr{#1}{#2}%
+}
+\newcommand{\deuxcellulerr}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend right,labelr={#6}}}
+
+\def\twocellrbr{%
+  \@ifnextchar[{\twocellrbr@i}{\twocellrbr@i[.4]}%
+}
+\def\twocellrbr@i[#1]{%
+  \@ifnextchar[{\twocellrbr@ii[#1]}{\twocellrbr@ii[#1][#1]}%
+}
+\def\twocellrbr@ii[#1][#2]{%
+  \deuxcellulerbr{#1}{#2}%
+}
+\newcommand{\deuxcellulerbr}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend right,labelbr={#6}}}
+
+% Two cell bent left
+
+\def\twocelllb{%
+  \@ifnextchar[{\twocelllb@i}{\twocelllb@i[.4]}%
+}
+\def\twocelllb@i[#1]{%
+  \@ifnextchar[{\twocelllb@ii[#1]}{\twocelllb@ii[#1][#1]}%
+}
+\def\twocelllb@ii[#1][#2]{%
+  \deuxcellulelb{#1}{#2}%
+}
+\newcommand{\deuxcellulelb}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend left,labeld={#6}}}
+
+\def\twocellla{%
+  \@ifnextchar[{\twocellla@i}{\twocellla@i[.4]}%
+}
+\def\twocellla@i[#1]{%
+  \@ifnextchar[{\twocellla@ii[#1]}{\twocellla@ii[#1][#1]}%
+}
+\def\twocellla@ii[#1][#2]{%
+  \deuxcellulela{#1}{#2}%
+}
+\newcommand{\deuxcellulela}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend left,labelu={#6}}}
+
+\def\twocelllal{%
+  \@ifnextchar[{\twocelllal@i}{\twocelllal@i[.4]}%
+}
+\def\twocelllal@i[#1]{%
+  \@ifnextchar[{\twocelllal@ii[#1]}{\twocelllal@ii[#1][#1]}%
+}
+\def\twocelllal@ii[#1][#2]{%
+  \deuxcellulelal{#1}{#2}%
+}
+\newcommand{\deuxcellulelal}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend left,labelal={#6}}}
+
+\def\twocelllo{%
+  \@ifnextchar[{\twocelllo@i}{\twocelllo@i[.4]}%
+}
+\def\twocelllo@i[#1]{%
+  \@ifnextchar[{\twocelllo@ii[#1]}{\twocelllo@ii[#1][#1]}%
+}
+\def\twocelllo@ii[#1][#2]{%
+  \deuxcellulelo{#1}{#2}%
+}
+\newcommand{\deuxcellulelo}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend left,labelo={#6}}}
+
+\def\twocellll{%
+  \@ifnextchar[{\twocellll@i}{\twocellll@i[.4]}%
+}
+\def\twocellll@i[#1]{%
+  \@ifnextchar[{\twocellll@ii[#1]}{\twocellll@ii[#1][#1]}%
+}
+\def\twocellll@ii[#1][#2]{%
+  \deuxcellulell{#1}{#2}%
+}
+\newcommand{\deuxcellulell}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend left,labell={#6}}}
+
+\def\twocelllr{%
+  \@ifnextchar[{\twocelllr@i}{\twocelllr@i[.4]}%
+}
+\def\twocelllr@i[#1]{%
+  \@ifnextchar[{\twocelllr@ii[#1]}{\twocelllr@ii[#1][#1]}%
+}
+\def\twocelllr@ii[#1][#2]{%
+  \deuxcellulelr{#1}{#2}%
+}
+\newcommand{\deuxcellulelr}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend left,labelr={#6}}}
+
+\def\twocelllbr{%
+  \@ifnextchar[{\twocelllbr@i}{\twocelllbr@i[.4]}%
+}
+\def\twocelllbr@i[#1]{%
+  \@ifnextchar[{\twocelllbr@ii[#1]}{\twocelllbr@ii[#1][#1]}%
+}
+\def\twocelllbr@ii[#1][#2]{%
+  \deuxcellulelbr{#1}{#2}%
+}
+\newcommand{\deuxcellulelbr}[6]{\twocell[#1][#2]{#3}{#4}{#5}{}{cell=0,bend left,labelbr={#6}}}
+
+
+\newbox\xrat@below
+\newbox\xrat@above
+\newcommand{\Xarrow}[3][]{%
+  \setbox\xrat@below=\hbox{\ensuremath{\scriptstyle #2}}%
+  \setbox\xrat@above=\hbox{\ensuremath{\scriptstyle #3}}%
+  \pgfmathsetlengthmacro{\xrat@len}{max(\wd\xrat@below,\wd\xrat@above)+.6em}%
+  \mathrel{\tikz [#1,baseline=-.75ex]
+                 \draw (0,0) -- node[below=-2pt] {\box\xrat@below}
+                                node[above=-2pt] {\box\xrat@above}
+                       (\xrat@len,0) ;}}
+
+\newcommand{\xarrow}[2][]{%
+  \setbox\xrat@above=\hbox{\ensuremath{\scriptstyle #2\ }}%
+  \pgfmathsetlengthmacro{\xrat@len}{\wd\xrat@above+.8em}%
+  \mathrel{\tikz [baseline=-.75ex]
+                 \draw (0,0) edge[#1] node[above=-2pt] {\box\xrat@above}
+                       (\xrat@len,0) ;}}
+
+
+
+
+\makeatother
+\newenvironment{net}{\begin{tikzpicture}[baseline=(current bounding box.center),text depth=.2em,text height=.8em,inner sep=1pt]}{\end{tikzpicture}}
+
+\newcommand{\ssf}[2]{%
+\inetatom(#1){#2}%
+}
+
+\newcommand{\gimpll}{\ssf{Rien}{\impll}}
+\newcommand{\gtens}{\ssf{Rien}{\tens}}
+\newcommand{\gimpllof}[1]{\ssf{#1}{\impll}}
+\newcommand{\gtensof}[1]{\ssf{#1}{\tens}}
+\newcommand{\gun}[1]{\ssf{#1}{\un}}
+\newcommand{\rpare}[1]{\node[text depth=.2em,text height=.8em,inner sep=0pt] (#1) {\ensuremath{)}};}
+\newcommand{\lpare}[1]{\node[text depth=.2em,text height=.8em,inner sep=0pt] (#1) {\ensuremath{(}};}
+\newcommand{\point}[1]{\node[right=0cm of #1] {.} ; }
+\newcommand{\virgule}[1]{\node[right=0cm of #1] {,} ; }
+\newcommand{\poing}{\ssf{}{.}}
+\newcommand{\rieng}{\ssf{}{\,}}
+
+
+
+\pgfdeclaredecoration{single line}{initial}{
+                             \state{initial}[width=\pgfdecoratedpathlength-1sp]{\pgfpathmoveto{\pgfpointorigin}}
+                             \state{final}{\pgfpathlineto{\pgfpointorigin}}
+}
+
+\pgfdeclaredecoration{single line backwards}{initial}{
+                             \state{initial}[width=\pgfdecoratedpathlength-1sp]{\pgfpathmoveto{\pgfpointorigin}}
+                             \state{final}{\pgfpathlineto{\pgfpointorigin}}
+}
+
+\tikzset{
+        raise line/.style={
+              decoration={single line, raise=#1}, decorate
+              }
+}
+
+\tikzset{
+mod/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with { 
+\path[draw,-] (0,-3pt) -- (0,3pt); 
+}}}}}
+
+\tikzset{
+label/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with {\node[inner sep=2pt,outer sep=0] #1 ;}
+}}}}
+
+\tikzset{
+labelo/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with {\node[circle,inner sep=0pt,fill=white] {$\scriptstyle #1$} ;}
+}}}}
+
+\tikzset{
+labelon/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with {\node[inner sep=1pt,fill=white] {$\scriptstyle #1$} ;}
+}}}}
+
+\tikzset{
+labelonb/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with {\node[inner sep=0pt,fill={bg}] {$\scriptstyle #1$} ;}
+}}}}
+
+\tikzset{
+labelat/.style 2 args={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position #2 with {\node[inner sep=2pt] #1 ;}
+}}}}
+
+\tikzset{
+labeloat/.style 2 args={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position #2 with {\node[inner sep=0.1pt,fill=white] {$\scriptstyle #1$} ;}
+}}}}
+
+\tikzset{
+labelonat/.style 2 args={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position #2 with {\node[inner sep=0.1pt,fill=white] {$\scriptstyle #1$} ;}
+}}}}
+
+
+
+
+\tikzset{diagnode/.style={anchor=base,inner sep=5pt,outer sep=0pt}}
+\tikzset{diag/.style 2 args=%
+  {
+matrix of math nodes,ampersand replacement=\&, %
+text height=1.2ex, text depth=0.25ex, %
+row sep={#1 cm,between borders}, %
+column sep={#2 cm,between borders}}  
+}%
+\tikzset{diagorigins/.style 2 args=%
+{matrix of math nodes,ampersand replacement=\&, %
+row sep={#1 cm,between origins}, %
+column sep={#2 cm,between origins}}  
+}%
+\tikzset{stringdiag/.style 2 args=%
+{nodes={inner sep=1pt,outer sep=0pt},%
+  ampersand replacement=\&,%
+    row sep={#1 cm,between origins}, %
+    column sep={#2 cm,between origins}%
+}}%
+\newcommand{\diaggrandhauteur}{1}
+\newcommand{\diaggrandlargeur}{2}
+\newcommand{\diagpetithauteur}{.5}
+\newcommand{\diagpetitlargeur}{1.5}
+
+\tikzset{organigram/.style 2 args={matrix of nodes,ampersand replacement=\&, %
+text height=1.7ex, text depth=0.25ex, %
+row sep={#1 cm,between origins}, %
+column sep={#2 cm,between origins}  }}
+
+\tikzset{graphe/.style 2 args={matrix of math nodes,ampersand replacement=\&, %
+      row sep={#1 cm,between origins}, %
+      column sep={#2 cm,between origins}, %
+      inner sep=-.1ex}} %
+
+\tikzset{
+two/.style 2 args={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with \node (#1) [#2] {} ;
+}}}}
+
+\tikzset{
+twocenter/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with \node (#1) {} ;
+}}}}
+
+\tikzset{
+twoon/.style 2 args={twocenter={#1},label={{$\scriptstyle #2$}}}
+}
+\tikzset{
+twoo/.style={two={on},label={{$\scriptstyle #1$}}}
+}
+\tikzset{
+twol/.style={two={l}{right},label={[left]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twoleft/.style 2 args={two={#1}{right},label={[left]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twor/.style={two={r}{left},label={[right]{$\scriptstyle #1$}}}
+}
+\tikzset{
+tworight/.style 2 args={two={#1}{left},label={[right]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twou/.style={two={u}{below},label={[above]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twoa/.style={two={a}{below},label={[above]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twoup/.style 2 args={two={#1}{below},label={[above]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twoabove/.style 2 args={two={#1}{below},label={[above]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twod/.style={two={d}{above},label={[below]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twob/.style={two={b}{above},label={[below]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twodown/.style 2 args={two={#1}{above},label={[below]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twobelow/.style 2 args={two={#1}{above},label={[below]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twoal/.style={two={al}{right},label={[above left]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twoaboveleft/.style 2 args={two={#1}{above},label={[above left]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twoar/.style={two={ar}{left},label={[above right]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twoaboveright/.style 2 args={two={#1}{above},label={[above right]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twobr/.style={two={br}{left},label={[below right]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twobelowright/.style 2 args={two={#1}{left},label={[below right]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twobl/.style={two={bl}{right},label={[below left]{$\scriptstyle #1$}}}
+}
+\tikzset{
+twobelowleft/.style 2 args={two={#1}{right},label={[below left]{$\scriptstyle #2$}}}
+}
+\tikzset{
+twol/.style={two={l}{right},label={[left]{$\scriptstyle #1$}}}
+}
+
+\tikzset{
+labell/.style={label={[left]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labellat/.style 2 args={labelat={[left]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+labelr/.style={label={[right]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelrat/.style 2 args={labelat={[right]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+labelar/.style={label={[above right]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelarat/.style 2 args={labelat={[above right]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+labelbr/.style={label={[below right]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelbrat/.style 2 args={labelat={[below right]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+labelu/.style={label={[above]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labeluat/.style 2 args={labelat={[above]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+  labela/.style={label={[above]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelaat/.style 2 args={labelat={[above]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+  loina/.style={label={[above=.5em]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labeld/.style={label={[below]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelb/.style={label={[below]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelbat/.style 2 args={labelat={[below]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+loinb/.style={label={[below=.5em]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelal/.style={label={[above left]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelalat/.style 2 args={labelat={[above left]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+labelbl/.style={label={[below left]{$\scriptstyle #1$}}}
+}
+\tikzset{
+labelblat/.style 2 args={labelat={[below left]{$\scriptstyle #1$}}{#2}}
+}
+\tikzset{
+labellat/.style 2 args={labelat={[left]{$\scriptstyle #1$}}{#2}}
+}
+
+\newcommand{\cs}[2][draw,->]{ %
+  \path[#1] (#2-1-1) -- (#2-1-2) ; %
+  \path[#1] (#2-1-3) -- (#2-1-2) ; %
+}
+
+\newcommand{\cospan}{\cs{m}}
+
+\newcommand{\vdoublecs}[2][draw,->]{
+    \foreach \i in {1,2,3} %
+    {%
+    \path[#1] (#2-1-\i)  -- (#2-2-\i) ;%
+    \path[#1] (#2-3-\i) -- (#2-2-\i) ; %
+  }    ; %
+}
+
+\newcommand{\hdoublecs}[2][draw,->]{
+    \foreach \i in {1,2,3} %
+    {%
+    \path[#1] (#2-\i-1)  -- (#2-\i-2) ;%
+    \path[#1] (#2-\i-3) -- (#2-\i-2) ; %
+  }    ; %
+}
+
+\newcommand{\vdoubleisos}[1]{
+    \foreach \i in {1,2,3} %
+    {%
+    \isopath{#1-1-\i}{#1-2-\i} %
+    \isopath{#1-2-\i}{#1-3-\i} %
+  }    ; %
+}
+
+\newcommand{\hdoubleisos}[1]{
+    \foreach \i in {1,2,3} %
+    {%
+    \isopath{#1-\i-1}{#1-\i-2} %
+    \isopath{#1-\i-2}{#1-\i-3} %
+  }    ; %
+}
+
+\newcommand{\doublecs}[2][draw,->]{%
+  \vdoublecs[#1]{#2} %
+  \hdoublecs[#1]{#2} %
+}
+
+\newcommand{\doublecospan}{\doublecs{m}}
+
+\newcommand{\sq}[4]{%
+  (m-1-1) edge[twou={#1}] (m-1-2) %
+  (m-1-1) edge[twol={#2}] (m-2-1) %
+  (m-1-2) edge[twor={#3}] (m-2-2) %
+  (m-2-1) edge[twod={#4}] (m-2-2) %
+}      
+
+\newcommand{\sqpath}[6]{
+        \draw[->,#6,rounded corners]
+        (#1) -- +(#2:#3ex) --  node(#4) {} ($(#5) + (#2:#3ex)$) -- (#5) %
+        ; %
+      }
+
+\newcommand{\celltoangle}[5]{      
+  \path[draw] ($(#1)+(#2:#3ex)$) edge[celllr={0}{0},#5] ($(#1)+(#2:#4ex)$) ; %
+}
+
+\newcommand{\pbkdefault}{1.4em}
+\newcommand{\pbkmargin}{1pt}
+\DeclareDocumentCommand{\pullbackk}{O{\pbkdefault} O{\pbkdefault} D(){2pt} m m m m}{%
+  \node[coordinate] (a) at (#4) {} ; %
+  \node[coordinate] (b) at (#5) {} ; %
+  \node[coordinate] (c) at (#6) {} ; %
+  \node[coordinate] (a') at ($(b)!#1!(a)$) {} ; %
+  \node[coordinate] (c') at ($(b)!#2!(c)$) {} ; %
+  \node[coordinate] (d) at (barycentric cs:a'=1,c'=1,b=-1) {} ; %
+  \node[coordinate] (aup) at ($(a')!#3!(d)$) {};
+  \node[coordinate] (cup) at ($(c')!#3!(d)$) {};
+ \path[#7] (aup) -- (d) -- (cup) ; %
+}
+\newcommand{\pullback}[5][\pbkdefault]{\pullbackk[#1][#1]{#2}{#3}{#4}{#5}}
+
+\newcommand{\pbk}[4][\pbkdefault]{%
+  \pullbackk[#1][#1]{#2}{#3}{#4}{draw,-} }
+\newcommand{\stdpbk}{\pbk{m-2-1}{m-1-1}{m-1-2}}
+\newcommand{\stdpo}{\pbk{m-2-1}{m-2-2}{m-1-2}}
+
+\newcommand{\onepbk}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,densely dotted} }
+\newcommand{\ptwpbk}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,densely dotted} }
+
+\newcommand{\wpbk}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,dashed} }
+
+\newcommand{\pbkk}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{cell=0} }
+
+\newcommand{\laxpbk}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,->,cell=0} }
+\newcommand{\oplaxpbk}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,<-,cell=0} }
+
+\newcommand{\poleftg}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,open triangle 45-} }
+\newcommand{\porightg}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,open triangle 45 reversed-} }
+
+\newcommand{\dpbk}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,-open triangle 45} }
+\newcommand{\dpbkrev}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,-open triangle 45 reversed} }
+\newcommand{\dpbkblack}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,-triangle 45} }
+\newcommand{\dpbkblackrev}[4][\pbkdefault]{%
+  \pullback[#1]{#2}{#3}{#4}{draw,triangle 45-open triangle 45} }
+
+
+
+
+\tikzset{shortenlr/.style 2 args={shorten <={#1 ex},shorten >={#2 ex}}}
+\tikzset{
+back/.style={densely dotted}
+}
+\tikzset{
+fore/.style 2 args={preaction={draw={white},-,line width=4pt,shorten <=#1cm,shorten >=#2cm}},
+fore/.default={0}{0}
+}
+\tikzset{
+foretwo/.style={preaction={draw=white,-,line width=6pt}}
+}
+
+\tikzset{twocell/.style = {double equal sign distance,double,-implies,shorten <= .15cm,shorten >=.15cm,draw}}
+\tikzset{
+cell/.style = {double equal sign distance,double,-implies,shorten <= #1 cm,shorten >=#1 cm,draw}
+}
+\tikzset{celllr/.style 2 args = {double equal sign distance,double,-implies,shorten <= #1 ex,shorten >=#2 ex,draw}}
+\tikzset{identity/.style = {double equal sign distance,double,-,draw}}
+\tikzset{iso/.style = {label={[below=0em,sloped]{$\scriptstyle -$}},label={[above=-.2em,sloped]{$\scriptstyle \sim$}}}}
+\tikzset{equi/.style = {label={[above=-.2em,sloped]{$\scriptstyle \sim$}}}}
+\tikzset{isotwo/.style = postaction={ 
+    decorate, 
+    decoration={ 
+      markings, 
+      mark=at position .5 with {\node[inner sep=2pt,outer sep=0,above=-.2em,sloped] {$\scriptstyle \sim$} ;}
+    }}}
+\tikzset{isor/.style = {labelr={\iso}}}
+\tikzset{isol/.style = {labell={\iso}}}
+\tikzset{isod/.style = {labeld={\iso}}}
+\tikzset{isobr/.style = {labelbr={\iso}}}
+\tikzset{baseline= (current bounding box.center)}
+\tikzset{foreground/.style = {draw=white,very thick,double=black}}
+\tikzset{background/.style = {draw=white,-,line width=3pt}}
+\tikzset{diagram/.style = {column sep=1.5cm,row sep=1cm,nodes={minimum width=1cm}}}
+\tikzset{nuage/.style = {cloud,draw,minimum width=2cm,minimum height=.6cm,cloud puffs=30,anchor=center}}
+\tikzset{into/.style = {right hook->}}
+\tikzset{otni/.style = {<-left hook}}
+\tikzset{linto/.style = {left hook->}}
+\tikzset{leadsto/.style = {->,decorate,decoration={snake,amplitude={#1 pt}}}}
+\tikzset{leadsto/.default = {1.5}}
+\tikzset{otsdael/.style = {<-,decorate,decoration={snake,amplitude=1.5pt}}}
+\tikzset{onto/.style = {->>}}
+\tikzset{mono/.style = {>->}}
+\tikzset{fib/.style = {-latex}}
+\tikzset{dfib/.style = {-Latex[open]}}
+\tikzset{generic/.style = {-Triangle[]}}
+\tikzset{free/.style = {-Triangle[open]}}
+\tikzset{final/.style = {-]}}
+\tikzset{epi/.style = {->>}}
+\tikzset{adj/.style 2 args={text height={#1},text depth={#2}}}
+\tikzset{adj/.default={.1cm}{0cm}}
+\tikzset{iff/.style = {double equal sign distance,double,-implies,draw,shorten <= #1cm}}
+\tikzset{
+mod/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with {\draw[-] (0pt,-2pt) -- (0pt,2pt);}
+}}},
+negate/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with {\node[transform shape] (tempnode) {$/$};}
+}}},
+mapsto/.style={|->},
+otspam/.style={<-|},
+pro/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position #1 with {\draw[-,fill] (0pt,0pt) circle (1.5pt);}
+}}},
+pro/.default={.5},
+glob/.style={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position .5 with {\draw[-,fill=white] (0pt,0pt) circle (1.5pt);}
+}}}
+}
+
+\newcommand{\idto}{\mathbin{\tikz[baseline] \draw[identity] (0pt,.5ex) -- (3ex,.5ex);}}
+\newcommand{\idot}{\mathbin{\tikz[baseline] \draw[identity] (3ex,.5ex) -- (0pt,.5ex);}}
+\newcommand{\fibto}[1]{\mathbin{\tikz[baseline] \draw (0pt,.5ex) edge[fib,labelu={\scriptstyle #1}] (3ex,.5ex);}}
+\newcommand{\fibot}[1]{\mathbin{\tikz[baseline] \draw (3ex,.5ex) edge[fib,labelu={\scriptstyle #1}] (0pt,.5ex);}}
+\newcommand{\dfibto}{
+  \mathbin{\tikz[baseline] \draw (0pt,.5ex) edge[dfib] (3ex,.5ex);}}
+\newcommand{\xdfibto}[1]{
+  \mathbin{\tikz[baseline] \draw (0pt,.5ex) edge[dfib,labelu={\scriptstyle #1}] (3ex,.5ex);}}
+\newcommand{\shortdfibto}{
+  \mathbin{\tikz[baseline] \draw (0pt,.5ex) edge[dfib] (1.5ex,.5ex);}}
+\newcommand{\shortdfibot}{
+  \mathbin{\tikz[baseline] \draw (1.5ex,.5ex) edge[dfib] (0,.5ex);}}
+\newcommand{\xxto}[2]{\mathbin{\tikz[baseline] \draw (0pt,.5ex) edge[->,labelu={\scriptstyle #1},labelb={\scriptstyle #2}] (3ex,.5ex);}}
+
+\newcommand{\dfibot}[1][]{
+  \mathbin{\tikz[baseline] \draw (3ex,.5ex) edge[dfib,labelu={\scriptstyle #1}] (0pt,.5ex);}}
+\newcommand{\modto}{\mathbin{\tikz[baseline] \draw[->,mod] (0pt,.5ex) -- (3ex,.5ex);}}
+\newcommand{\proto}{\mathbin{\tikz[baseline] \draw[->,pro] (0pt,.5ex) -- (3ex,.5ex);}}
+\newcommand{\shortproto}{\mathbin{\tikz[baseline] \draw[->,pro] (0pt,.5ex) -- (1.5ex,.5ex);}}
+\newcommand{\finalto}{\mathbin{\tikz[baseline] \draw (0pt,.5ex) edge[final] (3ex,.5ex);}}
+\newcommand{\xfinalto}[1]{\mathbin{\tikz[baseline] \draw (0pt,.5ex) edge[final,labelu={\scriptstyle #1}] (3ex,.5ex);}}
+\newcommand{\finalot}{\mathbin{\tikz[baseline] \draw (3ex,.5ex) edge[final] (0pt,.5ex);}}
+\newcommand{\xfinalot}[1]{\mathbin{\tikz[baseline] \draw (3ex,.5ex) edge[final,labelu={\scriptstyle #1}] (0pt,.5ex);}}
+\newcommand{\shortinto}{\mathbin{\tikz[baseline] \draw[->,into] (0pt,.5ex) -- (2ex,.5ex);}}
+
+
+
+\newcommand{\cellule}[3][]{ %
+  \path (#3) +(#2:-.4cm) [twocell,#1] -- +(#2:.4cm) ; %
+}
+
+\newcommand{\celluled}[2]{ %
+  \cellule[labell={#2}]{-90}{#1} %
+}
+\newcommand{\celluler}[2]{ %
+  \cellule[labelu={#2}]{0}{#1} %
+}
+
+\newcommand{\isopath}[2]{%
+            \path %
+            (#1) -- node[sloped] {$\iso$} (#2) ; %
+}
+
+\newcommand{\adjtemplate}[6][1]{%
+          \begin{tikzpicture}[baseline=(m-1-1.base)] %
+            \matrix (m) [diag={1}{#1},
+            column sep={#1 cm,between borders}]{ %
+              |[adj]| #2 %
+              \& #6 %
+              \& |[adj]| #3 \\
+              } ; %
+              \path[->] %
+              (m-1-1.north east) edge[labelu={#4},bend left=15] (m-1-3.north west) %
+              (m-1-3.base west) edge[labeld={#5},bend left=15] (m-1-1.base east) %
+              ; %
+          \end{tikzpicture} %
+}
+
+\newcommand{\adj}[5][1]{\adjtemplate[#1]{#2}{#3}{#4}{#5}{\bot}}
+\newcommand{\coadj}[5][1]{\adjtemplate[#1]{#2}{#3}{#4}{#5}{\top}}
+\newcommand{\catequi}[5][1]{\adjtemplate[#1]{#2}{#3}{#4}{#5}{\simeq}}
+\newcommand{\catiso}[5][1]{\adjtemplate[#1]{#2}{#3}{#4}{#5}{\cong}}
+
+\newcommand{\adjunction}[4]{%
+  \path[->] %
+  (#1) edge[twou={#3},bend left=15] (#2) %
+  (#2) edge[twod={#4},bend left=15] (#1) %
+  ; %
+  \path (u) -- node[pos=.5,sloped] {$\dashv$} (d) ; %
+  }
+
+\newcommand{\ladjunction}[4]{%
+  \path[->] %
+  (#1) edge[twou={#3},bend left=15] (#2) %
+  (#2) edge[twod={#4},bend left=15] (#1) %
+  ; %
+  \path (u) -- node[pos=.5,sloped] {$\vdash$} (d) ; %
+  }
+
+\newcommand{\adjs}[8][1]{%
+          \begin{tikzpicture} %
+            \matrix (m) [diag={1}{#1},column sep={#1 cm,between borders}]{ %
+              |[adj]| #2 %
+              \& \bot %
+              \& |[adj]| #3 
+              \& \bot %
+              \& |[adj]| #6 \\
+              } ; %
+              \path[->] %
+              (m-1-1.north east) edge[labelu={#4},bend left=15] (m-1-3.north west) %
+              (m-1-3.south west) edge[labeld={#5},bend left=15] (m-1-1.south east) %
+              (m-1-3.north east) edge[labelu={#7},bend left=15] (m-1-5.north west) %
+              (m-1-5.south west) edge[labeld={#8},bend left=15] (m-1-3.south east) %
+              ; %
+          \end{tikzpicture} %
+}
+\newcommand{\coadjs}[8][1]{%
+          \begin{tikzpicture} %
+            \matrix (m) [diag={1}{#1},column sep={#1 cm,between borders}]{ %
+              |[adj]| #2 %
+              \& \top %
+              \& |[adj]| #3 
+              \& \top %
+              \& |[adj]| #6 \\
+              } ; %
+              \path[->] %
+              (m-1-1.north east) edge[labelu={#4},bend left=15] (m-1-3.north west) %
+              (m-1-3.south west) edge[labeld={#5},bend left=15] (m-1-1.south east) %
+              (m-1-3.north east) edge[labelu={#7},bend left=15] (m-1-5.north west) %
+              (m-1-5.south west) edge[labeld={#8},bend left=15] (m-1-3.south east) %
+              ; %
+          \end{tikzpicture} %
+}
+
+\newcommand{\retr}[5][1]{%
+          \begin{tikzpicture} %
+            \matrix (m) [diag={1}{#1},column sep={#1 cm,between borders}]{ %
+              |[anchor=east,text height=.1cm,text depth=-.1cm]| #2 %
+              \& |[anchor=center]| \triangleleft %
+              \& |[anchor=west,text height=.1cm,text depth=-.1cm]| #3 \\
+              } ; %
+              \path[->] %
+              (m-1-1.north east) edge[labelu={#4},bend left=15] (m-1-3.north west) %
+              (m-1-3.south west) edge[labeld={#5},bend left=15] (m-1-1.south east) %
+              ; %
+          \end{tikzpicture} %
+}
+
+\newcommand{\doublecell}[9]{
+    \diag{%
+      |(X)| {#1} \& |(Y)| {#2} \\ %
+      |(U)| {#3} \& |(V)| {#4} %
+    }{%
+      (X) edge[labelu={#5}] (Y) %
+      edge[pro,twol={#6}] (U) %
+      (Y) edge[pro,twor={#7}] (V) %
+      (U) edge[labeld={#8}] (V) %
+      (l) edge[cell=.4,labelu={\scriptstyle #9}] (r) %
+    }
+}
+
+\newcommand{\doublecellpro}[9]{
+    \diag{%
+      |(X)| {#1} \& |(Y)| {#2} \\ %
+      |(U)| {#3} \& |(V)| {#4} %
+    }{%
+      (X) edge[labelu={#5}] (Y) %
+      edge[pro,twol={#6}] (U) %
+      (Y) edge[pro,twor={#7}] (V) %
+      (U) edge[labeld={#8}] (V) %
+      (l) edge[cell=.4,labelu={\scriptstyle #9}] (r) %
+    }
+}
+
+\newcommand{\vdoublecell}[9]{
+    \diag{%
+      |(X)| {#1} \& |(Y)| {#2} \\ %
+      |(U)| {#3} \& |(V)| {#4} %
+    }{%
+      (X) edge[twou={#5}] (Y) %
+      edge[labell={#6}] (U) %
+      (Y) edge[labelr={#7}] (V) %
+      (U) edge[twod={#8}] (V) %
+      (u) edge[cell=.4,labelr={\scriptstyle #9}] (d) %
+    }
+}
+
+\newcommand{\Vdots}{|[anchor=center,text height=.1cm]| \vdots}
+
+\newcommand{\relate}[3]{\path (#1) -- node[anchor=mid] {$#2$} (#3) ;}
+\newcommand{\justify}[4][0.5]{\path (#2) -- node[anchor=mid,pos=#1] {\tiny (#3)} (#4) ;}
+
+
+
+\newcommand{\mkdots}[2]{    \path
+    (#1) --
+    node[pos=.4] {.}
+    node[pos=.5] {.}
+    node[pos=.6] {.}
+    (#2)
+    ;}
+
+\newcommand{\mkdotsshrink}[2]{    \path
+    (#1) --
+    node[pos=.3] {.}
+    node[pos=.5] {.}
+    node[pos=.7] {.}
+    (#2)
+    ;}
+
+\endinput
