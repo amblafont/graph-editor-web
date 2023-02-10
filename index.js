@@ -105,7 +105,7 @@ function waitIncompleteMsg() {
 
 
 function contentToFileName(content) {
-  return path.join([basedir, content + extension]);
+  return path.join(basedir, content + extension);
 }
 
 function parseMagic(line) {
@@ -214,15 +214,16 @@ function handleFileOneIteration() {
       rfile = contentToFileName(diagFile);
   
       if (fs.existsSync(rfile)) {
-        content = fs.readFileSync(rfile);        
+        content = fs.readFileSync(rfile).toString();        
       } else {
         content = "";
       }
     }
   
     
-    handleSave = function(newcontent, latex) {
+    handleSave = function(newcontent_json, latex) {
       resetHandleSave();
+      var newcontent = JSON.stringify(newcontent_json);
       /*
       newtimestamp = os.path.getmtime(filename);
     
@@ -266,6 +267,7 @@ function handleFileOneIteration() {
       writeContent(newcontent, latex, index);
       handleFileOneIteration();
     }
+    // console.log(content);
     loadEditor(content);
   }
   else {
@@ -279,8 +281,8 @@ function handleFileOneIteration() {
   
 }
 
-function writeContent(newcontent_json, latex, index) {
-  var newcontent = JSON.stringify(newcontent_json);
+function writeContent(newcontent, latex, index) {
+  
   const tmpobj = tmp.fileSync();
   const fd = tmpobj.fd;
   const file_lines = new lineByLine(watched_file);
@@ -368,8 +370,8 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  createWindow();
-  // handleFileOneIteration();
+   createWindow();
+   // handleFileOneIteration();
 
   app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the
