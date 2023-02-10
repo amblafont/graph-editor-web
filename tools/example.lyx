@@ -7,6 +7,7 @@
 \textclass article
 \begin_preamble
 \usepackage{tikz-cd}
+\usepackage{yade}
 \end_preamble
 \use_default_options true
 \maintain_unincluded_children false
@@ -92,7 +93,7 @@ Running genlatex on this file (using the command in the readme) and then
 status open
 
 \begin_layout Plain Layout
-% YADE DIAGRAM diagram0
+% YADE DIAGRAM diagram0.json
 \end_layout
 
 \end_inset

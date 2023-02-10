@@ -32,8 +32,8 @@ const defaults =
      external_tex : false
    },
  "lyx":
-   { prefix: "\\end_layout\n\\end_inset\n\\begin_inset Preview \n\\begin_layout Standard \n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
-     suffix: "\\end_inset\n\\end_layout\n\\end_inset\n\\begin_inset Note Note\nstatus open\n\\begin_layout Plain Layout",
+   { prefix: "\\end_layout\\n\\end_inset\\n\\begin_inset Preview \\n\\begin_layout Standard \\n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
+     suffix: "\\end_inset\\n\\end_layout\\n\\end_inset\\n\\begin_inset Note Note\\nstatus open\\n\\begin_layout Plain Layout",
      include_cmd: "filename \"@\"",
      external_tex : true
    }
@@ -85,7 +85,7 @@ if (app.isPackaged) {
 }
 
 var args = parser.parse_args();
-console.log(args);
+// console.log(args);
 var watched_file = args.watch;
 var is_watch = watched_file != undefined;
 var ext = "tex";
@@ -102,6 +102,7 @@ function getOrDefault(s) {
 
 var prefixes = getOrDefault("prefix").split("\\n");
 var suffixes = getOrDefault("suffix").split("\\n");
+console.log(prefixes);
 var includecmd = getOrDefault("include_cmd");
 var externaltex = getOrDefault("external_tex");
 // var watched_file = undefined;
@@ -176,12 +177,10 @@ function parsePrefix(line, remainder_arg) {
   }
 
   var linestrip = line.trim();
-
   if (linestrip === "") {
     return remainder;
   }
-
-  var head = remainder.pop().trim();
+  var head = remainder.shift().trim();
   // reaminder is now the tail
   if (head === "") {
     parsePrefix(linestrip, remainder);
@@ -415,7 +414,7 @@ const createWindow = () => {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
    createWindow();
-   // handleFileOneIteration();
+  // handleFileOneIteration();
 
   app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the
