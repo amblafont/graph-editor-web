@@ -102,7 +102,6 @@ function getOrDefault(s) {
 
 var prefixes = getOrDefault("prefix").split("\\n");
 var suffixes = getOrDefault("suffix").split("\\n");
-console.log(prefixes);
 var includecmd = getOrDefault("include_cmd");
 var externaltex = getOrDefault("external_tex");
 // var watched_file = undefined;
@@ -215,6 +214,7 @@ function loadEditor(diag) {
 function handleFileOneIteration() {
   resetOnFocus();
   const file_lines = new lineByLine(watched_file);
+
   var remainder = [];
   var index = 0;
   while (remainder.length == 0) {
@@ -245,9 +245,8 @@ function handleFileOneIteration() {
     
 
   }
-  if (line !== false)
-     file_lines.close();
-  // ICI
+  //  if (file_lines.next() === false)
+      // file_lines.close();
   if ((remainder === null || remainder.length > 0) && content !== null) {
     console.log("do something with " + content);
     diagFile = null;
@@ -413,7 +412,7 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-   createWindow();
+  createWindow();
   // handleFileOneIteration();
 
   app.on('activate', () => {
