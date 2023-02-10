@@ -6,9 +6,11 @@ To test offline: open grapheditor.html in your browser
 To compile: elm make src/Main.elm --output=elm.js
 (or download the latest compiled version from https://amblafont.github.io/graph-editor/elm.js)
 
+To compile the electron app (with easy integration of latex documents: see directory tools/):
 
-To compile the electron app (with easy integration of latex documents: see directory tools/)
-yarn install
-yarn run make
+- `yarn install` to install the nodejs dependencies
+- `yarn start -- -- arg1 arg2` to run the app
+- `yarn run make` to build the .deb/.zip
+
 
 
