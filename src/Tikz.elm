@@ -1,13 +1,14 @@
 module Tikz exposing (graphToTikz)
 
-import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..), GenericEdge)
-import Polygraph as Graph exposing (Graph, Node, Edge)
-import Maybe.Extra
 import ArrowStyle exposing (LabelAlignment(..))
+import GraphDefs exposing (EdgeLabel, EdgeType(..), GenericEdge, NodeLabel)
+import Maybe.Extra
+import Polygraph as Graph exposing (Edge, Graph, Node)
+
 
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
--- TODO: faire la normalisation
+    -- TODO: faire la normalisation
     let
         ( x, y ) =
             n.label.pos
@@ -31,6 +32,7 @@ encodeNodeTikZ sizeGrid n =
            )
         ++ "$} ; \n"
 
+
 encodeFakeEdgeTikZ : Edge EdgeLabel -> String
 encodeFakeEdgeTikZ e =
     "("
@@ -47,36 +49,56 @@ encodeFakeEdgeTikZ e =
 encodeFakeLabel : Edge EdgeLabel -> String
 encodeFakeLabel e =
     case e.label.details of
-        PullshoutEdge -> ""
-        NormalEdge l -> ArrowStyle.tikzStyle l.style
+        PullshoutEdge ->
+            ""
+
+        NormalEdge l ->
+            ArrowStyle.tikzStyle l.style
+
 
 graphToTikz : Int -> Graph NodeLabel EdgeLabel -> String
 graphToTikz sizeGrid g =
-    let gnorm = g |> Graph.normalise in
-    let nodes = Graph.nodes gnorm in
-    let all_edges = Graph.edges gnorm in
-    let (edges, pullshouts) = 
-           List.partition 
-           (GraphDefs.filterEdgeNormal >> Maybe.Extra.isJust)
-             all_edges 
+    let
+        gnorm =
+            g |> Graph.normalise
     in
-    let tikzNodes = nodes |> List.map (encodeNodeTikZ sizeGrid) |> String.concat
+    let
+        nodes =
+            Graph.nodes gnorm
     in
-    let tikzFakeEdges =
+    let
+        all_edges =
+            Graph.edges gnorm
+    in
+    let
+        ( edges, pullshouts ) =
+            List.partition
+                (GraphDefs.filterEdgeNormal >> Maybe.Extra.isJust)
+                all_edges
+    in
+    let
+        tikzNodes =
+            nodes |> List.map (encodeNodeTikZ sizeGrid) |> String.concat
+    in
+    let
+        tikzFakeEdges =
             "\\path \n" ++ (edges |> List.map encodeFakeEdgeTikZ |> String.concat) ++ "; \n"
     in
-    let tikzEdges =
+    let
+        tikzEdges =
             "\\path[->] \n" ++ (List.sortBy (.label >> .zindex) edges |> List.map encodeEdgeTikZ |> String.concat) ++ "; \n"
     in
-    let tikzPullshouts =
+    let
+        tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
     in
-    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base}] \n"
+    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
         ++ tikzNodes
         ++ tikzFakeEdges
         ++ tikzEdges
         ++ tikzPullshouts
         ++ "\\end{tikzpicture}"
+
 
 encodePullshoutTikZ : Graph NodeLabel EdgeLabel -> Edge EdgeLabel -> String
 encodePullshoutTikZ g e =
@@ -101,6 +123,7 @@ encodePullshoutTikZ g e =
         ( _, _ ) ->
             "raté!"
 
+
 encodeEdgeTikZ : Edge EdgeLabel -> String
 encodeEdgeTikZ e =
     "("
@@ -110,6 +133,7 @@ encodeEdgeTikZ e =
         ++ "] ("
         ++ String.fromInt e.to
         ++ ") \n"
+
 
 encodeLabel : Edge EdgeLabel -> String
 encodeLabel e =
@@ -126,10 +150,18 @@ encodeLabel e =
                 ++ "}, "
                 ++ ArrowStyle.tikzStyle l.style
 
+
 labelfromAlignment : LabelAlignment -> String
 labelfromAlignment a =
     case a of
-        Centre -> "labeloat"
-        Over -> "labelonat"
-        Left -> "labelrat"
-        Right -> "labellat"
+        Centre ->
+            "labeloat"
+
+        Over ->
+            "labelonat"
+
+        Left ->
+            "labelrat"
+
+        Right ->
+            "labellat"
