@@ -71,7 +71,7 @@ graphToTikz sizeGrid g =
     let tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
     in
-    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base}] \n"
+    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
         ++ tikzNodes
         ++ tikzFakeEdges
         ++ tikzEdges
