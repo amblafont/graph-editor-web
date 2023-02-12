@@ -9,13 +9,8 @@ import Polygraph as Graph exposing (Edge, Graph, Node)
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
-    let
-        ( x, y ) =
-            n.label.pos
-    in
-    let
-        coord u =
-            floor (u / toFloat sizeGrid)
+    let (x, y) = n.label.pos in
+    let coord u = floor (2 * u / toFloat sizeGrid) 
     in
     "\\node ("
         ++ String.fromInt n.id
@@ -24,14 +19,8 @@ encodeNodeTikZ sizeGrid n =
         ++ ", "
         ++ String.fromInt (0 - coord y)
         ++ ") {$"
-        ++ (if n.label.label == "" then
-                "\\bullet"
-
-            else
-                n.label.label
-           )
+        ++ (if n.label.label == "" then "\\bullet" else n.label.label )
         ++ "$} ; \n"
-
 
 encodeFakeEdgeTikZ : Edge EdgeLabel -> String
 encodeFakeEdgeTikZ e =
@@ -92,7 +81,7 @@ graphToTikz sizeGrid g =
         tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
     in
-    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
+    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n "
         ++ tikzNodes
         ++ tikzFakeEdges
         ++ tikzEdges
