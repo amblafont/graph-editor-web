@@ -81,7 +81,7 @@ graphToTikz sizeGrid g =
         tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
     in
-    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n "
+        "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n "
         ++ tikzNodes
         ++ tikzFakeEdges
         ++ tikzEdges
@@ -131,26 +131,19 @@ encodeLabel e =
             ""
 
         NormalEdge l ->
-            labelfromAlignment l.style.labelAlignment
-                ++ "={"
-                ++ l.label
-                ++ "}{"
-                ++ String.fromFloat l.style.labelPosition
-                ++ "}, "
-                ++ ArrowStyle.tikzStyle l.style
-
-
-labelfromAlignment : LabelAlignment -> String
-labelfromAlignment a =
-    case a of
-        Centre ->
-            "labeloat"
-
-        Over ->
-            "labelonat"
-
-        Left ->
-            "labelrat"
-
-        Right ->
-            "labellat"
+            let lbl = "$" ++ l.label ++ "$" in
+            (case l.style.labelAlignment of
+                 Over -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
+                 Centre -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "                 
+                 Left -> "\"" ++ lbl ++ "\", "
+                 Right -> "\"" ++ lbl ++ "\"', ")
+            ++ "pos=" ++ String.fromFloat l.style.labelPosition ++ ", "
+            ++ ArrowStyle.tikzStyle l.style
+ 
+           -- labelfromAlignment l.style.labelAlignment
+            --     ++ "={"
+            --     ++ l.label
+            --     ++ "}{"
+            --     ++ String.fromFloat l.style.labelPosition
+            --     ++ "}, "
+            --     ++ ArrowStyle.tikzStyle l.style
