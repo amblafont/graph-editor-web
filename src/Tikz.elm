@@ -118,13 +118,14 @@ encodeLabel e =
             ""
 
         NormalEdge l ->
-            labelfromAlignment l.style.labelAlignment
-                ++ "={"
-                ++ l.label
-                ++ "}{"
-                ++ String.fromFloat l.style.labelPosition
-                ++ "}, "
-                ++ ArrowStyle.tikzStyle l.style
+            let lbl = "$" ++ l.label ++ "$" in
+            (case l.style.labelAlignment of
+                 Over -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
+                 Centre -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "                 
+                 Left -> "\"" ++ lbl ++ "\", "
+                 Right -> "\"" ++ lbl ++ "\"', ")
+            ++ "pos=" ++ String.fromFloat l.style.labelPosition ++ ", "
+            ++ ArrowStyle.tikzStyle l.style
 
 labelfromAlignment : LabelAlignment -> String
 labelfromAlignment a =

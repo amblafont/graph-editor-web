@@ -255,3 +255,7 @@ tikzStyle stl =
             else
                 ""
            )
+      ++ (let bnd = stl.bend * 180 / pi in
+            if stl.bend /= 0 then
+                "bend right={" ++ String.fromFloat bnd ++ "}, "
+            else "")
