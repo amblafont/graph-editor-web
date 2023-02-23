@@ -370,7 +370,7 @@ function writeContent(newcontent, latex, index) {
     }
     writeLine(fd, line);
   }
-  fs.renameSync(tmpobj.name, watched_file);
+  fs.copyFileSync(tmpobj.name, watched_file);
 
   // tmpobj.removeCallback();
 }
