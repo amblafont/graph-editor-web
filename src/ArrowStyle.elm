@@ -413,16 +413,44 @@ type LabelAlignment
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =
     (case stl.tail of
-        DefaultTail -> ""
-        Hook -> "into, "
-        HookAlt -> "linto, ")
+        DefaultTail ->
+            ""
+
+        Hook ->
+            "into, "
+
+        HookAlt ->
+            "linto, "
+    )
         ++ (case stl.head of
-                DefaultHead -> "->, "
-                TwoHeads -> "onto, "
-                NoHead -> "-")
-        ++ (if stl.double then "cell=0, " else "")
-        ++ (if stl.dashed then "dashed, " else "")
-        ++ (let bnd = stl.bend * 180 / pi in
+                DefaultHead ->
+                    "->, "
+
+                TwoHeads ->
+                    "onto, "
+
+                NoHead ->
+                    "-,"
+           )
+        ++ (if stl.double then
+                "cell=0, "
+
+            else
+                ""
+           )
+        ++ (if stl.dashed then
+                "dashed, "
+
+            else
+                ""
+           )
+        ++ (let
+                bnd =
+                    stl.bend * 180 / pi
+            in
             if stl.bend /= 0 then
                 "bend right={" ++ String.fromFloat bnd ++ "}, "
-            else "")
+
+            else
+                ""
+           )
