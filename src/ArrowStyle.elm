@@ -422,6 +422,12 @@ tikzStyle stl =
         HookAlt ->
             "linto, "
     )
+        ++ (if stl.double then
+                "cell=0, "
+
+            else
+                ""
+           )
         ++ (case stl.head of
                 DefaultHead ->
                     "->, "
@@ -431,12 +437,6 @@ tikzStyle stl =
 
                 NoHead ->
                     "-,"
-           )
-        ++ (if stl.double then
-                "cell=0, "
-
-            else
-                ""
            )
         ++ (if stl.dashed then
                 "dashed, "
