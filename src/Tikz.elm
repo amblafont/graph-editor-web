@@ -7,28 +7,17 @@ import ArrowStyle exposing (LabelAlignment(..))
 
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
--- TODO: faire la normalisation
-    let
-        ( x, y ) =
-            n.label.pos
-    in
-    let
-        coord u =
-            floor (u / toFloat sizeGrid)
-    in
+    -- TODO: faire la normalisation
+    let (x, y) = n.label.pos in
+    let coord u = floor (u / 17.7667) in
     "\\node ("
         ++ String.fromInt n.id
         ++ ") at ("
         ++ String.fromInt (coord x)
-        ++ ", "
+        ++ "em, "
         ++ String.fromInt (0 - coord y)
-        ++ ") {$"
-        ++ (if n.label.label == "" then
-                "\\bullet"
-
-            else
-                n.label.label
-           )
+        ++ "em) {$"
+        ++ (if n.label.label == "" then "\\bullet" else n.label.label )
         ++ "$} ; \n"
 
 encodeFakeEdgeTikZ : Edge EdgeLabel -> String
