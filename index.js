@@ -360,9 +360,7 @@ function writeContent(newcontent, latex, index) {
   else
      writeLine(fd, includecmd.replace("@", texFileName(content)));
   writeLine(fd, "\n"+suffixes.join("\n"));
-  var yop = 0;
-  while (line !== false && yop < 20) {
-    yop ++;
+  while (line !== false) {
     line = readLine(file_lines);
     if (line === false) {
        break;
