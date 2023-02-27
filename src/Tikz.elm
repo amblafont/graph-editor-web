@@ -9,13 +9,13 @@ encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
     let (x, y) = n.label.pos in
-    let coord u = floor (u / 17.7667) in
+    let coord u = (u / 21) in -- 17.7667
     "\\node ("
         ++ String.fromInt n.id
         ++ ") at ("
-        ++ String.fromInt (coord x)
+        ++ String.fromFloat (coord x)
         ++ "em, "
-        ++ String.fromInt (0 - coord y)
+        ++ String.fromFloat (0 - coord y)
         ++ "em) {$"
         ++ (if n.label.label == "" then "\\bullet" else n.label.label )
         ++ "$} ; \n"
@@ -60,7 +60,7 @@ graphToTikz sizeGrid g =
     let tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
     in
-    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
+    "\\begin{tikzpicture}[every node/.style={inner sep=5pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
         ++ tikzNodes
         ++ tikzFakeEdges
         ++ tikzEdges
@@ -107,7 +107,7 @@ encodeLabel e =
             ""
 
         NormalEdge l ->
-            let lbl = "$" ++ l.label ++ "$" in
+            let lbl = "$\\scriptstyle " ++ l.label ++ "$" in
             (case l.style.labelAlignment of
                  Over -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
                  Centre -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "                 
