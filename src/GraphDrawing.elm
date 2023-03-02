@@ -243,7 +243,7 @@ segmentLabel cfg q edgeId activity label curve =
              ++
              HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
             )
-            <| cfg.latexPreamble ++ "\n" ++ label.label
+            <| cfg.latexPreamble ++ "\n\\scriptstyle " ++ label.label
             {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
               labelpos label.label  -}
          
