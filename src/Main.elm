@@ -1414,7 +1414,9 @@ viewGraph model =
            ]
           ++ 
            (if isResizeMode model.mode then
-               [ HtmlDefs.slider SizeGrid "Grid size" minSizeGrid maxSizeGrid (Model.modedSizeGrid model) ]
+               [ HtmlDefs.slider SizeGrid 
+                ("Grid size (" ++ String.fromInt (Model.modedSizeGrid model) ++ ")")
+                  minSizeGrid maxSizeGrid (Model.modedSizeGrid model) ]
             else
                [])
           ++ [ 
