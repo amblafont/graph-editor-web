@@ -359,7 +359,7 @@ function writeContent(newcontent, latex, index) {
      writeLine(fd, latex);
   else
      writeLine(fd, includecmd.replace("@", texFileName(content)));
-  writeLine(fd, "\n"+suffixes.join("\n"));
+  writeLine(fd, suffixes.join("\n"));
   while (line !== false) {
     line = readLine(file_lines);
     if (line === false) {
