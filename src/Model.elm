@@ -109,7 +109,7 @@ createModel sizeGrid g =
       quickInput = ""
     , mousePos = ( 0, 0 )
     , specialKeys = { ctrl = False, alt = False, shift = False }
-    , hideGrid = True
+    , hideGrid = False
     , sizeGrid = sizeGrid
     , fileName = "graph.json"
     , bottomText = ""
