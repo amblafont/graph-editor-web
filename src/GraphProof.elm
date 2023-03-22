@@ -10,7 +10,6 @@ import Geometry.Point as Point exposing (Point)
 import List.Extra as List
 import ListExtraExtra as List
 import Tuple exposing (first, second)
-import Debug exposing (toString)
 import IntDict exposing (IntDict)
 import Collage.Layout exposing (debug)
 import Set exposing (Set)
@@ -95,11 +94,11 @@ isBorder {lhs, rhs} =
    let angles = (List.head anglesRhs |> Maybe.withDefault 0) :: anglesLhs
              ++ (anglesRhs |> List.reverse)
    in
-   let _ = Debug.log "lhs" <| List.map (.label >> .label) lhs in
-   let _ = Debug.log "lhs-angles" anglesLhs in
+   let _ = List.map (.label >> .label) lhs in
+   let _ = anglesLhs in
    
      
-     Debug.log "rounds" (Point.countRounds angles) == -1
+     (Point.countRounds angles) == -1
 
 loopToDiagram : List (Edge LoopEdge, Bool) -> Diagram
 loopToDiagram edges = 
@@ -189,7 +188,7 @@ getIncompleteDiagram g l =
                   let d = diagramFrom dir g e in
                    
                   if List.sort (List.map .id l) == List.sort (List.map .id (d.lhs ++ d.rhs)) then
-                     Just <| Debug.log "oui!" d
+                     Just <| d
                   else
                      Nothing
                    
@@ -273,10 +272,10 @@ fullProofs g0 =
    let diags = getAllValidDiagrams g in
    let (bigDiags, smallDiags) = List.partition isBorder diags in
    -- let _ = List.map (Debug.log " stat:" << statementToString) diags in
-   let _ = Debug.log "nombre de gros diagrammes: " (List.length bigDiags) in
-   let _ = List.map (Debug.log " big:" << statementToString) bigDiags in
-   let _ = Debug.log "nombre de petits diagrammes: " (List.length smallDiags) in
-   let _ = List.map (Debug.log " small:" << statementToString) smallDiags in
+   -- let _ = Debug.log "nombre de gros diagrammes: " (List.length bigDiags) in
+   -- let _ = List.map (Debug.log " big:" << statementToString) bigDiags in
+   -- let _ = Debug.log "nombre de petits diagrammes: " (List.length smallDiags) in
+   -- let _ = List.map (Debug.log " small:" << statementToString) smallDiags in
    List.filter finishedProof <|
    List.map (\d ->
        { statement = d, proof = d.lhs |> List.map .id |> commuteProof smallDiags

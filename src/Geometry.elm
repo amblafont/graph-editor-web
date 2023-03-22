@@ -170,7 +170,8 @@ determine_label_position length angle edge_width start end curve label_position 
    let while i offset_min offset_max =
         let label_offset = (offset_min + offset_max) / 2 in 
         if i == 0 then 
-          Debug.log "Had to bail out from determining label offset." label_offset
+          -- Debug.log "Had to bail out from determining label offset." 
+          label_offset
         else
         let nexti = i - 1 in
         let rect_centre = Point.rotate angle centre

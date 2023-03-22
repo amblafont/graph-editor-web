@@ -34,6 +34,23 @@ type Mode
     | ResizeMode ResizeState -- current sizegrid
     | PullshoutMode PullshoutState
 
+toString : Mode -> String
+toString m = case m of
+    DefaultMode -> "Default"
+    NewArrow _ -> "New arrow"
+    Move _ -> "Move"
+    RenameMode _ _ -> "Rename"
+    DebugMode -> "Debug"
+    QuickInputMode _ -> "QuickInput"
+    SquareMode _ -> "Square"
+    RectSelect _ -> "Rect select"
+    SplitArrow _ -> "Split arrow"
+    EnlargeMode _ -> "Enlarge"
+    CutHead _ -> "Cut head"
+    CloneMode -> "Clone"
+    ResizeMode _ -> "Resize"
+    PullshoutMode _ -> "Pullshout"
+
 type alias CutHeadState = { id: Graph.EdgeId
     , head : Bool -- the head or the tail?
     , duplicate : Bool -- duplicate the arrow? 

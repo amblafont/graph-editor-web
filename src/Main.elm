@@ -283,9 +283,7 @@ info_MoveNode model { orig, pos } =
     let moveNodes delta = nodes |> List.map (updNode delta) in
    --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) model.graph in
     let mkRet movedNodes = 
-            let _ = Debug.log "selected" model.graph in
             let g = Graph.updateNodes movedNodes model.graph in
-            let _ = Debug.log "mkRet" g in 
             { graph =  g, valid = not merge } in
     let retMerge movedNodes =                  
            case movedNodes of
@@ -371,10 +369,9 @@ update msg modeli =
                 MouseMove p -> { modeli | mousePos = p} -- , mouseOnCanvas = True}
                 MouseDown e -> { modeli | specialKeys = e.keys }
                 MouseLeaveCanvas -> 
-                   let _ = Debug.log "mouseleave" () in
                     { modeli | mouseOnCanvas = False }
                 {- FindInitial -> selectInitial model -}
-                QuickInput final s -> let _ = Debug.log "coucou1!" () in
+                QuickInput final s ->
                      { modeli | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                 LatexPreambleEdit s -> { modeli | latexPreamble = s }
                 -- EditBottomText s -> 
@@ -422,8 +419,7 @@ update msg modeli =
                 }
      Do cmd -> (model, cmd)
      SimpleMsg s -> noCmd { iniModel | scenario = SimpleScenario, statusMsg = s }
-     Loaded g -> 
-        let _ = Debug.log "scenario" g.scenario in
+     Loaded g ->        
         let scenario = scenarioOfString g.scenario in
         let m = clearHistory <| updateWithGraphInfo { model | 
                                               mode = DefaultMode, 
@@ -491,7 +487,8 @@ update_QuickInput ch msg model =
         QuickInput final s ->
                 let (statusMsg, chain) =
                         case Parser.run equalityParser s of
-                            Ok l -> (Debug.toString l, Just l)
+                            -- Ok l -> (Debug.toString l, Just l)
+                            Ok l -> ("ok", Just l)
                             Err e -> (Parser.deadEndsToString e, Nothing)
                 in
                 if final then
@@ -600,10 +597,10 @@ selectLoop direction model =
               |> Maybe.withDefault []
      in
      let diag = GraphProof.loopToDiagram edges in
-     let _ = Debug.log "sel lhs" (diag.lhs |> List.map (.label >> .label)) in
-     let _ = Debug.log "sel rhs" (diag.rhs |> List.map (.label >> .label)) in
-     let _ = Debug.log "isBorder?" (GraphProof.isBorder diag) in     
-            { model | graph = edges |> List.map (Tuple.first >> .id)            
+    --  let _ = Debug.log "sel lhs" (diag.lhs |> List.map (.label >> .label)) in
+    --  let _ = Debug.log "sel rhs" (diag.rhs |> List.map (.label >> .label)) in
+    --  let _ = Debug.log "isBorder?" (GraphProof.isBorder diag) in     
+             { model | graph = edges |> List.map (Tuple.first >> .id)            
               |> List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True})) 
                   (GraphDefs.clearSelection model.graph) }
 
@@ -1015,7 +1012,8 @@ graphDrawingFromModel m =
              |> collageGraphFromGraph m
 --        NewNode -> collageGraphFromGraph m m.graph
         QuickInputMode ch -> collageGraphFromGraph m <| graphQuickInput m ch
-        Move s -> info_MoveNode m s |> .graph |>
+        Move s -> 
+          info_MoveNode m s |> .graph |>
             collageGraphFromGraph m 
         RenameMode _ l ->
             let g = graph_RenameMode l m in
@@ -1088,7 +1086,7 @@ graphQuickInput model ch =
     Nothing -> model.graph
     Just (eq1, eq2) -> 
       -- if an incomplete subdiagram is selected, we use it
-      let od = Debug.log "selected subdiag" <| GraphDefs.selectedIncompleteDiagram model.graph in
+      let od = GraphDefs.selectedIncompleteDiagram model.graph in
       let default = graphDrawingChain model.sizeGrid model.graph (eq1, eq2) in 
       let split l edges = GraphProof.isEmptyBranch l |> 
               Maybe.map (QuickInput.splitWithChain model.graph edges) 
@@ -1238,8 +1236,9 @@ helpMsg model =
                       -- Html.text "litz flag (no labelling on point creation)."
              -- "[r]ename selected object, move selected point [g], [d]ebug mode"
         DebugMode ->
-            "Debug Mode. [ESC] to cancel and come back to the default mode. " ++
-              Debug.toString model |> Html.text |> List.singleton |> makeHelpDiv
+            "Debug Mode. [ESC] to cancel and come back to the default mode. " ++ 
+             "" |> Html.text 
+              --  Debug.toString model |> Html.text |> List.singleton |> makeHelpDiv
             {- QuickInputMode ch ->
             makeHelpDiv [
             "Mode: QuickInput" ++ Debug.toString model.mode ++ "." |> Html.text,
@@ -1294,7 +1293,7 @@ helpMsg model =
                          ++ "[ESC] to cancel, "
                          ++ "[RET] to confirm"
 
-        _ -> let txt = "Mode: " ++ Debug.toString model.mode ++ ". [ESC] to cancel and come back to the default"
+        _ -> let txt = "Mode: " ++ Modes.toString model.mode ++ ". [ESC] to cancel and come back to the default"
                    ++ " mode."
              in
                 makeHelpDiv [ Html.text txt ]
