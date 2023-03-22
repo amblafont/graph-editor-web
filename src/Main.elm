@@ -157,6 +157,7 @@ port promptEquation : () -> Cmd a
 port promptedEquation : (String -> a) -> Sub a
 
 
+port saveGridSize : Int -> Cmd a
 
 
 
@@ -393,6 +394,7 @@ update msg modeli =
     case msg of
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
                               , latex = Tikz.graphToTikz model.sizeGrid model.graph})
+     SaveGridSize -> (model, saveGridSize model.sizeGrid)                       
      MinuteTick -> if model.autoSave then 
                          (model, quicksaveGraph { info = toJsGraphInfo model, feedback = False }) 
                    else noCmd model
@@ -1444,6 +1446,7 @@ viewGraph model =
            , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)           
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
+           , Html.button [Html.Events.onClick SaveGridSize] [Html.text "Save grid size preferences"] 
            ]
           ++ 
            (if isResizeMode model.mode then

@@ -74,6 +74,7 @@ type Msg
   | SizeGrid Int
   | ToggleHideGrid
   | ToggleAutosave
+  | SaveGridSize
   | FindReplace { search: String, replace:String}
   | MinuteTick
   -- means that some key has been pressed
