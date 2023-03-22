@@ -73,8 +73,18 @@ type alias MoveState =
       pos : InputPosition
       -- , merge : Bool 
       -- should we save at the end
-      , save : Bool
-      }
+     , save : Bool
+     , mode : MoveMode
+  }
+
+type MoveMode = 
+    -- the move stops when we release the key
+      PressMove
+    -- the move stops when we click
+    | FreeMove
+    -- we don't know yet
+    | UndefinedMove
+    
 
 type alias EnlargeState = 
    { orig : Point, -- mouse original point at the beginning of the move mode

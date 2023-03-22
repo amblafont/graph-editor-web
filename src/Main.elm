@@ -25,6 +25,7 @@ import Browser.Events as E
 import Task
 import Time
 import Browser.Dom as Dom
+import Process
 
 
 import Json.Decode as D
@@ -56,7 +57,7 @@ import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
 import Modes.Pullshout
-import Modes exposing (Mode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
+import Modes exposing (Mode(..), MoveMode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
 
 import ArrowStyle
 
@@ -203,7 +204,8 @@ subscriptions m =
         _ -> not m.mouseOnCanvas
     then [] 
     else
-    [  E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
+    [ E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
+      E.onKeyDown (D.map2 (KeyChanged True) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onCopy (always CopyGraph),
       promptedEquation (QuickInput True),
       onMouseMoveFromJS MouseMove,
@@ -511,11 +513,28 @@ update_MoveNode msg state model =
            else
               noCmd model
     in
+    let terminable = state.mode /= PressMove in
+    let terminedRet = 
+         if terminable then movedRet else noCmd model
+    in
     let updateState st = { model | mode = Move st } in
     case msg of
         KeyChanged False _ (Control "Escape") -> switch_Default model
-        MouseClick -> movedRet
-        KeyChanged False _ (Control "Enter") -> movedRet
+        PressTimeout ->
+          noCmd <| 
+            if state.mode == UndefinedMove then
+              updateState { state | mode = PressMove }
+            else
+              model
+        KeyChanged False _ (Character 'g') -> 
+           case state.mode of              
+             UndefinedMove -> 
+                noCmd <| updateState { state | mode = FreeMove }
+             PressMove -> movedRet
+             FreeMove -> noCmd model
+       
+        MouseClick -> terminedRet
+        KeyChanged False _ (Control "Enter") -> terminedRet
         _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
@@ -715,8 +734,11 @@ update_DefaultMode msg model =
                     , version = LastFormat.version } )
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
-        KeyChanged False _ (Character 'g') -> 
-            noCmd <| initialiseMoveMode True model
+        KeyChanged True _ (Character 'g') -> 
+            let pressTimeoutMs = 100 in
+            (initialiseMoveMode True UndefinedMove model,
+             Task.attempt (always PressTimeout) 
+               <| Process.sleep pressTimeoutMs)
         KeyChanged False _ (Character 'i') -> 
            noCmd <| case GraphDefs.selectedEdgeId model.graph of
                       Just id -> setSaveGraph model <| Graph.invertEdge id model.graph
@@ -810,7 +832,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
         KeyChanged False _ (Character 'l') -> move 0       
-        PasteGraph g -> noCmd <| initialiseMoveMode False
+        PasteGraph g -> noCmd <| initialiseMoveMode False FreeMove
                <|  setSaveGraph model <|              
                 Graph.union 
                   (GraphDefs.clearSelection model.graph)
@@ -859,15 +881,20 @@ selectByClick model =
     else
             model
                
-initialiseMoveMode : Bool -> Model -> Model
-initialiseMoveMode save model =
-         { model | mode = 
-                       if GraphDefs.isEmptySelection model.graph
-                        then
-                          -- Nothing is selected
-                          DefaultMode
-                        else Move { save = save, orig = model.mousePos, pos = InputPosMouse }
-                     }    
+initialiseMoveMode : Bool -> MoveMode -> Model -> Model
+initialiseMoveMode save mode model =
+   { model | mode = 
+        if GraphDefs.isEmptySelection model.graph
+         then
+           -- Nothing is selected
+           DefaultMode
+         else 
+           Move 
+              { save = save, 
+              orig = model.mousePos, 
+              pos = InputPosMouse,
+              mode = mode }
+      }    
 
 initialise_Resize : Model -> Model
 initialise_Resize model =
@@ -1203,7 +1230,8 @@ helpMsg model =
                 ++ "[+<] move to the foreground/background."
 
                 ++ "\nMoving objects:"
-                ++ "[g] move selected objects (also merge, if wanted)"
+                ++ "[g] move selected objects with possible merge (hold g for "
+                ++ "stopping the move on releasing the key)"
                 ++ ", [f]ix (snap) selected objects on the grid" 
                 ++ ", [e]nlarge diagram (create row/column spaces)"                 
 
@@ -1257,10 +1285,16 @@ helpMsg model =
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
                              ++ Modes.SplitArrow.help |> msg
-        Move _ -> "Mode Move."                
+        Move s -> "Mode Move."                
                    
-                ++ "Use mouse or h,j,k,l. [RET] or [click] to confirm."
-                ++ " Hold [ctrl] to merge the selected point onto another node."                
+                ++ "Use mouse or h,j,k,l."
+                ++ " Hold [ctrl] to merge the selected point onto another node." 
+                ++
+                (case s.mode of 
+                    FreeMove ->  " [RET] or [click] to confirm."
+                    PressMove -> " Release [g] to confirm."
+                    UndefinedMove -> ""
+                ) 
                   |> msg
         CutHead _ -> "Mode cut arrow."
                 ++ " [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "

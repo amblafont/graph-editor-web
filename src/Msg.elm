@@ -76,6 +76,9 @@ type Msg
   | ToggleAutosave
   | FindReplace { search: String, replace:String}
   | MinuteTick
+  -- means that some key has been pressed
+  -- for a long time
+  | PressTimeout
   | LatexPreambleEdit String
   | SimpleMsg String
   -- | ComputeLayout
