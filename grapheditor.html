@@ -411,6 +411,17 @@
               window.open(s);             
          });
 
+         saveGraph = function (b) {
+            var a = b.graph;
+            var name = a.fileName;
+            var d = fromElmGraph(a);
+            download(JSON.stringify(d), name /* + '.json' */, 'application/json');
+               
+            document.title = name;
+         };
+
+         app.ports.saveGraph.subscribe(saveGraph);
+
 
          // this event handler computes the relative position
          // of the mouse with respect to the current target
@@ -424,24 +435,6 @@
              }
          });
 
-      
-
-
-         
-        saveGraph = answerElmRequest('saveGraph', 'savedGraph', function (b) {
-            var a = b.graph
-            var name = window.prompt("Filename?", a.fileName) ;
-             if (name) {
-                var d = fromElmGraph(a);
-               download(JSON.stringify(d), name /* + '.json' */, 'application/json');
-               
-               document.title = name;
-               return name;
-             }
-         })
-       
-        
-      
 
          answerElmRequest('pasteGraph', 'clipboardGraph', function (event) {
             const paste = event.detail;

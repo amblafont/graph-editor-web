@@ -143,8 +143,6 @@ port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
 
 -- we ask js to save the graph
 port saveGraph : {graph: JsGraphInfo, latex: String} -> Cmd a
--- it returns the filename
-port savedGraph : (String -> a) -> Sub a
 
 -- ask js to prompt find and replace
 port promptFindReplace : () -> Cmd a
@@ -182,7 +180,6 @@ subscriptions m =
       loadedGraph7 (mapLoadGraphInfo Format.Version7.fromJSGraph >> Loaded),
       loadedGraph8 (mapLoadGraphInfo Format.Version8.fromJSGraph >> Loaded),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
-      savedGraph FileName,
       E.onClick (D.succeed MouseClick)
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
@@ -1435,9 +1432,17 @@ viewGraph model =
             Html.p [] 
             [(helpMsg model),
              quickInputView model
-            ],
-            Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button"] [Html.text "Save"]
+            ]
+            , Html.text "Filename: "
+            , Html.input  [Html.Attributes.type_ "text",                       
+                     Html.Events.onInput FileName,
+                     -- Html.Events.onFocus (QuickInput ""),
+                     Html.Attributes.value model.fileName
+                     ] []
+           , Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button"] [Html.text "Save"]
            , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
+           
+           
            , Html.a [Html.Attributes.href  ("#" ++ HtmlDefs.latexPreambleId)] [Html.text "Latex preamble"]
             {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),
                    Html.Attributes.title "Should not be necessary"
