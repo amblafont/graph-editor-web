@@ -19,7 +19,7 @@ import Html
 import Json.Encode as JE
 
 -- SimpleScenario: just display the model status message
-type Scenario = Standard | Exercise1 | SimpleScenario | NoLoad
+type Scenario = Standard | Exercise1 | SimpleScenario | Watch
 
 isSimpleScenario : Scenario -> Bool
 isSimpleScenario s = s == SimpleScenario
@@ -27,7 +27,7 @@ scenarioOfString : String -> Scenario
 scenarioOfString s =
   case s of
       "exercise1" -> Exercise1
-      "noload" -> NoLoad
+      "watch" -> Watch
       _ -> Standard
 
 type alias LoadGraphInfo a = { graph : a, fileName : String, scenario : String }

@@ -495,12 +495,14 @@
             // window.electronAPI.loadGraph((event, json, fileName, scenario) => alert('coucou') );
             window.electronAPI.loadGraph((event, json, fileName, scenario) => sendGraphToElm(json, fileName, scenario));
             window.electronAPI.simpleMsg((event, msg) => app.ports.simpleMsg.send(msg));
-            app.ports.saveGraph.unsubscribe(saveGraph);
-            app.ports.saveGraph.subscribe(function (d) {
-                // alert("coucu");
-                window.electronAPI.saveGraph(fromElmGraph(d.graph), d.latex);
-                // fromElmGraph(d)
-            });
+            if (urlParams.has("electronSave")) {
+                app.ports.saveGraph.unsubscribe(saveGraph);
+                app.ports.saveGraph.subscribe(function (d) {
+                    // alert("coucu");
+                    window.electronAPI.saveGraph(fromElmGraph(d.graph), d.latex, d.fileName);
+                    // fromElmGraph(d)
+                });
+            }
          }
         
          

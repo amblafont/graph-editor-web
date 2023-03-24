@@ -1418,7 +1418,7 @@ viewGraph model =
           [ Html.div [] 
             (HtmlDefs.introHtml
             ++
-            if model.scenario /= NoLoad then [
+            if model.scenario /= Watch then [
             Html.button [Html.Events.onClick (openFile () |> Do),
                Html.Attributes.id "load-button"] [Html.text "Load graph"] 
             ,  Html.button [Html.Events.onClick (quickLoad () |> Do),
@@ -1433,13 +1433,22 @@ viewGraph model =
             [(helpMsg model),
              quickInputView model
             ]
-            , Html.text "Filename: "
-            , Html.input  [Html.Attributes.type_ "text",                       
-                     Html.Events.onInput FileName,
-                     -- Html.Events.onFocus (QuickInput ""),
-                     Html.Attributes.value model.fileName
-                     ] []
-           , Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button"] [Html.text "Save"]
+          ] ++
+          ( 
+          if model.scenario == Watch then [] 
+          else
+              [ 
+                  Html.text "Filename: "
+                , Html.input  [Html.Attributes.type_ "text",                       
+                        Html.Events.onInput FileName,
+                        -- Html.Events.onFocus (QuickInput ""),
+                        Html.Attributes.value model.fileName
+                        ] []
+              ]
+          )
+          ++
+          [
+             Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button"] [Html.text "Save"]
            , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
            
            

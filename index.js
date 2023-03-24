@@ -207,7 +207,7 @@ function loadEditor(diag) {
     
   }
   mainWindow.webContents.send('load-graph', 
-       json, "filename", "noload");    
+       json, "filename", "watch");    
 }
 
 
@@ -384,14 +384,18 @@ const createWindow = () => {
     }
   })
 
+  var query = {}
+  if (is_watch)
+     query = { electronSave : true};
   // and load the index.html of the app.
-  mainWindow.loadFile('grapheditor.html');
+  mainWindow.loadFile('grapheditor.html' , { query : query });
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
   mainWindow.webContents.once('did-finish-load', () => {
-   
-  ipcMain.on('save-graph', (e, data, tex) => handleSave(data,tex));
+
+  ipcMain.on('save-graph', (e, data, tex, filename) => handleSave(data,tex, filename));
+
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)
   {
