@@ -287,7 +287,7 @@
          }
          
          // load a json graph file, send it to the elm component
-         function loadGraph() {
+         function openFile() {
              var input = document.createElement('input');
              input.type = 'file';
              input.accept = ".json";
@@ -331,7 +331,7 @@
             sendGraphToElm(json, json.fileName);     
          };
 
-         app.ports.openFile.subscribe(loadGraph);
+         app.ports.openFile.subscribe(openFile);
          app.ports.quickLoad.subscribe(quickloadGraph);
 
          app.ports.alert.subscribe(function(s) {
@@ -497,16 +497,21 @@
             window.electronAPI.rename((event, fileName) => app.ports.renameFile.send(fileName));
             window.electronAPI.simpleMsg((event, msg) => app.ports.simpleMsg.send(msg));
             // if (urlParams.has("electronSave")) {
-                app.ports.saveGraph.unsubscribe(saveGraph);
-                app.ports.saveGraph.subscribe(function (d) {
-                    window.electronAPI.saveGraph(fromElmGraph(d.graph), d.latex, d.fileName);
-                });
+            app.ports.saveGraph.unsubscribe(saveGraph);
+            app.ports.saveGraph.subscribe(function (d) {
+                window.electronAPI.saveGraph(fromElmGraph(d.graph), d.latex, d.fileName);
+            });
             // }
             app.ports.quicksaveGraph.unsubscribe(quicksaveStorage);
             app.ports.quicksaveGraph.subscribe(function (a) {
                     var d = a.info;
                     var g = fromElmGraph(d);
                     window.electronAPI.quicksaveGraph(g, d.latex, d.fileName);
+            });
+
+            app.ports.openFile.unsubscribe(openFile);
+            app.ports.openFile.subscribe(function (d) {
+                window.electronAPI.openFile();
             });
          }
         

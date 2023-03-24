@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   rename: (callback) => ipcRenderer.on('rename', callback),
   saveGraph: (json, tex) => ipcRenderer.send('save-graph', json, tex),
   quicksaveGraph: (json, tex, filename) => ipcRenderer.send('quick-save-graph', json, tex, filename),
+  openFile: () => ipcRenderer.send('open-graph'),
   simpleMsg: (callback) => ipcRenderer.on('simple-msg', callback)
 })

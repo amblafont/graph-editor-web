@@ -39,6 +39,7 @@ type alias Model =
     , mode : Mode
     , hideGrid : Bool
     , sizeGrid : Int
+    -- filename in the web version / full path in the electron version
     , fileName : String
     -- whether there is an id which is "hovered on"
    -- , hoverId : Maybe Graph.Id

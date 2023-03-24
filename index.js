@@ -12,6 +12,9 @@ const escapeStringRegexp = require( '@stdlib/utils-escape-regexp-string' );
 const lineByLine = require('n-readlines');
 const { exit } = require('process');
 
+const watchScenario = "watch";
+const normalScenario = "standard"
+
 function readLine(w) {
   var l = w.next();
   if (l === false)
@@ -207,7 +210,7 @@ function loadEditor(diag) {
     
   }
   mainWindow.webContents.send('load-graph', 
-       json, "filename", "watch");    
+       json, "filename", watchScenario);    
 }
 
 
@@ -387,6 +390,19 @@ function saveGraphFile(win, filename, data) {
   win.webContents.send('rename', path);   
 }
 
+function openGraphFile(win) {
+  var paths = dialog.showOpenDialogSync(win);
+  if (paths === undefined || paths.length != 1)
+     return;
+  var path = paths[0];
+  var content = fs.readFileSync(path)
+  if (! content)
+     return;
+  var json = JSON.parse(content);
+  win.webContents.send('load-graph', 
+     json, path, is_watch ? watchScenario : normalScenario);   
+}
+
 const createWindow = () => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
@@ -408,6 +424,7 @@ const createWindow = () => {
   mainWindow.webContents.once('did-finish-load', () => {
 
   ipcMain.on('save-graph', (e, data, tex, filename) => handleSave(data,tex, filename));
+  ipcMain.on('open-graph', (e) => openGraphFile(mainWindow));
   ipcMain.on('quick-save-graph', 
      (e, data, tex, filename) => is_watch ? handleSave(data,tex, filename)
       : quicksave(mainWindow, data, tex, filename));
