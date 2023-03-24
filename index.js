@@ -373,6 +373,19 @@ function writeContent(newcontent, latex, index) {
   // tmpobj.removeCallback();
 }
 
+function quicksave(win, data, tex, filename) {
+  fs.writeFileSync(filename, JSON.stringify(data));
+  var msg = "Written to file " + filename;
+  dialog.showMessageBoxSync(win, { message : msg })
+}
+
+function saveGraphFile(win, filename, data) {
+  var path = dialog.showSaveDialogSync(win, { defaultPath : filename});
+  if (path === undefined)
+     return;
+  fs.writeFileSync(path, JSON.stringify(data));
+  win.webContents.send('rename', path);   
+}
 
 const createWindow = () => {
   // Create the browser window.
@@ -385,8 +398,8 @@ const createWindow = () => {
   })
 
   var query = {}
-  if (is_watch)
-     query = { electronSave : true};
+  // if (is_watch)
+  //    query = { electronSave : true};
   // and load the index.html of the app.
   mainWindow.loadFile('grapheditor.html' , { query : query });
 
@@ -395,7 +408,9 @@ const createWindow = () => {
   mainWindow.webContents.once('did-finish-load', () => {
 
   ipcMain.on('save-graph', (e, data, tex, filename) => handleSave(data,tex, filename));
-
+  ipcMain.on('quick-save-graph', 
+     (e, data, tex, filename) => is_watch ? handleSave(data,tex, filename)
+      : quicksave(mainWindow, data, tex, filename));
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)
   {
@@ -403,6 +418,11 @@ const createWindow = () => {
       onfocus();
     })
     handleFileOneIteration();
+  }
+  else {
+    handleSave = function(data, tex, filename) {
+      saveGraphFile(mainWindow, filename, data);
+    }
   }
     
  }

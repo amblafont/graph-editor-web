@@ -372,7 +372,7 @@
              return {graph : a.graph, version : a.version };;
          }
 
-         app.ports.quicksaveGraph.subscribe(function(arg) {
+         function quicksaveStorage(arg) {
             console.log("Quicksaving...");
             var a = arg.info
             var d = fromElmGraph(a);
@@ -389,10 +389,10 @@
             // in case multiple tabs are opened
             sessionStorage.setItem(storageKey, JSON.stringify(d));
             if (arg.feedback)
-                alert("Successful quicksave");            
-             
-             
-         });
+                alert("Successful quicksave"); 
+         }
+
+         app.ports.quicksaveGraph.subscribe(quicksaveStorage);
          app.ports.saveGridSize.subscribe(function(arg) {
             console.log("Saving grid size preferences.");
             // Check browser support
@@ -494,15 +494,20 @@
             console.log("electron detected");
             // window.electronAPI.loadGraph((event, json, fileName, scenario) => alert('coucou') );
             window.electronAPI.loadGraph((event, json, fileName, scenario) => sendGraphToElm(json, fileName, scenario));
+            window.electronAPI.rename((event, fileName) => app.ports.renameFile.send(fileName));
             window.electronAPI.simpleMsg((event, msg) => app.ports.simpleMsg.send(msg));
-            if (urlParams.has("electronSave")) {
+            // if (urlParams.has("electronSave")) {
                 app.ports.saveGraph.unsubscribe(saveGraph);
                 app.ports.saveGraph.subscribe(function (d) {
-                    // alert("coucu");
                     window.electronAPI.saveGraph(fromElmGraph(d.graph), d.latex, d.fileName);
-                    // fromElmGraph(d)
                 });
-            }
+            // }
+            app.ports.quicksaveGraph.unsubscribe(quicksaveStorage);
+            app.ports.quicksaveGraph.subscribe(function (a) {
+                    var d = a.info;
+                    var g = fromElmGraph(d);
+                    window.electronAPI.quicksaveGraph(g, d.latex, d.fileName);
+            });
          }
         
          

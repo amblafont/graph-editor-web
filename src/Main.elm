@@ -96,6 +96,8 @@ type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version 
 
 -- feedback: do we want a confirmation alert box?
 port quicksaveGraph : { info : JsGraphInfo, feedback : Bool} -> Cmd a
+-- we ask js to save the graph
+port saveGraph : {graph: JsGraphInfo, latex: String} -> Cmd a
 
 
 port exportQuiver : JE.Value -> Cmd a
@@ -103,6 +105,7 @@ port alert : String -> Cmd a
 port jumpToId : String -> Cmd a
 
 port simpleMsg : (String -> a) -> Sub a
+port renameFile : (String -> a) -> Sub a
 
 -- we ask js to open a graph file
 port openFile : () -> Cmd a
@@ -141,8 +144,6 @@ port onCopy : (() -> a) -> Sub a
 -- we return the stuff to be written
 port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
 
--- we ask js to save the graph
-port saveGraph : {graph: JsGraphInfo, latex: String} -> Cmd a
 
 -- ask js to prompt find and replace
 port promptFindReplace : () -> Cmd a
@@ -168,6 +169,7 @@ subscriptions m =
     [
       findReplace FindReplace,
       simpleMsg SimpleMsg,
+      renameFile FileName,
       -- upload a graph (triggered by js)
       
       loadedGraph0 (mapLoadGraphInfo Format.Version0.fromJSGraph >> Loaded),
