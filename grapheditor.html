@@ -499,14 +499,14 @@
             // if (urlParams.has("electronSave")) {
             app.ports.saveGraph.unsubscribe(saveGraph);
             app.ports.saveGraph.subscribe(function (d) {
-                window.electronAPI.saveGraph(fromElmGraph(d.graph), d.latex, d.fileName);
+                window.electronAPI.saveGraph(d.graph.fileName, fromElmGraph(d.graph), d.latex, d.svg);
             });
             // }
             app.ports.quicksaveGraph.unsubscribe(quicksaveStorage);
             app.ports.quicksaveGraph.subscribe(function (a) {
                     var d = a.info;
                     var g = fromElmGraph(d);
-                    window.electronAPI.quicksaveGraph(g, d.latex, d.fileName);
+                    window.electronAPI.quicksaveGraph(d.fileName, g, a.latex, a.svg);
             });
 
             app.ports.openFile.unsubscribe(openFile);

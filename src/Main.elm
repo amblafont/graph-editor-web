@@ -96,9 +96,9 @@ port onKeyDownActive : (JE.Value -> a) -> Sub a
 type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
 
 -- feedback: do we want a confirmation alert box?
-port quicksaveGraph : { info : JsGraphInfo, feedback : Bool} -> Cmd a
+port quicksaveGraph : { info : JsGraphInfo, latex:String, svg:String, feedback : Bool} -> Cmd a
 -- we ask js to save the graph
-port saveGraph : {graph: JsGraphInfo, latex: String} -> Cmd a
+port saveGraph : {graph: JsGraphInfo, latex: String, svg:String} -> Cmd a
 
 
 port exportQuiver : JE.Value -> Cmd a
@@ -393,10 +393,14 @@ update msg modeli =
     in
     case msg of
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
-                              , latex = Tikz.graphToTikz model.sizeGrid model.graph})
+                              , latex = Tikz.graphToTikz model.sizeGrid model.graph
+                              , svg = svgExport model model.graph })
      SaveGridSize -> (model, saveGridSize model.sizeGrid)                       
      MinuteTick -> if model.autoSave then 
-                         (model, quicksaveGraph { info = toJsGraphInfo model, feedback = False }) 
+                         (model, quicksaveGraph 
+                         { info = toJsGraphInfo model, latex = "", 
+                         svg = "",
+                         feedback = False }) 
                    else noCmd model
      Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
@@ -789,7 +793,11 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
         KeyChanged False _ (Character 'Q') -> 
-            (model, quicksaveGraph { info = toJsGraphInfo model, feedback = True })
+            (model, quicksaveGraph 
+            { info = toJsGraphInfo model, 
+              latex = Tikz.graphToTikz model.sizeGrid model.graph,
+              svg = svgExport model model.graph ,
+              feedback = True })
         KeyChanged False _ (Character 'R') -> 
             noCmd <| initialise_Resize model
         KeyChanged False _ (Character 'r') -> rename model
@@ -810,20 +818,8 @@ s                  (GraphDefs.clearSelection model.graph) } -}
               (GraphDefs.selectedGraph model.graph)) 
             "No diagram found!"
         KeyChanged False _ (Character 'V') ->
-            let g = GraphDefs.selectedGraph model.graph
-                   |> GraphDefs.clearSelection 
-                   |> GraphDefs.clearWeakSelection 
-            in
-            let box = GraphDefs.rectEnveloppe g |> Geometry.posDimsFromRect 
-                      |> Geometry.pad (toFloat model.sizeGrid / 2)
-                      |> Geometry.rectFromPosDims
-            in
-            fillBottom (Drawing.toString  
-              [String.Svg.viewBox box]
-              (g |> 
-               GraphDrawing.toDrawingGraph |>
-              toDrawing model)) 
-            "No diagram found!"           
+            let s = GraphDefs.selectedGraph model.graph |> svgExport model in
+            fillBottom s "No diagram found!"           
         KeyChanged False _ (Control "Delete") ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
         {- NodeClick n e ->
@@ -886,6 +882,22 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                  )
                  |> Maybe.withDefault model
                  |> noCmd
+
+svgExport : Model -> Graph NodeLabel EdgeLabel -> String
+svgExport model graph = 
+   let g = graph
+                   |> GraphDefs.clearSelection 
+                   |> GraphDefs.clearWeakSelection 
+            in
+            let box = GraphDefs.rectEnveloppe g |> Geometry.posDimsFromRect 
+                      |> Geometry.pad (toFloat model.sizeGrid / 2)
+                      |> Geometry.rectFromPosDims
+            in
+            (Drawing.toString  
+              [String.Svg.viewBox box]
+              (g |> 
+               GraphDrawing.toDrawingGraph |>
+              toDrawing model))
 
 selectByClick : Model -> Model
 selectByClick model =  
