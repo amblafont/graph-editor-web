@@ -27,19 +27,28 @@ function writeLine(fd, line) {
      fs.appendFileSync(fd, line + "\n");
 }
 
-const defaults = 
+const defaults = {magic: "% YADE DIAGRAM", 
+                  external_tex : false,
+                  export: "tex"};
+
+const defaultsExt = 
 {"tex":
    { prefix: "% GENERATED LATEX",
      suffix: "% END OF GENERATED LATEX",
-     include_cmd: "\\input{@}",
-     external_tex : false
+     include_cmd: "\\input{@}"
    },
  "lyx":
    { prefix: "\\end_layout\\n\\end_inset\\n\\begin_inset Preview \\n\\begin_layout Standard \\n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
      suffix: "\\end_inset\\n\\end_layout\\n\\end_inset\\n\\begin_inset Note Note\\nstatus open\\n\\begin_layout Plain Layout",
      include_cmd: "filename \"@\"",
      external_tex : true
-   }
+   },
+   "md":
+   { prefix: "-->\\n<!-- GENERATED SVG -->",
+     suffix: "<!-- END OF GENERATED SVG -->\\n<!-- ",
+     include_cmd: "\\input{@}",
+     export: "svg"
+   },
 };
 const description = `
 This script launches the diagram editor, inspects the given *main file* and waits 
@@ -62,14 +71,15 @@ see options --external-tex and --include-cmd). Finally, it adds a list of lines 
 by --suffix.
 
 Default prefix/suffix/include argument by extension of the watched file (default is tex):
-` + JSON.stringify(defaults, null, 2);
+` + JSON.stringify(defaultsExt, null, 2) + JSON.stringify(defaults, null, 2);
 const emptyGraph = {"graph":{"edges":[],"latexPreamble":"","nodes":[],"sizeGrid":200},"version":8};
 
 var parser = new argparse.ArgumentParser({formatter_class: argparse.RawDescriptionHelpFormatter, description: description});
 parser.add_argument("--watch", {help: 'file to monitor'});
 parser.add_argument("--make-cmd", {help:"make command to be executed"});
 var magic = "% YADE DIAGRAM"
-parser.add_argument("--magic", {default:magic, help: "default: " + magic});
+parser.add_argument("--magic", {help: "prompt command"});
+parser.add_argument("--export", {help: "tex or svg"});
 parser.add_argument("--prefix");
 parser.add_argument("--suffix");
 //  parser.add_argument("--ext", {default:".json"});
@@ -100,13 +110,20 @@ if (is_watch) {
 }
 
 function getOrDefault(s) {
-  return (args[s] === undefined ? defaults[ext][s] : args[s]);;
+  if (args[s] !== undefined)
+     return args[s];
+  if (defaultsExt[ext] !== undefined && defaultsExt[ext][s] !== undefined)
+        return defaultsExt[ext][s];
+
+  return defaults[s];
 }
 
 var prefixes = getOrDefault("prefix").split("\\n");
 var suffixes = getOrDefault("suffix").split("\\n");
 var includecmd = getOrDefault("include_cmd");
 var externaltex = getOrDefault("external_tex");
+var magic = getOrDefault("magic");
+var exportFormat = getOrDefault("export");
 // var watched_file = undefined;
 
 
@@ -116,7 +133,7 @@ if (is_watch && ! fs.existsSync(watched_file)) {
 }
 
 // var makeCmd = args.make_cmd;
-magic = args.magic;
+// magic = args.magic;
 var basedir = args.dir;
 //  var extension = args.ext;
 
@@ -266,7 +283,7 @@ function handleFileOneIteration() {
     }
   
     
-    handleSave = function(newcontent_json, latex) {
+    handleSave = function(filename, newcontent_json, latex, svg) {
       resetHandleSave();
       var newcontent = JSON.stringify(newcontent_json);
       /*
@@ -309,7 +326,8 @@ function handleFileOneIteration() {
         }
       }
     
-      writeContent(newcontent, latex, index);
+      var generatedOutput = exportFormat == "svg" ? svg : latex;
+      writeContent(newcontent, generatedOutput, index);
       handleFileOneIteration();
     }
     // console.log(content);
@@ -376,7 +394,7 @@ function writeContent(newcontent, latex, index) {
   // tmpobj.removeCallback();
 }
 
-function quicksave(win, data, tex, filename) {
+function quicksave(win, filename, data, tex, svg) {
   fs.writeFileSync(filename, JSON.stringify(data));
   var msg = "Written to file " + filename;
   dialog.showMessageBoxSync(win, { message : msg })
@@ -423,11 +441,11 @@ const createWindow = () => {
   // mainWindow.webContents.openDevTools()
   mainWindow.webContents.once('did-finish-load', () => {
 
-  ipcMain.on('save-graph', (e, data, tex, filename) => handleSave(data,tex, filename));
+  ipcMain.on('save-graph', (e, filename, data, tex, svg) => handleSave(filename, data,tex, svg));
   ipcMain.on('open-graph', (e) => openGraphFile(mainWindow));
   ipcMain.on('quick-save-graph', 
-     (e, data, tex, filename) => is_watch ? handleSave(data,tex, filename)
-      : quicksave(mainWindow, data, tex, filename));
+     (e, filename, data, tex, svg) => is_watch ? handleSave(filename, data,tex, svg)
+      : quicksave(mainWindow, filename, data, tex, svg));
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)
   {
@@ -437,7 +455,7 @@ const createWindow = () => {
     handleFileOneIteration();
   }
   else {
-    handleSave = function(data, tex, filename) {
+    handleSave = function(filename, data, tex, svg) {
       saveGraphFile(mainWindow, filename, data);
     }
   }
