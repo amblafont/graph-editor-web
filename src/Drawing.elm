@@ -1,16 +1,12 @@
 module Drawing exposing (Drawing,   
-  fromString, circle, html, group, arrow, rect,
+  fromString, circle, group, arrow, rect,
   line,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
   svg, Color, red, black, blue, class, empty, grid, htmlAnchor,
-  zindexAttr, emptyForeign
+  zindexAttr, emptyForeign, toString
   )
 
-import Svg exposing (Svg)
-import Svg as S
-import Svg.Attributes as Svg
-import Svg as SvgElts
-import Svg.Events
+import String.Svg as Svg exposing (Svg)
 import Geometry.Point exposing (Point)
 import Geometry
 import Json.Decode as D
@@ -18,18 +14,30 @@ import Html
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
-import Svg
+import Svg as BuiltinSvg
+import Svg.Events
 import Collage.Layout exposing (bottomRight)
 import Html.Events.Extra.Mouse as MouseEvents
 import List.Extra
 import Msg exposing (Msg)
+import String.Html exposing (ghostAttribute)
 
-svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
-svg l d =
+svgHelper : List (String.Html.Attribute a) -> Drawing a -> Svg a
+svgHelper l d =
   d |> drawingToZSvgs
   |> List.sortBy .zindex 
   |> List.map .svg
   |> Svg.svg l
+
+svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
+svg l d =
+  svgHelper (List.map ghostAttribute l) d
+  |> String.Html.toHtml
+
+toString :  List (String.Html.Attribute a) -> Drawing a -> String
+toString l d =
+    svgHelper l d
+  |> String.Html.toString
 
 
 attrToSvgAttr : (String -> Svg.Attribute a) -> Attribute a -> Maybe (Svg.Attribute a)
@@ -37,9 +45,9 @@ attrToSvgAttr col a =
   case a of
      Color c -> c |> colorToString |> col |> Just     
      Class s -> Svg.class s |> Just
-     On e d -> Svg.Events.on e d |> Just
-     OnClick f -> MouseEvents.onClick f |> Just
-     OnDoubleClick f -> MouseEvents.onDoubleClick f |> Just
+     On e d -> Svg.Events.on e d |> ghostAttribute |> Just
+     OnClick f -> MouseEvents.onClick f |> ghostAttribute |> Just
+     OnDoubleClick f -> MouseEvents.onDoubleClick f |> ghostAttribute |> Just
      ZIndex _ -> Nothing          
 
 attrsToSvgAttrs : (String -> Svg.Attribute a) -> List (Attribute a) -> List (Svg.Attribute a)
@@ -158,7 +166,7 @@ quadraticBezierToAttr  {from, to, controlPoint } =
 
 mkPath : Bool -> List (Attribute a) -> QuadraticBezier -> Svg a
 mkPath dashed attrs q =
-  SvgElts.path 
+  Svg.path 
   ( quadraticBezierToAttr q ::
     Svg.fill "none" ::   
       attrsToSvgAttrs Svg.stroke attrs
@@ -230,7 +238,7 @@ grid n =
         Svg.height sn,
         Svg.patternUnits "userSpaceOnUse"] 
         [ -- Svg.rect [Svg.width sn, Svg.height sn] []
-         S.path [Svg.d ("M " ++ sn ++ " 0 L 0 0 0 " ++ sn),
+         Svg.path [Svg.d ("M " ++ sn ++ " 0 L 0 0 0 " ++ sn),
           Svg.fill "none", Svg.stroke "gray", Svg.strokeWidth "1px"
           ] []
         ]
@@ -276,12 +284,9 @@ emptyForeign =
    -- put it in the background
     |> ofSvg -10000
 
-html : Int -> Point -> Point -> Html.Html a -> Drawing a
-html z p d h = 
-  htmlAnchor z p d True h
 
-htmlAnchor : Int -> Point -> Point -> Bool -> Html.Html a -> Drawing a
-htmlAnchor z (x1, y1) (width, height) center h = 
+htmlAnchor : Int -> Point -> Point -> Bool -> String -> Html.Html a -> Drawing a
+htmlAnchor z (x1, y1) (width, height) center str h = 
   let f = String.fromFloat in
   let (x, y) = if center then (x1 - width / 2, y1 - height / 2) else (x1, y1) in
    Svg.foreignObject 
@@ -291,7 +296,7 @@ htmlAnchor z (x1, y1) (width, height) center h =
      , Svg.height <| f height
      -- , Svg.width <| f width, Svg.height <| f height
      ]
-   [h]
+   [String.Html.customNode str h]
     |> ofSvg z
 
 group : List (Drawing a) -> Drawing a

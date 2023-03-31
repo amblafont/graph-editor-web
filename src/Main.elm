@@ -84,6 +84,7 @@ import List.Extra
 import GraphDefs exposing (exportQuiver)
 import GraphProof
 import GraphDrawing
+import String.Svg
 
 
 port preventDefault : JE.Value -> Cmd a
@@ -807,7 +808,22 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'X') ->
             fillBottom (graphToTikz model.sizeGrid 
               (GraphDefs.selectedGraph model.graph)) 
-            "No diagram found!"            
+            "No diagram found!"
+        KeyChanged False _ (Character 'V') ->
+            let g = GraphDefs.selectedGraph model.graph
+                   |> GraphDefs.clearSelection 
+                   |> GraphDefs.clearWeakSelection 
+            in
+            let box = GraphDefs.rectEnveloppe g |> Geometry.posDimsFromRect 
+                      |> Geometry.pad (toFloat model.sizeGrid / 2)
+                      |> Geometry.rectFromPosDims
+            in
+            fillBottom (Drawing.toString  
+              [String.Svg.viewBox box]
+              (g |> 
+               GraphDrawing.toDrawingGraph |>
+              toDrawing model)) 
+            "No diagram found!"           
         KeyChanged False _ (Control "Delete") ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
         {- NodeClick n e ->
@@ -1255,7 +1271,7 @@ helpMsg model =
                 ++ ", [C] generate Coq script to address selected incomplete subdiagram "
                 ++ "(i.e., a subdiagram with an empty branch)"
                 ++ ", [E] enter an equation (prompt)"
-                ++ ", export selection to LaTe[X]"
+                ++ ", export selection to LaTe[X]/s[V]g"
                 
                    --  ++ ", [q]ickInput mode" 
                 
@@ -1372,9 +1388,8 @@ view m =
        SimpleScenario -> Html.div [] [Html.text m.statusMsg]
        _ -> viewGraph m
 
-viewGraph : Model -> Html Msg
-viewGraph model =
-    let missings = Graph.invalidEdges model.graph in   
+toDrawing : Model -> Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
+toDrawing model graph = 
     let cfg = { latexPreamble = case model.scenario of
                                    Exercise1 -> 
                                        "\\newcommand{\\depthHistory}{"
@@ -1383,7 +1398,12 @@ viewGraph model =
                                    _ -> model.latexPreamble 
               } 
     in
-    let drawings= graphDrawing cfg (graphDrawingFromModel model) in
+    graphDrawing cfg graph
+
+viewGraph : Model -> Html Msg
+viewGraph model =
+    let missings = Graph.invalidEdges model.graph in   
+    let drawings = toDrawing model (graphDrawingFromModel model) in
     let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.modedSizeGrid model) in
     let nmissings = List.length missings in
     let svg =   Drawing.group [grid,

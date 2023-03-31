@@ -4,7 +4,6 @@ import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
 import ArrowStyle
 import GraphDefs exposing (EdgeLabel, NodeLabel)
-import ArrowStyle exposing (LabelAlignment(..))
 import Format.GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 

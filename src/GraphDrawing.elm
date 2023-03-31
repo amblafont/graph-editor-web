@@ -124,7 +124,7 @@ make_input pos label onChange =
                     ++
                     HtmlDefs.onRendered (always <| Do <| HtmlDefs.select HtmlDefs.idInput )
                     ) []                                        
-             |> Drawing.html foregroundZ pos (100,16)
+             |> Drawing.htmlAnchor foregroundZ pos (100,16) True ""
 
 activityToColor : Activity -> Drawing.Color
 activityToColor a =
@@ -152,9 +152,8 @@ nodeLabelDrawing cfg attrs node =
          if n.label == "" then
              (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
          else 
-            let label = cfg.latexPreamble ++ "\n" ++ if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
-            Drawing.htmlAnchor foregroundZ n.pos n.dims True {- n.isMath -}            
-            <| HtmlDefs.makeLatex
+            let label = if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
+            makeLatex cfg n.pos n.dims label
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
                  -- Html.Events.on "mousemove" (D.succeed (EltHover id))
@@ -164,7 +163,6 @@ nodeLabelDrawing cfg attrs node =
             ++
             HtmlDefs.onRendered (Msg.NodeRendered id)
             )
-             label
                 
 
              {- Drawing.fromString 
@@ -232,21 +230,30 @@ segmentLabel cfg q edgeId activity label curve =
          if  label.label == "" then
              Drawing.empty
          else 
-            Drawing.html foregroundZ labelpos label.dims -- n.dims
-            <| HtmlDefs.makeLatex
-            ([   MouseEvents.onClick (EdgeClick edgeId),
-                 MouseEvents.onDoubleClick (EltDoubleClick edgeId),
-                 MouseEvents.onMove  (always (MouseOn edgeId))
-                -- Html.Events.onMouseOver (EltHover edgeId)
-            ] ++ 
-            (activityToClasses activity |> List.map Html.Attributes.class)        
-             ++
-             HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
-            )
-            <| cfg.latexPreamble ++ "\n\\scriptstyle " ++ label.label
+             let finalLabel = " \\scriptstyle " ++ label.label in
+             makeLatex cfg labelpos label.dims finalLabel
+             
+             ([   MouseEvents.onClick (EdgeClick edgeId),
+                  MouseEvents.onDoubleClick (EltDoubleClick edgeId),
+                  MouseEvents.onMove  (always (MouseOn edgeId))
+                 -- Html.Events.onMouseOver (EltHover edgeId)
+             ] ++ 
+             (activityToClasses activity |> List.map Html.Attributes.class)        
+              ++
+              HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
+             )
+            
             {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
               labelpos label.label  -}
-         
+makeLatex cfg pos dims label attrs  =
+  Drawing.htmlAnchor foregroundZ pos dims True
+            (makeLatexString label)
+            <| HtmlDefs.makeLatex
+              attrs
+              (withPreamble cfg label)
+
+makeLatexString s = "\\(" ++ s ++ "\\)"
+withPreamble cfg s = cfg.latexPreamble ++ "\n" ++ s
 
 normalEdgeDrawing : Config -> Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims

@@ -6,16 +6,17 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
    controlChars,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
-    LabelAlignment(..),
     keyMaybeUpdateStyle )
 
 import HtmlDefs exposing (Key(..))
 
 import Geometry.Point as Point exposing (Point)
-import Svg exposing (Svg)
-import Svg.Attributes as Svg
+
+import String.Svg as Svg
+import String.Html
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
 import Geometry.Epsilon exposing (norm0)
+import Geometry exposing (LabelAlignment(..))
 import Json.Encode as JEncode
 import List.Extra as List
 import ListExtraExtra exposing (nextInList)
@@ -145,10 +146,12 @@ tailFileName s =
   prefixDouble s
    ++ tailToString s.tail ++ ".svg"
 
-   
+
+type alias Svg a = Svg.Svg a
+type alias SvgAttribute a = String.Html.Attribute a
      
 
-svgRotate : Point -> Float -> Svg.Attribute a
+svgRotate : Point -> Float -> SvgAttribute a
 svgRotate (x2, y2) angle = 
      Svg.transform <|         
         " rotate(" ++ String.fromFloat angle 
@@ -227,11 +230,12 @@ quiverStyle st =
    ++ (makeIf (st.labelPosition /= 0.5) ("label_position", JEncode.int <| floor (st.labelPosition * 100)))
 
 -- from Quiver
-type LabelAlignment =
+{-type LabelAlignment =
     Centre
   | Over
   | Left 
   | Right
+  -}
 
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =

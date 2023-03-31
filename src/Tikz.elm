@@ -3,7 +3,8 @@ module Tikz exposing (graphToTikz)
 import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..), GenericEdge)
 import Polygraph as Graph exposing (Graph, Node, Edge)
 import Maybe.Extra
-import ArrowStyle exposing (LabelAlignment(..))
+import Geometry exposing (LabelAlignment(..))
+import ArrowStyle
 
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =

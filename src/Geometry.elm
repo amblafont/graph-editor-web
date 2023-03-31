@@ -7,7 +7,9 @@ module Geometry exposing (raytraceRect, PosDims, Rect, pad, makeRect,
    -- from Quiver
    , determine_label_position
    , rectFromPosDims
+   , posDimsFromRect
    , distanceToRect
+   , LabelAlignment(..)
   )
 
 import Geometry.Point as Point exposing (Point)
@@ -17,7 +19,6 @@ import Collage.Layout exposing (bottomRight)
 import Collage.Layout exposing (topLeft)
 -- import ArrowStyle exposing (PosLabel(..))
 import Geometry.RoundedRectangle exposing (RoundedRectangle)
-import ArrowStyle exposing (LabelAlignment(..))
 
 
 type alias PosDims = { pos : Point, dims : Point }
@@ -56,6 +57,11 @@ rectFromPosDims { pos, dims } =
    Rect 
    (Point.subtract pos dims2)
    (Point.add pos dims2)
+
+posDimsFromRect : Rect -> PosDims
+posDimsFromRect { topLeft, bottomRight } =
+   let center = Point.add topLeft bottomRight |> Point.resize 0.5 in
+   PosDims center <| Point.subtract bottomRight topLeft
 
 isInRect : Rect -> Point -> Bool 
 isInRect {topLeft , bottomRight} (x, y) =
@@ -143,6 +149,12 @@ distance ro rd (aa,bb) =
                    Just maxLo
            _ -> Nothing
 
+-- from Quiver
+type LabelAlignment =
+    Centre
+  | Over
+  | Left 
+  | Right
 
 -- translated from https://github.com/varkor/quiver/blob/2c62d40b820cadc3c7f9d0816a33121f389b6240/src/arrow.js#L1247
 -- determine_label_position :
