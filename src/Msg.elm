@@ -2,7 +2,7 @@ module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, unfocusId,
   onTabPreventDefault, mayUpdateArrowStyle, Scenario(..), scenarioOfString, LoadGraphInfo, mapLoadGraphInfo,
   isSimpleScenario)
 
-import Collage exposing (Point)
+import Geometry.Point exposing (Point)
 -- import Graph exposing (Graph, NodeId)
 -- import GraphExtra exposing (EdgeId)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph)

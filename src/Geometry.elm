@@ -15,8 +15,6 @@ module Geometry exposing (raytraceRect, PosDims, Rect, pad, makeRect,
 import Geometry.Point as Point exposing (Point)
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
 import Geometry.Bezier as Bezier exposing (Bezier)
-import Collage.Layout exposing (bottomRight)
-import Collage.Layout exposing (topLeft)
 -- import ArrowStyle exposing (PosLabel(..))
 import Geometry.RoundedRectangle exposing (RoundedRectangle)
 

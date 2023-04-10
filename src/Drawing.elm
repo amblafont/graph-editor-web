@@ -16,7 +16,6 @@ import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
 import Svg as BuiltinSvg
 import Svg.Events
-import Collage.Layout exposing (bottomRight)
 import Html.Events.Extra.Mouse as MouseEvents
 import List.Extra
 import Msg exposing (Msg)

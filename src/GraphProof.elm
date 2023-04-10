@@ -11,7 +11,6 @@ import List.Extra as List
 import ListExtraExtra as List
 import Tuple exposing (first, second)
 import IntDict exposing (IntDict)
-import Collage.Layout exposing (debug)
 import Set exposing (Set)
 import Maybe.Extra as Maybe
 
