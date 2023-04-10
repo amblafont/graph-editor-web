@@ -1,11 +1,11 @@
 module GraphProof exposing (loopFrom, getAllValidDiagrams,
-    isBorder, proofStatementToDebugString,
+    proofStatementToDebugString,
     proofStatementToString, proofStepToString, loopToDiagram,
     fullProofs, getIncompleteDiagram, isEmptyBranch, generateIncompleteProofStepFromDiagram, 
     LoopEdge, LoopNode, Diagram, incompleteProofStepToString,
     nodesOfDiag, edgesOfDiag)
 
-import Polygraph as Graph exposing (Graph, NodeId, Edge, Node)
+import Polygraph as Graph exposing (Graph, EdgeId, Edge, Node)
 import Geometry.Point as Point exposing (Point)
 import List.Extra as List
 import ListExtraExtra as List
@@ -13,6 +13,7 @@ import Tuple exposing (first, second)
 import IntDict exposing (IntDict)
 import Set exposing (Set)
 import Maybe.Extra as Maybe
+import Parser exposing (Step(..))
 
 type alias LoopEdge = { pos : Point, angle : Float, label : String, identity : Bool }
 type alias LoopNode = { pos : Point, label : String }
@@ -81,9 +82,9 @@ type alias Diagram = { lhs : List (Edge LoopEdge),
 invertDiagram : Diagram -> Diagram
 invertDiagram { lhs, rhs } = { lhs = rhs, rhs = lhs }
 
--- is it the full diagram?
-isBorder : Diagram -> Bool
-isBorder {lhs, rhs} = 
+-- is it an outer diagram?
+isOuterDiagram : Diagram -> Bool
+isOuterDiagram {lhs, rhs} = 
    
    let makeAngles = List.map (.label >> .angle) in
    let anglesLhs = makeAngles lhs
@@ -95,8 +96,6 @@ isBorder {lhs, rhs} =
    in
    let _ = List.map (.label >> .label) lhs in
    let _ = anglesLhs in
-   
-     
      (Point.countRounds angles) == -1
 
 loopToDiagram : List (Edge LoopEdge, Bool) -> Diagram
@@ -116,11 +115,22 @@ loopToDiagram edges =
     { lhs = lhs,
       rhs = rhs }
 
-getAllValidDiagrams : Graph LoopNode LoopEdge -> List Diagram
-getAllValidDiagrams g =
-   let inc = Graph.incidence g 
-         |> IntDict.map 
-          (\ _ i -> List.map (\e -> { edge = e, incoming = True } ) i.incomings
+checkEndPoints : Diagram -> Bool
+checkEndPoints { lhs, rhs } =
+     case (List.last lhs, List.last rhs) of
+         (Just e1, Just e2) -> 
+           let _ = Debug.log "final id" (e1.to, e2.to) in 
+           e1.to == e2.to
+         _ -> False
+
+
+adjacentEdges : Graph LoopNode LoopEdge -> 
+               List ({ edge : Edge LoopEdge, incoming : Bool }, 
+                     { edge : Edge LoopEdge, incoming : Bool })
+adjacentEdges g = Graph.incidence g 
+         |> IntDict.values
+         |> List.concatMap
+          (\ i -> List.map (\e -> { edge = e, incoming = True } ) i.incomings
                  ++ List.map (\e -> { edge = e, incoming = False} ) i.outgoings
                  |> List.sortBy 
                      (\{edge, incoming} -> 
@@ -129,27 +139,34 @@ getAllValidDiagrams g =
                      )
                  |> List.succCyclePairs
           )
+
+adjacentListToDict : List ({ edge : Edge LoopEdge, incoming : Bool }, 
+                           { edge : Edge LoopEdge, incoming : Bool })
+                     -> IntDict (Edge LoopEdge)
+adjacentListToDict l =
+   IntDict.fromList <| List.map (\(e1, e2) -> (e1.edge.id, e2.edge)) l
+
+
+-- computeNextLefts : List ({ edge : Edge LoopEdge, incoming : Bool }, 
+--                          { edge : Edge LoopEdge, incoming : Bool })
+--                -> IntDict Edge.Id
+-- computeNextLefts l =
+   
+--    let next (e1, e2) =  if e1.incoming && not e2.incoming then Just (e1.edge.id e2.edge.id) else Nothing
+
+
+getAllValidDiagrams : Graph LoopNode LoopEdge -> List Diagram
+getAllValidDiagrams g =
+   let inc = adjacentEdges g in
+   let nextLefts  = List.filter (\ (e1, e2) -> e1.incoming && not e2.incoming) inc
+       nextRights = List.filter (\ (e1, e2) -> not e1.incoming && e2.incoming) inc
+                    |> List.map (\ (e1, e2) -> (e2, e1))
+       starts =     List.filter (\ (e1, e2) -> not e1.incoming && not e2.incoming) inc
+                    |> List.map (\ (e1, e2) -> (e2, e1))
    in
-   -- il faut deux next pour les deux sens
-   let treatEdge (e1 ,e2) (start, next1, next2) =         
-         case (e1.incoming, e2.incoming) of
-           (True, True) -> (start, next1, next2)
-           (False, False) -> 
-              -- let _ = Debug.log "startEdge " (e1.edge.label.label, e2.edge.label.label) in
-               ((e2.edge, e1.edge) :: start, next1, next2)
-           (True, False) -> 
-             -- let _ = Debug.log "succEdge " (e1.edge.label.label, e2.edge.label.label) in
-              (start, IntDict.insert e1.edge.id e2.edge next1, next2)
-           (False, True) -> 
-              --let _ = Debug.log "AutresuccEdge'" (e1.edge.label.label, e2.edge.label.label) in
-               (start, next1, IntDict.insert e2.edge.id e1.edge next2)
-   in
-   let buildNextStarts es (start, next1, next2) =
-         List.foldl treatEdge (start, next1, next2) es
-   in
-   let (start, next1, next2) = IntDict.foldl (\ _ -> buildNextStarts) 
-                     ([], IntDict.empty, IntDict.empty) inc 
-   in
+   -- let _ = Debug.log "nextLefts" (List.map (\(e1, e2) -> (e1.edge.label.label, e2.edge.label.label)) nextLefts) in
+   -- let _ = Debug.log "nextRights" (List.map (\(e1, e2) -> (e1.edge.label.label, e2.edge.label.label)) nextRights) in
+   -- let _ = Debug.log "starts" (List.map (\(e1, e2) -> (e1.edge.label.label, e2.edge.label.label)) starts) in
    let buildBranch next startEdge =
         case IntDict.get startEdge.id next of
           Nothing -> [ startEdge ]
@@ -157,18 +174,16 @@ getAllValidDiagrams g =
    in
    let diags = List.map 
          (\ (rhs, lhs) -> 
-           {rhs = buildBranch next1 rhs, 
-            lhs = buildBranch next2 lhs})
-         start
+           {rhs = buildBranch (adjacentListToDict nextLefts) rhs.edge, 
+            lhs = buildBranch (adjacentListToDict nextRights) lhs.edge})
+         starts
    in
-   --let _ = List.map (statementToString >> Debug.log "a ") diags in
-   let validDiag { lhs, rhs } =
-        case (List.last lhs, List.last rhs) of
-         (Just e1, Just e2) -> e1.to == e2.to
-         _ -> False
-   in
-   let validDiags = List.filter validDiag diags in
-   -- let _ = List.map (statementToString >> Debug.log "d ") validDiags in
+ 
+
+   -- peut etre message d'erreur a la place?
+   -- let _ = List.map (statementToString >> Debug.log "d ") diags in
+   let validDiags = List.filter checkEndPoints diags in
+   -- let _ = List.map (statementToString >> Debug.log "valid ") validDiags in
     validDiags
      
                 
@@ -252,7 +267,7 @@ applyDiag d l =
                 , backOffset = List.length tail
                 , endChain = List.map .id d.rhs ++ tail})
 
-commuteProof : List Diagram -> List Graph.Id -> List ProofStep 
+commuteProof : List Diagram -> List Graph.EdgeId -> List ProofStep 
 commuteProof diags l =
    case List.findMap (\ d -> applyDiag d l) diags of
       Nothing -> []
@@ -269,7 +284,7 @@ fullProofs : Graph LoopNode LoopEdge -> List ProofStatement
 fullProofs g0 =
    let g = nameIdentities g0 in
    let diags = getAllValidDiagrams g in
-   let (bigDiags, smallDiags) = List.partition isBorder diags in
+   let (bigDiags, smallDiags) = List.partition isOuterDiagram diags in
    -- let _ = List.map (Debug.log " stat:" << statementToString) diags in
    -- let _ = Debug.log "nombre de gros diagrammes: " (List.length bigDiags) in
    -- let _ = List.map (Debug.log " big:" << statementToString) bigDiags in
