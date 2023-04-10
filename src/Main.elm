@@ -472,9 +472,10 @@ update msg modeli =
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
     let finalRet chain = 
-            ({model | graph = graphQuickInput model chain, 
+            (Model.setSaveGraph {model |  
                      quickInput = "",
-                     mode = DefaultMode }, 
+                     mode = DefaultMode }
+                     <| graphQuickInput model chain, 
                      Cmd.batch
                      [-- new nodes may have sent their dimensions
                      -- but the model graph did not contain
@@ -668,7 +669,8 @@ update_DefaultMode msg model =
            let s = String.join "\n\n"
                  <| List.map stToString 
                  <| GraphProof.fullProofs
-                 <| GraphDefs.toProofGraph model.graph
+                 <| GraphDefs.toProofGraph 
+                 <| GraphDefs.selectedGraph model.graph
            in
            fillBottom s "No diagram found!"
            
@@ -1482,7 +1484,9 @@ viewGraph model =
           )
           ++
           [
-             Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button"] [Html.text "Save"]
+             Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button", 
+               Html.Attributes.title "Opens a save dialog box"] 
+               [Html.text "Save"]
            , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
            
            

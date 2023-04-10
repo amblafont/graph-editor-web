@@ -354,7 +354,7 @@ incompleteProofStepToString { startOffset, backOffset, diag} =
    -- , "  {"
    , "  admit."
    --, "  }" 
-   , "  (* copy the result in the proof editor *)"
+   , "  (* copy the result in the diagram editor (input field 'Enter equation') *)"
    , "  norm_graph."
    , "  admit."
    , "}"
