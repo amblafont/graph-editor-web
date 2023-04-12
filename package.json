@@ -43,7 +43,7 @@
           "platforms": [
             "linux"
           ],
-          "config": {}
+          "config": {"options": {"name": "coreact-yade"} }
         }
       ],
       "publishers": [

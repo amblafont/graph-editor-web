@@ -29,7 +29,11 @@ function writeLine(fd, line) {
 
 const defaults = {magic: "% YADE DIAGRAM", 
                   external_tex : false,
-                  export: "tex"};
+                  watch : true,
+                  export: "tex",
+                  prefix: "(TO BE DEFINED)",
+                  suffix: ""
+                };
 
 const defaultsExt = 
 {"tex":
@@ -49,6 +53,8 @@ const defaultsExt =
      include_cmd: "\\input{@}",
      export: "svg"
    },
+   "json":
+   { watch: false }
 };
 const description = `
 This script launches the diagram editor, inspects the given *main file* and waits 
@@ -75,7 +81,8 @@ Default prefix/suffix/include argument by extension of the watched file (default
 const emptyGraph = {"graph":{"edges":[],"latexPreamble":"","nodes":[],"sizeGrid":200},"version":8};
 
 var parser = new argparse.ArgumentParser({formatter_class: argparse.RawDescriptionHelpFormatter, description: description});
-parser.add_argument("--watch", {help: 'file to monitor'});
+parser.add_argument("filename", {nargs: "?"})
+parser.add_argument("--watch", {help: 'is it a file to monitor?', action:"store_const", const: true});
 parser.add_argument("--make-cmd", {help:"make command to be executed"});
 var magic = "% YADE DIAGRAM"
 parser.add_argument("--magic", {help: "prompt command"});
@@ -97,17 +104,7 @@ if (app.isPackaged) {
   process.argv.unshift(null)
 }
 
-var args = parser.parse_args();
-// console.log(args);
-var watched_file = args.watch;
-var is_watch = watched_file != undefined;
 var ext = "tex";
-
-if (is_watch) {
-  var extname = path.extname(watched_file);
-  if (extname.length > 0 && extname[0] == '.')
-     ext = extname.slice(1);
-}
 
 function getOrDefault(s) {
   if (args[s] !== undefined)
@@ -117,6 +114,23 @@ function getOrDefault(s) {
 
   return defaults[s];
 }
+
+var args = parser.parse_args();
+// console.log(args);
+var main_file = args.filename;
+var watched_file;
+
+if (main_file != undefined) {
+  watched_file = main_file;
+  var extname = path.extname(watched_file);
+  if (extname.length > 0 && extname[0] == '.')
+     ext = extname.slice(1);
+}
+
+
+var is_watch = getOrDefault("watch") && main_file != undefined;
+
+
 
 var prefixes = getOrDefault("prefix").split("\\n");
 var suffixes = getOrDefault("suffix").split("\\n");
@@ -413,6 +427,10 @@ function openGraphFile(win) {
   if (paths === undefined || paths.length != 1)
      return;
   var path = paths[0];
+  loadGraph(win, path);
+}
+
+function loadGraph(win, path) {
   var content = fs.readFileSync(path)
   if (! content)
      return;
@@ -457,6 +475,9 @@ const createWindow = () => {
   else {
     handleSave = function(filename, data, tex, svg) {
       saveGraphFile(mainWindow, filename, data);
+    }
+    if (main_file) {
+      loadGraph(mainWindow, main_file)
     }
   }
     
