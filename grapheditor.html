@@ -125,6 +125,13 @@
             var tutorial = fulltutorial["graph"];
             var tutorial_format_version = fulltutorial["version"];
 
+            // electron does not support synchronous window.prompt
+            var customPrompt = function(question, defaut, callback) {
+                var ret = window.prompt(question, defaut);
+                if (ret)                   
+                   callback(ret);
+            }
+
             if (supportStorage) {
                var result = parseInt(localStorage.getItem(gridStorageKey), 10);
                if (! isNaN(result) && result > 0) {
@@ -246,14 +253,21 @@
          }
          // when receiving a signal [keyInput] from Elm
          // we answer by applying [f] and send the result to [keyOutput]
-         function answerElmRequest(keyInput, keyOutput, f) {
+         function answerElmRequestCallback(keyInput, keyOutput, f) {
             var answer = function (data) {
-               var outData = f(data);
-               if (outData)   
-                  app.ports[keyOutput].send(outData);
+               f(data, function (outData) {
+                if (outData)   
+                   app.ports[keyOutput].send(outData);
+                })
             };
             app.ports[keyInput].subscribe(answer);
             return answer;
+         }
+
+         function answerElmRequest(keyInput, keyOutput, f) {
+            return answerElmRequestCallback(keyInput, keyOutput, 
+               (data, callback) => callback(f(data))                  
+            );
          }
 
          
@@ -450,28 +464,31 @@
 
         
 
-         answerElmRequest('promptFindReplace', 'findReplace', function (a)
-         {
-            var rep = window.prompt("Replace in selection (/find/replace, where '/' can be replaced by any character)", 
-                  "/find/replace") ;
+         answerElmRequestCallback('promptFindReplace', 'findReplace', (a, callback) =>
+         
+            customPrompt("Replace in selection (/find/replace, where '/' can be replaced by any character)", 
+                  "/find/replace",
+                  function (rep) {
              if (rep && rep.length > 2) {
                 reps = rep.split(rep[0])                
                 if (reps && reps.length == 3 && reps[1]) {
                     var search = reps[1];
                     var replace = reps[2];
-                    return {'search':search, 'replace': replace};
+                    callback({'search':search, 'replace': replace});
                 }
              }
-         }
+         }) 
          );
 
-         answerElmRequest('promptEquation', 'promptedEquation', function(a) {
-             var rep = window.prompt("Enter equation", 
-                  "a -- f -> b -- g -> c = a -- h -> d -- k -> c") ;
+         answerElmRequestCallback('promptEquation', 'promptedEquation', (a, callback) =>
+            customPrompt("Enter equation", 
+                  "a -- f -> b -- g -> c = a -- h -> d -- k -> c", function (rep) {
+            console.log("reponse: " + rep);
              if (rep && rep.length > 0) {                
-                    return rep;
-             }             
-         });
+                    callback(rep); //{ equation : rep, final: false, scenario: ""};
+             }
+            })
+         );
 
          triggerElmCopy = makeElmRequest('onCopy', 'clipboardWriteGraph', function(g) {
             navigator.clipboard.writeText(JSON.stringify(g));                     
@@ -491,22 +508,45 @@
 
          // Setting up interaction with electron
          if (window.electronAPI) {
+            customPrompt = function (question, defaut, callback) {
+                window.electronAPI.answerPrompt( function (event, ret) {
+                        console.log("youpi");
+                        console.log(ret);
+                        callback(ret);
+ 
+                    });
+                window.electronAPI.prompt(question, defaut);
+            };
+                
+                
+            
+            
+
             console.log("electron detected");
             // window.electronAPI.loadGraph((event, json, fileName, scenario) => alert('coucou') );
             window.electronAPI.loadGraph((event, json, fileName, scenario) => sendGraphToElm(json, fileName, scenario));
+            window.electronAPI.clearGraph((event, scenario) => app.ports.clear.send(scenario));
+            window.electronAPI.loadEquation(function (event, equation, scenario) {
+                   console.log(equation);
+                //   console.log("c'est quoi ton blem");                
+                  app.ports.clear.send(scenario);
+//                  app.ports.promptedEquation.send({ equation: equation, final:true, scenario: scenario}) ;
+                  app.ports.promptedEquation.send(equation) ;
+            }
+            );
             window.electronAPI.rename((event, fileName) => app.ports.renameFile.send(fileName));
             window.electronAPI.simpleMsg((event, msg) => app.ports.simpleMsg.send(msg));
             // if (urlParams.has("electronSave")) {
             app.ports.saveGraph.unsubscribe(saveGraph);
             app.ports.saveGraph.subscribe(function (d) {
-                window.electronAPI.saveGraph(d.graph.fileName, fromElmGraph(d.graph), d.latex, d.svg);
+                window.electronAPI.saveGraph(d.graph.fileName, fromElmGraph(d.graph), d.export);
             });
             // }
             app.ports.quicksaveGraph.unsubscribe(quicksaveStorage);
             app.ports.quicksaveGraph.subscribe(function (a) {
                     var d = a.info;
                     var g = fromElmGraph(d);
-                    window.electronAPI.quicksaveGraph(d.fileName, g, a.latex, a.svg);
+                    window.electronAPI.quicksaveGraph(d.fileName, g, a.export);
             });
 
             app.ports.openFile.unsubscribe(openFile);

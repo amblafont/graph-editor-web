@@ -1,5 +1,5 @@
 module GraphProof exposing (loopFrom, getAllValidDiagrams,
-    proofStatementToDebugString,
+    proofStatementToDebugString, isInDiag,
     proofStatementToString, proofStepToString, loopToDiagram,
     fullProofs, getIncompleteDiagram, isEmptyBranch, generateIncompleteProofStepFromDiagram, 
     LoopEdge, LoopNode, Diagram, incompleteProofStepToString,
@@ -16,8 +16,23 @@ import Maybe.Extra as Maybe
 import Parser exposing (Step(..))
 
 type alias LoopEdge = { pos : Point, angle : Float, label : String, identity : Bool }
-type alias LoopNode = { pos : Point, label : String }
+type alias LoopNode = { pos : Point, label : String, proof : Maybe String }
 
+
+isInDiag : Graph LoopNode LoopEdge -> Point -> Diagram -> Bool
+isInDiag g pos d =
+   Graph.getNodes (nodesOfDiag d)
+               g |> List.map (.label >> .pos) |> Point.isInPoly pos
+
+proofNodes : Graph LoopNode LoopEdge -> List (Node LoopNode)
+proofNodes g = 
+   Graph.nodes g 
+   |> List.filter (.label >> .proof >> Maybe.isJust) 
+
+findProofOfDiagram : Graph LoopNode LoopEdge -> List (Node LoopNode) -> Diagram -> Maybe String
+findProofOfDiagram g l d =
+   List.find (\ n -> isInDiag g n.label.pos d) l
+   |> Maybe.andThen (.label >> .proof)
 
 nameIdentities : Graph LoopNode LoopEdge -> Graph LoopNode LoopEdge 
 nameIdentities =
@@ -76,11 +91,12 @@ diagramFrom dir g e =
 
    
 type alias Diagram = { lhs : List (Edge LoopEdge), 
-                       rhs : List (Edge LoopEdge)
+                       rhs : List (Edge LoopEdge),
+                       proof : Maybe String
                      }
 
 invertDiagram : Diagram -> Diagram
-invertDiagram { lhs, rhs } = { lhs = rhs, rhs = lhs }
+invertDiagram { lhs, rhs, proof } = { lhs = rhs, rhs = lhs, proof = proof }
 
 -- is it an outer diagram?
 isOuterDiagram : Diagram -> Bool
@@ -113,13 +129,13 @@ loopToDiagram edges =
         rhs = List.reverse rhs0 |> List.map first
     in     
     { lhs = lhs,
-      rhs = rhs }
+      rhs = rhs,
+      proof = Nothing }
 
 checkEndPoints : Diagram -> Bool
 checkEndPoints { lhs, rhs } =
      case (List.last lhs, List.last rhs) of
          (Just e1, Just e2) -> 
-           let _ = Debug.log "final id" (e1.to, e2.to) in 
            e1.to == e2.to
          _ -> False
 
@@ -175,7 +191,8 @@ getAllValidDiagrams g =
    let diags = List.map 
          (\ (rhs, lhs) -> 
            {rhs = buildBranch (adjacentListToDict nextLefts) rhs.edge, 
-            lhs = buildBranch (adjacentListToDict nextRights) lhs.edge})
+            lhs = buildBranch (adjacentListToDict nextRights) lhs.edge,
+            proof = Nothing})
          starts
    in
  
@@ -284,7 +301,10 @@ fullProofs : Graph LoopNode LoopEdge -> List ProofStatement
 fullProofs g0 =
    let g = nameIdentities g0 in
    let diags = getAllValidDiagrams g in
-   let (bigDiags, smallDiags) = List.partition isOuterDiagram diags in
+   let (bigDiags, smallDiags_without_proofs) = List.partition isOuterDiagram diags in
+   let smallProofs = proofNodes g in
+   let updateDiag d = { d | proof = findProofOfDiagram g smallProofs d } in
+   let smallDiags = List.map updateDiag smallDiags_without_proofs in
    -- let _ = List.map (Debug.log " stat:" << statementToString) diags in
    -- let _ = Debug.log "nombre de gros diagrammes: " (List.length bigDiags) in
    -- let _ = List.map (Debug.log " big:" << statementToString) bigDiags in
@@ -325,7 +345,7 @@ proofStepToString { startOffset, backOffset, diag} =
    String.join "\n" <|
    [ "assert(eq : " ++ statementToString diag ++ ")."
    , "{"
-   , "  admit."
+   , "  " ++ (diag.proof |> Maybe.withDefault "admit.")
    , "}"
    , "etrans."
    , "{" ,
@@ -386,7 +406,8 @@ renameDebugDiag diag =
           {e | label = { label | label = debugEdgeName e.id} }
   in
    {lhs = List.map renameEdge diag.lhs, 
-    rhs = List.map renameEdge diag.rhs }
+    rhs = List.map renameEdge diag.rhs,
+    proof = Nothing }
 
 renameDebugProofStep : ProofStep -> ProofStep
 renameDebugProofStep step =
@@ -418,7 +439,7 @@ proofStatementToDebugString st =
 
 proofStatementToString : ProofStatement -> String
 proofStatementToString st =
-   "Goal " ++ statementToString st.statement ++ ".\n\n"
+   "(* Goal " ++ statementToString st.statement ++ ". *)\n\n"
   -- ++ "(* generated with YADE *)"
    ++ (String.join "\n" <| List.map proofStepToString st.proof)
    ++ "\n apply idpath."

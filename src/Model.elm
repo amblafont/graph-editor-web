@@ -7,7 +7,7 @@ import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
 import Geometry.Point as Point exposing (Point)
 import InputPosition
-import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel, coqProofTexCommand)
 import HtmlDefs
 
 import Modes exposing (Mode(..))
@@ -115,7 +115,7 @@ createModel sizeGrid g =
     , fileName = "graph.json"
     , bottomText = ""
     , autoSave = False
-    , latexPreamble = ""
+    , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\text{#1}}"
     , scenario = Standard
     --, hoverId = Nothing
     -- whether we should select the closest object 

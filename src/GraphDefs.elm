@@ -1,7 +1,7 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
    NormalEdgeLabel, EdgeType(..), GenericEdge,
    filterLabelNormal, filterEdgeNormal, isNormalId, isPullshout,
-   filterNormalEdges,
+   filterNormalEdges, coqProofTexCommand,
    newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
    selectedEdges, mapNormalEdge,  mapDetails, 
    createNodeLabel,
@@ -49,6 +49,8 @@ type EdgeType =
    | NormalEdge NormalEdgeLabel
 
 type alias NormalEdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point}
+
+coqProofTexCommand = "coqproof"
 
 filterNormalEdges : EdgeType -> Maybe NormalEdgeLabel
 filterNormalEdges d =  case d of
@@ -116,13 +118,22 @@ computeEdgePos from to e = e.style.bend
               Point.normalise offset <|        
                Point.subtract q.controlPoint <| m -}
 
+getProofFromLabel : String -> Maybe String
+getProofFromLabel s =
+   let s2 = String.trim s in
+   let prefix = "\\" ++ coqProofTexCommand ++ "{" in
+   if String.startsWith prefix s2 then
+      Just (String.slice (String.length prefix) (-1) s2)
+   else
+      Nothing
+
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
     keepNormalEdges >>
    
     Graph.mapRecAll (\n -> n.pos)
              (\n -> n.pos)
-             (\ _ n -> { pos = n.pos, label = n.label })
+             (\ _ n -> { pos = n.pos, label = n.label, proof = getProofFromLabel n.label })
              (\ _ fromP toP {details}  -> 
                         { angle = Point.subtract toP fromP |> Point.pointToAngle ,
                           label = details.label, -- (if l.label == "" && l.style.double then fromLabel else l.label),
@@ -356,13 +367,9 @@ selectEdges = List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True}
 
 getSurroundingDiagrams : Point -> Graph NodeLabel EdgeLabel -> List Diagram
 getSurroundingDiagrams pos gi =   
-   let gp = toProofGraph gi in
-   let isInDiag d =
-           Graph.getNodes (GraphProof.nodesOfDiag d)
-               gi |> List.map (.label >> .pos) |> Point.isInPoly pos
-   in     
+   let gp = toProofGraph gi in 
    GraphProof.getAllValidDiagrams gp 
-            |> List.filter isInDiag
+            |> List.filter (GraphProof.isInDiag gp pos)
    
 
 selectSurroundingDiagram : Point -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel

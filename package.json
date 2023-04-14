@@ -43,7 +43,11 @@
           "platforms": [
             "linux"
           ],
-          "config": {"options": {"name": "coreact-yade"} }
+          "config": {
+            "options": {
+              "name": "coreact-yade"
+            }
+          }
         }
       ],
       "publishers": [
@@ -66,6 +70,7 @@
   "dependencies": {
     "@stdlib/utils-escape-regexp-string": "^0.0.9",
     "argparse": "^2.0.1",
+    "electron-prompt": "^1.7.0",
     "n-readlines": "^1.0.1",
     "tmp": "^0.2.1"
   }

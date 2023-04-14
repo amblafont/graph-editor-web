@@ -1,11 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  loadEquation: (callback) => ipcRenderer.on('load-equation', callback),
   loadGraph: (callback) => ipcRenderer.on('load-graph', callback),
+  clearGraph: (callback) => ipcRenderer.on('clear-graph', callback),
   rename: (callback) => ipcRenderer.on('rename', callback),
-  saveGraph: (filename, json, tex, svg) => ipcRenderer.send('save-graph', filename, json, tex, svg),
-  quicksaveGraph: (filename, json, tex, svg) => ipcRenderer.send('quick-save-graph', 
-     filename, json, tex, svg),
+  saveGraph: (filename, json, exports) => ipcRenderer.send('save-graph', filename, json, exports),
+  quicksaveGraph: (filename, json, exports) => ipcRenderer.send('quick-save-graph', 
+     filename, json, exports),
   openFile: () => ipcRenderer.send('open-graph'),
-  simpleMsg: (callback) => ipcRenderer.on('simple-msg', callback)
+  simpleMsg: (callback) => ipcRenderer.on('simple-msg', callback),
+  prompt: (question, defaut) => ipcRenderer.send('prompt', question, defaut),
+  answerPrompt: (callback => ipcRenderer.on('answer-prompt', callback))
 })

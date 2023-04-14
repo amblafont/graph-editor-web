@@ -91,14 +91,16 @@ port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
 
+port clear : (String -> a) -> Sub a
 
 -- tell js to save the graph, version  is the format version
 type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
+type alias ExportFormats = {tex:String, svg:String, coq:String}
 
 -- feedback: do we want a confirmation alert box?
-port quicksaveGraph : { info : JsGraphInfo, latex:String, svg:String, feedback : Bool} -> Cmd a
+port quicksaveGraph : { info : JsGraphInfo, export: ExportFormats, feedback : Bool} -> Cmd a
 -- we ask js to save the graph
-port saveGraph : {graph: JsGraphInfo, latex: String, svg:String} -> Cmd a
+port saveGraph : {graph: JsGraphInfo, export: ExportFormats} -> Cmd a
 
 
 port exportQuiver : JE.Value -> Cmd a
@@ -171,6 +173,7 @@ subscriptions m =
       findReplace FindReplace,
       simpleMsg SimpleMsg,
       renameFile FileName,
+      clear (scenarioOfString >> Clear),
       -- upload a graph (triggered by js)
       
       loadedGraph0 (mapLoadGraphInfo Format.Version0.fromJSGraph >> Loaded),
@@ -199,16 +202,22 @@ subscriptions m =
        [ Time.every 60000 (always MinuteTick) ]
     else [])
     ++
+    (if m.scenario == Watch then [promptedEquation (QuickInput True)]
+    else [])
+    ++
     if case m.mode of
         ResizeMode _ -> False
         QuickInputMode _ -> False
         _ -> not m.mouseOnCanvas
     then [] 
     else
+    (if m.scenario == Watch then [] else [promptedEquation (QuickInput True)]
+     -- is scenario is watch, we have already subscribed
+    ) ++
     [ E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       E.onKeyDown (D.map2 (KeyChanged True) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onCopy (always CopyGraph),
-      promptedEquation (QuickInput True),
+      
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
            (\e -> e |> D.decodeValue (D.map2 ( \ks k -> 
@@ -363,6 +372,12 @@ updateIntercept msg modeli =
            
      _ -> update msg modeli
 
+makeExports : Model -> ExportFormats
+makeExports model = 
+     {tex = Tikz.graphToTikz model.sizeGrid model.graph
+    , svg = svgExport model model.graph
+    , coq = coqExport model model.graph }
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg modeli =
     let model = case msg of
@@ -393,16 +408,14 @@ update msg modeli =
     in
     case msg of
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
-                              , latex = Tikz.graphToTikz model.sizeGrid model.graph
-                              , svg = svgExport model model.graph })
+                              , export = makeExports model })
      SaveGridSize -> (model, saveGridSize model.sizeGrid)                       
      MinuteTick -> if model.autoSave then 
                          (model, quicksaveGraph 
-                         { info = toJsGraphInfo model, latex = "", 
-                         svg = "",
+                         { info = toJsGraphInfo model, export = makeExports model,
                          feedback = False }) 
                    else noCmd model
-     Clear -> noCmd iniModel --  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
+     Clear scenario -> noCmd { iniModel | scenario = scenario }--  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
@@ -637,7 +650,18 @@ rename model =
             |> Maybe.withDefault []
     in
         noCmd <| initialise_RenameMode True ids model
-            
+
+generateProofString : Bool -> Graph NodeLabel EdgeLabel -> String
+generateProofString debug g =
+      let stToString = if debug then GraphProof.proofStatementToDebugString else GraphProof.proofStatementToString in
+      let s = String.join "\n\n"
+            <| List.map stToString 
+            <| GraphProof.fullProofs
+            <| GraphDefs.toProofGraph 
+            g
+      in
+      s
+
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     let delta_angle = pi / 5 in    
@@ -665,11 +689,8 @@ update_DefaultMode msg model =
           in
           ({ model | bottomText = s }, c)
     in
-    let generateProof stToString =
-           let s = String.join "\n\n"
-                 <| List.map stToString 
-                 <| GraphProof.fullProofs
-                 <| GraphDefs.toProofGraph 
+    let generateProof debug =
+           let s = generateProofString debug
                  <| GraphDefs.selectedGraph model.graph
            in
            fillBottom s "No diagram found!"
@@ -766,9 +787,9 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'H') -> 
            noCmd <| selectLoop False model
         KeyChanged False _ (Character 'G') -> 
-           generateProof GraphProof.proofStatementToString            
+           generateProof False            
         KeyChanged False _ (Character 'T') -> 
-           generateProof GraphProof.proofStatementToDebugString   
+           generateProof True
         KeyChanged False _ (Character 'S') ->        
            noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
         KeyChanged False k (Character 'c') -> 
@@ -797,8 +818,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'Q') -> 
             (model, quicksaveGraph 
             { info = toJsGraphInfo model, 
-              latex = Tikz.graphToTikz model.sizeGrid model.graph,
-              svg = svgExport model model.graph ,
+              export = makeExports model,             
               feedback = True })
         KeyChanged False _ (Character 'R') -> 
             noCmd <| initialise_Resize model
@@ -900,6 +920,11 @@ svgExport model graph =
               (g |> 
                GraphDrawing.toDrawingGraph |>
               toDrawing model))
+
+coqExport : Model -> Graph NodeLabel EdgeLabel -> String
+coqExport model graph = 
+   let s = generateProofString False graph in
+     if s == "" then "(* No diagram found *)" else s
 
 selectByClick : Model -> Model
 selectByClick model =  
@@ -1487,7 +1512,7 @@ viewGraph model =
              Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button", 
                Html.Attributes.title "Opens a save dialog box"] 
                [Html.text "Save"]
-           , Html.button [Html.Events.onClick Clear] [Html.text "Clear"]
+           , Html.button [Html.Events.onClick (Clear model.scenario)] [Html.text "Clear"]
            
            
            , Html.a [Html.Attributes.href  ("#" ++ HtmlDefs.latexPreambleId)] [Html.text "Latex preamble"]

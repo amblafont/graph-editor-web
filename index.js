@@ -7,6 +7,7 @@ const path = require('path')
 const { dialog } = require('electron')
 const fs = require('fs');
 const tmp = require('tmp');
+const prompt = require('electron-prompt');
 const escapeStringRegexp = require( '@stdlib/utils-escape-regexp-string' );
 // const escapeReg = require('escape-string-regexp');
 const lineByLine = require('n-readlines');
@@ -28,7 +29,7 @@ function writeLine(fd, line) {
 }
 
 const defaults = {magic: "% YADE DIAGRAM", 
-                  external_tex : false,
+                  external_output : false,
                   watch : true,
                   export: "tex",
                   prefix: "(TO BE DEFINED)",
@@ -45,13 +46,17 @@ const defaultsExt =
    { prefix: "\\end_layout\\n\\end_inset\\n\\begin_inset Preview \\n\\begin_layout Standard \\n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
      suffix: "\\end_inset\\n\\end_layout\\n\\end_inset\\n\\begin_inset Note Note\\nstatus open\\n\\begin_layout Plain Layout",
      include_cmd: "filename \"@\"",
-     external_tex : true
+     external_output : true
    },
    "md":
    { prefix: "-->\\n<!-- GENERATED SVG -->",
      suffix: "<!-- END OF GENERATED SVG -->\\n<!-- ",
-     include_cmd: "\\input{@}",
      export: "svg"
+   },
+   "v":
+   { prefix: "*)\\n(* GENERATED COQ SCRIPT *)",
+     suffix: "(* END OF GENERATED COQ SCRIPT *)\\n(* ",
+     export: "coq"
    },
    "json":
    { watch: false }
@@ -63,9 +68,9 @@ MAGIC_STRING [diagram] that is not followed by the list of lines (separated by \
 --prefix.
 
 - MAGIC_STRING is the string specified by --magic
-- [diagram] (optional) is a filename, or a json encoded diagram (pasted from the
+- [diagram] (optional) is a filename, a json encoded diagram (pasted from the
   editor by using C-c  on some selected diagram, or from the content of a saved 
-  file).
+  file), or an equation in the format { a -- f -> b -- g -> c = a -- h -> d -- k -> c }.
 - empty lines are ignored in the process and lines are stripped for comparison
 
 Then, the script loads the first incomplete diagram of the main file in the editor (or creates a new
@@ -78,7 +83,6 @@ by --suffix.
 
 Default prefix/suffix/include argument by extension of the watched file (default is tex):
 ` + JSON.stringify(defaultsExt, null, 2) + JSON.stringify(defaults, null, 2);
-const emptyGraph = {"graph":{"edges":[],"latexPreamble":"","nodes":[],"sizeGrid":200},"version":8};
 
 var parser = new argparse.ArgumentParser({formatter_class: argparse.RawDescriptionHelpFormatter, description: description});
 parser.add_argument("filename", {nargs: "?"})
@@ -86,16 +90,16 @@ parser.add_argument("--watch", {help: 'is it a file to monitor?', action:"store_
 parser.add_argument("--make-cmd", {help:"make command to be executed"});
 var magic = "% YADE DIAGRAM"
 parser.add_argument("--magic", {help: "prompt command"});
-parser.add_argument("--export", {help: "tex or svg"});
+parser.add_argument("--export", {help: "tex/svg/coq"});
 parser.add_argument("--prefix");
 parser.add_argument("--suffix");
 //  parser.add_argument("--ext", {default:".json"});
-parser.add_argument("--dir", {default:"", help:"directory of diagram files (tex and json)"});
-parser.add_argument("--include-cmd", {help:"use in combination with --external-tex"});
-parser.add_argument("--external-tex", {action:"store_const",
+parser.add_argument("--dir", {default:"", help:"relative directory of diagram files (tex/svg/coq/json)"});
+parser.add_argument("--include-cmd", {help:"use in combination with --external-output"});
+parser.add_argument("--external-output", {action:"store_const",
     const: true,
     help:"For diagrams stored in an external file, this flag "
-  + "redirects the generated tex to an external file which is included with --include-cmd"});
+  + "redirects the generated output (tex/svg/..) to an external file which is included with --include-cmd"});
 
 
 
@@ -118,9 +122,11 @@ function getOrDefault(s) {
 var args = parser.parse_args();
 // console.log(args);
 var main_file = args.filename;
+var main_directory;
 var watched_file;
 
 if (main_file != undefined) {
+  main_directory = path.dirname(main_file);
   watched_file = main_file;
   var extname = path.extname(watched_file);
   if (extname.length > 0 && extname[0] == '.')
@@ -135,7 +141,7 @@ var is_watch = getOrDefault("watch") && main_file != undefined;
 var prefixes = getOrDefault("prefix").split("\\n");
 var suffixes = getOrDefault("suffix").split("\\n");
 var includecmd = getOrDefault("include_cmd");
-var externaltex = getOrDefault("external_tex");
+var externalOutput = getOrDefault("external_output");
 var magic = getOrDefault("magic");
 var exportFormat = getOrDefault("export");
 // var watched_file = undefined;
@@ -179,11 +185,11 @@ function waitIncompleteMsg() {
 
 function contentToFileName(content) {
   // return path.join(basedir, content + extension);
-  return path.join(basedir, content);
+  return path.join(main_directory, basedir, content);
 }
 
-function texFileName(content) {
-  return path.join(basedir, path.basename(content, path.extname(content)) + ".tex");
+function outputFileName(content, ext) {
+  return path.join(basedir, path.basename(content, path.extname(content)) + "." + ext);
 }
 
 function parseMagic(line) {
@@ -233,15 +239,29 @@ function loadEditor(diag) {
   if (stripped_diag == "") {
     console.log("Creating new diagram");
     // clear();
-    json = emptyGraph;
+    mainWindow.webContents.send('clear-graph', watchScenario); 
   } else {
     console.log("Loading diagram ");
+    try {
+
     json = JSON.parse (stripped_diag);
+    mainWindow.webContents.send('load-graph', 
+       json, "filename", watchScenario); 
+    }
+    catch (e) {
+      if (e instanceof SyntaxError) {
+      // if it is not a valid json, then it must be an equation 
+        var equation = stripped_diag.slice(1, -1);
+        mainWindow.webContents.send('load-equation', equation , watchScenario);
+      }
+      else 
+        throw e;
+    }
     
     
   }
-  mainWindow.webContents.send('load-graph', 
-       json, "filename", watchScenario);    
+
+    
 }
 
 
@@ -297,7 +317,7 @@ function handleFileOneIteration() {
     }
   
     
-    handleSave = function(filename, newcontent_json, latex, svg) {
+    handleSave = function(filename, newcontent_json, exports) {
       resetHandleSave();
       var newcontent = JSON.stringify(newcontent_json);
       /*
@@ -326,21 +346,21 @@ function handleFileOneIteration() {
       }
       */
       // latex = "nouveau latex"; // genLatex();
-    
+      var generatedOutput = exports[exportFormat];
       if (diagFile !== null) {
         wfile = contentToFileName(diagFile);
         console.log("writing to the file " + wfile);
         fs.writeFileSync(wfile, newcontent);
         
     
-        if (externaltex) {
-          texFile = texFileName(diagFile);
-          console.log("writing tex file " + texFile);
-          fs.writeFileSync(texFile, latex);
+        if (externalOutput) {
+          outputFile = path.join(main_directory, outputFileName(diagFile, exportFormat));
+          console.log("writing " + exportFormat + " file " + outputFile);
+          fs.writeFileSync(outputFile, generatedOutput);
         }
       }
     
-      var generatedOutput = exportFormat == "svg" ? svg : latex;
+      
       writeContent(newcontent, generatedOutput, index);
       handleFileOneIteration();
     }
@@ -358,7 +378,7 @@ function handleFileOneIteration() {
   
 }
 
-function writeContent(newcontent, latex, index) {
+function writeContent(newcontent, output, index) {
   
   const tmpobj = tmp.fileSync();
   const fd = tmpobj.fd;
@@ -390,10 +410,10 @@ function writeContent(newcontent, latex, index) {
   else
      writeLine(fd, magic + " " + newcontent)
   writeLine(fd, prefixes.join("\n"));
-  if (! externaltex || ! isFile)
-     writeLine(fd, latex);
+  if (! externalOutput || ! isFile)
+     writeLine(fd, output);
   else
-     writeLine(fd, includecmd.replace("@", texFileName(content)));
+     writeLine(fd, includecmd.replace("@", outputFileName(content, exportFormat)));
   writeLine(fd, suffixes.join("\n"));
   while (line !== false) {
     line = readLine(file_lines);
@@ -408,7 +428,7 @@ function writeContent(newcontent, latex, index) {
   // tmpobj.removeCallback();
 }
 
-function quicksave(win, filename, data, tex, svg) {
+function quicksave(win, filename, data, exports) {
   fs.writeFileSync(filename, JSON.stringify(data));
   var msg = "Written to file " + filename;
   dialog.showMessageBoxSync(win, { message : msg })
@@ -458,22 +478,26 @@ const createWindow = () => {
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
   mainWindow.webContents.once('did-finish-load', () => {
-
-  ipcMain.on('save-graph', (e, filename, data, tex, svg) => handleSave(filename, data,tex, svg));
+  ipcMain.on('save-graph', (e, filename, data, exports) => handleSave(filename, data,exports));
   ipcMain.on('open-graph', (e) => openGraphFile(mainWindow));
+  ipcMain.on('prompt', (e, question, defaut) =>
+  prompt({label:question, value:defaut, width:800}, mainWindow).then((r) => mainWindow.webContents.send('answer-prompt', r))
+       .catch((r) => mainWindow.webContents.send('answer-prompt', null))
+  );
   ipcMain.on('quick-save-graph', 
-     (e, filename, data, tex, svg) => is_watch ? handleSave(filename, data,tex, svg)
-      : quicksave(mainWindow, filename, data, tex, svg));
+     (e, filename, data, exports) => is_watch ? handleSave(filename, data,exports)
+      : quicksave(mainWindow, filename, data, exports));
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)
   {
+    mainWindow.webContents.send('clear-graph', watchScenario); 
     mainWindow.on('focus', function(e) {
       onfocus();
     })
     handleFileOneIteration();
   }
   else {
-    handleSave = function(filename, data, tex, svg) {
+    handleSave = function(filename, data, exports) {
       saveGraphFile(mainWindow, filename, data);
     }
     if (main_file) {
