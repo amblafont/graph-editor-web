@@ -35,6 +35,7 @@ viewBox {topLeft, bottomRight} =
 textAnchor = attribute "text-anchor"
 dominantBaseline = attribute "dominant-baseline"
 class = attribute "class"
+style = attribute "style"
 defs = node "defs"
 fill = attribute "fill"
 stroke = attribute "stroke"

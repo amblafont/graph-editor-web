@@ -44,6 +44,8 @@ attrToSvgAttr col a =
   case a of
      Color c -> c |> colorToString |> col |> Just     
      Class s -> Svg.class s |> Just
+     Style s -> Svg.style s |> Just
+     StrokeWidth s -> Svg.strokeWidth s |> Just
      On e d -> Svg.Events.on e d |> ghostAttribute |> Just
      OnClick f -> MouseEvents.onClick f |> ghostAttribute |> Just
      OnDoubleClick f -> MouseEvents.onDoubleClick f |> ghostAttribute |> Just
@@ -56,6 +58,8 @@ type Attribute msg =
     On String (D.Decoder msg)
     | Color Color
     | Class String
+    | StrokeWidth String
+    | Style String
     | OnClick (MouseEvents.Event -> msg)
     | OnDoubleClick (MouseEvents.Event -> msg) 
     | ZIndex Int     
@@ -70,13 +74,14 @@ attributesToZIndex =
   List.Extra.findMap attributeToZIndex
   >> Maybe.withDefault defaultZ
 
-type Color = Black | Red | Blue
+type Color = Black | Red | Blue | White
 
 colorToString : Color -> String
 colorToString c = case c of
   Black -> "black"
   Red -> "red"
   Blue -> "blue"
+  White -> "white"
 
 black : Color
 black = Black
@@ -89,6 +94,13 @@ blue = Blue
 
 class : String -> Attribute msg
 class = Class
+
+style : String -> Attribute msg
+style = Style
+
+strokeWidth : String -> Attribute msg
+strokeWidth = StrokeWidth
+
 
 
 on : String -> D.Decoder msg -> Attribute msg
@@ -176,14 +188,19 @@ mkPath dashed attrs q =
 
 
 arrow : List (Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
-arrow attrs style q =
+arrow attrs arrowStyle q =
     let zindex = attributesToZIndex attrs in
-    let imgs = ArrowStyle.makeHeadTailImgs q style in    
+    let imgs = ArrowStyle.makeHeadTailImgs q arrowStyle in    
     let mkgen d l = mkPath d (l ++ attrs) in
-    let mkl = mkgen style.dashed [] in
-    let mkshadow = mkgen False [class "shadow-line"] in
+    let mkl = mkgen arrowStyle.dashed [] in
+    -- let mkshadow = mkgen False [class "shadow-line"] in
+    
+    -- let mkshadow = mkgen False [style "stroke-width : 4;  stroke: white;"] in
+    -- overriding the black color with style attribute 
+    -- TODO: do it more properly
+    let mkshadow = mkgen False [style "stroke: white;", strokeWidth "4"] in
     let mkall l = List.map mkshadow l ++ List.map mkl l in
-    let lines = if ArrowStyle.isDouble style then
+    let lines = if ArrowStyle.isDouble arrowStyle then
                 -- let delta = Point.subtract q.to q.controlPoint 
                 --             |> Point.orthogonal
                 --             |> Point.normalise ArrowStyle.doubleSize
