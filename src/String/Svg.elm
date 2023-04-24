@@ -2,7 +2,6 @@ module String.Svg  exposing (..)
 
 import String.Html exposing (Html, attribute, attributeNS)
 import Geometry
-import Html.Attributes exposing (poster)
 import Geometry exposing (PosDims)
 
 type alias Svg a = Html a
@@ -40,7 +39,7 @@ defs = node "defs"
 fill = attribute "fill"
 stroke = attribute "stroke"
 
-strokeDasharray = attribute "stroke-dash-array"
+strokeDasharray = attribute "stroke-dasharray"
 
 d = attribute "d"
 id = attribute "id"
