@@ -1,6 +1,6 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
    NormalEdgeLabel, EdgeType(..), GenericEdge,
-   filterLabelNormal, filterEdgeNormal, isNormalId, isPullshout,
+   filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
    filterNormalEdges, coqProofTexCommand,
    newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
    selectedEdges, mapNormalEdge,  mapDetails, 

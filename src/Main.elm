@@ -36,7 +36,6 @@ import Drawing exposing (Drawing)
 
 import Geometry.Point as Point exposing (Point)
 
-import Color exposing (..)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -57,6 +56,7 @@ import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
 import Modes.Pullshout
+import Drawing.Color as Color
 import Modes exposing (Mode(..), MoveMode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
 
 import ArrowStyle
@@ -78,6 +78,7 @@ import Format.Version5
 import Format.Version6
 import Format.Version7
 import Format.Version8
+import Format.Version9
 import Format.LastVersion as LastFormat
 
 import List.Extra
@@ -124,6 +125,7 @@ port loadedGraph5 : (LoadGraphInfo Format.Version5.Graph -> a) -> Sub a
 port loadedGraph6 : (LoadGraphInfo Format.Version6.Graph -> a) -> Sub a
 port loadedGraph7 : (LoadGraphInfo Format.Version7.Graph -> a) -> Sub a
 port loadedGraph8 : (LoadGraphInfo Format.Version8.Graph -> a) -> Sub a
+port loadedGraph9 : (LoadGraphInfo Format.Version9.Graph -> a) -> Sub a
 
 
 
@@ -185,6 +187,7 @@ subscriptions m =
       loadedGraph6 (mapLoadGraphInfo Format.Version6.fromJSGraph >> Loaded),
       loadedGraph7 (mapLoadGraphInfo Format.Version7.fromJSGraph >> Loaded),
       loadedGraph8 (mapLoadGraphInfo Format.Version8.fromJSGraph >> Loaded),
+      loadedGraph9 (mapLoadGraphInfo Format.Version9.fromJSGraph >> Loaded),
       clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick)
       {- Html.Events.preventDefaultOn "keydown"
@@ -480,7 +483,28 @@ update msg modeli =
         CutHead state -> update_CutHead state msg model
         CloneMode -> update_Clone msg model
         ResizeMode s -> update_Resize s msg model
+        ColorMode ids -> update_Color ids msg model
 
+update_Color : List Graph.EdgeId -> Msg -> Model -> (Model, Cmd Msg)
+update_Color ids msg model =
+    case msg of
+        KeyChanged False _ (Control "Escape") ->
+            switch_Default model
+        KeyChanged False _ (Character c) ->
+           case Color.fromChar c of 
+              Nothing -> noCmd model 
+              Just color -> 
+                let field = GraphDefs.fieldSelect model.graph in
+                let updateColor style = { style | color = color } in
+                let g = Graph.updateList ids identity 
+                            (GraphDefs.mapNormalEdge 
+                          (\ label -> { label | style = updateColor label.style } ))
+                          model.graph
+                        |> GraphDefs.clearSelection
+                        |> GraphDefs.clearWeakSelection
+                in
+                switch_Default <| setSaveGraph model <| g
+        _ -> noCmd model
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
 update_QuickInput ch msg model =
@@ -792,14 +816,24 @@ s                  (GraphDefs.clearSelection model.graph) } -}
            generateProof True
         KeyChanged False _ (Character 'S') ->        
            noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
-        KeyChanged False k (Character 'c') -> 
-            if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
-            else if k.alt then noCmd { model | mode = CloneMode } else
+        KeyChanged False k (Character 'C') -> 
             case GraphDefs.selectedEdgeId model.graph 
                 |> Maybe.filter (GraphDefs.isNormalId model.graph) of
               Nothing -> noCmd model
-              Just id -> noCmd {  model | mode = CutHead { id = id, head = True, duplicate = False } }              
-        KeyChanged False _ (Character 'C') -> 
+              Just id -> noCmd {  model | mode = CutHead { id = id, head = True, duplicate = False } }   
+        KeyChanged False k (Character 'c') -> 
+            if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
+            else if k.alt then noCmd { model | mode = CloneMode } else
+            let ids = GraphDefs.selectedEdges model.graph |> List.filter (.label >> GraphDefs.isNormal) 
+                       |> List.map .id
+            in
+              noCmd <| if ids == [] then model else 
+                {  model | mode = ColorMode ids} 
+                -- , 
+                --   graph = GraphDefs.clearSelection 
+                --   <| GraphDefs.clearWeakSelection model.graph }              
+            
+        KeyChanged False _ (Character 'I') -> 
                let gc = GraphDefs.toProofGraph model.graph in
                let s = 
                        GraphDefs.selectedIncompleteDiagram model.graph
@@ -1088,6 +1122,7 @@ enlargeGraph m orig =
 graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
     case m.mode of
+        ColorMode _ -> collageGraphFromGraph m m.graph
         DefaultMode -> collageGraphFromGraph m m.graph
         RectSelect p -> GraphDrawing.toDrawingGraph  <| selectGraph m p m.specialKeys.shift
         EnlargeMode p ->
@@ -1122,6 +1157,7 @@ graphDrawingFromModel m =
         CutHead state -> graphCutHead state m |> GraphDrawing.toDrawingGraph
         CloneMode -> graphClone m |> GraphDrawing.toDrawingGraph
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
+        
 
 
 graphCutHead : CutHeadState -> Model -> Graph NodeLabel EdgeLabel
@@ -1279,7 +1315,8 @@ helpMsg model =
                 ++ "\nArrows: "
                 ++ "new [a]rrow from selected point"                
                 ++ ", [/] split arrow" 
-                ++ ", [c]ut head of selected arrow" 
+                ++ ", [C]ut head of selected arrow" 
+                ++ ", [c]olor arrow" 
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, [i]nvert arrow, "
@@ -1307,7 +1344,7 @@ helpMsg model =
                 ++ "[R]esize canvas and grid size" 
                 ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
-                ++ ", [C] generate Coq script to address selected incomplete subdiagram "
+                ++ ", [I] generate Coq script to address selected incomplete subdiagram "
                 ++ "(i.e., a subdiagram with an empty branch)"
                 ++ ", [E] enter an equation (prompt)"
                 ++ ", export selection to LaTe[X]/s[V]g"
@@ -1337,6 +1374,7 @@ helpMsg model =
         PullshoutMode _ -> "Mode Pullback/Pullshout. "
                           -- ++ Debug.toString model 
                            ++  Modes.Pullshout.help |> msg
+        ColorMode _ -> "Mode color. [ESC] or colorise selected edges: " ++ Color.helpMsg |> msg
         SquareMode _ -> "Mode Commutative square. "
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "

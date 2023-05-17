@@ -6,10 +6,10 @@ import Html
 import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
+import Drawing.Color as Color
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
-import Color exposing (..)
 import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
 import Geometry 
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
@@ -126,12 +126,12 @@ make_input pos label onChange =
                     ) []                                        
              |> Drawing.htmlAnchor foregroundZ pos (100,16) True ""
 
-activityToColor : Activity -> Drawing.Color
+activityToColor : Activity -> Color.Color
 activityToColor a =
    case a of
-     MainActive -> Drawing.red 
-     WeakActive -> Drawing.blue
-     _ -> Drawing.black
+     MainActive -> Color.red 
+     WeakActive -> Color.blue
+     _ -> Color.black
 
 activityToClasses : Activity -> List String
 activityToClasses a =
@@ -261,7 +261,9 @@ normalEdgeDrawing : Config -> Graph.EdgeId
      -> Int
      -> NormalEdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
 normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
-    let c = activityToColor activity in
+    let c = Color.merge (activityToColor activity) label.style.color in
+    let oldstyle = label.style in
+    let style = { oldstyle | color = c } in
     
     
     -- let q = Geometry.segmentRectBent from to 
@@ -269,13 +271,13 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     -- in
     Drawing.group [
          Drawing.arrow 
-          [Drawing.zindexAttr z, Drawing.color c,
+          [Drawing.zindexAttr z, -- Drawing.color c,
            Drawing.onClick (EdgeClick edgeId),
            Drawing.onDoubleClick (EltDoubleClick edgeId),
           -- Drawing.onHover (EltHover edgeId),
            Drawing.simpleOn "mousemove" (MouseOn edgeId)
           ] 
-          label.style
+          style
          q, 
           segmentLabel cfg q edgeId activity label curve]
 

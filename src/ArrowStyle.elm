@@ -6,7 +6,8 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
    controlChars,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
-    keyMaybeUpdateStyle )
+    keyMaybeUpdateStyle,
+    keyMaybeUpdateColor)
 
 import HtmlDefs exposing (Key(..))
 
@@ -14,6 +15,7 @@ import Geometry.Point as Point exposing (Point)
 
 import String.Svg as Svg
 import String.Html
+import Drawing.Color as Color exposing (Color)
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
 import Geometry.Epsilon exposing (norm0)
 import Geometry exposing (LabelAlignment(..))
@@ -47,7 +49,8 @@ type alias Style = { tail : TailStyle,
                      dashed : Bool, bend : Float,
                      labelAlignment : LabelAlignment,
                      -- betweeon 0 and 1, 0.5 by default
-                     labelPosition : Float
+                     labelPosition : Float,
+                     color : Color
                     } 
 type alias ArrowStyle = Style
 
@@ -96,7 +99,7 @@ alignmentFromString tail =
 empty : Style
 empty = { tail = DefaultTail, head = DefaultHead, double = False, dashed = False,
           bend = 0, labelAlignment = Left,
-          labelPosition = 0.5 }
+          labelPosition = 0.5, color = Color.black }
 
 isDouble : Style -> Basics.Bool
 isDouble { double } = double
@@ -184,6 +187,9 @@ makeHeadTailImgs {from, to, controlPoint} style =
        <| tailFileName style ]
 
 
+-- chars used to control in keyUpdateStyle
+controlChars = ">(=-bBA]["
+
 keyMaybeUpdateStyle : Key -> Style -> Maybe Style
 keyMaybeUpdateStyle k style = 
    case k of 
@@ -198,11 +204,18 @@ keyMaybeUpdateStyle k style =
         Character '[' -> Just <| {style | labelPosition = style.labelPosition - 0.1 |> max 0.1}
         _ -> Nothing
 
+keyMaybeUpdateColor : Key -> Style -> Maybe Style
+keyMaybeUpdateColor k style =
+   case k of 
+      Character c ->
+         -- let _ = Debug.log "char" c in 
+         Color.fromChar c
+         |> Maybe.map (\ color -> { style | color = color})
+      _ -> Nothing
+
 --keyUpdateStyle : Key -> Style -> Style
 --keyUpdateStyle k style = keyMaybeUpdateStyle k style |> Maybe.withDefault style
 
--- chars used to control in keyUpdateStyle
-controlChars = ">(=-bBA]["
 
 quiverStyle : ArrowStyle -> List (String, JEncode.Value)
 quiverStyle st =
@@ -239,6 +252,7 @@ quiverStyle st =
 
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =
+    Color.toString stl.color ++ "," ++
     (case stl.tail of
          DefaultTail -> ""
          Hook -> "into, "

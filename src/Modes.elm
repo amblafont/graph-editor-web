@@ -33,6 +33,7 @@ type Mode
     | CloneMode
     | ResizeMode ResizeState -- current sizegrid
     | PullshoutMode PullshoutState
+    | ColorMode (List EdgeId)
 
 toString : Mode -> String
 toString m = case m of
@@ -50,6 +51,7 @@ toString m = case m of
     CloneMode -> "Clone"
     ResizeMode _ -> "Resize"
     PullshoutMode _ -> "Pullshout"
+    ColorMode _ -> "Color"
 
 type alias CutHeadState = { id: Graph.EdgeId
     , head : Bool -- the head or the tail?

@@ -2,7 +2,8 @@ module Drawing exposing (Drawing,
   fromString, circle, group, arrow, rect,
   line,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
-  svg, Color, red, black, blue, class, empty, grid, htmlAnchor,
+  svg,
+  class, empty, grid, htmlAnchor,
   zindexAttr, emptyForeign, toString
   )
 
@@ -14,12 +15,12 @@ import Html
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
-import Svg as BuiltinSvg
 import Svg.Events
 import Html.Events.Extra.Mouse as MouseEvents
 import List.Extra
 import Msg exposing (Msg)
 import String.Html exposing (ghostAttribute)
+import Drawing.Color as Color exposing (Color)
 
 svgHelper : List (String.Html.Attribute a) -> Drawing a -> Svg a
 svgHelper l d =
@@ -42,7 +43,7 @@ toString l d =
 attrToSvgAttr : (String -> Svg.Attribute a) -> Attribute a -> Maybe (Svg.Attribute a)
 attrToSvgAttr col a =
   case a of
-     Color c -> c |> colorToString |> col |> Just     
+     Color c -> c |> Color.toString |> col |> Just     
      Class s -> Svg.class s |> Just
      Style s -> Svg.style s |> Just
      StrokeWidth s -> Svg.strokeWidth s |> Just
@@ -73,24 +74,6 @@ attributesToZIndex : List (Attribute msg) -> Int
 attributesToZIndex =
   List.Extra.findMap attributeToZIndex
   >> Maybe.withDefault defaultZ
-
-type Color = Black | Red | Blue | White
-
-colorToString : Color -> String
-colorToString c = case c of
-  Black -> "black"
-  Red -> "red"
-  Blue -> "blue"
-  White -> "white"
-
-black : Color
-black = Black
-
-red : Color
-red = Red
-
-blue : Color
-blue = Blue
 
 class : String -> Attribute msg
 class = Class
@@ -188,7 +171,8 @@ mkPath dashed attrs q =
 
 
 arrow : List (Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
-arrow attrs arrowStyle q =
+arrow attrs0 arrowStyle q =
+    let attrs = Color arrowStyle.color :: attrs0 in
     let zindex = attributesToZIndex attrs in
     let imgs = ArrowStyle.makeHeadTailImgs q arrowStyle in    
     let mkgen d l = mkPath d (l ++ attrs) in

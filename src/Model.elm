@@ -1,7 +1,6 @@
 module Model exposing (..)
 
 
-import Color exposing (..)
 import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
