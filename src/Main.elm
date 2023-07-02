@@ -144,6 +144,8 @@ port pasteGraph : JE.Value -> Cmd a
 -- JS would then calls us back with the decoded graph
 port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
 
+port latexToClipboard : String -> Cmd a
+
 -- we receive a copy event
 port onCopy : (() -> a) -> Sub a
 -- we return the stuff to be written
@@ -870,9 +872,16 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'x') ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph
         KeyChanged False _ (Character 'X') ->
-            fillBottom (graphToTikz model.sizeGrid 
-              (GraphDefs.selectedGraph model.graph)) 
-            "No diagram found!"
+            let latex = graphToTikz model.sizeGrid 
+                            (GraphDefs.selectedGraph model.graph)
+            in
+            let cmd = if latex == "" then
+                         alert "No diagram found!"
+                      else
+                         latexToClipboard latex
+            in
+              (model, cmd)
+            -- fillBottom latex "No diagram found!"
         KeyChanged False _ (Character 'V') ->
             let s = GraphDefs.selectedGraph model.graph |> svgExport model in
             fillBottom s "No diagram found!"           

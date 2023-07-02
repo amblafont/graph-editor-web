@@ -489,6 +489,17 @@
          triggerElmCopy = makeElmRequest('onCopy', 'clipboardWriteGraph', function(g) {
             navigator.clipboard.writeText(JSON.stringify(g));                     
          })
+
+         app.ports.latexToClipboard.subscribe(function(tex) {
+            navigator.clipboard.writeText(tex).then(
+            () => {
+                alert("latex successfully copied.");
+            },
+            () => {
+                alert("unable to copy latex.");
+            });
+         });
+
          document.addEventListener("copy", function(event) {
                     triggerElmCopy(null);
          });
