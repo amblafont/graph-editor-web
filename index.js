@@ -189,7 +189,7 @@ function contentToFileName(content) {
 }
 
 function outputFileName(content, ext) {
-  return path.join(basedir, path.basename(content, path.extname(content)) + "." + ext);
+  return path.join(basedir, path.dirname(content), path.basename(content, path.extname(content)) + "." + ext);
 }
 
 function parseMagic(line) {
@@ -312,6 +312,7 @@ function handleFileOneIteration() {
       if (fs.existsSync(rfile)) {
         content = fs.readFileSync(rfile).toString();        
       } else {
+        console.log(rfile + " doesn't exist.")
         content = "";
       }
     }
