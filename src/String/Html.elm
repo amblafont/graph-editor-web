@@ -30,6 +30,10 @@ ghostAttribute = GhostAttribute
 attributeNS : String -> String -> String -> Attribute a
 attributeNS = AttributeNS
 
+{-
+First argument: how it should be translated to string
+Second argument: how it should be translated to html
+-}
 customNode : String -> Html.Html a -> Html a
 customNode = Custom
 

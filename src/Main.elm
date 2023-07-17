@@ -139,10 +139,12 @@ port onMouseMove : JE.Value -> Cmd a
 -- which is a js object)
 port onMouseMoveFromJS : (Point -> a) -> Sub a
 
--- tells JS we got a paste event with such data
-port pasteGraph : JE.Value -> Cmd a
+-- JS tells us that we received some paste event with such data
+port onPaste : (String -> a) -> Sub a
+-- we reply that we want to decode it
+port decodeGraph : String -> Cmd a
 -- JS would then calls us back with the decoded graph
-port clipboardGraph : (LastFormat.Graph -> a) -> Sub a
+port decodedGraph : (LastFormat.Graph -> a) -> Sub a
 
 port latexToClipboard : String -> Cmd a
 
@@ -190,7 +192,7 @@ subscriptions m =
       loadedGraph7 (mapLoadGraphInfo Format.Version7.fromJSGraph >> Loaded),
       loadedGraph8 (mapLoadGraphInfo Format.Version8.fromJSGraph >> Loaded),
       loadedGraph9 (mapLoadGraphInfo Format.Version9.fromJSGraph >> Loaded),
-      clipboardGraph (LastFormat.fromJSGraph >> PasteGraph),
+      decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick)
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
@@ -209,6 +211,10 @@ subscriptions m =
     ++
     (if m.scenario == Watch then [promptedEquation (QuickInput True)]
     else [])
+    ++
+    (if m.mode == DefaultMode && m.mouseOnCanvas then
+       [ onPaste (Do << decodeGraph)]
+     else [])
     ++
     if case m.mode of
         ResizeMode _ -> False
@@ -1583,8 +1589,7 @@ viewGraph model =
             Html.p [] [ Html.text <| if nmissings > 0 then 
                String.fromInt nmissings ++ " nodes or edges could not be rendered."
                else "" ]
-            , HtmlDefs.makePasteCapture (Do << pasteGraph) []
-                [   svg  ]
+           , svg
            , Html.p []
            [ Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
               Html.Attributes.value model.bottomText, 

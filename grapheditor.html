@@ -12,52 +12,6 @@
         <!-- The loading of KaTeX is deferred to speed up page rendering -->
         <script src="js/katex.min.css.js"></script>
         <script src="js/katex-custom-element.js"></script>
-        <script>
-        /*
-         Clipboard data can't be accessed when adding a paste handler
-         directly from elm because elm internals perform some timeout
-         before calling the handler and firefox forbids access after timeout.
-         More precisely, firefox forbids direct access to the clipboard data
-         if not directly as a result of a user interaction.
-
-         The following custom element is a workarwound: it dispatches
-         clipboard data on paste.
-
-         Note: Elm does not work well is inherited custom elements
-         (https://github.com/elm/virtual-dom/issues/156). My first 
-         failed attempt was to inherit a div.
-         
-         inspired by https://github.com/rupertlssmith/elm-input-spike/blob/main/assets/elm-editable.js#L105         
-        */
-         const pasteEvent = "pasteData"
-         const pasteElement = "paste-capture"
-         class PasteCaptureElement extends HTMLElement {
-            constructor() {                
-                super();
-                this.pasteCallback = this.pasteCallback.bind(this);
-            }
-
-             connectedCallback() {                               
-                this.addEventListener("paste", this.pasteCallback);              
-            }
-            
-            disconnectedCallback() {
-               this.removeEventListener("paste", this.pasteCallback);            
-            }
-            pasteCallback(e) { 
-               // alert('cou');
-                const clipboardData = e.clipboardData || window.clipboardData;
-                const text = clipboardData.getData('text') || "";                      
-                const newEvent = new CustomEvent(pasteEvent, {
-                    detail: text });
-
-                this.dispatchEvent(newEvent);                
-            } 
-         }
-
-
-        customElements.define(pasteElement, PasteCaptureElement);
-        </script>
     <script onLoad="initKatex()" 
              defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
 
@@ -445,9 +399,14 @@
              }
          });
 
+         document.addEventListener("paste", function (e) { 
+                const clipboardData = e.clipboardData || window.clipboardData;
+                const text = clipboardData.getData('text') || "";
+                app.ports.onPaste.send(text); 
+        });
 
-         answerElmRequest('pasteGraph', 'clipboardGraph', function (event) {
-            const paste = event.detail;
+
+        answerElmRequest('decodeGraph', 'decodedGraph', function (paste) {
             var json;
             try { json = JSON.parse(paste); }
             catch (e) { json = false; }
