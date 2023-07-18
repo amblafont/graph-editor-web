@@ -108,9 +108,9 @@ encodeLabel e =
             ""
 
         NormalEdge l ->
-            let lbl = "$\\scriptstyle " ++ 
-                    String.replace "," "{,}" l.label 
-                    ++ "$"
+            let lbl = "${\\scriptstyle " ++ 
+                    l.label 
+                    ++ "}$"
             in
             (case l.style.labelAlignment of
                  Over -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
