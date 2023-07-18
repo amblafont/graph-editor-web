@@ -1,6 +1,6 @@
 port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
-   , preventsDefaultOnKeyDown, makePasteCapture,
+   , preventsDefaultOnKeyDown,
    bottomTextId, computeLayout, latexPreambleId, select, introHtml)
 import Html
 import Html.Attributes
@@ -83,16 +83,6 @@ onRendered onRender =
     [ Html.Events.on renderedEvent (D.map onRender renderedDecoder),
       Html.Attributes.class renderedClass ]
 
-onPaste : (D.Value -> msg) -> Html.Attribute msg
-onPaste handler = Html.Events.on pasteEvent 
-                  <| D.map handler D.value
-
-
-makePasteCapture : (D.Value -> a) -> List (Html.Attribute a) -> List (Html.Html a) -> Html.Html a
-makePasteCapture handler attrs s =
-  Html.node pasteElement (onPaste handler :: attrs) s
-  
-   
       
 
 

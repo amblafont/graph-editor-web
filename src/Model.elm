@@ -1,13 +1,12 @@
 module Model exposing (..)
 
 
-import Color exposing (..)
 import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
 import Geometry.Point as Point exposing (Point)
 import InputPosition
-import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel, coqProofTexCommand)
 import HtmlDefs
 
 import Modes exposing (Mode(..))
@@ -39,6 +38,7 @@ type alias Model =
     , mode : Mode
     , hideGrid : Bool
     , sizeGrid : Int
+    -- filename in the web version / full path in the electron version
     , fileName : String
     -- whether there is an id which is "hovered on"
    -- , hoverId : Maybe Graph.Id
@@ -109,12 +109,12 @@ createModel sizeGrid g =
       quickInput = ""
     , mousePos = ( 0, 0 )
     , specialKeys = { ctrl = False, alt = False, shift = False }
-    , hideGrid = True
+    , hideGrid = False
     , sizeGrid = sizeGrid
     , fileName = "graph.json"
     , bottomText = ""
-    , autoSave = True
-    , latexPreamble = ""
+    , autoSave = False
+    , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\text{#1}}"
     , scenario = Standard
     --, hoverId = Nothing
     -- whether we should select the closest object 

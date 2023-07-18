@@ -3,7 +3,6 @@ module Format.Version4 exposing (Graph, Node, Edge, fromJSGraph, version)
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
 import Format.GraphInfo exposing (GraphInfo)
-import ArrowStyle exposing (LabelAlignment(..))
 import Format.Version5 as NextVersion
 
 version = 4

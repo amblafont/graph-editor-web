@@ -1,7 +1,6 @@
 module Modes.NewArrow exposing (graphDrawing, initialise, update, help)
 
 
-import Color exposing (..)
 import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Msg exposing (Msg(..))
@@ -14,6 +13,7 @@ import Model exposing (..)
 import Modes exposing (PullshoutKind(..))
 import Modes.Pullshout
 import Maybe.Extra
+import Drawing.Color as Color
 
 
 
@@ -105,12 +105,20 @@ update state msg model =
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
         KeyChanged False _ (Character 'p') -> pullshoutMode Pullback
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
-        _ ->          
-                   let st2 = { state | style = Msg.updateArrowStyle msg state.style } in
-                   let st3 = { st2 | pos = InputPosition.update st2.pos msg} in
-                   st3            
-                     |> updateState model 
-                     |> noCmd
+        _ ->
+            let newStyle =  case msg of
+                       KeyChanged False _ k -> 
+                            ArrowStyle.keyMaybeUpdateStyle k state.style
+                           |> Maybe.withDefault 
+                             ((ArrowStyle.keyMaybeUpdateColor k state.style)
+                               |> Maybe.withDefault state.style)
+                       _ -> state.style 
+            in
+            let st2 = { state | style = newStyle } in
+            let st3 = { st2 | pos = InputPosition.update st2.pos msg} in
+               st3            
+               |> updateState model 
+               |> noCmd
                   
                 
             
@@ -201,7 +209,8 @@ help  =
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
              ++ "[i]nvert arrow, "
-             ++ "[p]ullback/[P]ushout mode."
+             ++ "[p]ullback/[P]ushout mode.\n"
+             ++ "Colors: " ++ Color.helpMsg
         -- NewArrowEditNode _ _ ->
         --     "[ESC] empty label, [RET] confirm the label, "
         --     ++ "[TAB] edit the edge label."

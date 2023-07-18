@@ -10,6 +10,7 @@ import Polygraph as Graph exposing (Graph, EdgeId, NodeId, Edge)
 import List
 import List.Extra as List
 import ArrowStyle
+import Geometry
 
 endArrowChar = '⟩'
 startSymbol = "--"
@@ -104,11 +105,11 @@ buildGraphSegment s g =
              |> Point.resize (1 / (List.length s.edges |> toFloat))
     in
       buildGraphEdges g offset 
-        (if s.alignLeft then ArrowStyle.Left else ArrowStyle.Right)
+        (if s.alignLeft then Geometry.Left else Geometry.Right)
         s.from s.fromId s.toId s.edges
 
 
-buildGraphEdges : Graph NodeLabel EdgeLabel -> Point -> ArrowStyle.LabelAlignment 
+buildGraphEdges : Graph NodeLabel EdgeLabel -> Point -> Geometry.LabelAlignment 
            -> Point -> NodeId -> NodeId -> List Edge -> Graph NodeLabel EdgeLabel
 buildGraphEdges g offset alignment pos from to ch =
    let style =

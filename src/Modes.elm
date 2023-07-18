@@ -33,6 +33,25 @@ type Mode
     | CloneMode
     | ResizeMode ResizeState -- current sizegrid
     | PullshoutMode PullshoutState
+    | ColorMode (List EdgeId)
+
+toString : Mode -> String
+toString m = case m of
+    DefaultMode -> "Default"
+    NewArrow _ -> "New arrow"
+    Move _ -> "Move"
+    RenameMode _ _ -> "Rename"
+    DebugMode -> "Debug"
+    QuickInputMode _ -> "QuickInput"
+    SquareMode _ -> "Square"
+    RectSelect _ -> "Rect select"
+    SplitArrow _ -> "Split arrow"
+    EnlargeMode _ -> "Enlarge"
+    CutHead _ -> "Cut head"
+    CloneMode -> "Clone"
+    ResizeMode _ -> "Resize"
+    PullshoutMode _ -> "Pullshout"
+    ColorMode _ -> "Color"
 
 type alias CutHeadState = { id: Graph.EdgeId
     , head : Bool -- the head or the tail?
@@ -56,8 +75,18 @@ type alias MoveState =
       pos : InputPosition
       -- , merge : Bool 
       -- should we save at the end
-      , save : Bool
-      }
+     , save : Bool
+     , mode : MoveMode
+  }
+
+type MoveMode = 
+    -- the move stops when we release the key
+      PressMove
+    -- the move stops when we click
+    | FreeMove
+    -- we don't know yet
+    | UndefinedMove
+    
 
 type alias EnlargeState = 
    { orig : Point, -- mouse original point at the beginning of the move mode

@@ -1,31 +1,28 @@
-module ArrowStyle exposing
-    ( ArrowStyle
-    ,  -- PosLabel(..),
-       -- quiver
-       LabelAlignment(..)
+module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
+   tikzStyle, tailToString , tailFromString,
+   headToString, headFromString, 
+   alignmentToString, alignmentFromString, 
+   makeHeadTailImgs, isDouble, doubleSize,
+   controlChars,
+   toggleDashed, dashedStr, -- PosLabel(..),
+   -- quiver
+    keyMaybeUpdateStyle,
+    keyMaybeUpdateColor)
 
-    , alignmentFromString
-    , alignmentToString
-    , controlChars
-    , dashedStr
-    , doubleSize
-    , empty
-    , headFromString
-    , headToString
-    , isDouble
-    , keyMaybeUpdateStyle
-    , makeHeadTailImgs
-    , {- keyUpdateStyle, -} quiverStyle
-    , tailFromString
-    , tailToString
-    , tikzStyle
-    , toggleDashed
-    )
 
-import Geometry.Epsilon exposing (norm0)
+-- import Geometry.Epsilon exposing (norm0)
+-- import Geometry.Point as Point exposing (Point)
+-- import Geometry.QuadraticBezier exposing (QuadraticBezier)
+-- import HtmlDefs exposing (Key(..))
+
 import Geometry.Point as Point exposing (Point)
+
+import String.Svg as Svg
+import String.Html
+import Drawing.Color as Color exposing (Color)
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
-import HtmlDefs exposing (Key(..))
+import Geometry.Epsilon exposing (norm0)
+import Geometry exposing (LabelAlignment(..))
 import Json.Encode as JEncode
 import List.Extra as List
 import ListExtraExtra exposing (nextInList)
@@ -61,34 +58,19 @@ imgHeight =
     13
 
 
-doubleSize =
-    2.5
 
+-- doubleSize =
+--     2.5
 
-
-{- }
-   type PosLabel =
-        DefaultPosLabel
-      | LeftPosLabel
-      | RightPosLabel
--}
-
-
-type alias Style =
-    { tail : TailStyle
-    , head : HeadStyle
-    , double : Bool
-    , dashed : Bool
-    , bend : Float
-    , labelAlignment : LabelAlignment
-    , -- betweeon 0 and 1, 0.5 by default
-      labelPosition : Float
-    }
-
-
-type alias ArrowStyle =
-    Style
-
+type alias Style = { tail : TailStyle, 
+                     head : HeadStyle, double : Bool, 
+                     dashed : Bool, bend : Float,
+                     labelAlignment : LabelAlignment,
+                     -- betweeon 0 and 1, 0.5 by default
+                     labelPosition : Float,
+                     color : Color
+                    } 
+type alias ArrowStyle = Style
 
 tailToString : TailStyle -> String
 tailToString tail =
@@ -175,16 +157,9 @@ alignmentFromString tail =
 
 
 empty : Style
-empty =
-    { tail = DefaultTail
-    , head = DefaultHead
-    , double = False
-    , dashed = False
-    , bend = 0
-    , labelAlignment = Left
-    , labelPosition = 0.5
-    }
-
+empty = { tail = DefaultTail, head = DefaultHead, double = False,
+          dashed = False, bend = 0, labelAlignment = Left,
+          labelPosition = 0.5, color = Color.black }
 
 isDouble : Style -> Basics.Bool
 isDouble { double } =
@@ -257,17 +232,16 @@ tailFileName s =
         ++ ".svg"
 
 
-svgRotate : Point -> Float -> Svg.Attribute a
-svgRotate ( x2, y2 ) angle =
-    Svg.transform <|
-        " rotate("
-            ++ String.fromFloat angle
-            ++ " "
-            ++ String.fromFloat x2
-            ++ " "
-            ++ String.fromFloat y2
-            ++ ")"
+type alias Svg a = Svg.Svg a
+type alias SvgAttribute a = String.Html.Attribute a
+     
 
+svgRotate : Point -> Float -> SvgAttribute a
+svgRotate (x2, y2) angle = 
+     Svg.transform <|         
+        " rotate(" ++ String.fromFloat angle 
+          ++ " " ++ String.fromFloat x2
+          ++ " " ++ String.fromFloat y2 ++ ")"
 
 makeImg : Point -> Float -> String -> Svg a
 makeImg ( x, y ) angle file =
@@ -304,6 +278,9 @@ makeHeadTailImgs { from, to, controlPoint } style =
     ]
 
 
+-- chars used to control in keyUpdateStyle
+controlChars = ">(=-bBA]["
+
 keyMaybeUpdateStyle : Key -> Style -> Maybe Style
 keyMaybeUpdateStyle k style =
     case k of
@@ -339,11 +316,19 @@ keyMaybeUpdateStyle k style =
 
 
 
+keyMaybeUpdateColor : Key -> Style -> Maybe Style
+keyMaybeUpdateColor k style =
+   case k of 
+      Character c ->
+         -- let _ = Debug.log "char" c in 
+         Color.fromChar c
+         |> Maybe.map (\ color -> { style | color = color})
+      _ -> Nothing
+
 --keyUpdateStyle : Key -> Style -> Style
 --keyUpdateStyle k style = keyMaybeUpdateStyle k style |> Maybe.withDefault style
+
 -- chars used to control in keyUpdateStyle
-
-
 controlChars =
     ">(=-bBA]["
 
@@ -401,17 +386,15 @@ quiverStyle st =
 
 
 -- from Quiver
-
-
 type LabelAlignment
     = Centre
     | Over
     | Left
     | Right
 
-
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =
+    Color.toString stl.color ++ "," ++
     (case stl.tail of
          DefaultTail -> ""
          Hook -> "into, "

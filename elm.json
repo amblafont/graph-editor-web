@@ -6,7 +6,6 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
-            "avh4/elm-color": "1.0.0",
             "elm/browser": "1.0.2",
             "elm/core": "1.0.5",
             "elm/html": "1.0.0",
@@ -14,6 +13,7 @@
             "elm/parser": "1.1.0",
             "elm/svg": "1.0.1",
             "elm/time": "1.0.0",
+            "elm/virtual-dom": "1.0.2",
             "elm-community/graph": "6.0.0",
             "elm-community/intdict": "3.0.0",
             "elm-community/list-extra": "8.5.2",
@@ -21,15 +21,15 @@
             "hecrj/html-parser": "2.4.0",
             "jinjor/elm-diff": "1.0.6",
             "mpizenberg/elm-pointer-events": "4.0.2",
-            "timjs/elm-collage": "2.0.2"
+            "zwilias/elm-html-string": "2.0.2"
         },
         "indirect": {
+            "NoRedInk/elm-string-conversions": "1.0.1",
             "avh4/elm-fifo": "1.0.4",
             "elm/bytes": "1.0.8",
             "elm/file": "1.0.5",
+            "elm/http": "2.0.0",
             "elm/url": "1.0.0",
-            "elm/virtual-dom": "1.0.2",
-            "elm-community/basics-extra": "4.1.0",
             "rtfeldman/elm-hex": "1.0.0"
         }
     },

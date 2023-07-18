@@ -2,24 +2,19 @@ module Format.Version7 exposing (Graph, Node, Edge, fromJSGraph, version)
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
-import ArrowStyle
-import GraphDefs exposing (EdgeLabel, NodeLabel)
-import ArrowStyle exposing (LabelAlignment(..))
 import Format.GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Format.Version8 as NextVersion
 
 version = 7
 
-type alias ArrowStyle = { tail : String, head : String, double : Bool
-   , dashed : Bool, bend : Float, alignment : String, 
-   position : Float }
+type alias ArrowStyle = NextVersion.ArrowStyle
 
 
 type alias Edge = { label : String, style : ArrowStyle, isPullback : Bool,
        zindex : Int }
 
-type alias Node = { pos : Point , label : String, isMath : Bool}
+type alias Node = NextVersion.Node
 type alias Graph = { 
       nodes: List (Graph.Node Node),
       edges: List (Graph.Edge Edge),

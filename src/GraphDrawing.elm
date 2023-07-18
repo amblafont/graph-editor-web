@@ -6,10 +6,10 @@ import Html
 import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
+import Drawing.Color as Color
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
-import Color exposing (..)
 import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
 import Geometry 
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
@@ -124,14 +124,14 @@ make_input pos label onChange =
                     ++
                     HtmlDefs.onRendered (always <| Do <| HtmlDefs.select HtmlDefs.idInput )
                     ) []                                        
-             |> Drawing.html foregroundZ pos (100,16)
+             |> Drawing.htmlAnchor foregroundZ pos (100,16) True ""
 
-activityToColor : Activity -> Drawing.Color
+activityToColor : Activity -> Color.Color
 activityToColor a =
    case a of
-     MainActive -> Drawing.red 
-     WeakActive -> Drawing.blue
-     _ -> Drawing.black
+     MainActive -> Color.red 
+     WeakActive -> Color.blue
+     _ -> Color.black
 
 activityToClasses : Activity -> List String
 activityToClasses a =
@@ -152,9 +152,8 @@ nodeLabelDrawing cfg attrs node =
          if n.label == "" then
              (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
          else 
-            let label = cfg.latexPreamble ++ "\n" ++ if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
-            Drawing.htmlAnchor foregroundZ n.pos n.dims True {- n.isMath -}            
-            <| HtmlDefs.makeLatex
+            let label = if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
+            makeLatex cfg n.pos n.dims label
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
                  -- Html.Events.on "mousemove" (D.succeed (EltHover id))
@@ -164,7 +163,6 @@ nodeLabelDrawing cfg attrs node =
             ++
             HtmlDefs.onRendered (Msg.NodeRendered id)
             )
-             label
                 
 
              {- Drawing.fromString 
@@ -232,21 +230,30 @@ segmentLabel cfg q edgeId activity label curve =
          if  label.label == "" then
              Drawing.empty
          else 
-            Drawing.html foregroundZ labelpos label.dims -- n.dims
-            <| HtmlDefs.makeLatex
-            ([   MouseEvents.onClick (EdgeClick edgeId),
-                 MouseEvents.onDoubleClick (EltDoubleClick edgeId),
-                 MouseEvents.onMove  (always (MouseOn edgeId))
-                -- Html.Events.onMouseOver (EltHover edgeId)
-            ] ++ 
-            (activityToClasses activity |> List.map Html.Attributes.class)        
-             ++
-             HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
-            )
-            <| cfg.latexPreamble ++ "\n" ++ label.label
+             let finalLabel = " \\scriptstyle " ++ label.label in
+             makeLatex cfg labelpos label.dims finalLabel
+             
+             ([   MouseEvents.onClick (EdgeClick edgeId),
+                  MouseEvents.onDoubleClick (EltDoubleClick edgeId),
+                  MouseEvents.onMove  (always (MouseOn edgeId))
+                 -- Html.Events.onMouseOver (EltHover edgeId)
+             ] ++ 
+             (activityToClasses activity |> List.map Html.Attributes.class)        
+              ++
+              HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
+             )
+            
             {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
               labelpos label.label  -}
-         
+makeLatex cfg pos dims label attrs  =
+  Drawing.htmlAnchor foregroundZ pos dims True
+            (makeLatexString label)
+            <| HtmlDefs.makeLatex
+              attrs
+              (withPreamble cfg label)
+
+makeLatexString s = "\\(" ++ s ++ "\\)"
+withPreamble cfg s = cfg.latexPreamble ++ "\n" ++ s
 
 normalEdgeDrawing : Config -> Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims
@@ -254,7 +261,9 @@ normalEdgeDrawing : Config -> Graph.EdgeId
      -> Int
      -> NormalEdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
 normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
-    let c = activityToColor activity in
+    let c = Color.merge (activityToColor activity) label.style.color in
+    let oldstyle = label.style in
+    let style = { oldstyle | color = c } in
     
     
     -- let q = Geometry.segmentRectBent from to 
@@ -262,13 +271,13 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     -- in
     Drawing.group [
          Drawing.arrow 
-          [Drawing.zindexAttr z, Drawing.color c,
+          [Drawing.zindexAttr z, -- Drawing.color c,
            Drawing.onClick (EdgeClick edgeId),
            Drawing.onDoubleClick (EltDoubleClick edgeId),
           -- Drawing.onHover (EltHover edgeId),
            Drawing.simpleOn "mousemove" (MouseOn edgeId)
           ] 
-          label.style
+          style
          q, 
           segmentLabel cfg q edgeId activity label curve]
 

@@ -163,7 +163,7 @@ intersections_with_rounded_rectangle this rect permit_containment =
                  (0, 0) --, 0, (tangent this 0))
                  |> Set.singleton
              else
-                 Debug.log "Bézier curve was entirely contained by rounded rectangle."
+               --   Debug.log "Bézier curve was entirely contained by rounded rectangle."
                  intersections2
            else
              intersections2
