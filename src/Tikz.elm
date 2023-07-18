@@ -9,27 +9,17 @@ import Polygraph as Graph exposing (Edge, Graph, Node)
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
-    let
-        ( x, y ) =
-            n.label.pos
-    in
-    let
-        coord u =
-            floor (2 * u / toFloat sizeGrid)
-    in
+            -- floor (2 * u / toFloat sizeGrid)
+    let (x, y) = n.label.pos in
+    let coord u = (u / 21) in -- 17.7667
     "\\node ("
         ++ String.fromInt n.id
         ++ ") at ("
-        ++ String.fromInt (coord x)
-        ++ ", "
-        ++ String.fromInt (0 - coord y)
-        ++ ") {$"
-        ++ (if n.label.label == "" then
-                "\\bullet"
-
-            else
-                n.label.label
-           )
+        ++ String.fromFloat (coord x)
+        ++ "em, "
+        ++ String.fromFloat (0 - coord y)
+        ++ "em) {$"
+        ++ (if n.label.label == "" then "\\bullet" else n.label.label )
         ++ "$} ; \n"
 
 
@@ -92,7 +82,7 @@ graphToTikz sizeGrid g =
         tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
     in
-    "\\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
+    "\\begin{tikzpicture}[every node/.style={inner sep=5pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
         ++ tikzNodes
         ++ tikzFakeEdges
         ++ tikzEdges
@@ -140,12 +130,8 @@ encodeLabel e =
     case e.label.details of
         PullshoutEdge ->
             ""
-
         NormalEdge l ->
-            let
-                lbl =
-                    "$" ++ l.label ++ "$"
-            in
+            let lbl = "$\\scriptstyle " ++ l.label ++ "$" in
             (case l.style.labelAlignment of
                 Over ->
                     "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
@@ -153,11 +139,9 @@ encodeLabel e =
                 Centre ->
                     "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
 
-                Left ->
-                    "\"" ++ lbl ++ "\", "
+                Left -> "\"" ++ lbl ++ "\", "
 
-                Right ->
-                    "\"" ++ lbl ++ "\"', "
+                Right -> "\"" ++ lbl ++ "\"', "
             )
                 ++ "pos="
                 ++ String.fromFloat l.style.labelPosition
@@ -168,14 +152,7 @@ encodeLabel e =
 labelfromAlignment : LabelAlignment -> String
 labelfromAlignment a =
     case a of
-        Centre ->
-            "labeloat"
-
-        Over ->
-            "labelonat"
-
-        Left ->
-            "labelrat"
-
-        Right ->
-            "labellat"
+        Centre -> "labeloat"
+        Over -> "labelonat"
+        Left -> "labelrat"
+        Right -> "labellat"
