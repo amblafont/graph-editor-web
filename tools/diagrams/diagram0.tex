@@ -1,0 +1,13 @@
+\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] 
+\node (0) at (1, 0) {$a$} ; 
+\node (1) at (2, 0) {$b$} ; 
+\node (2) at (2, -1) {$x$} ; 
+\path 
+(0) to[->, ] node[coordinate](3){} (1) 
+(1) to[->, ] node[coordinate](4){} (2) 
+; 
+\path[->] 
+(0) edge[labelrat={}{0.5}, ->, ] (1) 
+(1) edge[labelrat={}{0.5}, ->, ] (2) 
+; 
+\end{tikzpicture}
