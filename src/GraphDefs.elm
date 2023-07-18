@@ -16,7 +16,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    removeSelected, getLabelLabel,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
-   selectSurroundingDiagram, cloneSelected,
+   selectSurroundingDiagram,
    centerOfNodes, mergeWithSameLoc,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect,
@@ -379,17 +379,6 @@ selectSurroundingDiagram pos gi =
        d :: _ ->
           let edges = GraphProof.edgesOfDiag d |> IntDict.keys in
           selectEdges (clearSelection gi) edges
-
-
-cloneSelected : Graph NodeLabel EdgeLabel -> Point -> 
-                Graph NodeLabel EdgeLabel
-cloneSelected g offset =
-  let g2 = selectedGraph g |> 
-       Graph.map (\_ n -> {n | pos = Point.add n.pos offset, selected = True })
-         (\_ e -> {e | selected = True } )
-  in
-  let gclearSel = clearSelection g in
-  Graph.union gclearSel g2
 
 centerOfNodes : List (Node NodeLabel) -> Point
 centerOfNodes nodes = ((Geometry.rectEnveloppe <| List.map (.pos << .label) nodes) |> Geometry.centerRect)
