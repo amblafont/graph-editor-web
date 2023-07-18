@@ -13,7 +13,7 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
 -- import Geometry.Epsilon exposing (norm0)
 -- import Geometry.Point as Point exposing (Point)
 -- import Geometry.QuadraticBezier exposing (QuadraticBezier)
--- import HtmlDefs exposing (Key(..))
+import HtmlDefs exposing (Key(..))
 
 import Geometry.Point as Point exposing (Point)
 
@@ -26,8 +26,6 @@ import Geometry exposing (LabelAlignment(..))
 import Json.Encode as JEncode
 import List.Extra as List
 import ListExtraExtra exposing (nextInList)
-import Svg exposing (Svg)
-import Svg.Attributes as Svg
 
 
 imgDir : String
@@ -59,8 +57,7 @@ imgHeight =
 
 
 
--- doubleSize =
---     2.5
+doubleSize = 2.5
 
 type alias Style = { tail : TailStyle, 
                      head : HeadStyle, double : Bool, 
@@ -328,11 +325,6 @@ keyMaybeUpdateColor k style =
 --keyUpdateStyle : Key -> Style -> Style
 --keyUpdateStyle k style = keyMaybeUpdateStyle k style |> Maybe.withDefault style
 
--- chars used to control in keyUpdateStyle
-controlChars =
-    ">(=-bBA]["
-
-
 quiverStyle : ArrowStyle -> List ( String, JEncode.Value )
 quiverStyle st =
     let
@@ -384,13 +376,6 @@ quiverStyle st =
         ++ makeIf (st.labelPosition /= 0.5) ( "label_position", JEncode.int <| floor (st.labelPosition * 100) )
 
 
-
--- from Quiver
-type LabelAlignment
-    = Centre
-    | Over
-    | Left
-    | Right
 
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =

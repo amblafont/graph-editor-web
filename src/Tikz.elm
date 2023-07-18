@@ -1,30 +1,23 @@
 module Tikz exposing (graphToTikz)
 
+
 -- import ArrowStyle exposing (LabelAlignment(..))
 -- import GraphDefs exposing (EdgeLabel, EdgeType(..), GenericEdge, NodeLabel)
 -- import Maybe.Extra
 -- import Polygraph as Graph exposing (Edge, Graph, Node)
 
-import ArrowStyle
-import Geometry exposing (LabelAlignment(..))
-import GraphDefs exposing (EdgeLabel, EdgeType(..), GenericEdge, NodeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..), GenericEdge)
+import Polygraph as Graph exposing (Graph, Node, Edge)
 import Maybe.Extra
-import Polygraph as Graph exposing (Edge, Graph, Node)
-
+import Geometry exposing (LabelAlignment(..))
+import ArrowStyle
 
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
-    -- floor (2 * u / toFloat sizeGrid)
-    let
-        ( x, y ) =
-            n.label.pos
-    in
-    let
-        coord u =
-            u / 21
-    in
-    -- 17.7667
+            -- floor (2 * u / toFloat sizeGrid)
+    let (x, y) = n.label.pos in
+    let coord u = (u / 21) in -- 17.7667
     "\\node ("
         ++ String.fromInt n.id
         ++ ") at ("
@@ -32,12 +25,7 @@ encodeNodeTikZ sizeGrid n =
         ++ "em, "
         ++ String.fromFloat (0 - coord y)
         ++ "em) {$"
-        ++ (if n.label.label == "" then
-                "\\bullet"
-
-            else
-                n.label.label
-           )
+        ++ (if n.label.label == "" then "\\bullet" else n.label.label )
         ++ "$} ; \n"
 
 
@@ -148,13 +136,10 @@ encodeLabel e =
     case e.label.details of
         PullshoutEdge ->
             ""
-
         NormalEdge l ->
-            let
-                lbl =
-                    "$\\scriptstyle "
-                        ++ String.replace "," "{,}" l.label
-                        ++ "$"
+            let lbl = "${\\scriptstyle " ++ 
+                    l.label 
+                    ++ "}$"
             in
             (case l.style.labelAlignment of
                 Over ->
@@ -163,11 +148,9 @@ encodeLabel e =
                 Centre ->
                     "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
 
-                Left ->
-                    "\"" ++ lbl ++ "\", "
+                Left -> "\"" ++ lbl ++ "\", "
 
-                Right ->
-                    "\"" ++ lbl ++ "\"', "
+                Right -> "\"" ++ lbl ++ "\"', "
             )
                 ++ "pos="
                 ++ String.fromFloat l.style.labelPosition
@@ -178,14 +161,7 @@ encodeLabel e =
 labelfromAlignment : LabelAlignment -> String
 labelfromAlignment a =
     case a of
-        Centre ->
-            "labeloat"
-
-        Over ->
-            "labelonat"
-
-        Left ->
-            "labelrat"
-
-        Right ->
-            "labellat"
+        Centre -> "labeloat"
+        Over -> "labelonat"
+        Left -> "labelrat"
+        Right -> "labellat"
