@@ -489,7 +489,6 @@ update msg modeli =
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
         CutHead state -> update_CutHead state msg model
-        CloneMode -> update_Clone msg model
         ResizeMode s -> update_Resize s msg model
         ColorMode ids -> update_Color ids msg model
 
@@ -831,7 +830,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
               Just id -> noCmd {  model | mode = CutHead { id = id, head = True, duplicate = False } }   
         KeyChanged False k (Character 'c') -> 
             if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
-            else if k.alt then noCmd { model | mode = CloneMode } else
+            else
             let ids = GraphDefs.selectedEdges model.graph |> List.filter (.label >> GraphDefs.isNormal) 
                        |> List.map .id
             in
@@ -1041,19 +1040,6 @@ update_CutHead state msg m =
         KeyChanged False _ (Character 'd') -> (changeState { state | duplicate = (not state.duplicate)} , Cmd.none)
         _ -> noCmd m
 
-update_Clone : Msg -> Model -> (Model, Cmd Msg)
-update_Clone msg m =
-  let finalise () = 
-        let m2 = pushHistory m in
-         ({m2 | mode = DefaultMode, graph = graphClone m}, Cmd.none)
-         -- computeLayout())
-  in
-  case msg of
-        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
-        KeyChanged False _ (Control "Enter") -> finalise ()
-        MouseClick -> finalise ()        
-        _ -> noCmd m
-
 update_Resize : ResizeState -> Msg -> Model -> (Model, Cmd Msg)
 update_Resize st msg m =
   let finalise () = 
@@ -1170,7 +1156,6 @@ graphDrawingFromModel m =
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
         PullshoutMode state -> Modes.Pullshout.graphDrawing m state
         CutHead state -> graphCutHead state m |> GraphDrawing.toDrawingGraph
-        CloneMode -> graphClone m |> GraphDrawing.toDrawingGraph
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
         
 
@@ -1198,11 +1183,6 @@ graphCutHead {id, head, duplicate} m =
     ))   
     |> Maybe.withDefault m.graph
 
-graphClone : Model -> Graph NodeLabel EdgeLabel
-graphClone m =       
-   let nodes = GraphDefs.selectedGraph m.graph |> Graph.nodes in
-   let mouseDelta = Point.subtract m.mousePos <| GraphDefs.centerOfNodes nodes in
-   GraphDefs.cloneSelected m.graph mouseDelta 
 
 graphResize : ResizeState -> Model -> Graph NodeLabel EdgeLabel
 graphResize st m =
@@ -1316,8 +1296,7 @@ helpMsg model =
                 ++ ", [Q]uicksave" 
                 ++ "\nCopy/Paste: "
                 ++ "[C-c] copy selection" 
-                ++ ", [C-v] paste" 
-                ++ ", [M-c] clone selection (same as C-c C-v)"                
+                ++ ", [C-v] paste"                
 
                 ++ "\n Basic editing: "
                 ++ "new [p]oint"

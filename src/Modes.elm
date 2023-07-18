@@ -30,7 +30,6 @@ type Mode
     -}
     | EnlargeMode EnlargeState
     | CutHead CutHeadState
-    | CloneMode
     | ResizeMode ResizeState -- current sizegrid
     | PullshoutMode PullshoutState
     | ColorMode (List EdgeId)
@@ -48,7 +47,6 @@ toString m = case m of
     SplitArrow _ -> "Split arrow"
     EnlargeMode _ -> "Enlarge"
     CutHead _ -> "Cut head"
-    CloneMode -> "Clone"
     ResizeMode _ -> "Resize"
     PullshoutMode _ -> "Pullshout"
     ColorMode _ -> "Color"
