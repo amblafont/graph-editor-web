@@ -1,7 +1,7 @@
 port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown,
-   bottomTextId, computeLayout, latexPreambleId, select, introHtml)
+   computeLayout, latexPreambleId, select, introHtml)
 import Html
 import Html.Attributes
 import Html.Events
@@ -53,9 +53,6 @@ idInput = "edited_label"
 
 canvasId : String
 canvasId = "canvas"
-
-bottomTextId : String
-bottomTextId = "bottom-text"
 
 latexPreambleId : String
 latexPreambleId = "latex-preamble"

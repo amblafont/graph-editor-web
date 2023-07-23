@@ -328,8 +328,7 @@ update : SquareState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let next finish = nextStep model finish state in
     case msg of   
-
-   
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model   
         KeyChanged False _ (Character 's') ->            
                     square_updatePossibility model state.configuration state.chosenNode
         KeyChanged False _ (Character 'a') ->
@@ -348,7 +347,8 @@ update state msg model =
 
 help : String
 help =
-            "[ESC] cancel, [click] name the point (if new), "
+            "[ESC] cancel, [?] toggle help overlay"
+            ++ "[click] name the point (if new), "
              ++ "[RET] terminate the square creation, "
              ++ " alternative possible [s]quares, "
              ++ " [a]lternative possible labels."

@@ -8,7 +8,7 @@ import HtmlDefs exposing (Key(..))
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import List.Extra
-import Model exposing (setSaveGraph)
+import Model exposing (setSaveGraph, toggleHelpOverlay)
 
 initialise : Graph NodeLabel EdgeLabel -> EdgeId -> PullshoutKind -> Maybe PullshoutState
 initialise g id k =
@@ -72,6 +72,7 @@ update : PullshoutState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let updateState st = { model | mode = PullshoutMode st } in
     case msg of  
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model  
         KeyChanged False _ (Character 'p') -> noCmd <| updateState <| nextPullshout model Pullback state 
         KeyChanged False _ (Character 'P') -> noCmd <| updateState <| nextPullshout model Pushout state 
@@ -83,6 +84,7 @@ update state msg model =
 help : String
 help =
             "[ESC] cancel, "
+            ++ "[?] to toggle help overlay, "
             ++ "cycle between [p]ullback/[P]ushout possibilities, "
             ++ "[RET] confirm"             
              

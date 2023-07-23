@@ -96,7 +96,7 @@ update state msg model =
     case msg of
       
 
-  
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
         KeyChanged False _ (Control "Enter") -> next True
@@ -202,7 +202,7 @@ help  =
 --  case s of
 --         NewArrowMoveNode _ ->
             -- Debug.toString st ++
-            "[ESC] cancel, [click, TAB] name the point (if new), "
+            "[?] toggle help overlay, [ESC] cancel, [click, TAB] name the point (if new), "
             ++ "[hjkl] position the new point with the keyboard, "
              ++ "[RET] terminate the arrow creation, "
              ++ "[\""

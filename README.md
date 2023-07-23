@@ -15,6 +15,23 @@ Then,
 - `yarn make` to build the .deb/.zip
 
 
+Ipc capabilities when the electron app is launched by another node.js app using `child_process`
+---------------
+(To be used in a vscode extension building upon coq-lsp)
+
+Examples:
+- sends `{ key : "incomplete-equation", content: "{ f ; {_} = {_}}" }`
+ when pressing 'I' on a selected triangle diagram with two unnamed arrows.
+- sends `{ key : "generate-proof", content: coq-script }`
+ when generating a coq script from the diagram
+- receives `{ key : 'load', content: content}` where content is
+  a json graph or an equation of the user-friendly format, and loads it 
+  in the editor
+- receives `{ key : "complete-equation", content : {statement : string, script: string}  }` 
+   and unifies the statement with the unnamed arrows
+   in the selected subdiagram, adding the script as a proof node for the subdiagram.
+
+
 
 
 
