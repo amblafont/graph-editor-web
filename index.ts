@@ -18,6 +18,8 @@ import lineByLine from 'n-readlines';
 const { exit } = require('process');
 
 type Scenario = "watch" | "standard";
+const watchScenario = "watch" as Scenario;
+const standardScenario = "standard" as Scenario;
 type Exports = Record<string,string>;
 // const watchScenario = "watch";
 // const normalScenario = "standard"
@@ -244,7 +246,7 @@ function parsePrefix(line:string, remainder_arg:string[]) {
   }
 }
 
-function loadData(data:string, filename?:string, scenario?:Scenario) {
+function loadData(data:string, filename:string, scenario:Scenario) {
   let stripped_diag = data.trim();
   try {
 
@@ -272,7 +274,7 @@ function loadEditor(diag:string) {
     mainWindow.webContents.send('clear-graph', "watch"); 
   } else {
     console.log("Loading diagram ");
-    loadData(stripped_diag);
+    loadData(stripped_diag, "", watchScenario);
   }    
 }
 
@@ -283,20 +285,21 @@ function handleFileOneIteration() {
 
   let remainder:string[]|null = [];
   let index = 0;
-  let line:string|false = "";
+  let line = "" as string|false;
   let content:string|null = null;
-  while (remainder.length == 0) {
+  while (line !== false && remainder !== null && remainder.length == 0) {
     index++;
+    content = null;
     while (content === null) {
-      let line = readLine(file_lines);
+      line = readLine(file_lines);
       if (line === false)
           break;
       content = parseMagic(line);
     }
-    if (content != null)
-       console.log("Graph found");
-    else
-       break;
+    if (line === false)
+      break;
+    
+    console.log("Graph found");
     remainder = prefixes;
     while (remainder !== null && remainder.length > 0) {
       line = readLine(file_lines);
@@ -305,14 +308,8 @@ function handleFileOneIteration() {
          break;
       remainder = parsePrefix(line, remainder)
     }
-    if (line === false || remainder === null)
-         // EOF
-      break;
-    
-
   }
-  //  if (file_lines.next() === false)
-      // file_lines.close();
+
   
   if ((remainder === null || remainder.length > 0) && content !== null) {
     console.log("do something with " + content);
@@ -471,7 +468,7 @@ function loadGraph(path:string) {
   if (! content)
      return;
   let json = JSON.parse(content.toString());
-  let scenario:Scenario = is_watch ? "watch" : "standard";
+  let scenario:Scenario = is_watch ? watchScenario : standardScenario;
   mainWindow.webContents.send('load-graph', 
      json, path, scenario);   
 }
@@ -490,7 +487,7 @@ function configureIpc() {
       
        switch (msg.key) {
           case "load":
-            loadData(msg.content as string, "graph.json", "standard")
+            loadData(msg.content as string, "graph.json", standardScenario)
             break;
           case "complete-equation":
             mainWindow.webContents.send(msg.key, msg.content);

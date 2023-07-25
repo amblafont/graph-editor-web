@@ -236,14 +236,12 @@
 
 
          function sendGraphToElm(json, filename, scenario = "standard") {
-            console.log("hello");
             var graph = json;
             var version = 0;
             if (json.hasOwnProperty('version')) {
                version = json.version;
                graph = json.graph;
             }
-            
             var args = { graph : graph, fileName : filename, scenario : scenario};
             console.log(args);
             app.ports["loadedGraph" + version].send(args);
