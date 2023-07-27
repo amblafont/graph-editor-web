@@ -52,7 +52,7 @@ const defaultsExt =
      include_cmd: "\\input{@}"
    },
  "lyx":
-   { prefix: "\\end_layout\\n\\end_inset\\n\\begin_inset Preview \\n\\begin_layout Standard \\n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
+   { prefix: "\\end_layout\\n\\end_inset\\n\\begin_inset Preview \\n\\begin_layout Standard\\n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
      suffix: "\\end_inset\\n\\end_layout\\n\\end_inset\\n\\begin_inset Note Note\\nstatus open\\n\\begin_layout Plain Layout",
      include_cmd: "filename \"@\"",
      external_output : true
