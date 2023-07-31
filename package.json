@@ -2,22 +2,25 @@
   "name": "YADE",
   "version": "1.0.0",
   "description": "A diagram editor",
-  "main": "index.js",
+  "main": "build/index.js",
   "repository": "git@github.com:amblafont/graph-editor-web.git",
   "author": "amblaf <chaster_killer@hotmail.fr>",
   "license": "MIT",
   "scripts": {
-    "start": "electron-forge start",
+    "start": "yarn compile && electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "publish": "electron-forge publish"
+    "publish": "electron-forge publish",
+    "compile": "tsc && copyfiles -f preload.js src/index.html build"
   },
   "devDependencies": {
     "@electron-forge/cli": "^6.0.4",
     "@electron-forge/maker-deb": "^6.0.4",
     "@electron-forge/maker-zip": "^6.0.4",
     "@electron-forge/publisher-github": "^6.0.4",
-    "electron": "^22.1.0"
+    "copyfiles": "^2.4.1",
+    "electron": "^22.1.0",
+    "typescript": "^5.1.6"
   },
   "config": {
     "forge": {
@@ -69,6 +72,8 @@
   },
   "dependencies": {
     "@stdlib/utils-escape-regexp-string": "^0.0.9",
+    "@types/argparse": "^2.0.10",
+    "@types/n-readlines": "^1.0.3",
     "argparse": "^2.0.1",
     "electron-prompt": "^1.7.0",
     "n-readlines": "^1.0.1",

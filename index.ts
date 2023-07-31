@@ -1,29 +1,37 @@
 // main.js (electron)
 
 // Modules to control application life and create native browser window
-const { app, BrowserWindow, ipcMain } = require('electron')
-const argparse = require('argparse')
-const path = require('path')
+import { app, BrowserWindow, ipcMain } from 'electron'
+// const { app, BrowserWindow, ipcMain } = require('electron')
+// const argparse = require('argparse')
+import argparse from 'argparse'
+import path from 'path'
+// const path = require('path')
 const { dialog } = require('electron')
-const fs = require('fs');
+import fs from 'fs';
 const tmp = require('tmp');
-const prompt = require('electron-prompt');
+const electronPrompt = require('electron-prompt');
 const escapeStringRegexp = require( '@stdlib/utils-escape-regexp-string' );
 // const escapeReg = require('escape-string-regexp');
-const lineByLine = require('n-readlines');
+// const lineByLine = require('n-readlines');
+import lineByLine from 'n-readlines';
 const { exit } = require('process');
 
-const watchScenario = "watch";
-const normalScenario = "standard"
+type Scenario = "watch" | "standard";
+const watchScenario = "watch" as Scenario;
+const standardScenario = "standard" as Scenario;
+type Exports = Record<string,string>;
+// const watchScenario = "watch";
+// const normalScenario = "standard"
 
-function readLine(w) {
-  var l = w.next();
+function readLine(w:lineByLine):string|false {
+  let l = w.next();
   if (l === false)
     return l;
   else
     return l.toString();
 }
-function writeLine(fd, line) {
+function writeLine(fd:fs.PathOrFileDescriptor, line:string|false) {
   if (line !== false)
      fs.appendFileSync(fd, line + "\n");
 }
@@ -33,7 +41,8 @@ const defaults = {magic: "% YADE DIAGRAM",
                   watch : true,
                   export: "tex",
                   prefix: "(TO BE DEFINED)",
-                  suffix: ""
+                  suffix: "",
+                  include_cmd: "\\input{@}"
                 };
 
 const defaultsExt = 
@@ -43,7 +52,7 @@ const defaultsExt =
      include_cmd: "\\input{@}"
    },
  "lyx":
-   { prefix: "\\end_layout\\n\\end_inset\\n\\begin_inset Preview \\n\\begin_layout Standard \\n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
+   { prefix: "\\end_layout\\n\\end_inset\\n\\begin_inset Preview \\n\\begin_layout Standard\\n\\begin_inset CommandInset include\\nLatexCommand input\\npreview true",
      suffix: "\\end_inset\\n\\end_layout\\n\\end_inset\\n\\begin_inset Note Note\\nstatus open\\n\\begin_layout Plain Layout",
      include_cmd: "filename \"@\"",
      external_output : true
@@ -84,11 +93,11 @@ by --suffix.
 Default prefix/suffix/include argument by extension of the watched file (default is tex):
 ` + JSON.stringify(defaultsExt, null, 2) + JSON.stringify(defaults, null, 2);
 
-var parser = new argparse.ArgumentParser({formatter_class: argparse.RawDescriptionHelpFormatter, description: description});
+let parser = new argparse.ArgumentParser({formatter_class: argparse.RawDescriptionHelpFormatter, description: description});
 parser.add_argument("filename", {nargs: "?"})
 parser.add_argument("--watch", {help: 'is it a file to monitor?', action:"store_const", const: true});
 parser.add_argument("--make-cmd", {help:"make command to be executed"});
-var magic = "% YADE DIAGRAM"
+
 parser.add_argument("--magic", {help: "prompt command"});
 parser.add_argument("--export", {help: "tex/svg/coq"});
 parser.add_argument("--prefix");
@@ -105,63 +114,67 @@ parser.add_argument("--external-output", {action:"store_const",
 
 // from https://github.com/electron/electron/issues/4690#issuecomment-422617581
 if (app.isPackaged) {
-  process.argv.unshift(null)
+  process.argv.unshift('')
 }
 
-var ext = "tex";
+let ext:string
 
-function getOrDefault(s) {
+function hasProperty<T extends Object>(obj:T, key: PropertyKey): key is keyof T {
+  return key in obj;
+}
+
+function getOrDefault(s:keyof typeof defaults) {
   if (args[s] !== undefined)
      return args[s];
-  if (defaultsExt[ext] !== undefined && defaultsExt[ext][s] !== undefined)
-        return defaultsExt[ext][s];
-
+  // if (hasProperty(defaultsExt, ext) && hasProperty(defaultsExt[ext], s))
+  if (hasProperty(defaultsExt, ext) && hasProperty(defaultsExt[ext], s))
+      return defaultsExt[ext][s];
   return defaults[s];
 }
 
-var args = parser.parse_args();
+let args = parser.parse_args();
 // console.log(args);
-var main_file = args.filename;
-var main_directory;
-var watched_file;
+let main_file = args.filename;
+let main_directory: string;
+let watched_file: string = "";
 
-if (main_file != undefined) {
+
+
+
+let is_watch = false;
+if (typeof main_file === "string") {
   main_directory = path.dirname(main_file);
-  watched_file = main_file;
-  var extname = path.extname(watched_file);
+  watched_file = main_file
+  if (getOrDefault("watch")) {
+     watched_file = main_file;
+     is_watch = true
+  }
+  let extname = path.extname(main_file);
   if (extname.length > 0 && extname[0] == '.')
      ext = extname.slice(1);
 }
-
-
-var is_watch = getOrDefault("watch") && main_file != undefined;
-
-
-
-var prefixes = getOrDefault("prefix").split("\\n");
-var suffixes = getOrDefault("suffix").split("\\n");
-var includecmd = getOrDefault("include_cmd");
-var externalOutput = getOrDefault("external_output");
-var magic = getOrDefault("magic");
-var exportFormat = getOrDefault("export");
-// var watched_file = undefined;
-
-
-if (is_watch && ! fs.existsSync(watched_file)) {
-   console.log(watched_file + " does not exist");
-   is_watch = false;
-}
-
-// var makeCmd = args.make_cmd;
-// magic = args.magic;
-var basedir = args.dir;
-//  var extension = args.ext;
+else
+  ext = "tex"
 
 
 
-var magic_re = new RegExp(escapeStringRegexp(magic.trim()) + "(.*)$");
 
-var handleSave, onfocus;
+
+
+let prefixes:string[] = getOrDefault("prefix").split("\\n");
+let suffixes:string[] = getOrDefault("suffix").split("\\n");
+let includecmd:string = getOrDefault("include_cmd");
+let externalOutput:string = getOrDefault("external_output");
+let magic:string = getOrDefault("magic");
+let exportFormat:string = getOrDefault("export");
+let basedir:string = args.dir;
+
+
+
+let magic_re:RegExp = new RegExp(escapeStringRegexp(magic.trim()) + "(.*)$");
+
+let handleSave: (filename:string, data:Object, exports:Exports) => void;
+let onfocus :()=> void;
 // those reset functions could be 
 // avoided using 'once' rather than 'on'
 function resetHandleSave() {
@@ -176,24 +189,24 @@ function resetOnFocus() {
 resetHandleSave();
 resetOnFocus();
 
-var mainWindow;
+let mainWindow:BrowserWindow;
 function waitIncompleteMsg() {
   mainWindow.webContents.send('simple-msg', 
   "Waiting for incomplete diagram in " + watched_file);
 }
 
 
-function contentToFileName(content) {
+function contentToFileName(content:string):string {
   // return path.join(basedir, content + extension);
   return path.join(main_directory, basedir, content);
 }
 
-function outputFileName(content, ext) {
+function outputFileName(content:string, ext:string):string {
   return path.join(basedir, path.dirname(content), path.basename(content, path.extname(content)) + "." + ext);
 }
 
-function parseMagic(line) {
-  var search = magic_re.exec(line.trim());
+function parseMagic(line:string) {
+  let search = magic_re.exec(line.trim());
 
   if (search !== null) {
     return search[1].trim();
@@ -202,24 +215,25 @@ function parseMagic(line) {
   }
 }
 
-function contentIsFile(content) {
+function contentIsFile(content:string) {
   return content.trim() != "" && content.trim().charAt(0) != "{"
 }
 
-function parsePrefix(line, remainder_arg) {
+function parsePrefix(line:string, remainder_arg:string[]) {
   
   // copy the array
-  var remainder = [...remainder_arg];
+  let remainder = [...remainder_arg];
 
   if (remainder.length == 0) {
     return [];
   }
 
-  var linestrip = line.trim();
+  let linestrip = line.trim();
   if (linestrip === "") {
     return remainder;
   }
-  var head = remainder.shift().trim();
+  // we checked that remainder is not empty above
+  let head = remainder.shift()!.trim();
   // reaminder is now the tail
   if (head === "") {
     parsePrefix(linestrip, remainder);
@@ -232,41 +246,36 @@ function parsePrefix(line, remainder_arg) {
   }
 }
 
-function loadData(data, filename, scenario) {
-  var stripped_diag = data.trim();
+function loadData(data:string, filename:string, scenario:Scenario) {
+  let stripped_diag = data.trim();
   try {
 
-    json = JSON.parse (stripped_diag);
+    let json = JSON.parse (stripped_diag);
     mainWindow.webContents.send('load-graph', 
        json, filename, scenario); 
     }
   catch (e) {
       if (e instanceof SyntaxError) {
       // if it is not a valid json, then it must be an equation 
-        var equation = stripped_diag.slice(1, -1);
-        mainWindow.webContents.send('load-equation', equation , watchScenario);
+        let equation = stripped_diag.slice(1, -1);
+        mainWindow.webContents.send('load-equation', equation , "watch");
       }
       else 
         throw e;
   }
 }
 
-function loadEditor(diag) {
-  var stripped_diag = diag.trim();
+function loadEditor(diag:string) {
+  let stripped_diag = diag.trim();
 
-  var json;
   if (stripped_diag == "") {
     console.log("Creating new diagram");
     // clear();
-    mainWindow.webContents.send('clear-graph', watchScenario); 
+    mainWindow.webContents.send('clear-graph', "watch"); 
   } else {
     console.log("Loading diagram ");
-    loadData(stripped_diag);
-    
-    
-  }
-
-    
+    loadData(stripped_diag, "", watchScenario);
+  }    
 }
 
 
@@ -274,22 +283,23 @@ function handleFileOneIteration() {
   resetOnFocus();
   const file_lines = new lineByLine(watched_file);
 
-  var remainder = [];
-  var index = 0;
-  while (remainder.length == 0) {
-    var line = "";
-    var content = null;
+  let remainder:string[]|null = [];
+  let index = 0;
+  let line = "" as string|false;
+  let content:string|null = null;
+  while (line !== false && remainder !== null && remainder.length == 0) {
     index++;
+    content = null;
     while (content === null) {
-      var line = readLine(file_lines);
+      line = readLine(file_lines);
       if (line === false)
           break;
       content = parseMagic(line);
     }
-    if (content != null)
-       console.log("Graph found");
-    else
-       break;
+    if (line === false)
+      break;
+    
+    console.log("Graph found");
     remainder = prefixes;
     while (remainder !== null && remainder.length > 0) {
       line = readLine(file_lines);
@@ -298,21 +308,16 @@ function handleFileOneIteration() {
          break;
       remainder = parsePrefix(line, remainder)
     }
-    if (line === false || remainder === null)
-         // EOF
-      break;
-    
-
   }
-  //  if (file_lines.next() === false)
-      // file_lines.close();
+
+  
   if ((remainder === null || remainder.length > 0) && content !== null) {
     console.log("do something with " + content);
-    diagFile = null;
+    let diagFile:null|string = null;
   
     if (contentIsFile(content)) {
       diagFile = content;
-      rfile = contentToFileName(diagFile);
+      let rfile = contentToFileName(diagFile);
   
       if (fs.existsSync(rfile)) {
         content = fs.readFileSync(rfile).toString();        
@@ -323,9 +328,9 @@ function handleFileOneIteration() {
     }
   
     
-    handleSave = function(filename, newcontent_json, exports) {
+    handleSave = function(filename:string, newcontent_json:Object, exports:Exports) {
       resetHandleSave();
-      var newcontent = JSON.stringify(newcontent_json);
+      let newcontent = JSON.stringify(newcontent_json);
       /*
       newtimestamp = os.path.getmtime(filename);
     
@@ -352,15 +357,15 @@ function handleFileOneIteration() {
       }
       */
       // latex = "nouveau latex"; // genLatex();
-      var generatedOutput = exports[exportFormat];
+      let generatedOutput = exports[exportFormat];
       if (diagFile !== null) {
-        wfile = contentToFileName(diagFile);
+        let wfile = contentToFileName(diagFile);
         console.log("writing to the file " + wfile);
         fs.writeFileSync(wfile, newcontent);
         
     
         if (externalOutput) {
-          outputFile = path.join(main_directory, outputFileName(diagFile, exportFormat));
+          let outputFile = path.join(main_directory, outputFileName(diagFile, exportFormat));
           console.log("writing " + exportFormat + " file " + outputFile);
           fs.writeFileSync(outputFile, generatedOutput);
         }
@@ -384,14 +389,14 @@ function handleFileOneIteration() {
   
 }
 
-function writeContent(newcontent, output, index) {
+function writeContent(newcontent:string, output:string, index:number) {
   
   const tmpobj = tmp.fileSync();
   const fd = tmpobj.fd;
   const file_lines = new lineByLine(watched_file);
   
-  var line = false;
-  var content = null;
+  let line:false|string = false;
+  let content = null;
   for (let i=0; i < index; i++) {
     writeLine(fd, line);
     content = null;
@@ -410,7 +415,7 @@ function writeContent(newcontent, output, index) {
      process.exit(-1);
      return;
   }
-  var isFile = contentIsFile(content);
+  let isFile = contentIsFile(content);
   if (isFile)
      writeLine(fd, line)
   else
@@ -434,61 +439,73 @@ function writeContent(newcontent, output, index) {
   // tmpobj.removeCallback();
 }
 
-function quicksave(win, filename, data, exports, feedback) {
+function quicksave(filename:string, data:Object, exports:Exports, feedback?:boolean) {
   fs.writeFileSync(filename, JSON.stringify(data));
   if (feedback){
-    var msg = "Written to file " + filename;
-    dialog.showMessageBoxSync(win, { message : msg })
+    let msg = "Written to file " + filename;
+    dialog.showMessageBoxSync(mainWindow, { message : msg })
   }
 }
 
-function saveGraphFile(win, filename, data) {
-  var path = dialog.showSaveDialogSync(win, { defaultPath : filename});
+function saveGraphFile(filename:string, data:Object):void {
+  let path = dialog.showSaveDialogSync(mainWindow, { defaultPath : filename});
   if (path === undefined)
      return;
   fs.writeFileSync(path, JSON.stringify(data));
-  win.webContents.send('rename', path);   
+  mainWindow.webContents.send('rename', path);   
 }
 
-function openGraphFile(win) {
-  var paths = dialog.showOpenDialogSync(win);
+function openGraphFile() {
+  let paths = dialog.showOpenDialogSync(mainWindow);
   if (paths === undefined || paths.length != 1)
      return;
-  var path = paths[0];
-  loadGraph(win, path);
+  let path = paths[0];
+  loadGraph(path);
 }
 
-function loadGraph(win, path) {
-  var content = fs.readFileSync(path)
+function loadGraph(path:string) {
+  let content = fs.readFileSync(path)
   if (! content)
      return;
-  var json = JSON.parse(content);
-  win.webContents.send('load-graph', 
-     json, path, is_watch ? watchScenario : normalScenario);   
+  let json = JSON.parse(content.toString());
+  let scenario:Scenario = is_watch ? watchScenario : standardScenario;
+  mainWindow.webContents.send('load-graph', 
+     json, path, scenario);   
 }
 
-function configureIpc(win) {
+function configureIpc() {
   process.on("message", msg => 
-     { switch (msg.key) {
+     {
+       const validMsg = msg && typeof msg === "object" 
+                         && "key" in msg
+                         && "content" in msg;
+       if (!validMsg) {
+          console.log ("received unknwon message: ");
+          console.log(msg);
+          return;
+       }
+      
+       switch (msg.key) {
           case "load":
-            loadData(msg.content, "graph.json", normalScenario)
+            loadData(msg.content as string, "graph.json", standardScenario)
             break;
           case "complete-equation":
-            win.webContents.send(msg.key, msg.content);
+            mainWindow.webContents.send(msg.key, msg.content);
             break;
              
        }
-     }
+      }
   );
 }
 
-function sendExternalMsg(key, content, error) {
+function sendExternalMsg(key:string, content:Object, error?:string) {
   console.log({key:key, content:content});
-  if (!process.send)
+  if (!process.send) {
     if (error)
        dialog.showMessageBoxSync(mainWindow, { message : 
           error });
     return;
+  }
   process.send({key:key, content:content})
 }
 
@@ -503,48 +520,45 @@ const createWindow = () => {
     }
   })
 
-  var query = {}
-  // if (is_watch)
-  //    query = { electronSave : true};
-  // and load the index.html of the app.
+  let query:Record<string,string> = {}
   mainWindow.loadFile('grapheditor.html' , { query : query });
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
   mainWindow.webContents.once('did-finish-load', () => {
   ipcMain.on('save-graph', (e, filename, data, exports) => handleSave(filename, data,exports));
-  ipcMain.on('open-graph', (e) => openGraphFile(mainWindow));
+  ipcMain.on('open-graph', (e) => openGraphFile());
   ipcMain.on('prompt', (e, question, defaut) =>
-  prompt({label:question, value:defaut, width:800}, mainWindow).then((r) => mainWindow.webContents.send('answer-prompt', r))
-       .catch((r) => mainWindow.webContents.send('answer-prompt', null))
+  electronPrompt({label:question, value:defaut, width:800}, mainWindow)
+       .then((r:any) => mainWindow.webContents.send('answer-prompt', r))
+       .catch((_:any) => mainWindow.webContents.send('answer-prompt', null))
   );
   ipcMain.on('quick-save-graph', 
-     (e, filename, data, exports, feedback) => is_watch ? handleSave(filename, data,exports, feedback)
-      : quicksave(mainWindow, filename, data, exports, feedback));
+     (e, filename, data, exports, feedback) => is_watch ? handleSave(filename, data,exports)
+      : quicksave(filename, data, exports, feedback));
   ipcMain.on('incomplete-equation', (e, s) => sendExternalMsg("incomplete-equation", s, 
      "This feature is only enabled when running the appropriate vscode extension"));
   ipcMain.on('generate-proof', (e, s) => sendExternalMsg("generate-proof", s));
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)
   {
-    mainWindow.webContents.send('clear-graph', watchScenario); 
-    mainWindow.on('focus', function(e) {
-      onfocus();
-    })
+    let scenario:Scenario = "watch"
+    mainWindow.webContents.send('clear-graph', scenario); 
+    mainWindow.on('focus', (e:any) => onfocus());
     handleFileOneIteration();
   }
   else {
-    handleSave = function(filename, data, exports) {
-      saveGraphFile(mainWindow, filename, data);
-    }
+    handleSave = (filename, data, exports) =>
+         saveGraphFile(filename, data);
+    
     if (main_file) {
-      loadGraph(mainWindow, main_file)
+      loadGraph(main_file)
     }
   }
 
     // if we are using ipc
   if (process.send) {
-    configureIpc(mainWindow);
+    configureIpc();
   }
  }
  );
