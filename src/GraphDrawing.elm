@@ -126,12 +126,6 @@ make_input pos label onChange =
                     ) []                                        
              |> Drawing.htmlAnchor foregroundZ pos (100,16) True ""
 
-activityToColor : Activity -> Color.Color
-activityToColor a =
-   case a of
-     MainActive -> Color.red 
-     WeakActive -> Color.blue
-     _ -> Color.black
 
 activityToClasses : Activity -> List String
 activityToClasses a =
@@ -140,19 +134,27 @@ activityToClasses a =
      WeakActive -> ["weak-active-label"]
      _ -> []
 
+activityToEdgeClasses : Activity -> List String
+activityToEdgeClasses a =
+   case a of
+     MainActive -> ["active-edge"] 
+     WeakActive -> ["weak-active-edge"]
+     _ -> []
+
 nodeLabelDrawing : Config -> List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
 nodeLabelDrawing cfg attrs node =
     let n = node.label in    
     let id = node.id in
-    let color = activityToColor node.label.isActive in
     (
      if n.editable then
          make_input n.inputPos n.label (NodeLabelEdit id)
      else
-         if n.label == "" then
-             (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
-         else 
-            let label = if n.isMath then n.label else "\\text{" ++ n.label ++ "}" in
+        --  if n.label == "" then
+            --  (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
+        --  else 
+            let label = if n.label == "" then "\\bullet" else
+                     if n.isMath then n.label else "\\text{" ++ n.label ++ "}" 
+            in
             makeLatex cfg n.pos n.dims label
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
@@ -261,22 +263,24 @@ normalEdgeDrawing : Config -> Graph.EdgeId
      -> Int
      -> NormalEdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
 normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
-    let c = Color.merge (activityToColor activity) label.style.color in
+    -- let c = Color.merge (activityToColor activity) label.style.color in
+    let c = label.style.color in
     let oldstyle = label.style in
     let style = { oldstyle | color = c } in
-    
-    
+    let classes = List.map Drawing.class <| activityToEdgeClasses activity in
     -- let q = Geometry.segmentRectBent from to 
     --          label.style.bend
     -- in
     Drawing.group [
          Drawing.arrow 
-          [Drawing.zindexAttr z, -- Drawing.color c,
+          (classes ++
+            [Drawing.zindexAttr z, -- Drawing.color c,
            Drawing.onClick (EdgeClick edgeId),
            Drawing.onDoubleClick (EltDoubleClick edgeId),
           -- Drawing.onHover (EltHover edgeId),
            Drawing.simpleOn "mousemove" (MouseOn edgeId)
           ] 
+          )
           style
          q, 
           segmentLabel cfg q edgeId activity label curve]
@@ -303,9 +307,12 @@ drawPullshout edgeId a (x1, x2) (y1, y2) =
      let s1 = Point.towards r1 extrem smallshift
          s2 = Point.towards r2 extrem smallshift
      in
+     let classes = List.map Drawing.class <| activityToEdgeClasses a in
      let blackline = Drawing.line 
-               [Drawing.color <| activityToColor a,
-                Drawing.onClick (EdgeClick edgeId)]
+               (classes ++ 
+               [ Drawing.onClick (EdgeClick edgeId),
+                 Drawing.color Color.black
+                 ])
      in
      Drawing.group 
      [blackline s1 extrem, blackline extrem s2] 

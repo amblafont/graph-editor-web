@@ -1,7 +1,7 @@
 module GraphProof exposing (loopFrom, getAllValidDiagrams,
-    proofStatementToDebugString, isInDiag,
+    proofStatementToDebugString, isInDiag, statementToString,
     proofStatementToString, proofStepToString, loopToDiagram,
-    fullProofs, getIncompleteDiagram, isEmptyBranch, generateIncompleteProofStepFromDiagram, 
+    fullProofs, getIncompleteDiagram, isEmptyBranch, 
     LoopEdge, LoopNode, Diagram, incompleteProofStepToString,
     nodesOfDiag, edgesOfDiag)
 
@@ -231,38 +231,12 @@ generateIncompleteProofStep g l =
   getIncompleteDiagram g l |> 
   Maybe.andThen (generateIncompleteProofStepFromDiagram g) -}
 
+-- TODO: check if it is still used, remove if not.
 isEmptyBranch : List (Edge LoopEdge) -> Maybe Graph.EdgeId
 isEmptyBranch l =
    case l of
        [ e ] -> if e.label.label == "" then Just e.id else Nothing
        _ -> Nothing
-
-invertProofstepDiag : ProofStep -> ProofStep
-invertProofstepDiag s = { s | diag = invertDiagram s.diag }
-
-generateIncompleteProofStepFromDiagram : Graph LoopNode LoopEdge -> Diagram -> Maybe ProofStep
-generateIncompleteProofStepFromDiagram g d =
-   let flipIf b diag = if b then invertDiagram diag else diag in
-   let surroundingDiag dir = 
-        let d2 = flipIf dir d in        
-
-        isEmptyBranch d2.rhs 
-        |> Maybe.andThen (\id ->                                
-             let g2 = Graph.removeEdge id g in
-             d2.lhs |> List.head |>
-             Maybe.andThen (diagramFrom (not dir) g2 >> flipIf dir >>
-                           .lhs >> List.map .id
-                               >> applyDiag d2
-                               >> Maybe.map 
-                               (if dir then invertProofstepDiag else identity)
-                               ))
-               
-   in
-   let step = Maybe.or 
-             (surroundingDiag True)      
-             (surroundingDiag False)            
-   in
-      step
 
 
 type alias ProofStep = { diag : Diagram, startOffset : Int,
@@ -317,7 +291,8 @@ fullProofs g0 =
 
 statementToString : Diagram -> String
 statementToString d = 
-  let edgeToString = List.map (.label >> .label) >> String.join " · " in
+  let expand s =  if s == "" then "{_}" else s in
+  let edgeToString = List.map (.label >> .label >> expand) >> String.join " · " in
   "{ " ++ edgeToString d.lhs ++ " = " ++ edgeToString d.rhs ++ " }"
 
 

@@ -41,6 +41,7 @@ import Html.Attributes
 import Html.Events
 import Maybe.Extra as Maybe
 import IntDict
+import Unification
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
@@ -69,6 +70,7 @@ import Html
 import Html.Events
 import InputPosition exposing (InputPosition(..))
 import Geometry
+import Geometry.Point
 import Format.Version0
 import Format.Version1
 import Format.Version2
@@ -103,10 +105,9 @@ port quicksaveGraph : { info : JsGraphInfo, export: ExportFormats, feedback : Bo
 -- we ask js to save the graph
 port saveGraph : {graph: JsGraphInfo, export: ExportFormats} -> Cmd a
 
-
 port exportQuiver : JE.Value -> Cmd a
 port alert : String -> Cmd a
-port jumpToId : String -> Cmd a
+
 
 port simpleMsg : (String -> a) -> Sub a
 port renameFile : (String -> a) -> Sub a
@@ -146,13 +147,17 @@ port decodeGraph : String -> Cmd a
 -- JS would then calls us back with the decoded graph
 port decodedGraph : (LastFormat.Graph -> a) -> Sub a
 
-port latexToClipboard : String -> Cmd a
 
 -- we receive a copy event
 port onCopy : (() -> a) -> Sub a
 -- we return the stuff to be written
 port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
-
+-- statement
+port incompleteEquation : String -> Cmd a
+port completeEquation : ({ statement : String, script : String} -> a) -> Sub a
+port toClipboard : { content:String, success: String, failure: String } -> Cmd a
+port generateProofJs : String -> Cmd a
+port generateSvg : String -> Cmd a
 
 -- ask js to prompt find and replace
 port promptFindReplace : () -> Cmd a
@@ -167,8 +172,9 @@ port promptedEquation : (String -> a) -> Sub a
 
 port saveGridSize : Int -> Cmd a
 
-
-
+-- number of ms between autosaves
+autosaveTickMs : Float
+autosaveTickMs = 60000
 
 
 subscriptions : Model -> Sub Msg
@@ -193,7 +199,8 @@ subscriptions m =
       loadedGraph8 (mapLoadGraphInfo Format.Version8.fromJSGraph >> Loaded),
       loadedGraph9 (mapLoadGraphInfo Format.Version9.fromJSGraph >> Loaded),
       decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
-      E.onClick (D.succeed MouseClick)
+      E.onClick (D.succeed MouseClick),
+      completeEquation CompleteEquation
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
                             -- it is necessary to prevent defaults
@@ -206,7 +213,7 @@ subscriptions m =
     if Msg.isSimpleScenario m.scenario then [] else
     (if m.autoSave then
         -- every minute
-       [ Time.every 60000 (always MinuteTick) ]
+       [ Time.every autosaveTickMs (always MinuteTick) ]
     else [])
     ++
     (if m.scenario == Watch then [promptedEquation (QuickInput True)]
@@ -495,6 +502,7 @@ update msg modeli =
 update_Color : List Graph.EdgeId -> Msg -> Model -> (Model, Cmd Msg)
 update_Color ids msg model =
     case msg of
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") ->
             switch_Default model
         KeyChanged False _ (Character c) ->
@@ -570,6 +578,7 @@ update_MoveNode msg state model =
     in
     let updateState st = { model | mode = Move st } in
     case msg of
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         PressTimeout ->
           noCmd <| 
@@ -646,6 +655,7 @@ update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
 update_Enlarge msg state model =
    let fin = switch_Default <| setSaveGraph model <| enlargeGraph model state in
    case msg of
+      KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
       KeyChanged False _ (Control "Escape") -> switch_Default model
       {- KeyChanged False _ (Character 's') -> 
                           noCmd <| { model | mode =
@@ -682,6 +692,13 @@ rename model =
     in
         noCmd <| initialise_RenameMode True ids model
 
+latexToClipboard : String -> Cmd a
+latexToClipboard tex =
+   toClipboard {content = tex,
+                success = "latex successfully copied.",
+                failure = "unable to copy latex"
+            }
+
 generateProofString : Bool -> Graph NodeLabel EdgeLabel -> String
 generateProofString debug g =
       let stToString = if debug then GraphProof.proofStatementToDebugString else GraphProof.proofStatementToString in
@@ -714,18 +731,16 @@ update_DefaultMode msg model =
                  |> Maybe.withDefault model
                  |> noCmd
     in
-    let fillBottom s err =
-          let c = if s == "" then alert err
-                      else jumpToId HtmlDefs.bottomTextId
-          in
-          ({ model | bottomText = s }, c)
-    in
+    -- TODO: remove if not used
     let generateProof debug =
            let s = generateProofString debug
                  <| GraphDefs.selectedGraph model.graph
            in
-           fillBottom s "No diagram found!"
-           
+           (model, generateProofJs s) 
+                -- toClipboard 
+                --   {content = s,
+                --    success = "Proof successfully copied",
+                --    failure = "Unable to copy" })
     in
     let weaklySelect id =
              noCmd <|              
@@ -773,6 +788,7 @@ update_DefaultMode msg model =
              weaklySelect <| GraphDefs.closest model.mousePos model.graph             
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
         KeyChanged False _ (Control "Escape") -> clearSel
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Character 'w') -> clearSel
         KeyChanged False _ (Character 'e') ->
            noCmd <| initialiseEnlarge model
@@ -841,19 +857,52 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                 --   <| GraphDefs.clearWeakSelection model.graph }              
             
         KeyChanged False _ (Character 'I') -> 
-               let gc = GraphDefs.toProofGraph model.graph in
-               let s = 
-                       GraphDefs.selectedIncompleteDiagram model.graph
-                       |> Maybe.andThen
-                         (GraphProof.generateIncompleteProofStepFromDiagram gc >> 
-                          Maybe.map GraphProof.incompleteProofStepToString 
-                         )
-                       |> Maybe.withDefault ""
-                      
-                        
-                                                   
+               let cmd = case GraphDefs.selectedIncompleteDiagram model.graph of 
+                      Nothing -> alert "Selected subdiagram not found."
+                      Just d -> incompleteEquation <| GraphProof.statementToString d
                in
-                     fillBottom s "No selected subdiagram found!"
+                 (model, cmd)
+        CompleteEquation { statement, script } ->
+            let failWith s = (model, alert s) in
+            case (Parser.run equalityParser statement,
+                 GraphDefs.selectedIncompleteDiagram model.graph)
+             of
+              (Err _, _) -> failWith ("fail to parse " ++ statement)
+              (_, Nothing) -> failWith "no incomplete diagram selected"
+              (Ok (eq1 , eq2), Just d) ->
+                let unify l e = Unification.unify 
+                      {isMetavariable = .label >> .label >> String.isEmpty} 
+                      l e 
+                in
+                case (unify d.lhs eq1,
+                      unify d.rhs eq2)
+                of 
+                   (Err s1, _) -> failWith s1
+                   (_, Err s2) -> failWith s2
+                   (Ok l1, Ok l2) ->
+                      let f (a, edges) g =
+                              
+                             QuickInput.splitWithChain g 
+                               edges
+                                a.id
+                      in
+                      let ltot = Debug.log "total unified" (l1 ++ l2) in
+                      let finalg = 
+                           List.foldl f
+                           model.graph
+                           ltot
+                      in
+                      let selectedNodes = 
+                             Graph.nodes 
+                             <| GraphDefs.selectedGraph 
+                                model.graph
+                      in
+                      let g_with_proof =
+                             GraphDefs.createProofNode finalg script
+                             <| Geometry.Point.barycenter 
+                             <| List.map (.label >> .pos) selectedNodes                        
+                      in
+                      noCmd <| setSaveGraph model g_with_proof
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
         KeyChanged False _ (Character 'Q') -> 
@@ -889,7 +938,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             -- fillBottom latex "No diagram found!"
         KeyChanged False _ (Character 'V') ->
             let s = GraphDefs.selectedGraph model.graph |> svgExport model in
-            fillBottom s "No diagram found!"           
+            (model, generateSvg s)          
         KeyChanged False _ (Control "Delete") ->
             noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
         {- NodeClick n e ->
@@ -1033,6 +1082,7 @@ update_CutHead state msg m =
   in
   let changeState s = { m | mode = CutHead s } in
   case msg of
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay m
         KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
         KeyChanged False _ (Control "Enter") -> finalise ()
         MouseClick -> finalise ()
@@ -1058,6 +1108,7 @@ update_Resize st msg m =
        newState { st | sizeGrid = s}       
   in
   case msg of
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay m
         KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
         KeyChanged False _ (Control "Enter") -> finalise ()
         -- MouseClick -> finalise ()        
@@ -1198,7 +1249,7 @@ graphQuickInput : Model -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabe
 graphQuickInput model ch = 
   case ch of
     Nothing -> model.graph
-    Just (eq1, eq2) -> 
+    Just (eq1, eq2) ->
       -- if an incomplete subdiagram is selected, we use it
       let od = GraphDefs.selectedIncompleteDiagram model.graph in
       let default = graphDrawingChain model.sizeGrid model.graph (eq1, eq2) in 
@@ -1263,10 +1314,16 @@ helpStr_collage (s , h) =
                            |> Html.span []
         
 
+
+overlayHelpMsg : String
+overlayHelpMsg = "[?] to toggle help overlay.\n"
+
+
 helpMsg : Model -> Html Msg
 helpMsg model =
-    let cl = Html.Attributes.class "help-div" in
-    let makeHelpDiv l = Html.div [ cl ] l in
+    let classes = ["help-div"] in
+    let cl = List.map Html.Attributes.class classes in
+    let makeHelpDiv l = Html.div cl [Html.div [] l] in
     let msg = \ s -> s |>
                   Parser.run helpMsgParser |>
                   Result.withDefault [("Parsing help msg error", Plain)] |>
@@ -1278,8 +1335,9 @@ helpMsg model =
     case model.mode of
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
-            msg <| "Default mode (the basic tutorial can be completed before reading this). "
+            msg <| "Default mode.\n "
                 ++ "Sumary of commands:\n"
+                ++ overlayHelpMsg
 
                 ++ "Selection:"
                 ++ "  [click] for point/edge selection (hold for selection rectangle)"
@@ -1339,7 +1397,7 @@ helpMsg model =
                 ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [I] generate Coq script to address selected incomplete subdiagram "
-                ++ "(i.e., a subdiagram with an empty branch)"
+                ++ "(i.e., a subdiagram with unnamed arrows to be unified)"
                 ++ ", [E] enter an equation (prompt)"
                 ++ ", export selection to LaTe[X]/s[V]g"
                 
@@ -1368,13 +1426,15 @@ helpMsg model =
         PullshoutMode _ -> "Mode Pullback/Pullshout. "
                           -- ++ Debug.toString model 
                            ++  Modes.Pullshout.help |> msg
-        ColorMode _ -> "Mode color. [ESC] or colorise selected edges: " ++ Color.helpMsg |> msg
+        ColorMode _ -> "Mode color. "
+                        ++ overlayHelpMsg
+                        ++ "[ESC] or colorise selected edges: " ++ Color.helpMsg |> msg
         SquareMode _ -> "Mode Commutative square. "
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
                              ++ Modes.SplitArrow.help |> msg
-        Move s -> "Mode Move."                
-                   
+        Move s -> "Mode Move. "                
+                ++ overlayHelpMsg
                 ++ "Use mouse or h,j,k,l."
                 ++ " Hold [ctrl] to merge the selected point onto another node." 
                 ++
@@ -1384,13 +1444,16 @@ helpMsg model =
                     UndefinedMove -> ""
                 ) 
                   |> msg
-        CutHead _ -> "Mode cut arrow."
+        CutHead _ -> "Mode cut arrow. "
+                ++ overlayHelpMsg
                 ++ " [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
                 ++ "[c] to switch between head/tail"                
                 ++ ", [d] to duplicate (or not) the arrow."
                   |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
-        EnlargeMode s -> msg <| "Enlarge mode: draw a rectangle to create space. "
+        EnlargeMode s -> msg <| "Enlarge mode. "
+                            ++ overlayHelpMsg
+                            ++ "Draw a rectangle to create space. "
                             ++ "Use mouse or h,j,k,l. [RET] or click to confirm."
                          {-    ++ (if s.onlySubdiag then
                                     "Only extending surrounding subdiagram"
@@ -1405,7 +1468,9 @@ helpMsg model =
                           ++ "where one branch is a single arrow with empty label)"
                           ++ " is selected, it will replace the empty branch with"
                           ++ " the lhs or the rhs (depending on the orientation)."
-        ResizeMode { onlyGrid } -> msg <| "Resize mode. [k]/[j] to increase/decrease, "
+        ResizeMode { onlyGrid } -> msg <| "Resize mode. "
+                         ++ overlayHelpMsg
+                         ++ "[k]/[j] to increase/decrease, "
                          ++ "or use the slider above. "
                          ++ 
                          if onlyGrid then 
@@ -1507,6 +1572,12 @@ viewGraph model =
                           --    , Msg.onTabAttribute
                        ]
     in
+    let helpDiv = helpMsg model in
+    let overlayHelp = 
+           if model.showOverlayHelp then
+             [ Html.div [Html.Attributes.class "overlay"] [helpDiv]]
+           else []
+    in
     let contents = 
           [ Html.div [] 
             (HtmlDefs.introHtml
@@ -1523,9 +1594,9 @@ viewGraph model =
             -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
             -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
             Html.p [] 
-            [(helpMsg model),
-             quickInputView model
-            ]
+            ([ helpMsg model,
+              quickInputView model
+            ] ++ overlayHelp)
           ] ++
           ( 
           if model.scenario == Watch then [] 
@@ -1569,12 +1640,7 @@ viewGraph model =
                String.fromInt nmissings ++ " nodes or edges could not be rendered."
                else "" ]
            , svg
-           , Html.p []
-           [ Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
-              Html.Attributes.value model.bottomText, 
-              Html.Attributes.id HtmlDefs.bottomTextId
-             {- Html.Events.onInput EditBottomText -}]
-            [{- Html.text model.bottomText -} ],
+           , Html.p [] [
             Html.text "latex preamble",
             Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
               Html.Attributes.placeholder "latex Preamble",

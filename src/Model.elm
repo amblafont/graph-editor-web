@@ -40,6 +40,7 @@ type alias Model =
     , sizeGrid : Int
     -- filename in the web version / full path in the electron version
     , fileName : String
+    , showOverlayHelp : Bool
     -- whether there is an id which is "hovered on"
    -- , hoverId : Maybe Graph.Id
     -- , selOnMove : Bool
@@ -48,7 +49,7 @@ type alias Model =
     -- quickInput : Maybe NonEmptyChain
     , mouseOnCanvas : Bool
     -- blitzFlag : Bool
-    , bottomText : String
+    -- , bottomText : String
     , autoSave : Bool
     , latexPreamble : String
     , scenario : Scenario
@@ -112,10 +113,11 @@ createModel sizeGrid g =
     , hideGrid = False
     , sizeGrid = sizeGrid
     , fileName = "graph.json"
-    , bottomText = ""
+    -- , bottomText = ""
     , autoSave = False
     , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\text{#1}}"
     , scenario = Standard
+    , showOverlayHelp = False
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse
@@ -285,3 +287,5 @@ keyboardPosToPoint m chosenNode p =
          let delta = InputPosition.deltaKeyboardPos m.sizeGrid p in
          Point.add pos delta
 
+toggleHelpOverlay : Model -> Model
+toggleHelpOverlay model = {model | showOverlayHelp = not model.showOverlayHelp } 

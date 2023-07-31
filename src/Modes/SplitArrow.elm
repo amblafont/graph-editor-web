@@ -159,6 +159,7 @@ update state msg model =
     let updateState st = { model | mode = SplitArrow st } in
     let updatePos st = InputPosition.updateNoKeyboard st.pos msg in
     case msg of  
+        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         KeyChanged False _ (Character '/') -> noCmd <| updateState
            { state | labelOnSource = not state.labelOnSource } 
@@ -180,7 +181,8 @@ update state msg model =
            
 help : String
 help =
-            "[ESC] cancel, [click] name the point (if new), "
+            "[ESC] cancel, [?] toggle help overlay, "
+            ++ "[click] name the point (if new), "
             ++ "[/] to move the existing label on the other edge, "
             ++ "[RET] terminate the square creation"             
              

@@ -3,7 +3,7 @@ module Geometry.Point exposing (Point, radius, orthoVectPx, towards, diamondPx, 
   angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
   countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
   -- from quiver
-  lerp, lendir, rotate, scale, inv_scale, normaliseAngle)
+  lerp, lendir, rotate, scale, inv_scale, normaliseAngle, barycenter)
 
 import ListExtraExtra as List
 
@@ -199,3 +199,11 @@ scale sx sy (x, y) = (x * sx, y * sy)
 
 inv_scale : Float -> Float -> Point -> Point
 inv_scale sx sy (x, y) = (x / sx, y / sy)
+
+barycenter : List Point -> Point 
+barycenter pts =
+   let (xs, ys) = List.unzip pts in
+   let length0 = toFloat <| List.length pts in
+   let length = if length0 == 0 then 1 else length0 in
+   (List.sum xs / length,
+    List.sum ys / length)

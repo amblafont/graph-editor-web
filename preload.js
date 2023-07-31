@@ -6,10 +6,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearGraph: (callback) => ipcRenderer.on('clear-graph', callback),
   rename: (callback) => ipcRenderer.on('rename', callback),
   saveGraph: (filename, json, exports) => ipcRenderer.send('save-graph', filename, json, exports),
-  quicksaveGraph: (filename, json, exports) => ipcRenderer.send('quick-save-graph', 
-     filename, json, exports),
+  quicksaveGraph: (filename, json, exports, feedback) => ipcRenderer.send('quick-save-graph', 
+     filename, json, exports, feedback),
   openFile: () => ipcRenderer.send('open-graph'),
   simpleMsg: (callback) => ipcRenderer.on('simple-msg', callback),
   prompt: (question, defaut) => ipcRenderer.send('prompt', question, defaut),
-  answerPrompt: (callback => ipcRenderer.on('answer-prompt', callback))
+  answerPrompt: (callback => ipcRenderer.on('answer-prompt', callback)),
+  incompleteEquation: (statement) => ipcRenderer.send('incomplete-equation', statement),
+  generateProof: (script) => ipcRenderer.send('generate-proof', script),
+  completeEquation: (callback) => ipcRenderer.on("complete-equation", callback)
+
 })

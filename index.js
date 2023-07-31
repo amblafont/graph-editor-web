@@ -232,6 +232,25 @@ function parsePrefix(line, remainder_arg) {
   }
 }
 
+function loadData(data, filename, scenario) {
+  var stripped_diag = data.trim();
+  try {
+
+    json = JSON.parse (stripped_diag);
+    mainWindow.webContents.send('load-graph', 
+       json, filename, scenario); 
+    }
+  catch (e) {
+      if (e instanceof SyntaxError) {
+      // if it is not a valid json, then it must be an equation 
+        var equation = stripped_diag.slice(1, -1);
+        mainWindow.webContents.send('load-equation', equation , watchScenario);
+      }
+      else 
+        throw e;
+  }
+}
+
 function loadEditor(diag) {
   var stripped_diag = diag.trim();
 
@@ -242,21 +261,7 @@ function loadEditor(diag) {
     mainWindow.webContents.send('clear-graph', watchScenario); 
   } else {
     console.log("Loading diagram ");
-    try {
-
-    json = JSON.parse (stripped_diag);
-    mainWindow.webContents.send('load-graph', 
-       json, "filename", watchScenario); 
-    }
-    catch (e) {
-      if (e instanceof SyntaxError) {
-      // if it is not a valid json, then it must be an equation 
-        var equation = stripped_diag.slice(1, -1);
-        mainWindow.webContents.send('load-equation', equation , watchScenario);
-      }
-      else 
-        throw e;
-    }
+    loadData(stripped_diag);
     
     
   }
@@ -429,10 +434,12 @@ function writeContent(newcontent, output, index) {
   // tmpobj.removeCallback();
 }
 
-function quicksave(win, filename, data, exports) {
+function quicksave(win, filename, data, exports, feedback) {
   fs.writeFileSync(filename, JSON.stringify(data));
-  var msg = "Written to file " + filename;
-  dialog.showMessageBoxSync(win, { message : msg })
+  if (feedback){
+    var msg = "Written to file " + filename;
+    dialog.showMessageBoxSync(win, { message : msg })
+  }
 }
 
 function saveGraphFile(win, filename, data) {
@@ -460,6 +467,32 @@ function loadGraph(win, path) {
      json, path, is_watch ? watchScenario : normalScenario);   
 }
 
+function configureIpc(win) {
+  process.on("message", msg => 
+     { switch (msg.key) {
+          case "load":
+            loadData(msg.content, "graph.json", normalScenario)
+            break;
+          case "complete-equation":
+            win.webContents.send(msg.key, msg.content);
+            break;
+             
+       }
+     }
+  );
+}
+
+function sendExternalMsg(key, content, error) {
+  console.log({key:key, content:content});
+  if (!process.send)
+    if (error)
+       dialog.showMessageBoxSync(mainWindow, { message : 
+          error });
+    return;
+  process.send({key:key, content:content})
+}
+
+
 const createWindow = () => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
@@ -486,8 +519,11 @@ const createWindow = () => {
        .catch((r) => mainWindow.webContents.send('answer-prompt', null))
   );
   ipcMain.on('quick-save-graph', 
-     (e, filename, data, exports) => is_watch ? handleSave(filename, data,exports)
-      : quicksave(mainWindow, filename, data, exports));
+     (e, filename, data, exports, feedback) => is_watch ? handleSave(filename, data,exports, feedback)
+      : quicksave(mainWindow, filename, data, exports, feedback));
+  ipcMain.on('incomplete-equation', (e, s) => sendExternalMsg("incomplete-equation", s, 
+     "This feature is only enabled when running the appropriate vscode extension"));
+  ipcMain.on('generate-proof', (e, s) => sendExternalMsg("generate-proof", s));
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)
   {
@@ -505,7 +541,11 @@ const createWindow = () => {
       loadGraph(mainWindow, main_file)
     }
   }
-    
+
+    // if we are using ipc
+  if (process.send) {
+    configureIpc(mainWindow);
+  }
  }
  );
  
@@ -532,5 +572,3 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.

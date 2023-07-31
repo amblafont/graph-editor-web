@@ -4,7 +4,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    filterNormalEdges, coqProofTexCommand,
    newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
    selectedEdges, mapNormalEdge,  mapDetails, 
-   createNodeLabel,
+   createNodeLabel, createProofNode,
    getNodeLabelOrCreate, getNodeDims, getNodePos, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, 
    clearWeakSelection,
@@ -180,6 +180,9 @@ newNodeLabel : Point -> String -> Bool -> NodeLabel
 newNodeLabel p s isMath = 
     { pos = p , label = s, dims = Nothing, selected = False, weaklySelected = False,
                          isMath = isMath}
+newProofLabel : Point -> String -> NodeLabel
+newProofLabel p s =
+   newNodeLabel p ("\\" ++ coqProofTexCommand ++ "{" ++ s ++ "}") True
 
 newGenericLabel : a -> GenericEdge a
 newGenericLabel d = { details = d,
@@ -204,6 +207,12 @@ createNodeLabel g s p =
     let label = newNodeLabel p s True in
     let (g2, id) = Graph.newNode g label in
      (g2, id, p)
+
+createProofNode : Graph NodeLabel EdgeLabel -> String -> Point -> Graph NodeLabel EdgeLabel
+createProofNode g s p =
+    let label = newProofLabel p s in
+    let (g2, id) = Graph.newNode g label in
+     g2
 
 getNodeLabelOrCreate : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)
