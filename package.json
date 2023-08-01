@@ -9,7 +9,7 @@
   "scripts": {
     "start": "yarn compile && electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make",
+    "make": "yarn compile && electron-forge make",
     "publish": "electron-forge publish",
     "compile": "tsc && copyfiles -f preload.js src/index.html build"
   },
