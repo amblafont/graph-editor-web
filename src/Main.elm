@@ -964,10 +964,28 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                   (GraphDefs.selectAll g.graph)
         KeyChanged False _ (Character 'u') ->
              let f = GraphDefs.fieldSelect model.graph in
-           noCmd <| { model | 
-               graph = Graph.connectedClosure f f model.graph
-                       |> Graph.map (\ _ {n , isIn} -> {n | selected = isIn})
-                                    (\ _ {e , isIn} -> {e | selected = isIn}) }
+             let connectedGraph =  Graph.connectedClosure f f model.graph in
+             let isIncomplete = Graph.any (\ {n , isIn} -> f n /= isIn)
+                                          (\ {e , isIn} -> f e /= isIn)
+                                          connectedGraph
+             in
+             let newGraph = 
+                    if isIncomplete then 
+                       connectedGraph
+                           |> Graph.map (\ _ {n , isIn} -> {n | selected = isIn})
+                                        (\ _ {e , isIn} -> {e | selected = isIn})
+                    else
+                    -- adding proof nodes
+                     
+                     let selectedGraph = GraphDefs.selectedGraph model.graph in
+                     let isIn p = GraphDefs.getSurroundingDiagrams p selectedGraph /= [] in
+                     let proofNodes = GraphDefs.getProofNodes model.graph 
+                          |> List.filter (.label >> .pos >> isIn)
+                          |> List.map (Graph.nodeMap (\n -> { n | selected = True}))
+                     in
+                     Graph.updateNodes proofNodes model.graph
+             in
+              noCmd { model | graph = newGraph }
              
                
         KeyChanged False k (Character 'z') -> 
@@ -1326,7 +1344,8 @@ helpMsg model =
                 ++ ", [shift] to keep previous selection" 
                 ++ ", [C-a] select all" 
                 ++ ", [S]elect pointer surrounding subdiagram"
-                ++ ", [u] expand selection to connected component"
+                ++ ", [u] expand selection to connected components"
+                ++ " ([u] again to select embedded proof nodes)"
                 ++ ", [ESC] or [w] clear selection"    
                 ++ ", [H] and [L]: select subdiagram adjacent to selected edge"             
                 ++ ", [hjkl] move the selection from a point to another"

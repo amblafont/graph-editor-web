@@ -13,7 +13,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    selectedNodes,
    isEmptySelection,
    selectedEdgeId, selectedNode, selectedId,
-   removeSelected, getLabelLabel,
+   removeSelected, getLabelLabel, getProofNodes,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram,
@@ -126,6 +126,10 @@ getProofFromLabel s =
       Just (String.slice (String.length prefix) (-1) s2)
    else
       Nothing
+
+getProofNodes : Graph NodeLabel EdgeLabel -> List (Node NodeLabel)
+getProofNodes g =
+   Graph.nodes g |> List.filter (\n -> getProofFromLabel n.label.label /= Nothing)
 
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
