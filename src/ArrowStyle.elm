@@ -17,7 +17,7 @@ import String.Svg as Svg
 import String.Html
 import Drawing.Color as Color exposing (Color)
 import Geometry.QuadraticBezier exposing (QuadraticBezier)
-import Geometry.Epsilon exposing (norm0)
+import Geometry.Epsilon exposing (norm0, epsilon)
 import Geometry exposing (LabelAlignment(..))
 import Json.Encode as JEncode
 import List.Extra as List
@@ -189,7 +189,10 @@ makeHeadTailImgs {from, to, controlPoint} style =
 
 -- chars used to control in keyUpdateStyle
 controlChars = ">(=-bBA]["
+maxLabelPosition = 0.9
+minLabelPosition = 0.1
 
+-- doesn't update the color
 keyMaybeUpdateStyle : Key -> Style -> Maybe Style
 keyMaybeUpdateStyle k style = 
    case k of 
@@ -200,8 +203,11 @@ keyMaybeUpdateStyle k style =
         Character 'b' -> Just <| {style | bend = style.bend + 0.1 |> norm0}
         Character 'B' -> Just <| {style | bend = style.bend - 0.1 |> norm0}
         Character 'A' -> Just <| toggleLabelAlignement style
-        Character ']' -> Just <| {style | labelPosition = style.labelPosition + 0.1 |> min 0.9}
-        Character '[' -> Just <| {style | labelPosition = style.labelPosition - 0.1 |> max 0.1}
+        Character ']' -> if style.labelPosition + epsilon >= maxLabelPosition then Nothing else
+               Just {style | labelPosition = style.labelPosition + 0.1 |> min maxLabelPosition}
+        Character '[' -> 
+               if style.labelPosition <= minLabelPosition + epsilon then Nothing else
+               Just {style | labelPosition = style.labelPosition - 0.1 |> max minLabelPosition}
         _ -> Nothing
 
 keyMaybeUpdateColor : Key -> Style -> Maybe Style
@@ -210,7 +216,9 @@ keyMaybeUpdateColor k style =
       Character c ->
          -- let _ = Debug.log "char" c in 
          Color.fromChar c
-         |> Maybe.map (\ color -> { style | color = color})
+         |> Maybe.andThen 
+            (\ color -> if color == style.color then Nothing else 
+                        Just { style | color = color})
       _ -> Nothing
 
 --keyUpdateStyle : Key -> Style -> Style

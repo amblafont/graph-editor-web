@@ -1,5 +1,5 @@
-module Msg exposing (Msg(..), noOp, updateArrowStyle, focusId, unfocusId,
-  onTabPreventDefault, mayUpdateArrowStyle, Scenario(..), scenarioOfString, LoadGraphInfo, mapLoadGraphInfo,
+module Msg exposing (Msg(..), noOp, focusId, unfocusId,
+  onTabPreventDefault, Scenario(..), scenarioOfString, LoadGraphInfo, mapLoadGraphInfo,
   isSimpleScenario)
 
 import Geometry.Point exposing (Point)
@@ -100,19 +100,6 @@ focusId s = Task.attempt (\_ -> noOp) (Dom.focus s)
 
 unfocusId : String -> Cmd Msg
 unfocusId s = Task.attempt (\_ -> noOp) (Dom.blur s)
-
-
-mayUpdateArrowStyle : Msg -> ArrowStyle -> Maybe ArrowStyle
-mayUpdateArrowStyle m style =
-   case m of 
-      KeyChanged False _ k -> ArrowStyle.keyMaybeUpdateStyle k style  
-      _ -> Nothing
-
-
-
-
-updateArrowStyle : Msg -> ArrowStyle -> ArrowStyle
-updateArrowStyle m style = mayUpdateArrowStyle m style |> Maybe.withDefault style
 
 
 onTabPreventDefault : Html.Attribute Msg

@@ -21,7 +21,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect,
    getSurroundingDiagrams, updateNormalEdge,
-   rectEnveloppe
+   rectEnveloppe, updateStyleEdges
    )
 
 import IntDict
@@ -150,6 +150,27 @@ updateNormalEdge : EdgeId -> (NormalEdgeLabel -> NormalEdgeLabel) -> Graph NodeL
 updateNormalEdge id f =
     Graph.updateEdge id 
      (mapNormalEdge f)
+
+updateStyleEdges : (ArrowStyle -> Maybe ArrowStyle) 
+        -> List (Edge EdgeLabel) -> Graph NodeLabel EdgeLabel -> Maybe (Graph NodeLabel EdgeLabel)
+updateStyleEdges update edges g =
+     let updateStyle e = update e.label.details.style 
+                           |> Maybe.map (\newStyle ->
+                              { id = e.id , style = newStyle }
+                           )                    
+     in
+     let newEdges =  edges
+                 |> List.filterMap filterEdgeNormal
+                 |> List.filterMap updateStyle
+     in
+     let updateEdge edge graph =            
+              updateNormalEdge edge.id 
+              (\ e -> { e | style = edge.style})
+              graph
+     in
+     if newEdges == [] then Nothing else
+     let newGraph = List.foldl updateEdge g newEdges in
+     Just newGraph
 
 
 exportQuiver : Int -> Graph NodeLabel EdgeLabel -> JEncode.Value
