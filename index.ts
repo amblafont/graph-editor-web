@@ -145,13 +145,13 @@ let is_watch = false;
 if (typeof main_file === "string") {
   main_directory = path.dirname(main_file);
   watched_file = main_file
+  let extname = path.extname(main_file);
+  if (extname.length > 0 && extname[0] == '.')
+     ext = extname.slice(1); 
   if (getOrDefault("watch")) {
      watched_file = main_file;
      is_watch = true
   }
-  let extname = path.extname(main_file);
-  if (extname.length > 0 && extname[0] == '.')
-     ext = extname.slice(1);
 }
 else
   ext = "tex"
