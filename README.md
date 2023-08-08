@@ -11,6 +11,7 @@ first need `yarn` to be installed. For this, you need to install `npm`, and then
 Then,
 
 - `yarn install` to install the nodejs dependencies
+- `yarn compile` to compile the app
 - `yarn start -- -- arg1 arg2` to run the app
 - `yarn make` to build the .deb/.zip
 
