@@ -20,6 +20,7 @@ const { exit } = require('process');
 type Scenario = "watch" | "standard";
 const watchScenario = "watch" as Scenario;
 const standardScenario = "standard" as Scenario;
+const emptyGraph = {"graph":{"edges":[],"latexPreamble":"\\newcommand{\\coqproof}[1]{\\checkmark{}}","nodes":[],"sizeGrid":136},"version":9};
 type Exports = Record<string,string>;
 // const watchScenario = "watch";
 // const normalScenario = "standard"
@@ -464,10 +465,15 @@ function openGraphFile() {
 }
 
 function loadGraph(path:string) {
-  let content = fs.readFileSync(path)
-  if (! content)
-     return;
-  let json = JSON.parse(content.toString());
+  let json:any = emptyGraph;
+  if (fs.existsSync(path))
+    json = JSON.parse(fs.readFileSync(path).toString());
+  else
+    dialog.showMessageBoxSync(mainWindow, 
+       { message : `Note: the file ${path} does not exist.` });
+     
+  
+  
   let scenario:Scenario = is_watch ? watchScenario : standardScenario;
   mainWindow.webContents.send('load-graph', 
      json, path, scenario);   
