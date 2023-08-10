@@ -1640,7 +1640,7 @@ viewGraph model =
             Html.p [] [ Html.text <| if nmissings > 0 then 
                String.fromInt nmissings ++ " nodes or edges could not be rendered."
                else "" ]
-           , svg
+           , Html.div [Html.Attributes.id HtmlDefs.canvasDivId] [svg]
            , Html.p [] [
             Html.text "latex preamble",
             Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 

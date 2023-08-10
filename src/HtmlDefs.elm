@@ -1,7 +1,7 @@
 port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown,
-   computeLayout, latexPreambleId, select, introHtml)
+   computeLayout, latexPreambleId, canvasDivId, select, introHtml)
 import Html
 import Html.Attributes
 import Html.Events
@@ -56,6 +56,9 @@ canvasId = "canvas"
 
 latexPreambleId : String
 latexPreambleId = "latex-preamble"
+
+canvasDivId : String
+canvasDivId = "canvas-container"
 
 latexElement = "math-latex"
 
