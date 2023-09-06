@@ -41,6 +41,8 @@ type alias Model =
     -- filename in the web version / full path in the electron version
     , fileName : String
     , showOverlayHelp : Bool
+    -- do we add a proof node when creating a square?
+    , squareModeProof : Bool
     -- whether there is an id which is "hovered on"
    -- , hoverId : Maybe Graph.Id
     -- , selOnMove : Bool
@@ -115,9 +117,10 @@ createModel sizeGrid g =
     , fileName = "graph.json"
     -- , bottomText = ""
     , autoSave = False
-    , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\text{#1}}"
+    , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
     , scenario = Standard
     , showOverlayHelp = False
+    , squareModeProof = False
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse

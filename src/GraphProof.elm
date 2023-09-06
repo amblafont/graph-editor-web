@@ -2,7 +2,7 @@ module GraphProof exposing (loopFrom, getAllValidDiagrams,
     proofStatementToDebugString, isInDiag, statementToString,
     proofStatementToString, proofStepToString, loopToDiagram,
     fullProofs, getIncompleteDiagram, isEmptyBranch, 
-    LoopEdge, LoopNode, Diagram, incompleteProofStepToString,
+    LoopEdge, LoopNode, Diagram,
     nodesOfDiag, edgesOfDiag)
 
 import Polygraph as Graph exposing (Graph, EdgeId, Edge, Node)
@@ -334,28 +334,6 @@ proofStepToString { startOffset, backOffset, diag} =
 
 symmetryStr = "apply pathsinv0."
 
-incompleteProofStepToString : ProofStep -> String
-incompleteProofStepToString { startOffset, backOffset, diag} =
-   let invert = isEmptyBranch diag.lhs |> Maybe.isJust in
-   let symList =  (if invert then [ symmetryStr ] else [] ) in
-    String.join "\n" <|
-    symList ++
-   [ -- "(* generated with YADE *)"
-     "etrans."
-   , "{" 
-   , getToThePoint startOffset backOffset 
-   , "  (* remove this after copying the goal *)"
-   , "  duplicate_goal."
-   -- , "  {"
-   , "  admit."
-   --, "  }" 
-   , "  (* copy the result in the diagram editor (input field 'Enter equation', or press 'E') *)"
-   , "  norm_graph."
-   , "  admit."
-   , "}"
-   ]
-   ++ (write0 startOffset ["repeat rewrite assoc."])
-   ++ symList
 
 
 nodesOfDiag : Diagram -> List Graph.NodeId

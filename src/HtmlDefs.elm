@@ -57,7 +57,6 @@ canvasId = "canvas"
 latexPreambleId : String
 latexPreambleId = "latex-preamble"
 
-pasteElement = "paste-capture"
 latexElement = "math-latex"
 
 quickInputId : String
@@ -66,7 +65,6 @@ quickInputId = "quickinput"
 renderedClass = "rendered-callback"
 renderedEvent = "rendered"
 
-pasteEvent = "pasteData"
 
 renderedDecoder : D.Decoder Point
 renderedDecoder = 

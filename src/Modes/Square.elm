@@ -17,7 +17,7 @@ import ArrowStyle
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import MyDiff
-import Geometry.Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 
 
 
@@ -178,8 +178,15 @@ guessPosition : Model -> SquareState -> Point
 guessPosition m s = 
      case Graph.getNodes [s.n1, s.chosenNode, s.n2] m.graph
                         |> List.map (.label >> .pos)  of
-       [p1, p2, p3] -> Geometry.Point.diamondPave p1 p2 p3
+       [p1, p2, p3] -> Point.diamondPave p1 p2 p3
        _ -> m.mousePos
+
+guessProofPosition : Model -> SquareState -> Point -> Point
+guessProofPosition m s newPos  = 
+     case Graph.getNode s.chosenNode m.graph
+                        |> Maybe.map .pos  of
+       Just oldPos -> Point.middle oldPos newPos
+       _ -> newPos
     
    -- case Graph.getNodes
 
@@ -254,6 +261,10 @@ moveNodeViewInfo m data =
     
     let (g1, ne1) = Graph.newEdge g e1n1 e1n2 <| GraphDefs.newEdgeLabel labelEdge1 ArrowStyle.empty in
     let (g2, ne2) = Graph.newEdge g1 e2n1 e2n2 <| GraphDefs.newEdgeLabel labelEdge2 ArrowStyle.empty in
+    let g3 = if not m.squareModeProof then g2 else 
+         let proofPos = guessProofPosition m data newPos in
+         GraphDefs.createProofNode g2 "naturality." proofPos
+    in
     
         
             {- Graph.newEdge 
@@ -263,7 +274,7 @@ moveNodeViewInfo m data =
              -}
     
     let edges = makeEdges data ne1 ne2 in
-    ( { graph = g2, edges = edges }, n, created )
+    ( { graph = g3, edges = edges }, n, created )
 
 
 nToMoved : Bool -> Bool -> Bool
@@ -329,6 +340,8 @@ update state msg model =
     let next finish = nextStep model finish state in
     case msg of   
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model   
+        KeyChanged False _ (Character 'p') -> 
+                    noCmd <| { model | squareModeProof = not model.squareModeProof }
         KeyChanged False _ (Character 's') ->            
                     square_updatePossibility model state.configuration state.chosenNode
         KeyChanged False _ (Character 'a') ->
@@ -351,6 +364,7 @@ help =
             ++ "[click] name the point (if new), "
              ++ "[RET] terminate the square creation, "
              ++ " alternative possible [s]quares, "
-             ++ " [a]lternative possible labels."
+             ++ " [a]lternative possible labels, "
+             ++ "toggle [p]roof node creation."
              
       

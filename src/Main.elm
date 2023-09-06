@@ -505,20 +505,13 @@ update_Color ids msg model =
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") ->
             switch_Default model
-        KeyChanged False _ (Character c) ->
-           case Color.fromChar c of 
-              Nothing -> noCmd model 
-              Just color -> 
-                let field = GraphDefs.fieldSelect model.graph in
-                let updateColor style = { style | color = color } in
-                let g = Graph.updateList ids identity 
-                            (GraphDefs.mapNormalEdge 
-                          (\ label -> { label | style = updateColor label.style } ))
-                          model.graph
-                        |> GraphDefs.clearSelection
-                        |> GraphDefs.clearWeakSelection
-                in
-                switch_Default <| setSaveGraph model <| g
+        KeyChanged False _ k ->
+               case GraphDefs.updateStyleEdges 
+                  (ArrowStyle.keyMaybeUpdateColor k)
+                  (Graph.getEdges ids model.graph)
+                  model.graph of 
+                 Nothing -> noCmd model
+                 Just g -> switch_Default <| setSaveGraph model g
         _ -> noCmd model
 
 update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
@@ -971,10 +964,28 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                   (GraphDefs.selectAll g.graph)
         KeyChanged False _ (Character 'u') ->
              let f = GraphDefs.fieldSelect model.graph in
-           noCmd <| { model | 
-               graph = Graph.connectedClosure f f model.graph
-                       |> Graph.map (\ _ {n , isIn} -> {n | selected = isIn})
-                                    (\ _ {e , isIn} -> {e | selected = isIn}) }
+             let connectedGraph =  Graph.connectedClosure f f model.graph in
+             let isIncomplete = Graph.any (\ {n , isIn} -> f n /= isIn)
+                                          (\ {e , isIn} -> f e /= isIn)
+                                          connectedGraph
+             in
+             let newGraph = 
+                    if isIncomplete then 
+                       connectedGraph
+                           |> Graph.map (\ _ {n , isIn} -> {n | selected = isIn})
+                                        (\ _ {e , isIn} -> {e | selected = isIn})
+                    else
+                    -- adding proof nodes
+                     
+                     let selectedGraph = GraphDefs.selectedGraph model.graph in
+                     let isIn p = GraphDefs.getSurroundingDiagrams p selectedGraph /= [] in
+                     let proofNodes = GraphDefs.getProofNodes model.graph 
+                          |> List.filter (.label >> .pos >> isIn)
+                          |> List.map (Graph.nodeMap (\n -> { n | selected = True}))
+                     in
+                     Graph.updateNodes proofNodes model.graph
+             in
+              noCmd { model | graph = newGraph }
              
                
         KeyChanged False k (Character 'z') -> 
@@ -982,25 +993,14 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise model.graph
         KeyChanged False k (Character '+') -> increaseZBy 1
         KeyChanged False k (Character '<') -> increaseZBy (-1)
-     
-        _ ->
-
-            case GraphDefs.selectedEdgeId model.graph of
-              Nothing -> noCmd model
-              Just id -> 
-                 Graph.getEdge id model.graph
-                 |> Maybe.andThen GraphDefs.filterEdgeNormal
-                 |> Maybe.andThen (\e ->
-                    Msg.mayUpdateArrowStyle msg e.label.details.style
-                   )
-                 |> Maybe.map ( \style ->
-                  setSaveGraph model <| 
-                   GraphDefs.updateNormalEdge id 
-                    (\e -> {e | style = style})
-                    model.graph
-                 )
-                 |> Maybe.withDefault model
-                 |> noCmd
+        KeyChanged False _ k -> noCmd <|
+           case GraphDefs.updateStyleEdges 
+                  (ArrowStyle.keyMaybeUpdateStyle k)
+                  (GraphDefs.selectedEdges model.graph)
+                  model.graph of 
+                 Nothing -> model
+                 Just g -> setSaveGraph model g
+        _ -> noCmd model              
 
 svgExport : Model -> Graph NodeLabel EdgeLabel -> String
 svgExport model graph = 
@@ -1344,7 +1344,8 @@ helpMsg model =
                 ++ ", [shift] to keep previous selection" 
                 ++ ", [C-a] select all" 
                 ++ ", [S]elect pointer surrounding subdiagram"
-                ++ ", [u] expand selection to connected component"
+                ++ ", [u] expand selection to connected components"
+                ++ " ([u] again to select embedded proof nodes)"
                 ++ ", [ESC] or [w] clear selection"    
                 ++ ", [H] and [L]: select subdiagram adjacent to selected edge"             
                 ++ ", [hjkl] move the selection from a point to another"
