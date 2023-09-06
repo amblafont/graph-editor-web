@@ -1,25 +1,17 @@
 module Tikz exposing (graphToTikz)
 
-import ArrowStyle
-import Geometry exposing (LabelAlignment(..))
-import GraphDefs exposing (EdgeLabel, EdgeType(..), GenericEdge, NodeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..), GenericEdge)
+import Polygraph as Graph exposing (Graph, Node, Edge)
 import Maybe.Extra
-import Polygraph as Graph exposing (Edge, Graph, Node)
-
+import Geometry exposing (LabelAlignment(..))
+import ArrowStyle
 
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
     -- floor (2 * u / toFloat sizeGrid)
-    let
-        ( x, y ) =
-            n.label.pos
-    in
-    let
-        coord u =
-            u / 21
-    in
-    -- 17.7667
+    let (x, y) = n.label.pos in
+    let coord u = (u / 21) in -- 17.7667
     "\\node ("
         ++ String.fromInt n.id
         ++ ") at ("
@@ -27,14 +19,8 @@ encodeNodeTikZ sizeGrid n =
         ++ "em, "
         ++ String.fromFloat (0 - coord y)
         ++ "em) {$"
-        ++ (if n.label.label == "" then
-                "\\bullet"
-
-            else
-                n.label.label
-           )
+        ++ (if n.label.label == "" then "\\bullet" else n.label.label )
         ++ "$} ; \n"
-
 
 encodeFakeEdgeTikZ : Edge EdgeLabel -> String
 encodeFakeEdgeTikZ e =
@@ -48,13 +34,11 @@ encodeFakeEdgeTikZ e =
         ++ String.fromInt e.to
         ++ ") \n"
 
-
 encodeFakeLabel : Edge EdgeLabel -> String
 encodeFakeLabel e =
     case e.label.details of
         PullshoutEdge -> ""
         NormalEdge l -> ArrowStyle.tikzStyle l.style
-
 
 graphToTikz : Int -> Graph NodeLabel EdgeLabel -> String
 graphToTikz sizeGrid g =
@@ -66,8 +50,7 @@ graphToTikz sizeGrid g =
                 (GraphDefs.filterEdgeNormal >> Maybe.Extra.isJust)
                 all_edges
     in
-    let tikzNodes =
-            nodes |> List.map (encodeNodeTikZ sizeGrid) |> String.concat
+    let tikzNodes = nodes |> List.map (encodeNodeTikZ sizeGrid) |> String.concat
     in
     let tikzFakeEdges =
             "\\path \n" ++ (edges |> List.map encodeFakeEdgeTikZ |> String.concat) ++ "; \n"
@@ -85,7 +68,6 @@ graphToTikz sizeGrid g =
         ++ tikzPullshouts
         ++ "\\end{tikzpicture}"
 
-
 encodePullshoutTikZ : Graph NodeLabel EdgeLabel -> Edge EdgeLabel -> String
 encodePullshoutTikZ g e =
     case ( Graph.getEdge e.from g, Graph.getEdge e.to g ) of
@@ -94,7 +76,6 @@ encodePullshoutTikZ g e =
                 ( a, b, c ) =
                     if s.to == t.to then
                         ( String.fromInt s.from, String.fromInt s.to, String.fromInt t.from )
-
                     else
                         ( String.fromInt s.to, String.fromInt s.from, String.fromInt t.to )
             in
@@ -109,7 +90,6 @@ encodePullshoutTikZ g e =
         ( _, _ ) ->
             "raté!"
 
-
 encodeEdgeTikZ : Edge EdgeLabel -> String
 encodeEdgeTikZ e =
     "("
@@ -119,7 +99,6 @@ encodeEdgeTikZ e =
         ++ "] ("
         ++ String.fromInt e.to
         ++ ") \n"
-
 
 encodeLabel : Edge EdgeLabel -> String
 encodeLabel e =

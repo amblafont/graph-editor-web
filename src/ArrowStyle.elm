@@ -9,10 +9,6 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
     keyMaybeUpdateStyle,
     keyMaybeUpdateColor)
 
-
--- import Geometry.Epsilon exposing (norm0)
--- import Geometry.Point as Point exposing (Point)
--- import Geometry.QuadraticBezier exposing (QuadraticBezier)
 import HtmlDefs exposing (Key(..))
 
 import Geometry.Point as Point exposing (Point)
@@ -27,31 +23,19 @@ import Json.Encode as JEncode
 import List.Extra as List
 import ListExtraExtra exposing (nextInList)
 
-
 imgDir : String
 imgDir = "img/arrow/"
 
-
-
 -- following the tikzcd-editor
-
-
 dashedStr : String
 dashedStr = "7, 3"
 
-
-
 -- from GridCellArrow in tikz-cd editor
-
-
 imgWidth : Float
 imgWidth = 9.764
 
-
 imgHeight : Float
 imgHeight = 13
-
-
 
 doubleSize = 2.5
 
@@ -71,7 +55,6 @@ tailToString tail =
         DefaultTail -> "none"
         Hook -> "hook"
         HookAlt -> "hookalt"
-
 
 tailFromString : String -> TailStyle
 tailFromString tail =
@@ -116,8 +99,8 @@ alignmentFromString tail =
 
 
 empty : Style
-empty = { tail = DefaultTail, head = DefaultHead, double = False,
-          dashed = False, bend = 0, labelAlignment = Left,
+empty = { tail = DefaultTail, head = DefaultHead, double = False, dashed = False,
+          bend = 0, labelAlignment = Left,
           labelPosition = 0.5, color = Color.black }
 
 isDouble : Style -> Basics.Bool
@@ -125,56 +108,48 @@ isDouble { double } = double
 
 
 type HeadStyle = DefaultHead | TwoHeads | NoHead
-
-
 type TailStyle = DefaultTail | Hook | HookAlt
 
 
 toggleHead : Style -> Style
-toggleHead s = { s | head = nextInList [ DefaultHead, NoHead, TwoHeads ] s.head }
+toggleHead s = { s | head = nextInList [DefaultHead, NoHead, TwoHeads] s.head }
 
 
 toggleHook : Style -> Style
-toggleHook s = { s | tail = nextInList [ DefaultTail, Hook, HookAlt ] s.tail }
+toggleHook s =
+        { s | tail = nextInList [DefaultTail, Hook, HookAlt] s.tail }
 
 
 toggleLabelAlignement : Style -> Style
 toggleLabelAlignement s =
-    { s
-        | labelAlignment = nextInList [ Left, Right ]
+        { s | labelAlignment = nextInList [ Left, Right ]
           -- , Centre, Over]
           -- the other ones do not seem to work properly
-          s.labelAlignment
-    }
+          s.labelAlignment }
 
 
 toggleDouble : Style -> Style
 toggleDouble s = { s | double = not s.double }
 
-
 toggleDashed : Style -> Style
 toggleDashed s = { s | dashed = not s.dashed }
 
-
 prefixDouble : Style -> String
-prefixDouble { double } = if double then "double-" else ""
-
+prefixDouble { double } =
+  if double then "double-" else ""
 
 headFileName : Style -> String
 headFileName s =
     prefixDouble s
         ++ headToString s.head ++ ".svg"
 
-
 tailFileName : Style -> String
 tailFileName s =
     prefixDouble s
         ++ tailToString s.tail ++ ".svg"
 
-
 type alias Svg a = Svg.Svg a
 type alias SvgAttribute a = String.Html.Attribute a
-     
 
 svgRotate : Point -> Float -> SvgAttribute a
 svgRotate (x2, y2) angle = 
@@ -198,14 +173,13 @@ makeImg (x,y) angle file =
            []
 
 makeHeadTailImgs : QuadraticBezier -> Style -> List (Svg a)
-makeHeadTailImgs { from, to, controlPoint } style =
+makeHeadTailImgs {from, to, controlPoint} style =
     let angle delta =  Point.pointToAngle delta * 180 / pi in
     -- let mkImg = makeImg from to angle in
     [ makeImg to (angle <| Point.subtract to controlPoint) 
-          <| headFileName style,
-          makeImg from (angle <| Point.subtract controlPoint from) 
-          <| tailFileName style ]
-
+       <| headFileName style,
+       makeImg from (angle <| Point.subtract controlPoint from) 
+       <| tailFileName style ]
 
 -- chars used to control in keyUpdateStyle
 controlChars = ">(=-bBA]["
@@ -246,30 +220,28 @@ keyMaybeUpdateColor k style =
 
 quiverStyle : ArrowStyle -> List (String, JEncode.Value)
 quiverStyle st =
-    let { tail, head, double, dashed } = st in
-    let makeIf b x = if b then [x] else [] in
-    let headStyle = case head of 
-          DefaultHead -> []       
-          TwoHeads -> [("head", [("name", "epi")])]
-          NoHead -> [("head", [("name", "none")])]
-    in
-    let tailStyle = case tail of 
-          DefaultTail -> []
-          Hook -> [("tail", [("name", "hook"),("side", "top")])]
-          HookAlt -> [("tail", [("name", "hook"),("side", "bottom")])]
-    in
-    let style = List.map (\(x,y) -> (x, JEncode.object <| List.map (\(s, l) -> (s, JEncode.string l)) y)) <|
-               headStyle
-               ++
-               tailStyle ++
-               (makeIf dashed ("body", [("name", "dashed")]))
-    in
-    (makeIf double ("level", JEncode.int 2))  
-    ++ [("style", JEncode.object style )]
-    ++ (makeIf (st.bend /= 0) ("curve", JEncode.int <| floor (st.bend * 10)))
-    ++ (makeIf (st.labelPosition /= 0.5) ("label_position", JEncode.int <| floor (st.labelPosition * 100)))
-
-
+   let { tail, head, double, dashed } = st in
+   let makeIf b x = if b then [x] else [] in
+   let headStyle = case head of 
+         DefaultHead -> []       
+         TwoHeads -> [("head", [("name", "epi")])]
+         NoHead -> [("head", [("name", "none")])]
+   in
+   let tailStyle = case tail of 
+         DefaultTail -> []
+         Hook -> [("tail", [("name", "hook"),("side", "top")])]
+         HookAlt -> [("tail", [("name", "hook"),("side", "bottom")])]
+   in
+   let style = List.map (\(x,y) -> (x, JEncode.object <| List.map (\(s, l) -> (s, JEncode.string l)) y)) <|
+              headStyle
+              ++
+              tailStyle ++
+              (makeIf dashed ("body", [("name", "dashed")]))
+   in
+   (makeIf double ("level", JEncode.int 2))  
+   ++ [("style", JEncode.object style )]
+   ++ (makeIf (st.bend /= 0) ("curve", JEncode.int <| floor (st.bend * 10)))
+   ++ (makeIf (st.labelPosition /= 0.5) ("label_position", JEncode.int <| floor (st.labelPosition * 100)))
 
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =
