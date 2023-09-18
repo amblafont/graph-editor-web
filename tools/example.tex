@@ -4,21 +4,30 @@
 \begin{document}
 % Running yade on this file will trigger the creation and edition of an inline diagram
 % with inline latex generation
-% YADE DIAGRAM {"graph":{"edges":[{"from":0,"id":2,"label":{"isPullshout":false,"label":"","style":{"alignment":"left","bend":0,"dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"},"zindex":0},"to":1}],"latexPreamble":"","nodes":[{"id":0,"label":{"isMath":true,"label":"a","pos":[199,69.625]}},{"id":1,"label":{"isMath":true,"label":"b","pos":[399,69.625]}}],"sizeGrid":200},"version":8}
+% YADE DIAGRAM {"graph":{"edges":[{"from":0,"id":4,"label":{"isPullshout":false,"label":"","style":{"alignment":"left","bend":0,"color":"black","dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"},"zindex":0},"to":1},{"from":1,"id":5,"label":{"isPullshout":false,"label":"","style":{"alignment":"left","bend":0,"color":"black","dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"},"zindex":0},"to":2},{"from":0,"id":6,"label":{"isPullshout":false,"label":"","style":{"alignment":"left","bend":0,"color":"black","dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"},"zindex":0},"to":3},{"from":3,"id":7,"label":{"isPullshout":false,"label":"","style":{"alignment":"left","bend":0,"color":"black","dashed":false,"double":false,"head":"default","position":0.5,"tail":"none"},"zindex":0},"to":2},{"from":4,"id":8,"label":{"isPullshout":false,"label":"\\alpha ","style":{"alignment":"left","bend":0,"color":"black","dashed":false,"double":true,"head":"default","position":0.5,"tail":"none"},"zindex":0},"to":7}],"latexPreamble":"","nodes":[{"id":0,"label":{"isMath":true,"label":"a","pos":[199,69.625]}},{"id":1,"label":{"isMath":true,"label":"b","pos":[399,69.625]}},{"id":2,"label":{"isMath":true,"label":"c","pos":[401,229.125]}},{"id":3,"label":{"isMath":true,"label":"e","pos":[207,225.125]}}],"sizeGrid":200},"version":9}
 % GENERATED LATEX
-\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] 
-\node (0) at (11em, -3em) {$a$} ; 
-\node (1) at (22em, -3em) {$b$} ; 
+\begin{tikzpicture}[every node/.style={inner sep=5pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] 
+\node (0) at (9.476190476190476em, -3.3154761904761907em) {$a$} ; 
+\node (1) at (19em, -3.3154761904761907em) {$b$} ; 
+\node (2) at (19.095238095238095em, -10.910714285714286em) {$c$} ; 
+\node (3) at (9.857142857142858em, -10.720238095238095em) {$e$} ; 
 \path 
-(0) to[->, ] node[coordinate](2){} (1) 
+(0) to[black,->, ] node[coordinate](4){} (1) 
+(1) to[black,->, ] node[coordinate](5){} (2) 
+(0) to[black,->, ] node[coordinate](6){} (3) 
+(3) to[black,->, ] node[coordinate](7){} (2) 
+(4) to[black,->, cell=0.2, ] node[coordinate](8){} (7) 
 ; 
 \path[->] 
-(0) edge["$$", pos=0.5, ->, ] (1) 
+(0) edge["${\scriptstyle }$", pos=0.5, black,->, ] (1) 
+(1) edge["${\scriptstyle }$", pos=0.5, black,->, ] (2) 
+(0) edge["${\scriptstyle }$", pos=0.5, black,->, ] (3) 
+(3) edge["${\scriptstyle }$", pos=0.5, black,->, ] (2) 
+(4) edge["${\scriptstyle \alpha }$", pos=0.5, black,->, cell=0.2, ] (7) 
 ; 
 \end{tikzpicture}
-
 % END OF GENERATED LATEX
- 
+
 
 
 
