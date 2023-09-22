@@ -258,21 +258,30 @@ quiverStyle st =
   | Right
   -}
 
+headTikzStyle : HeadStyle -> String
+headTikzStyle hd =
+    case hd of
+            DefaultHead -> "->, "
+            TwoHeads -> "onto, "
+            NoHead -> "-,"
+
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =
+    "fore, " ++
     Color.toString stl.color ++ "," ++
     (case stl.tail of
          DefaultTail -> ""
          Hook -> "into, "
          HookAlt -> "linto, ")
-    ++ (if stl.double then "cell=0, " else "")
-    ++ (case stl.head of
-            DefaultHead -> "->, "
-            TwoHeads -> "onto, "
-            NoHead -> "-,"
+    ++ (case (stl.head, stl.double) of
+            (NoHead, True) -> "identity"
+            (hd, True) -> (headTikzStyle hd) ++ "cell=0.2, "
+            (hd, False) -> (headTikzStyle hd)
        )
     ++ (if stl.dashed then "dashed, " else "")
     ++ (let bnd = stl.bend * 180 / pi in
         if stl.bend /= 0 then
             "bend right={" ++ String.fromFloat bnd ++ "}, "
         else "")
+
+        
