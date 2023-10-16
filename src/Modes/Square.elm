@@ -95,7 +95,8 @@ square_setPossibility idx g chosenNode =
 
 square_updatePossibility : Model -> Int -> NodeId -> ( Model, Cmd Msg )
 square_updatePossibility m idx node =
-    square_setPossibility idx m.graph node
+    let modelGraph = getActiveGraph m in
+    square_setPossibility idx modelGraph node
         |> Maybe.map (\state -> { m | mode = SquareMode state })
         |> Maybe.withDefault m
         |> noCmd
@@ -107,7 +108,8 @@ square_updatePossibility m idx node =
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    GraphDefs.selectedNode m.graph
+    let modelGraph = getActiveGraph m in
+    GraphDefs.selectedNode modelGraph
         |> Maybe.map (.id >> square_updatePossibility m 0)
         -- |> Maybe.map
         -- -- prevent bugs (if the mouse is thought
@@ -176,14 +178,16 @@ chooseAmong l n =
 
 guessPosition : Model -> SquareState -> Point
 guessPosition m s = 
-     case Graph.getNodes [s.n1, s.chosenNode, s.n2] m.graph
+     let modelGraph = getActiveGraph m in
+     case Graph.getNodes [s.n1, s.chosenNode, s.n2] modelGraph
                         |> List.map (.label >> .pos)  of
        [p1, p2, p3] -> Point.diamondPave p1 p2 p3
        _ -> m.mousePos
 
 guessProofPosition : Model -> SquareState -> Point -> Point
 guessProofPosition m s newPos  = 
-     case Graph.getNode s.chosenNode m.graph
+     let modelGraph = getActiveGraph m in
+     case Graph.getNode s.chosenNode modelGraph
                         |> Maybe.map .pos  of
        Just oldPos -> Point.middle oldPos newPos
        _ -> newPos

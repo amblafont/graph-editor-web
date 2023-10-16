@@ -17,9 +17,10 @@ const escapeStringRegexp = require( '@stdlib/utils-escape-regexp-string' );
 import lineByLine from 'n-readlines';
 const { exit } = require('process');
 
-type Scenario = "watch" | "standard";
+type Scenario = "watch" | "standard" | "coqlsp";
 const watchScenario = "watch" as Scenario;
 const standardScenario = "standard" as Scenario;
+const coqlspScenario = "coqlsp" as Scenario;
 const emptyGraph = {"graph":{"edges":[],"latexPreamble":"\\newcommand{\\coqproof}[1]{\\checkmark{}}","nodes":[],"sizeGrid":136},"version":9};
 type Exports = Record<string,string>;
 // const watchScenario = "watch";
@@ -247,19 +248,24 @@ function parsePrefix(line:string, remainder_arg:string[]) {
   }
 }
 
-function loadData(data:string, filename:string, scenario:Scenario) {
+function loadData(data:string, filename:string, scenario:Scenario,
+       setFirstTab = false) {
   let stripped_diag = data.trim();
   try {
 
     let json = JSON.parse (stripped_diag);
-    mainWindow.webContents.send('load-graph', 
+    if (setFirstTab)
+      mainWindow.webContents.send('set-first-tab', 
+       json); 
+    else
+      mainWindow.webContents.send('load-graph', 
        json, filename, scenario); 
     }
   catch (e) {
       if (e instanceof SyntaxError) {
       // if it is not a valid json, then it must be an equation 
         let equation = stripped_diag.slice(1, -1);
-        mainWindow.webContents.send('load-equation', equation , "watch");
+        mainWindow.webContents.send('load-equation', equation , scenario);
       }
       else 
         throw e;
@@ -490,10 +496,13 @@ function configureIpc() {
           console.log(msg);
           return;
        }
-      
+       var setFirstTab = false;
        switch (msg.key) {
+          case "set-first-tab":
+            setFirstTab = true;
           case "load":
-            loadData(msg.content as string, "graph.json", standardScenario)
+            loadData(msg.content as string, "graph.json", coqlspScenario, 
+                setFirstTab)
             break;
           case "complete-equation":
             mainWindow.webContents.send(msg.key, msg.content);

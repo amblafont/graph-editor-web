@@ -48,7 +48,9 @@ import Set
 import QuickInput exposing (equalityParser)
 
 import GraphDrawing exposing (..)
-import Msg exposing (Msg(..), Scenario(..), LoadGraphInfo, mapLoadGraphInfo, scenarioOfString)
+import Msg exposing (Msg(..), Scenario(..),
+   LoadGraphInfo, mapLoadGraphInfo, scenarioOfString, 
+   loadGraphInfoToMsg)
 
 import Tuple
 import Maybe exposing (withDefault)
@@ -81,7 +83,10 @@ import Format.Version6
 import Format.Version7
 import Format.Version8
 import Format.Version9
+import Format.Version10
 import Format.LastVersion as LastFormat
+
+import Format.GraphInfo exposing (Tab)
 
 import List.Extra
 import GraphDefs exposing (exportQuiver)
@@ -127,9 +132,10 @@ port loadedGraph6 : (LoadGraphInfo Format.Version6.Graph -> a) -> Sub a
 port loadedGraph7 : (LoadGraphInfo Format.Version7.Graph -> a) -> Sub a
 port loadedGraph8 : (LoadGraphInfo Format.Version8.Graph -> a) -> Sub a
 port loadedGraph9 : (LoadGraphInfo Format.Version9.Graph -> a) -> Sub a
+port loadedGraph10 : (LoadGraphInfo Format.Version10.Graph -> a) -> Sub a
 
 
-
+-- port setFirstTabGrph : ()
 
 
 -- we tell js about some mouse move event
@@ -141,17 +147,17 @@ port onMouseMove : JE.Value -> Cmd a
 port onMouseMoveFromJS : (Point -> a) -> Sub a
 
 -- JS tells us that we received some paste event with such data
-port onPaste : (String -> a) -> Sub a
+-- port onPaste : (String -> a) -> Sub a
 -- we reply that we want to decode it
-port decodeGraph : String -> Cmd a
--- JS would then calls us back with the decoded graph
-port decodedGraph : (LastFormat.Graph -> a) -> Sub a
+-- port decodeGraph : String -> Cmd a
+-- JS would then calls us back with the decoded graph with loadGraph
+-- port decodedGraph : (LastFormat.Graph -> a) -> Sub a
 
 
 -- we receive a copy event
 port onCopy : (() -> a) -> Sub a
 -- we return the stuff to be written
-port clipboardWriteGraph : { graph : LastFormat.Graph, version : Int } -> Cmd a
+port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
 port incompleteEquation : String -> Cmd a
 port completeEquation : ({ statement : String, script : String} -> a) -> Sub a
@@ -168,6 +174,11 @@ port findReplace : ({ search: String, replace:String} -> a) -> Sub a
 port promptEquation : () -> Cmd a
 -- return the equation
 port promptedEquation : (String -> a) -> Sub a
+port setFirstTabEquation : (String -> a) -> Sub a
+
+-- ask js to prompt tab title
+port promptTabTitle : String -> Cmd a
+port promptedTabTitle : (String -> a) -> Sub a
 
 
 port saveGridSize : Int -> Cmd a
@@ -185,20 +196,23 @@ subscriptions m =
       findReplace FindReplace,
       simpleMsg SimpleMsg,
       renameFile FileName,
+      promptedTabTitle RenameTab,
       clear (scenarioOfString >> Clear),
       -- upload a graph (triggered by js)
       
-      loadedGraph0 (mapLoadGraphInfo Format.Version0.fromJSGraph >> Loaded),
-      loadedGraph1 (mapLoadGraphInfo Format.Version1.fromJSGraph >> Loaded),
-      loadedGraph2 (mapLoadGraphInfo Format.Version2.fromJSGraph >> Loaded),
-      loadedGraph3 (mapLoadGraphInfo Format.Version3.fromJSGraph >> Loaded),
-      loadedGraph4 (mapLoadGraphInfo Format.Version4.fromJSGraph >> Loaded),
-      loadedGraph5 (mapLoadGraphInfo Format.Version5.fromJSGraph >> Loaded),
-      loadedGraph6 (mapLoadGraphInfo Format.Version6.fromJSGraph >> Loaded),
-      loadedGraph7 (mapLoadGraphInfo Format.Version7.fromJSGraph >> Loaded),
-      loadedGraph8 (mapLoadGraphInfo Format.Version8.fromJSGraph >> Loaded),
-      loadedGraph9 (mapLoadGraphInfo Format.Version9.fromJSGraph >> Loaded),
-      decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
+      loadedGraph0  (mapLoadGraphInfo Format.Version0.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph1  (mapLoadGraphInfo Format.Version1.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph2  (mapLoadGraphInfo Format.Version2.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph3  (mapLoadGraphInfo Format.Version3.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph4  (mapLoadGraphInfo Format.Version4.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph5  (mapLoadGraphInfo Format.Version5.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph6  (mapLoadGraphInfo Format.Version6.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph7  (mapLoadGraphInfo Format.Version7.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph8  (mapLoadGraphInfo Format.Version8.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph9  (mapLoadGraphInfo Format.Version9.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph10 (mapLoadGraphInfo Format.Version10.fromJSGraph >> loadGraphInfoToMsg),
+      setFirstTabEquation SetFirstTabEquation,
+      -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
       completeEquation CompleteEquation
       {- Html.Events.preventDefaultOn "keydown"
@@ -218,10 +232,10 @@ subscriptions m =
     ++
     (if m.scenario == Watch then [promptedEquation (QuickInput True)]
     else [])
-    ++
-    (if m.mode == DefaultMode && m.mouseOnCanvas then
-       [ onPaste (Do << decodeGraph)]
-     else [])
+    -- ++
+    -- (if m.mode == DefaultMode && m.mouseOnCanvas then
+    --    [ onPaste (Do << decodeGraph)]
+    --  else [])
     ++
     if case m.mode of
         ResizeMode _ -> False
@@ -290,13 +304,14 @@ subscriptions m =
 
 
 graph_RenameMode : List (Graph.Id, String) -> Model -> Graph NodeLabel EdgeLabel
-graph_RenameMode l m = 
+graph_RenameMode l m =
+   let g = getActiveGraph m in
    case l of
-      [] -> m.graph
+      [] -> g
       (id, s) :: _ ->   Graph.update id 
                         (\ n -> {n | label = s })  
                          (GraphDefs.mapNormalEdge (\e -> {e | label = s }))
-                               m.graph 
+                               g
 
 info_MoveNode : Model -> Modes.MoveState -> 
    { graph : Graph NodeLabel EdgeLabel,
@@ -306,19 +321,20 @@ info_MoveNode : Model -> Modes.MoveState ->
 info_MoveNode model { orig, pos } =
     
     let merge = model.specialKeys.ctrl in
-    let nodes = model.graph |> GraphDefs.selectedGraph |> Graph.nodes in
+    let modelGraph = getActiveGraph model in
+    let nodes = modelGraph |> GraphDefs.selectedGraph |> Graph.nodes in
     let updNode delta {id, label} = 
           {id = id, label = { label | pos = Point.add label.pos delta }}
     in
     let moveNodes delta = nodes |> List.map (updNode delta) in
-   --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) model.graph in
+   --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) modelGraph in
     let mkRet movedNodes = 
-            let g = Graph.updateNodes movedNodes model.graph in
+            let g = Graph.updateNodes movedNodes modelGraph in
             { graph =  g, valid = not merge } in
     let retMerge movedNodes =                  
            case movedNodes of
               [ n ] ->        
-                let (g, valid) = GraphDefs.mergeWithSameLoc n model.graph in
+                let (g, valid) = GraphDefs.mergeWithSameLoc n modelGraph in
                 if valid then
                   {graph = g, valid = True }
                 else
@@ -335,14 +351,15 @@ info_MoveNode model { orig, pos } =
     in
    
     let mouseDelta = Point.subtract model.mousePos <| GraphDefs.centerOfNodes nodes in
+    let sizeGrid = getActiveSizeGrid model in
     case pos of
-      InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos model.sizeGrid p
+      InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos sizeGrid p
       InputPosGraph id ->         
          if not merge then 
             retDelta mouseDelta
          else            
             case nodes of 
-               [n] -> {graph = Graph.merge id n.id model.graph, valid = True}
+               [n] -> {graph = Graph.merge id n.id modelGraph, valid = True}
                _ -> retDelta mouseDelta
       InputPosMouse -> retDelta mouseDelta
 
@@ -357,8 +374,8 @@ switch_RenameMode model =
     let label : Maybe String
         label = case activeObj model of
               ONothing -> Nothing
-              ONode id -> Graph.getNode id model.graph |> Maybe.map .label
-              OEdge id -> Graph.getEdge id model.graph |> Maybe.map (\ (_, _, e) -> e.label)
+              ONode id -> Graph.getNode id modelGraph |> Maybe.map .label
+              OEdge id -> Graph.getEdge id modelGraph |> Maybe.map (\ (_, _, e) -> e.label)
     in
     case label of
         Nothing -> noCmd model
@@ -392,13 +409,34 @@ updateIntercept msg modeli =
 
 makeExports : Model -> ExportFormats
 makeExports model = 
-     {tex = Tikz.graphToTikz model.sizeGrid model.graph
-    , svg = svgExport model model.graph
-    , coq = coqExport model model.graph }
+    let modelGraph = getActiveGraph model in
+    let sizeGrid = getActiveSizeGrid model in
+     {tex = Tikz.graphToTikz sizeGrid modelGraph
+    , svg = svgExport model modelGraph
+    , coq = coqExport model modelGraph }
+
+-- TODO change the name
+-- the suffix perform is to make the difference with the port name
+setFirstTabEquationPerform : Model -> String -> (Model, Cmd Msg)
+setFirstTabEquationPerform m s = 
+   case Parser.run equalityParser s of
+     Err _  -> noCmd m
+     Ok chain -> 
+        let mUpdated =
+              updateFirstTab m <|
+              \ t -> { t | graph = graphDrawingChain t.sizeGrid Graph.empty chain}
+        in 
+        ({ mUpdated | mode = DefaultMode}, computeLayout())
+
+  
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg modeli =
-    let model = case msg of
+    let model = case msg of               
+                SwitchTab i -> activateNthTab { modeli | mode = DefaultMode} i
+                RenameTab s -> renameActiveTab { modeli | mode = DefaultMode} s
+                RemoveTab -> removeActiveTabs { modeli | mode = DefaultMode}
+                NewTab -> createNewTab { modeli | mode = DefaultMode} <| nextTabName modeli
                 FileName s -> { modeli | fileName = s }
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
                 MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
@@ -424,10 +462,13 @@ update msg modeli =
                -- MouseClick -> let _ = Debug.log "Mouse Click !" () in model
                 _ -> modeli            
     in
+    let modelGraph = getActiveGraph model in
+    let sizeGrid = getActiveSizeGrid model in
     case msg of
+     SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
                               , export = makeExports model })
-     SaveGridSize -> (model, saveGridSize model.sizeGrid)                       
+     SaveGridSize -> (model, saveGridSize sizeGrid)                       
      MinuteTick -> if model.autoSave then 
                          (model, quicksaveGraph 
                          { info = toJsGraphInfo model, export = makeExports model,
@@ -438,48 +479,50 @@ update msg modeli =
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
                     exportQuiver <| 
-                     GraphDefs.exportQuiver model.sizeGrid (GraphDefs.selectedGraph model.graph))
+                     GraphDefs.exportQuiver sizeGrid (GraphDefs.selectedGraph modelGraph))
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n (x,y) ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
                 let dims = (x, if y == 0 then 12 else y) in
-                noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (n, dims),
-                      graph = 
-                      Graph.updateNode n (\l -> {l | dims = Just dims }) model.graph                      
-                }
+                noCmd <|
+                  updateActiveGraph model (Graph.updateNode n (\l -> {l | dims = Just dims }))
+                
      EdgeRendered e (x, y) ->
                 -- let _ = Debug.log "nouvelle dims !" (e, dims) in
                 let dims = (x, if y == 0 then 12 else y) in
-                noCmd { model | -- statusMsg = "newsize " ++ Debug.toString (e, dims),
-                      graph = 
-                      GraphDefs.updateNormalEdge e 
-                        (\l -> {l | dims = Just dims })
-                          model.graph
-                }
+                noCmd <|
+                   updateActiveGraph model
+                      (GraphDefs.updateNormalEdge e (\l -> {l | dims = Just dims }))
      Do cmd -> (model, cmd)
      SimpleMsg s -> noCmd { iniModel | scenario = SimpleScenario, statusMsg = s }
+     SetFirstTab g ->
+         let tab = getActiveTabInTabs g.tabs in
+        (updateFirstTab model <| always
+                 <| { tab | title = "preview"},
+                 computeLayout ())
      Loaded g ->        
         let scenario = scenarioOfString g.scenario in
-        let m = clearHistory <| updateWithGraphInfo { model | 
+        let m =  clearHistory <| updateWithGraphInfo { model | 
                                               mode = DefaultMode, 
                                               fileName = g.fileName,
                                               scenario = scenario
                                             } g.graph 
         in
-        let graph = 
-             if scenario == Exercise1 then
-               Graph.map 
-                  (\ _ n -> { n | selected = String.contains "\\bullet" n.label})
-                  (always identity)
-                  m.graph
-             else
-              m.graph
+        let m2 =
+                if scenario /= Exercise1 then m else
+                { m | tabs = List.map (\t -> 
+                  { t | graph = 
+                      Graph.map 
+                        (\ _ n -> { n | selected = String.contains "\\bullet" n.label})
+                        (always identity) t.graph}
+                    ) m.tabs
+                }                
         in
-        ({ m | graph = graph },
+        (m2,
                      -- we need drawn elements to resend their size
                                              computeLayout() )
      FindReplace req -> noCmd <| setSaveGraph model 
-                          <| GraphDefs.findReplaceInSelected model.graph req
+                          <| GraphDefs.findReplaceInSelected modelGraph req
      _ ->
       case model.mode of
         QuickInputMode c -> update_QuickInput c msg model 
@@ -506,10 +549,11 @@ update_Color ids msg model =
         KeyChanged False _ (Control "Escape") ->
             switch_Default model
         KeyChanged False _ k ->
+               let modelGraph = getActiveGraph model in
                case GraphDefs.updateStyleEdges 
                   (ArrowStyle.keyMaybeUpdateColor k)
-                  (Graph.getEdges ids model.graph)
-                  model.graph of 
+                  (Graph.getEdges ids modelGraph)
+                  modelGraph of 
                  Nothing -> noCmd model
                  Just g -> switch_Default <| setSaveGraph model g
         _ -> noCmd model
@@ -561,7 +605,7 @@ update_MoveNode msg state model =
               <| if state.save then
                    setSaveGraph model info.graph
                  else
-                   {model | graph = info.graph}
+                   setActiveGraph model info.graph
            else
               noCmd model
     in
@@ -617,7 +661,7 @@ update_RenameMode save labels msg model =
 next_RenameMode : Bool -> Bool -> List (Graph.Id, String) -> Model -> Model
 next_RenameMode finish save labels model =
     let g = graph_RenameMode labels model in
-    let m2 = if save then setSaveGraph model g else { model | graph = g} in
+    let m2 = if save then setSaveGraph model g else setActiveGraph model g in
     if finish then
       { m2 | mode = DefaultMode }
     else
@@ -638,7 +682,7 @@ update_RectSelect msg orig keep model =
            switch_Default <| selectByClick model
           else
            switch_Default 
-                  { model | graph = selectGraph model orig keep }
+                <| setActiveGraph model <| selectGraph model orig keep
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
       --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
@@ -662,8 +706,9 @@ update_Enlarge msg state model =
 
 selectLoop : Bool -> Model -> Model
 selectLoop direction model =
-     let g = GraphDefs.toProofGraph model.graph in
-     let edges =  GraphDefs.selectedEdgeId model.graph 
+     let modelGraph = getActiveGraph model in
+     let g = GraphDefs.toProofGraph modelGraph in
+     let edges =  GraphDefs.selectedEdgeId modelGraph 
               |> Maybe.andThen (\id -> 
                    Graph.getEdge id g) -- |> Maybe.map (\ e -> { id = id, label = e.label}))
               |> Maybe.map (GraphProof.loopFrom direction g)
@@ -673,13 +718,15 @@ selectLoop direction model =
     --  let _ = Debug.log "sel lhs" (diag.lhs |> List.map (.label >> .label)) in
     --  let _ = Debug.log "sel rhs" (diag.rhs |> List.map (.label >> .label)) in
     --  let _ = Debug.log "isBorder?" (GraphProof.isBorder diag) in     
-             { model | graph = edges |> List.map (Tuple.first >> .id)            
+       setActiveGraph model <|
+             (edges |> List.map (Tuple.first >> .id)            
               |> List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True})) 
-                  (GraphDefs.clearSelection model.graph) }
+                  (GraphDefs.clearSelection modelGraph) )
 
 rename : Model -> (Model, Cmd Msg)
 rename model =
-    let ids = GraphDefs.selectedId model.graph 
+    let modelGraph = getActiveGraph model in
+    let ids = GraphDefs.selectedId modelGraph 
             |> Maybe.map List.singleton 
             |> Maybe.withDefault []
     in
@@ -705,13 +752,15 @@ generateProofString debug g =
 
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
-    let delta_angle = pi / 5 in    
+    let delta_angle = pi / 5 in
+    let modelGraph = getActiveGraph model in
+    let sizeGrid = getActiveSizeGrid model in
     let move angle = 
-               GraphDefs.selectedNode model.graph                  
-                 -- |> Maybe.andThen (\id -> Graph.getNode id model.graph) 
+               GraphDefs.selectedNode modelGraph                  
+                 -- |> Maybe.andThen (\id -> Graph.getNode id modelGraph) 
                  |> Maybe.map (.label >> .pos)
                  |> Maybe.andThen (\p ->
-                    Graph.filterNodes model.graph 
+                    Graph.filterNodes modelGraph 
                       (\ n -> n.pos /= p && (Point.subtract n.pos p |> Point.pointToAngle |>
                       Point.angleWithInRange delta_angle angle  ))
                     |>
@@ -727,7 +776,7 @@ update_DefaultMode msg model =
     -- TODO: remove if not used
     let generateProof debug =
            let s = generateProofString debug
-                 <| GraphDefs.selectedGraph model.graph
+                 <| GraphDefs.selectedGraph modelGraph
            in
            (model, generateProofJs s) 
                 -- toClipboard 
@@ -738,19 +787,18 @@ update_DefaultMode msg model =
     let weaklySelect id =
              noCmd <|              
                 if model.specialKeys.shift then
-                { model | graph = GraphDefs.addOrSetSel True id model.graph }
+                setActiveGraph model <| GraphDefs.addOrSetSel True id modelGraph
                 else 
-               -- if model.hoverId == Nothing then model else                    
-               { model | graph = GraphDefs.weaklySelect  
+               -- if model.hoverId == Nothing then model else  
+                setActiveGraph model <| GraphDefs.weaklySelect  
                                         id
-                                         model.graph 
-                                         }
+                                         modelGraph                                          
     in
-    let clearSel = noCmd <| { model | graph = GraphDefs.clearSelection 
-                        model.graph } 
+    let clearSel = noCmd <| setActiveGraph model 
+                     <| GraphDefs.clearSelection modelGraph
     in
     let createPoint isMath =
-            let (newGraph, newId) = Graph.newNode model.graph 
+            let (newGraph, newId) = Graph.newNode modelGraph 
                     (newNodeLabel model.mousePos "" isMath)
                 newModel = addOrSetSel False newId
                    <| setSaveGraph model newGraph                    
@@ -758,13 +806,13 @@ update_DefaultMode msg model =
             noCmd <| initialise_RenameMode False [ newId ] newModel
     in
     let increaseZBy offset =
-           case GraphDefs.selectedEdgeId model.graph of
+           case GraphDefs.selectedEdgeId modelGraph of
               Nothing -> noCmd model
               Just id -> 
                     noCmd <| setSaveGraph model <|
                    Graph.updateEdge id 
                     (\ e -> { e | zindex = e.zindex + offset})
-                    model.graph
+                    modelGraph
     in
       
     
@@ -778,7 +826,7 @@ update_DefaultMode msg model =
         MouseClick -> noCmd <| selectByClick model
            
         MouseMove _ -> 
-             weaklySelect <| GraphDefs.closest model.mousePos model.graph             
+             weaklySelect <| GraphDefs.closest model.mousePos modelGraph             
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
         KeyChanged False _ (Control "Escape") -> clearSel
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
@@ -791,16 +839,25 @@ update_DefaultMode msg model =
             if not k.ctrl then
               Modes.NewArrow.initialise model 
             else
-              noCmd <| { model | graph = GraphDefs.selectAll model.graph}
+              noCmd <| setActiveGraph model <| GraphDefs.selectAll modelGraph
         CopyGraph ->
+              let selectedModel = { model |
+                           tabs = [ {graph = GraphDefs.selectedGraph modelGraph
+                               , sizeGrid = sizeGrid, title = "", 
+                               active = True }]
+                          }
+              in
               (model,
                clipboardWriteGraph <| 
-                 { graph = LastFormat.toJSGraph 
-                    { graph = GraphDefs.selectedGraph model.graph
-                      , sizeGrid = model.sizeGrid 
-                      , latexPreamble = model.latexPreamble
-                      }
-                    , version = LastFormat.version } )
+               toJsGraphInfo selectedModel
+                --  { graph = LastFormat.toJSGraph 
+                --     { tabs = [ {graph = GraphDefs.selectedGraph modelGraph
+                --       , sizeGrid = sizeGrid, title = "", 
+                --       active = True }]
+                --       , latexPreamble = model.latexPreamble
+                --       }
+                --     , version = LastFormat.version }
+                 )
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged True _ (Character 'g') -> 
@@ -809,19 +866,19 @@ update_DefaultMode msg model =
              Task.attempt (always PressTimeout) 
                <| Process.sleep pressTimeoutMs)
         KeyChanged False _ (Character 'i') -> 
-           noCmd <| case GraphDefs.selectedEdgeId model.graph of
-                      Just id -> setSaveGraph model <| Graph.invertEdge id model.graph
+           noCmd <| case GraphDefs.selectedEdgeId modelGraph of
+                      Just id -> setSaveGraph model <| Graph.invertEdge id modelGraph
                       _ -> model
         {- KeyChanged False _ (Character 'I') -> noCmd <| selectInitial model -}
         {- KeyChanged False _ (Character 'E') -> 
            noCmd <| { model | graph = 
               activeObj model |> objToNode 
               |> Maybe.andThen (\id -> 
-                   Graph.getNode id model.graph |> Maybe.map (\ n -> { id = id, label = n}))
-              |> Maybe.map (GraphProof.selectExtremePath model.graph 0)
+                   Graph.getNode id modelGraph |> Maybe.map (\ n -> { id = id, label = n}))
+              |> Maybe.map (GraphProof.selectExtremePath modelGraph 0)
               |> Maybe.withDefault [] 
               |> List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True})) 
-s                  (GraphDefs.clearSelection model.graph) } -}
+s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'L') -> 
            noCmd <| selectLoop True model
         KeyChanged False _ (Character 'H') -> 
@@ -831,26 +888,28 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         KeyChanged False _ (Character 'T') -> 
            generateProof True
         KeyChanged False _ (Character 'S') ->        
-           noCmd <| { model | graph = GraphDefs.selectSurroundingDiagram model.mousePos model.graph }
+           noCmd <|
+             setActiveGraph model
+             <| GraphDefs.selectSurroundingDiagram model.mousePos modelGraph
         KeyChanged False k (Character 'C') -> 
-            case GraphDefs.selectedEdgeId model.graph 
-                |> Maybe.filter (GraphDefs.isNormalId model.graph) of
+            case GraphDefs.selectedEdgeId modelGraph 
+                |> Maybe.filter (GraphDefs.isNormalId modelGraph) of
               Nothing -> noCmd model
               Just id -> noCmd {  model | mode = CutHead { id = id, head = True, duplicate = False } }   
         KeyChanged False k (Character 'c') -> 
             if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
             else
-            let ids = GraphDefs.selectedEdges model.graph |> List.filter (.label >> GraphDefs.isNormal) 
+            let ids = GraphDefs.selectedEdges modelGraph |> List.filter (.label >> GraphDefs.isNormal) 
                        |> List.map .id
             in
               noCmd <| if ids == [] then model else 
                 {  model | mode = ColorMode ids} 
                 -- , 
                 --   graph = GraphDefs.clearSelection 
-                --   <| GraphDefs.clearWeakSelection model.graph }              
+                --   <| GraphDefs.clearWeakSelection modelGraph }              
             
         KeyChanged False _ (Character 'I') -> 
-               let cmd = case GraphDefs.selectedIncompleteDiagram model.graph of 
+               let cmd = case GraphDefs.selectedIncompleteDiagram modelGraph of 
                       Nothing -> alert "Selected subdiagram not found."
                       Just d -> incompleteEquation <| GraphProof.statementToString d
                in
@@ -858,7 +917,7 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         CompleteEquation { statement, script } ->
             let failWith s = (model, alert s) in
             case (Parser.run equalityParser statement,
-                 GraphDefs.selectedIncompleteDiagram model.graph)
+                 GraphDefs.selectedIncompleteDiagram modelGraph)
              of
               (Err _, _) -> failWith ("fail to parse " ++ statement)
               (_, Nothing) -> failWith "no incomplete diagram selected"
@@ -882,13 +941,13 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                       let ltot = Debug.log "total unified" (l1 ++ l2) in
                       let finalg = 
                            List.foldl f
-                           model.graph
+                           modelGraph
                            ltot
                       in
                       let selectedNodes = 
                              Graph.nodes 
                              <| GraphDefs.selectedGraph 
-                                model.graph
+                                modelGraph
                       in
                       let g_with_proof =
                              GraphDefs.createProofNode finalg script
@@ -917,10 +976,10 @@ s                  (GraphDefs.clearSelection model.graph) } -}
         
         KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise model
         KeyChanged False _ (Character 'x') ->
-            noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph
+            noCmd <| setSaveGraph model <| GraphDefs.removeSelected modelGraph
         KeyChanged False _ (Character 'X') ->
-            let latex = graphToTikz model.sizeGrid 
-                            (GraphDefs.selectedGraph model.graph)
+            let latex = graphToTikz (getActiveSizeGrid model)
+                            (GraphDefs.selectedGraph modelGraph)
             in
             let cmd = if latex == "" then
                          alert "No diagram found!"
@@ -930,10 +989,10 @@ s                  (GraphDefs.clearSelection model.graph) } -}
               (model, cmd)
             -- fillBottom latex "No diagram found!"
         KeyChanged False _ (Character 'V') ->
-            let s = GraphDefs.selectedGraph model.graph |> svgExport model in
+            let s = GraphDefs.selectedGraph modelGraph |> svgExport model in
             (model, generateSvg s)          
         KeyChanged False _ (Control "Delete") ->
-            noCmd <| setSaveGraph model <| GraphDefs.removeSelected model.graph            
+            noCmd <| setSaveGraph model <| GraphDefs.removeSelected modelGraph            
         {- NodeClick n e ->
             
             let _ = Debug.log "nodeclick" () in
@@ -944,27 +1003,33 @@ s                  (GraphDefs.clearSelection model.graph) } -}
             let _ = Debug.log "edgeclick" () in
              noCmd <| addOrSetSel e.keys.shift n model  -}
         KeyChanged False _ (Character 'f') -> noCmd
-            <| let isSel = GraphDefs.fieldSelect model.graph  in
-                case GraphDefs.selectedNodes model.graph of
+            <| let isSel = GraphDefs.fieldSelect modelGraph  in
+                case GraphDefs.selectedNodes modelGraph of
                  [] -> model
                  _ -> setSaveGraph model 
                        <| 
                         Graph.map 
-                         (\ _ n -> if isSel n then GraphDefs.snapNodeToGrid model.sizeGrid n else n )
-                        (always identity) model.graph 
+                         (\ _ n -> if isSel n then GraphDefs.snapNodeToGrid sizeGrid n else n )
+                        (always identity) modelGraph 
               
         KeyChanged False _ (Character 'h') -> move pi
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
         KeyChanged False _ (Character 'l') -> move 0       
-        PasteGraph g -> noCmd <| initialiseMoveMode False FreeMove
-               <|  setSaveGraph model <|              
-                Graph.union 
-                  (GraphDefs.clearSelection model.graph)
-                  (GraphDefs.selectAll g.graph)
+        PasteGraph gi ->
+          if not model.mouseOnCanvas then noCmd model else
+         -- we ignore the other tabs
+          case List.Extra.find .active gi.tabs of
+              Nothing -> noCmd model
+              Just tab ->
+                   noCmd <| initialiseMoveMode False FreeMove
+                   <|  setSaveGraph model <|              
+                    Graph.union 
+                      (GraphDefs.clearSelection modelGraph)
+                      (GraphDefs.selectAll tab.graph)
         KeyChanged False _ (Character 'u') ->
-             let f = GraphDefs.fieldSelect model.graph in
-             let connectedGraph =  Graph.connectedClosure f f model.graph in
+             let f = GraphDefs.fieldSelect modelGraph in
+             let connectedGraph =  Graph.connectedClosure f f modelGraph in
              let isIncomplete = Graph.any (\ {n , isIn} -> f n /= isIn)
                                           (\ {e , isIn} -> f e /= isIn)
                                           connectedGraph
@@ -977,27 +1042,27 @@ s                  (GraphDefs.clearSelection model.graph) } -}
                     else
                     -- adding proof nodes
                      
-                     let selectedGraph = GraphDefs.selectedGraph model.graph in
+                     let selectedGraph = GraphDefs.selectedGraph modelGraph in
                      let isIn p = GraphDefs.getSurroundingDiagrams p selectedGraph /= [] in
-                     let proofNodes = GraphDefs.getProofNodes model.graph 
+                     let proofNodes = GraphDefs.getProofNodes modelGraph 
                           |> List.filter (.label >> .pos >> isIn)
                           |> List.map (Graph.nodeMap (\n -> { n | selected = True}))
                      in
-                     Graph.updateNodes proofNodes model.graph
+                     Graph.updateNodes proofNodes modelGraph
              in
-              noCmd { model | graph = newGraph }
+              noCmd <| setActiveGraph model newGraph
              
                
         KeyChanged False k (Character 'z') -> 
              if k.ctrl then noCmd <| undo model else noCmd model
-        -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise model.graph
+        -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise modelGraph
         KeyChanged False k (Character '+') -> increaseZBy 1
         KeyChanged False k (Character '<') -> increaseZBy (-1)
         KeyChanged False _ k -> noCmd <|
            case GraphDefs.updateStyleEdges 
                   (ArrowStyle.keyMaybeUpdateStyle k)
-                  (GraphDefs.selectedEdges model.graph)
-                  model.graph of 
+                  (GraphDefs.selectedEdges modelGraph)
+                  modelGraph of 
                  Nothing -> model
                  Just g -> setSaveGraph model g
         _ -> noCmd model              
@@ -1007,16 +1072,17 @@ svgExport model graph =
    let g = graph
                    |> GraphDefs.clearSelection 
                    |> GraphDefs.clearWeakSelection 
-            in
-            let box = GraphDefs.rectEnveloppe g |> Geometry.posDimsFromRect 
-                      |> Geometry.pad (toFloat model.sizeGrid / 2)
+   in
+   let box = GraphDefs.rectEnveloppe g |> Geometry.posDimsFromRect 
+                      |> Geometry.pad (toFloat (getActiveSizeGrid model) / 2)
                       |> Geometry.rectFromPosDims
-            in
+   in
             (Drawing.toString  
               [String.Svg.viewBox box]
               (g |> 
                GraphDrawing.toDrawingGraph |>
               toDrawing model))
+
 
 coqExport : Model -> Graph NodeLabel EdgeLabel -> String
 coqExport model graph = 
@@ -1024,20 +1090,22 @@ coqExport model graph =
      if s == "" then "(* No diagram found *)" else s
 
 selectByClick : Model -> Model
-selectByClick model =  
+selectByClick model =
     if model.mouseOnCanvas then           
-           { model | graph = GraphDefs.addWeaklySelected <|
+       updateActiveGraph model <| (\ modelGraph ->
+              GraphDefs.addWeaklySelected <|
                       if model.specialKeys.shift then 
-                        model.graph 
+                        modelGraph 
                       else
-                       GraphDefs.clearSelection model.graph }
+                       GraphDefs.clearSelection modelGraph )
     else
             model
                
 initialiseMoveMode : Bool -> MoveMode -> Model -> Model
 initialiseMoveMode save mode model =
+   let modelGraph = getActiveGraph model in
    { model | mode = 
-        if GraphDefs.isEmptySelection model.graph
+        if GraphDefs.isEmptySelection modelGraph
          then
            -- Nothing is selected
            DefaultMode
@@ -1052,7 +1120,7 @@ initialiseMoveMode save mode model =
 initialise_Resize : Model -> Model
 initialise_Resize model =
          { model | mode = 
-                       ResizeMode { sizeGrid = model.sizeGrid,
+                       ResizeMode { sizeGrid = getActiveSizeGrid model,
                                     onlyGrid = False
                                   }
                      }             
@@ -1077,7 +1145,7 @@ update_DebugMode msg model =
 update_CutHead : CutHeadState -> Msg -> Model -> (Model, Cmd Msg)
 update_CutHead state msg m =
   let finalise () = 
-         ({m | mode = DefaultMode, graph = graphCutHead state m}, Cmd.none)
+         (setActiveGraph {m | mode = DefaultMode} (graphCutHead state m), Cmd.none)
          -- computeLayout())
   in
   let changeState s = { m | mode = CutHead s } in
@@ -1094,8 +1162,9 @@ update_Resize : ResizeState -> Msg -> Model -> (Model, Cmd Msg)
 update_Resize st msg m =
   let finalise () = 
         let m2 = pushHistory m in
-         ({m2 | mode = DefaultMode, graph = graphResize st m,
-                sizeGrid = st.sizeGrid}, Cmd.none)
+         noCmd <|
+          setActiveGraph (setActiveSizeGrid { m2 | mode = DefaultMode } st.sizeGrid)
+          <| graphResize st m
          -- computeLayout())
   in
   -- let _ = Debug.log "msg resize" msg in
@@ -1124,23 +1193,26 @@ update_Resize st msg m =
 
 
 selectGraph : Model -> Point -> Bool -> Graph NodeLabel EdgeLabel
-selectGraph m orig keep = 
+selectGraph m orig keep =
+   let modelGraph = getActiveGraph m in
    let selRect = (Geometry.makeRect orig m.mousePos) in
-   let g = if keep then m.graph else GraphDefs.clearSelection m.graph in
+   let g = if keep then modelGraph else GraphDefs.clearSelection modelGraph in
    let isSel n = Geometry.isInRect selRect n.pos in
    GraphDefs.addNodesSelection g isSel
    
 enlargeGraph : Model -> EnlargeState -> Graph NodeLabel EdgeLabel
 enlargeGraph m state =
+   let modelGraph = getActiveGraph m in
+   let sizeGrid = getActiveSizeGrid m in
    let (ox, oy) = case state.pos of      
-          InputPosKeyboard p -> InputPosition.deltaKeyboardPos m.sizeGrid p
+          InputPosKeyboard p -> InputPosition.deltaKeyboardPos sizeGrid p
           _ -> Point.subtract m.mousePos state.orig 
    in   
-   let diags = GraphDefs.getSurroundingDiagrams state.orig m.graph in
+   let diags = GraphDefs.getSurroundingDiagrams state.orig modelGraph in
    let edgesId = List.concatMap (GraphProof.edgesOfDiag >> IntDict.keys) diags
    in
    let gcon = 
-          Graph.map (\ _ _ -> False) (\ _ _ -> False) m.graph
+          Graph.map (\ _ _ -> False) (\ _ _ -> False) modelGraph
           |> Graph.updateList edgesId (always True) (always True)
           |> Graph.connectedClosure identity identity
    in
@@ -1163,24 +1235,25 @@ enlargeGraph m state =
    let g = Graph.map 
             mapNode
             (always identity)
-            m.graph
+            modelGraph
    in
    g
 
 {- enlargeGraph : Model -> Maybe Point -> Graph NodeLabel EdgeLabel
 enlargeGraph m orig = 
-  orig |> Maybe.map (enlargeGraphSel m) |> Maybe.withDefault m.graph
+  orig |> Maybe.map (enlargeGraphSel m) |> Maybe.withDefault modelGraph
  -}
 graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
+    let modelGraph = getActiveGraph m in
     case m.mode of
-        ColorMode _ -> collageGraphFromGraph m m.graph
-        DefaultMode -> collageGraphFromGraph m m.graph
+        ColorMode _ -> collageGraphFromGraph m modelGraph
+        DefaultMode -> collageGraphFromGraph m modelGraph
         RectSelect p -> GraphDrawing.toDrawingGraph  <| selectGraph m p m.specialKeys.shift
         EnlargeMode p ->
              enlargeGraph m p
              |> collageGraphFromGraph m
---        NewNode -> collageGraphFromGraph m m.graph
+--        NewNode -> collageGraphFromGraph m modelGraph
         QuickInputMode ch -> collageGraphFromGraph m <| graphQuickInput m ch
         Move s -> 
           info_MoveNode m s |> .graph |>
@@ -1198,7 +1271,7 @@ graphDrawingFromModel m =
                 _ -> g2
               
         DebugMode ->
-            m.graph |> collageGraphFromGraph m 
+            modelGraph |> collageGraphFromGraph m 
                 |> Graph.map
                    (\id n ->  {n | label = String.fromInt id}) 
                    (\_ -> identity)
@@ -1212,13 +1285,14 @@ graphDrawingFromModel m =
 
 
 graphCutHead : CutHeadState -> Model -> Graph NodeLabel EdgeLabel
-graphCutHead {id, head, duplicate} m = 
+graphCutHead {id, head, duplicate} m =
+   let modelGraph = getActiveGraph m in
    let pos = m.mousePos in
-    Graph.getEdge id m.graph 
+    Graph.getEdge id modelGraph 
     |> Maybe.andThen (\e -> Graph.getNode (if head then e.to else e.from)
-         m.graph 
+         modelGraph 
     |> Maybe.map (\ nto -> 
-    let g1 = if duplicate then GraphDefs.unselect id m.graph else Graph.removeEdge id m.graph in
+    let g1 = if duplicate then GraphDefs.unselect id modelGraph else Graph.removeEdge id modelGraph in
     let label = {nto | pos = pos } in
     let (g2, newId) = Graph.newNode g1 label in
     let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
@@ -1232,29 +1306,41 @@ graphCutHead {id, head, duplicate} m =
     in
     g4
     ))   
-    |> Maybe.withDefault m.graph
+    |> Maybe.withDefault modelGraph
 
+
+-- tabResize : ResizeState -> Tab -> Tab
+-- tabResize st tab =
+--    if st.onlyGrid then tab else
+--    let ratio = toFloat st.sizeGrid / toFloat tab.sizeGrid in
+--    Graph.map (\_ n -> { n | pos = Point.resize ratio n.pos}) 
+--       (\_ -> identity)
+--     tab.graph
 
 graphResize : ResizeState -> Model -> Graph NodeLabel EdgeLabel
-graphResize st m =
-   if st.onlyGrid then m.graph else
-   let ratio = toFloat st.sizeGrid / toFloat m.sizeGrid in
+graphResize st m =   
+   let modelGraph = getActiveGraph m in
+   let sizeGrid = getActiveSizeGrid m in
+   if st.onlyGrid then modelGraph else
+   let ratio = toFloat st.sizeGrid / toFloat sizeGrid in
    Graph.map (\_ n -> { n | pos = Point.resize ratio n.pos}) 
       (\_ -> identity)
-    m.graph
+    modelGraph
    
 
 
 graphQuickInput : Model -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabel
 graphQuickInput model ch = 
+  let modelGraph = getActiveGraph model in
+  let sizeGrid = getActiveSizeGrid model in
   case ch of
-    Nothing -> model.graph
+    Nothing -> modelGraph
     Just (eq1, eq2) ->
       -- if an incomplete subdiagram is selected, we use it
-      let od = GraphDefs.selectedIncompleteDiagram model.graph in
-      let default = graphDrawingChain model.sizeGrid model.graph (eq1, eq2) in 
+      let od = GraphDefs.selectedIncompleteDiagram modelGraph in
+      let default = graphDrawingChain sizeGrid modelGraph (eq1, eq2) in 
       let split l edges = GraphProof.isEmptyBranch l |> 
-              Maybe.map (QuickInput.splitWithChain model.graph edges) 
+              Maybe.map (QuickInput.splitWithChain modelGraph edges) 
       in
       case od of
         Nothing -> default
@@ -1510,7 +1596,8 @@ additionnalDrawing m =
             Drawing.rect foregroundZ <| Geometry.makeRect orig
             <| Point.add (1,1) -- to make the rectangle appear even if one dim is empty
             <| case pos of
-              InputPosKeyboard p -> Point.add orig <| InputPosition.deltaKeyboardPos m.sizeGrid p
+              InputPosKeyboard p -> Point.add orig <| InputPosition.deltaKeyboardPos 
+                 (getActiveSizeGrid m) p
               _ -> m.mousePos
    in
    case m.mode of
@@ -1537,11 +1624,35 @@ toDrawing model graph =
     in
     graphDrawing cfg graph
 
+renderTabs : List Tab -> List (Html Msg)
+renderTabs tabs =
+  let activeTab = getActiveTabInTabs tabs in
+  let renderTab i tab =
+        
+         let classes = 
+                Html.Attributes.class "tab-button" :: 
+                if tab.active then [Html.Attributes.class "active-tab"] else []
+         in
+        --  Html.input ([Html.Events.onClick <| SwitchTab i
+        --              , Html.Attributes.value tab.title] ++ classes) 
+        --    []
+           Html.button ([(Html.Events.onClick <| SwitchTab i)
+              -- Html.Attributes.contenteditable True,
+              -- Html.Events.onInput <| RenameTab i
+              ] ++ classes) 
+           [Html.text tab.title]
+  in
+  let newButton = Html.button [Html.Events.onClick NewTab] [Html.text "New tab"] in
+  let removeButton = Html.button [Html.Events.onClick RemoveTab] [Html.text "Remove tab"] in
+  let renameButton = Html.button [Html.Events.onClick (Do (promptTabTitle activeTab.title))] [Html.text "Rename tab"] in
+     [newButton, removeButton, renameButton ] ++ List.indexedMap renderTab tabs
+
 viewGraph : Model -> Html Msg
 viewGraph model =
-    let missings = Graph.invalidEdges model.graph in   
+    let modelGraph = getActiveGraph model in
+    let missings = Graph.invalidEdges modelGraph in   
     let drawings = toDrawing model (graphDrawingFromModel model) in
-    let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.modedSizeGrid model) in
+    let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.getActiveSizeGrid model) in
     let nmissings = List.length missings in
     let svg =   Drawing.group [grid,
                  drawings,
@@ -1632,11 +1743,12 @@ viewGraph model =
           ++ 
            (if isResizeMode model.mode then
                [ HtmlDefs.slider SizeGrid 
-                ("Grid size (" ++ String.fromInt (Model.modedSizeGrid model) ++ ")")
-                  minSizeGrid maxSizeGrid (Model.modedSizeGrid model) ]
+                ("Grid size (" ++ String.fromInt (Model.getActiveSizeGrid model) ++ ")")
+                  minSizeGrid maxSizeGrid (Model.getActiveSizeGrid model) ]
             else
                [])
-          ++ [ 
+          ++ 
+          [ Html.p [Html.Attributes.class "tabs"] (renderTabs model.tabs),          
             Html.p [] [ Html.text <| if nmissings > 0 then 
                String.fromInt nmissings ++ " nodes or edges could not be rendered."
                else "" ]

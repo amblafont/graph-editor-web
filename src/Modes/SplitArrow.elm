@@ -23,9 +23,10 @@ import Geometry.Point exposing (Point)
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    GraphDefs.selectedEdgeId m.graph 
+    let modelGraph = (getActiveGraph m) in
+    GraphDefs.selectedEdgeId modelGraph
     |> Maybe.andThen (\id ->      
-        Graph.getEdge id m.graph
+        Graph.getEdge id modelGraph
         |> Maybe.andThen (\ e -> 
           GraphDefs.filterNormalEdges e.label.details
           |> Maybe.map (\ l -> 
@@ -95,15 +96,16 @@ type alias Info = { graph : Graph NodeLabel EdgeLabel,
 
 guessPosition : Model -> SplitArrowState -> Point
 guessPosition m s = 
-     case Graph.getNodes [s.source, s.target] m.graph
+     case Graph.getNodes [s.source, s.target] (getActiveGraph m)
                         |> List.map (.label >> .pos)  of
        [p1, p2] -> Geometry.Point.middle p1 p2
        _ -> m.mousePos
 
 stateInfo : Model -> SplitArrowState -> Info
 stateInfo m state =
+    let modelGraph = getActiveGraph m in
     let otherLabel = 
-              m.graph |> GraphDefs.getLabelLabel 
+              (getActiveGraph m) |> GraphDefs.getLabelLabel 
               (if state.labelOnSource then 
                  state.target 
                else 
@@ -117,7 +119,7 @@ stateInfo m state =
              makeInfo (guessPosition m state)
            else
             case state.pos of
-              InputPosGraph id -> ((m.graph, id), False)
+              InputPosGraph id -> ((modelGraph, id), False)
               _ -> makeInfo m.mousePos                              
            
     in

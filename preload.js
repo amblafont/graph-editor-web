@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('electronAPI', {
   loadEquation: (callback) => ipcRenderer.on('load-equation', callback),
   loadGraph: (callback) => ipcRenderer.on('load-graph', callback),
+  setFirstTab: (callback) => ipcRenderer.on('set-first-tab', callback),
   clearGraph: (callback) => ipcRenderer.on('clear-graph', callback),
   rename: (callback) => ipcRenderer.on('rename', callback),
   saveGraph: (filename, json, exports) => ipcRenderer.send('save-graph', filename, json, exports),

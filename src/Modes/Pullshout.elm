@@ -2,7 +2,7 @@ module Modes.Pullshout exposing (initialise, update, graphDrawing, help)
 import Polygraph as Graph exposing (EdgeId, Graph)
 import Modes exposing (Mode(..), PullshoutState, PullshoutKind(..))
 import Model exposing (switch_Default)
-import Model exposing (Model, switch_Default, noCmd, collageGraphFromGraph)
+import Model exposing (Model, switch_Default, noCmd, collageGraphFromGraph, getActiveGraph)
 import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
@@ -42,7 +42,7 @@ possibleDests g id k =
     
 graph : Model -> PullshoutState -> Graph NodeLabel EdgeLabel
 graph m s =
-   Graph.newEdge m.graph s.chosenEdge s.currentDest
+   Graph.newEdge (getActiveGraph m) s.chosenEdge s.currentDest
    GraphDefs.newPullshout
    |> Tuple.first
 
@@ -59,7 +59,7 @@ graphDrawing m s =
 nextPullshout : Model -> PullshoutKind -> PullshoutState -> PullshoutState
 nextPullshout m k st =
    let recompute () = 
-         case possibleDests m.graph st.chosenEdge k of
+         case possibleDests (getActiveGraph m) st.chosenEdge k of
            [] -> st
            t :: q -> { st | currentDest = t, possibilities = q, kind = k}
    in

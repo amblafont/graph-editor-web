@@ -24,8 +24,9 @@ updateState m state = {m | mode = NewArrow state}
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-    GraphDefs.selectedId m.graph           
-        |> Maybe.Extra.filter (GraphDefs.isNormalId m.graph)
+    let modelGraph = getActiveGraph m in
+    GraphDefs.selectedId modelGraph           
+        |> Maybe.Extra.filter (GraphDefs.isNormalId modelGraph)
         |> Maybe.map
             (\chosenNode ->               
                 { m
@@ -85,10 +86,11 @@ keyToAction k step =
 
 update : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
+    let modelGraph = getActiveGraph model in
     let next finish = nextStep model finish state in
     let pullshoutMode k = 
            noCmd <| { model | mode =
-                          Modes.Pullshout.initialise model.graph state.chosenNode k
+                          Modes.Pullshout.initialise modelGraph state.chosenNode k
                           |> Maybe.map PullshoutMode
                           |> Maybe.withDefault (NewArrow state)
                        }
@@ -137,6 +139,7 @@ moveNodeInfo :
         , created : Bool
         }
 moveNodeInfo m state =
+    let modelGraph = getActiveGraph m in
     
     let makeInfo pos = mayCreateTargetNodeAt m pos "" in
     let
@@ -147,7 +150,7 @@ moveNodeInfo m state =
                 --  Debug.log "ici"             
                     makeInfo (keyboardPosToPoint m state.chosenNode p)
               InputPosGraph id ->
-                 ((m.graph, id), False)
+                 ((modelGraph, id), False)
             -- Debug.log "movedNode? "
              
            
@@ -170,7 +173,7 @@ moveNodeInfo m state =
 
 graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s =
-    -- let defaultView movedNode = m.graph{ graph = m.graph, movedNode = movedNode}  in
+    -- let defaultView movedNode = modelGraph{ graph = modelGraph, movedNode = movedNode}  in
     -- graphMakeEditable (renamableFromState s) <|
     collageGraphFromGraph m <|
             let info = moveNodeInfo m s in
@@ -181,7 +184,7 @@ graphDrawing m s =
                  (\n -> {n | watchEnterLeave = False })
                 else identity -}
         -- _ ->
-        --     m.graph -- |> collageGraphFromGraph m
+        --     modelGraph -- |> collageGraphFromGraph m
 
 
 

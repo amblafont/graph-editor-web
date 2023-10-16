@@ -40,6 +40,26 @@
           .weak-active-edge {
             filter: drop-shadow(3px 5px 2px rgb(0 0 0 / 0.4));            
           }
+          .tabs .tab-button {
+  position: relative;
+  padding: 0.5em 1em;
+  border: 0;
+  border-radius: 0.5em;
+  background-color: pink;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  /* width: 100%;
+  max-width: 100%;
+   box-sizing: border-box;
+  display: block; */
+}
+
+          .tabs .tab-button.active-tab, .tabs .tab-button:active {
+            top: 2px;
+            left: 1px;
+            box-shadow: none;
+
+          }
          .active-label { 
              border-color: black;
              border-style: solid;
@@ -235,21 +255,23 @@
          
 
 
-         function sendGraphToElm(json, filename, scenario = "standard") {
+         function sendGraphToElm(json, filename, scenario = "standard", clipboard = false, setFirstTab = false) {
             var graph = json;
             var version = 0;
             if (json.hasOwnProperty('version')) {
                version = json.version;
                graph = json.graph;
             }
-            var args = { graph : graph, fileName : filename, scenario : scenario};
+            var args = { graph , fileName : filename, scenario,
+                clipboard, setFirstTab};
             console.log(args);
             app.ports["loadedGraph" + version].send(args);
          }
         
          const queryString = window.location.search;
          const urlParams = new URLSearchParams(queryString);
-         var tutoData = {"graph" : tutorial, "fileName" : "graph.json", "scenario" : "standard" };
+         var tutoData = {"graph" : tutorial, "fileName" : "graph.json", "scenario" : "standard", "clipboard" : false, 
+        setFirstTab : false };
 
          if (urlParams.has("scenario") && scenarios.hasOwnProperty(urlParams.get("scenario"))) {
             scenario = urlParams.get("scenario"); 
@@ -427,19 +449,32 @@
 
          document.addEventListener("paste", function (e) { 
                 const clipboardData = e.clipboardData || window.clipboardData;
+                console.log("paste");
+
                 const text = clipboardData.getData('text') || "";
-                app.ports.onPaste.send(text); 
+                // console.log(text);
+                var json;
+                try { 
+                    json = JSON.parse(text);
+                 }
+                catch (e) { json = false; }
+                // console.log(json);
+                if (json) {
+                    sendGraphToElm(json, "", "standard", true);
+                    // cnonsole.log(json);
+                }
+                // app.ports.onPaste.send(text); 
         });
 
 
-        answerElmRequest('decodeGraph', 'decodedGraph', function (paste) {
-            var json;
-            try { json = JSON.parse(paste); }
-            catch (e) { json = false; }
-            if (json) 
-               return json.graph
+        // answerElmRequest('decodeGraph', 'decodedGraph', function (paste) {
+        //     var json;
+        //     try { json = JSON.parse(paste); }
+        //     catch (e) { json = false; }
+        //     if (json) 
+        //        return json.graph
               
-         })
+        //  })
         
 
 
@@ -468,6 +503,16 @@
              if (rep && rep.length > 0) {                
                     callback(rep); //{ equation : rep, final: false, scenario: ""};
              }
+            })
+         );
+
+         answerElmRequestCallback('promptTabTitle', 'promptedTabTitle', (a, callback) =>
+            customPrompt("Rename tab", 
+                  a, function (rep) {
+            // console.log("reponse: " + rep);
+            //  if (rep && rep.length > 0) {                
+                    callback(rep); //{ equation : rep, final: false, scenario: ""};
+             
             })
          );
 
@@ -549,10 +594,12 @@
             // window.electronAPI.loadGraph((event, json, fileName, scenario) => alert('coucou') );
             window.electronAPI.loadGraph((event, json, fileName, scenario) => sendGraphToElm(json, fileName, scenario));
             window.electronAPI.clearGraph((event, scenario) => app.ports.clear.send(scenario));
+            window.electronAPI.setFirstTab((event, json) => sendGraphToElm(json, "", "coqlsp", false, true));
             window.electronAPI.loadEquation(function (event, equation, scenario) {
                    console.log(equation);
-                  app.ports.clear.send(scenario);
-                  app.ports.promptedEquation.send(equation) ;
+                //   app.ports.clear.send(scenario);
+                //   app.ports.promptedEquation.send(equation) ;
+                app.ports.setFirstTabEquation.send(equation);
             }
             );
             window.electronAPI.rename((event, fileName) => app.ports.renameFile.send(fileName));
