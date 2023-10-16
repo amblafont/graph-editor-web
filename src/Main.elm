@@ -1652,7 +1652,7 @@ viewGraph model =
     let modelGraph = getActiveGraph model in
     let missings = Graph.invalidEdges modelGraph in   
     let drawings = toDrawing model (graphDrawingFromModel model) in
-    let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.getActiveSizeGrid model) in
+    let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.getCurrentSizeGrid model) in
     let nmissings = List.length missings in
     let svg =   Drawing.group [grid,
                  drawings,

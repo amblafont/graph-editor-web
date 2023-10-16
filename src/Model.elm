@@ -171,10 +171,13 @@ setActiveGraph m g =
   updateActiveGraph m <| always g
 
 getActiveSizeGrid : Model -> Int
-getActiveSizeGrid m = 
+getActiveSizeGrid m = getActiveTab m |> .sizeGrid
+
+getCurrentSizeGrid : Model -> Int
+getCurrentSizeGrid m = 
   case m.mode of
       ResizeMode s -> s.sizeGrid
-      _ -> getActiveTab m |> .sizeGrid
+      _ -> getActiveSizeGrid m
 
 setActiveSizeGrid : Model -> Int -> Model
 setActiveSizeGrid m s =
