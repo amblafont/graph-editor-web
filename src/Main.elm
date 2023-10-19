@@ -1743,8 +1743,8 @@ viewGraph model =
           ++ 
            (if isResizeMode model.mode then
                [ HtmlDefs.slider SizeGrid 
-                ("Grid size (" ++ String.fromInt (Model.getActiveSizeGrid model) ++ ")")
-                  minSizeGrid maxSizeGrid (Model.getActiveSizeGrid model) ]
+                ("Grid size (" ++ String.fromInt (Model.getCurrentSizeGrid model) ++ ")")
+                  minSizeGrid maxSizeGrid (Model.getCurrentSizeGrid model) ]
             else
                [])
           ++ 
