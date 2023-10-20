@@ -497,8 +497,8 @@ update msg modeli =
      SimpleMsg s -> noCmd { iniModel | scenario = SimpleScenario, statusMsg = s }
      SetFirstTab g ->
          let tab = getActiveTabInTabs g.tabs in
-        (updateFirstTab model <| always
-                 <| { tab | title = "preview"},
+        (updateFirstTab model <| \t ->
+                  { tab | title = t.title , active = t.active},
                  computeLayout ())
      Loaded g ->        
         let scenario = scenarioOfString g.scenario in

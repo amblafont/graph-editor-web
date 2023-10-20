@@ -1,13 +1,13 @@
 {
   "name": "YADE",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A diagram editor",
   "main": "build/index.js",
   "repository": "git@github.com:amblafont/graph-editor-web.git",
   "author": "amblaf <chaster_killer@hotmail.fr>",
   "license": "MIT",
   "scripts": {
-    "start": "yarn compile && electron-forge start",
+    "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "yarn compile && electron-forge make",
     "publish": "electron-forge publish",
@@ -34,13 +34,6 @@
         ]
       },
       "makers": [
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": [
-            "linux"
-          ],
-          "config": {}
-        },
         {
           "name": "@electron-forge/maker-deb",
           "platforms": [
