@@ -274,7 +274,7 @@ tikzStyle stl =
          Hook -> "into, "
          HookAlt -> "linto, ")
     ++ (case (stl.head, stl.double) of
-            (NoHead, True) -> "identity"
+            (NoHead, True) -> "identity, "
             (hd, True) -> (headTikzStyle hd) ++ "cell=0.2, "
             (hd, False) -> (headTikzStyle hd)
        )
