@@ -1,5 +1,5 @@
 A diagram editor in your browser. Try it out: https://amblafont.github.io/graph-editor/index.html.
-See https://www.youtube.com/watch?v=iWSw4RK8wEk for a short presentation. 
+See https://www.youtube.com/watch?v=iWSw4RK8wEk and https://amblafont.github.io/articles/yade.pdf for a short presentation. 
 
 To test offline: open grapheditor.html in your browser
 

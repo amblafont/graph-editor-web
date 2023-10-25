@@ -497,8 +497,8 @@ update msg modeli =
      SimpleMsg s -> noCmd { iniModel | scenario = SimpleScenario, statusMsg = s }
      SetFirstTab g ->
          let tab = getActiveTabInTabs g.tabs in
-        (updateFirstTab model <| always
-                 <| { tab | title = "preview"},
+        (updateFirstTab model <| \t ->
+                  { tab | title = t.title , active = t.active},
                  computeLayout ())
      Loaded g ->        
         let scenario = scenarioOfString g.scenario in
@@ -1743,8 +1743,8 @@ viewGraph model =
           ++ 
            (if isResizeMode model.mode then
                [ HtmlDefs.slider SizeGrid 
-                ("Grid size (" ++ String.fromInt (Model.getActiveSizeGrid model) ++ ")")
-                  minSizeGrid maxSizeGrid (Model.getActiveSizeGrid model) ]
+                ("Grid size (" ++ String.fromInt (Model.getCurrentSizeGrid model) ++ ")")
+                  minSizeGrid maxSizeGrid (Model.getCurrentSizeGrid model) ]
             else
                [])
           ++ 

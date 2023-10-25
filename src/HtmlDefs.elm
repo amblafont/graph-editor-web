@@ -33,7 +33,7 @@ introHtml = (textHtml <| """
             (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a> (see the code on 
         <a href="https://github.com/amblafont/graph-editor-web">github</a>).
             Higher cells are supported.
-	    You can draw anywhere, not just on the grid (whose size can be later adjusted).
+	    For a short description, see <a href="https://amblafont.github.io/articles/yade.pdf">here</a>.
 	    </p>
 	    <p>
 	    For LaTeX export, press (capital) 'X' after selection. The output code relies on
