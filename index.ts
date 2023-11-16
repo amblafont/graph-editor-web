@@ -524,7 +524,6 @@ function sendExternalMsg(key:string, content:Object, error?:string) {
   process.send({key:key, content:content})
 }
 
-
 const createWindow = () => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
@@ -543,10 +542,8 @@ const createWindow = () => {
   mainWindow.webContents.once('did-finish-load', () => {
   ipcMain.on('save-graph', (e, filename, data, exports) => handleSave(filename, data,exports));
   ipcMain.on('open-graph', (e) => openGraphFile());
-  ipcMain.on('prompt', (e, question, defaut) =>
-  electronPrompt({label:question, value:defaut, width:800}, mainWindow)
-       .then((r:any) => mainWindow.webContents.send('answer-prompt', r))
-       .catch((_:any) => mainWindow.webContents.send('answer-prompt', null))
+  ipcMain.handle('prompt', async (e, question, defaut) =>
+    electronPrompt({label:question, value:defaut, width:800}, mainWindow)
   );
   ipcMain.on('quick-save-graph', 
      (e, filename, data, exports, feedback) => is_watch ? handleSave(filename, data,exports)
