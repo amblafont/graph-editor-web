@@ -279,7 +279,7 @@ tikzStyle stl =
             (hd, False) -> (headTikzStyle hd)
        )
     ++ (if stl.dashed then "dashed, " else "")
-    ++ (let bnd = stl.bend * 180 / pi in
+    ++ (let bnd = atan(2*stl.bend) * 180 / pi in
         if stl.bend /= 0 then
             "bend right={" ++ String.fromFloat bnd ++ "}, "
         else "")
