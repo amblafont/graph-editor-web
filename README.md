@@ -1,13 +1,16 @@
 A diagram editor in your browser. Try it out: https://amblafont.github.io/graph-editor/index.html.
 See https://www.youtube.com/watch?v=iWSw4RK8wEk and https://amblafont.github.io/articles/yade.pdf for a short presentation. 
 
-To test offline: open grapheditor.html in your browser
+To test offline: open grapheditor.html in your browser.
 
 To compile: elm make src/Main.elm --output=elm.js
-(or download the latest compiled version from https://amblafont.github.io/graph-editor/elm.js)
+(or download the latest elm.js from https://amblafont.github.io/graph-editor/elm.js)
 
-To compile the desktop app (with easy integration of latex documents: see directory tools/), you
-first need `yarn` to be installed. For this, you need to install `npm`, and then `npm install --global yarn`.
+The desktop application (check the release pages) embeds the web app using electron and offers additional features:
+- easy editing of diagrams in latex documents (see the directory tools/),
+- Coq mechanisation features (see https://github.com/amblafont/vscode-yade-example).
+
+To compile the desktop application, you first need `yarn` to be installed. For this, you need to install `npm`, and then `npm install --global yarn`.
 Then,
 
 - `yarn install` to install the nodejs dependencies
@@ -16,7 +19,7 @@ Then,
 - `yarn make` to build the .deb/.zip
 
 
-Ipc capabilities when the electron app is launched by another node.js app using `child_process`
+Ipc capabilities when the desktop app is launched by another node.js app using `child_process`
 ---------------
 (To be used in a vscode extension building upon coq-lsp)
 

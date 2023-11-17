@@ -583,11 +583,7 @@
          // Setting up interaction with electron
          if (isElectron) {
             customPrompt = function (question, defaut, callback) {
-                window.electronAPI.answerPrompt( function (event, ret) {
-                        callback(ret);
- 
-                    });
-                window.electronAPI.prompt(question, defaut);
+                window.electronAPI.prompt(question, defaut).then(callback);
             };
 
             console.log("electron detected");

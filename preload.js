@@ -11,8 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      filename, json, exports, feedback),
   openFile: () => ipcRenderer.send('open-graph'),
   simpleMsg: (callback) => ipcRenderer.on('simple-msg', callback),
-  prompt: (question, defaut) => ipcRenderer.send('prompt', question, defaut),
-  answerPrompt: (callback => ipcRenderer.on('answer-prompt', callback)),
+  prompt: (question, defaut) => ipcRenderer.invoke('prompt', question, defaut),
   incompleteEquation: (statement) => ipcRenderer.send('incomplete-equation', statement),
   generateProof: (script) => ipcRenderer.send('generate-proof', script),
   completeEquation: (callback) => ipcRenderer.on("complete-equation", callback)
