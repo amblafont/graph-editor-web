@@ -423,7 +423,7 @@ mergeWithSameLoc : Node NodeLabel -> Graph NodeLabel EdgeLabel -> (Graph NodeLab
 mergeWithSameLoc n g =
     case getNodesAt g n.label.pos |> List.filterNot ((==) n.id) of
          [ i ] -> (Graph.removeLoops 
-              <| Graph.merge i n.id g, True)
+              <| Graph.recursiveMerge i n.id g, True)
          _ -> (g, False)
 
 findReplaceInSelected : Graph NodeLabel EdgeLabel -> {search : String, replace: String} ->  Graph NodeLabel EdgeLabel

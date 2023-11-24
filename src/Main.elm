@@ -364,7 +364,7 @@ info_MoveNode model { orig, pos } =
             retDelta mouseDelta
          else        
             case GraphDefs.selectedId modelGraph of
-               Just selId -> { graph = Graph.merge id selId modelGraph, valid = True }  
+               Just selId -> { graph = Graph.recursiveMerge id selId modelGraph, valid = True }  
                Nothing -> retDelta mouseDelta
       InputPosMouse -> retDelta mouseDelta
 

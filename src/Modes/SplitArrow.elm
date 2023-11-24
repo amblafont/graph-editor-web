@@ -133,7 +133,8 @@ stateInfo finish m state =
     in
     let (g1, ne1) = (Graph.newEdge g state.source n l1) in
     let (g2, ne2) = (Graph.newEdge g1 n state.target l2) in
-    { graph = Graph.removeEdge state.chosenEdge g2,
+    -- TODO: it would be more efficient to just move the source/target of the chosenEdge
+    { graph = Graph.merge (if state.labelOnSource then ne1 else ne2) state.chosenEdge g2,
       created = created,
       movedNode = n,
       ne1 = ne1,
