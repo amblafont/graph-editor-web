@@ -16,6 +16,7 @@ import Format.GraphInfo exposing (defaultGridSize, GraphInfo, Tab)
 import ParseLatex
 import Polygraph exposing (empty)
 import Html exposing (q)
+import Zindex exposing (backgroundZ, defaultZ)
 
 
 
@@ -343,20 +344,20 @@ addOrSetSel keep o m =
 -- True if created
 
 
-mayCreateTargetNodeAt : Model -> Point -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
-mayCreateTargetNodeAt m pos s =
+mayCreateTargetNodeAt : Model -> Point -> String -> Bool -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNodeAt m pos s isDefaultZ =
    let g = getActiveGraph m in
    case GraphDefs.getNodesAt g pos of
       [ n ] -> ((g, n), False)
       _ ->
             ( Graph.newNode g 
-              <| newNodeLabel pos s True
+              <| newNodeLabel pos s True (if isDefaultZ then defaultZ else backgroundZ)
             , True )
 
 -- only Nodes ?
-mayCreateTargetNode : Model -> String -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
-mayCreateTargetNode m s =
-  mayCreateTargetNodeAt m m.mousePos s
+mayCreateTargetNode : Model -> String -> Bool -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNode m =
+  mayCreateTargetNodeAt m m.mousePos
     
 
 

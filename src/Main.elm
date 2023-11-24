@@ -84,6 +84,7 @@ import Format.Version7
 import Format.Version8
 import Format.Version9
 import Format.Version10
+import Format.Version11
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo exposing (Tab)
@@ -93,6 +94,7 @@ import GraphDefs exposing (exportQuiver)
 import GraphProof
 import GraphDrawing
 import String.Svg
+import Zindex exposing (defaultZ, foregroundZ)
 
 
 port preventDefault : JE.Value -> Cmd a
@@ -133,6 +135,7 @@ port loadedGraph7 : (LoadGraphInfo Format.Version7.Graph -> a) -> Sub a
 port loadedGraph8 : (LoadGraphInfo Format.Version8.Graph -> a) -> Sub a
 port loadedGraph9 : (LoadGraphInfo Format.Version9.Graph -> a) -> Sub a
 port loadedGraph10 : (LoadGraphInfo Format.Version10.Graph -> a) -> Sub a
+port loadedGraph11 : (LoadGraphInfo Format.Version11.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -211,6 +214,7 @@ subscriptions m =
       loadedGraph8  (mapLoadGraphInfo Format.Version8.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph9  (mapLoadGraphInfo Format.Version9.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph10 (mapLoadGraphInfo Format.Version10.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph11 (mapLoadGraphInfo Format.Version11.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
@@ -799,18 +803,19 @@ update_DefaultMode msg model =
     in
     let createPoint isMath =
             let (newGraph, newId) = Graph.newNode modelGraph 
-                    (newNodeLabel model.mousePos "" isMath)
+                    (newNodeLabel model.mousePos "" isMath defaultZ)
                 newModel = addOrSetSel False newId
                    <| setSaveGraph model newGraph                    
             in
             noCmd <| initialise_RenameMode False [ newId ] newModel
     in
     let increaseZBy offset =
-           case GraphDefs.selectedEdgeId modelGraph of
+           case GraphDefs.selectedId modelGraph of
               Nothing -> noCmd model
               Just id -> 
                     noCmd <| setSaveGraph model <|
-                   Graph.updateEdge id 
+                   Graph.update id 
+                    (\ e -> { e | zindex = e.zindex + offset})
                     (\ e -> { e | zindex = e.zindex + offset})
                     modelGraph
     in
@@ -1459,7 +1464,7 @@ helpMsg model =
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, [i]nvert arrow, "
-                ++ "[+<] move to the foreground/background."
+                ++ "[+<] move to the foreground/background (also for vertices)."
 
                 ++ "\nMoving objects:"
                 ++ "[g] move selected objects with possible merge (hold g for "
