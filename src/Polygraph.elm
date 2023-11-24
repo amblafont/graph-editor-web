@@ -436,17 +436,34 @@ invertEdge id (Graph g) =
 -- objects above the second one refers then to the first one.
 -- Hence, the nature of the new object (edge/node) depends
 -- only on the first object
+-- If i1 and i2 are edges, we first merge the sources and targets
 merge : Id -> Id -> Graph n e -> Graph n e
-merge i1 i2 (Graph g) =
+merge i1 i2 g = 
+  recursiveMerge i1 i2 g |> sanitise
+
+
+rawMerge : Id -> Id -> Graph n e -> Graph n e
+rawMerge i1 i2 (Graph g) =
+   let repl k = if k == i2 then i1 else k in
    g |> IntDict.map (\_ o -> case o of
-                   EdgeObj j1 j2 e ->
-                        let repl k = if k == i2 then i1 else k in
+                   EdgeObj j1 j2 e ->                        
                         EdgeObj (repl j1) (repl j2) e
                    NodeObj _ -> o
       )
      |> IntDict.remove i2
    |> Graph
-   |> sanitise
+   
+
+recursiveMerge : Id -> Id -> Graph n e -> Graph n e
+recursiveMerge i1 i2 (Graph g) =
+   case (IntDict.get i1 g, IntDict.get i2 g) of
+      (Just (EdgeObj a1 a2 _), Just (EdgeObj b1 b2 _)) ->
+        Graph g |> recursiveMerge a1 b1 
+        |> recursiveMerge a2 b2 
+         |> rawMerge i1 i2
+      _ -> rawMerge i1 i2 (Graph g)
+
+   
 
 removeLoops : Graph n e -> Graph n e
 removeLoops = 

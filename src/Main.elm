@@ -326,7 +326,8 @@ info_MoveNode model { orig, pos } =
     
     let merge = model.specialKeys.ctrl in
     let modelGraph = getActiveGraph model in
-    let nodes = modelGraph |> GraphDefs.selectedGraph |> Graph.nodes in
+    let selectedGraph = GraphDefs.selectedGraph modelGraph in
+    let nodes = Graph.nodes selectedGraph in
     let updNode delta {id, label} = 
           {id = id, label = { label | pos = Point.add label.pos delta }}
     in
@@ -361,10 +362,10 @@ info_MoveNode model { orig, pos } =
       InputPosGraph id ->         
          if not merge then 
             retDelta mouseDelta
-         else            
-            case nodes of 
-               [n] -> {graph = Graph.merge id n.id modelGraph, valid = True}
-               _ -> retDelta mouseDelta
+         else        
+            case GraphDefs.selectedId modelGraph of
+               Just selId -> { graph = Graph.merge id selId modelGraph, valid = True }  
+               Nothing -> retDelta mouseDelta
       InputPosMouse -> retDelta mouseDelta
 
 
