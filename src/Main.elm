@@ -59,8 +59,9 @@ import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
 import Modes.Pullshout
+import Modes.CutHead
 import Drawing.Color as Color
-import Modes exposing (Mode(..), MoveMode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
+import Modes exposing (Mode(..), MoveMode(..), isResizeMode, ResizeState, EnlargeState)
 
 import ArrowStyle
 
@@ -543,7 +544,7 @@ update msg modeli =
        -- NewNode -> update_NewNode msg model
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
-        CutHead state -> update_CutHead state msg model
+        CutHead state -> Modes.CutHead.update state msg model
         ResizeMode s -> update_Resize s msg model
         ColorMode ids -> update_Color ids msg model
 
@@ -1148,21 +1149,7 @@ update_DebugMode msg model =
 
 
 
-update_CutHead : CutHeadState -> Msg -> Model -> (Model, Cmd Msg)
-update_CutHead state msg m =
-  let finalise () = 
-         (setActiveGraph {m | mode = DefaultMode} (graphCutHead state m), Cmd.none)
-         -- computeLayout())
-  in
-  let changeState s = { m | mode = CutHead s } in
-  case msg of
-        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay m
-        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
-        KeyChanged False _ (Control "Enter") -> finalise ()
-        MouseClick -> finalise ()
-        KeyChanged False _ (Character 'c') -> (changeState { state | head = (not state.head)} , Cmd.none)
-        KeyChanged False _ (Character 'd') -> (changeState { state | duplicate = (not state.duplicate)} , Cmd.none)
-        _ -> noCmd m
+
 
 update_Resize : ResizeState -> Msg -> Model -> (Model, Cmd Msg)
 update_Resize st msg m =
@@ -1285,34 +1272,11 @@ graphDrawingFromModel m =
         SquareMode state -> Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
         PullshoutMode state -> Modes.Pullshout.graphDrawing m state
-        CutHead state -> graphCutHead state m |> GraphDrawing.toDrawingGraph
+        CutHead state -> Modes.CutHead.makeGraph state m |> GraphDrawing.toDrawingGraph
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
         
 
 
-graphCutHead : CutHeadState -> Model -> Graph NodeLabel EdgeLabel
-graphCutHead {id, head, duplicate} m =
-   let modelGraph = getActiveGraph m in
-   let pos = m.mousePos in
-    Graph.getEdge id modelGraph 
-    |> Maybe.andThen (\e -> Graph.getNode (if head then e.to else e.from)
-         modelGraph 
-    |> Maybe.map (\ nto -> 
-    let g1 = if duplicate then GraphDefs.unselect id modelGraph else Graph.removeEdge id modelGraph in
-    let label = {nto | pos = pos } in
-    let (g2, newId) = Graph.newNode g1 label in
-    let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
-    let (g3, _) = Graph.newEdge g2 n1 n2  e.label in
-    let g4 = if m.specialKeys.ctrl then 
-                     Tuple.first <| 
-                     GraphDefs.mergeWithSameLoc
-                       { id = newId, label = label }
-                       g3
-             else g3
-    in
-    g4
-    ))   
-    |> Maybe.withDefault modelGraph
 
 
 -- tabResize : ResizeState -> Tab -> Tab
@@ -1538,10 +1502,7 @@ helpMsg model =
                 ) 
                   |> msg
         CutHead _ -> "Mode cut arrow. "
-                ++ overlayHelpMsg
-                ++ " [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
-                ++ "[c] to switch between head/tail"                
-                ++ ", [d] to duplicate (or not) the arrow."
+                 ++ Modes.CutHead.help
                   |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
         EnlargeMode s -> msg <| "Enlarge mode. "
