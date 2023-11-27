@@ -4,7 +4,7 @@ import Model exposing (Model, setActiveGraph, noCmd, toggleHelpOverlay, getActiv
 import Msg exposing (Msg(..))
 import Polygraph as Graph exposing (Graph)
 import HtmlDefs exposing (Key(..))
-import GraphDefs exposing (NodeLabel, EdgeLabel)
+import GraphDefs exposing (NodeLabel, EdgeLabel, edgeToNodeLabel)
 
 help : String 
 help =             "[?] to toggle help overlay,"
@@ -34,11 +34,11 @@ makeGraph  {id, head, duplicate} m =
    let modelGraph = getActiveGraph m in
    let pos = m.mousePos in
     Graph.getEdge id modelGraph 
-    |> Maybe.andThen (\e -> Graph.getNode (if head then e.to else e.from)
+    |> Maybe.andThen (\e -> Graph.get (if head then e.to else e.from)
+       (\label -> {label | pos = pos})(edgeToNodeLabel pos)
          modelGraph 
-    |> Maybe.map (\ nto -> 
+    |> Maybe.map (\ label -> 
     let g1 = modelGraph in
-    let label = {nto | pos = pos } in
     let (g2, newId) = Graph.newNode g1 label in
     let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
     let (g3, edgeId) = Graph.newEdge g2 n1 n2  e.label in

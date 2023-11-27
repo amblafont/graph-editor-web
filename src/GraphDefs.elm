@@ -1,5 +1,5 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
-   NormalEdgeLabel, EdgeType(..), GenericEdge,
+   NormalEdgeLabel, EdgeType(..), GenericEdge, edgeToNodeLabel,
    filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
    filterNormalEdges, coqProofTexCommand,
    newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
@@ -53,6 +53,16 @@ type EdgeType =
 type alias NormalEdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point}
 
 coqProofTexCommand = "coqproof"
+
+edgeToNodeLabel : Point -> EdgeLabel -> NodeLabel
+edgeToNodeLabel pos l = 
+   let nodeLabel = { pos = pos, label = "", dims = Nothing,
+                 selected = l.selected, weaklySelected = l.weaklySelected,
+                 zindex = l.zindex, isMath = True}
+   in
+   case l.details of 
+     PullshoutEdge -> nodeLabel
+     NormalEdge {label, dims} -> {nodeLabel | label = label, dims = dims}
 
 filterNormalEdges : EdgeType -> Maybe NormalEdgeLabel
 filterNormalEdges d =  case d of
