@@ -37,18 +37,25 @@ makeGraph  {id, head, duplicate} m =
     |> Maybe.andThen (\e -> Graph.getNode (if head then e.to else e.from)
          modelGraph 
     |> Maybe.map (\ nto -> 
-    let g1 = if duplicate then GraphDefs.unselect id modelGraph else Graph.removeEdge id modelGraph in
+    let g1 = modelGraph in
     let label = {nto | pos = pos } in
     let (g2, newId) = Graph.newNode g1 label in
     let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
-    let (g3, _) = Graph.newEdge g2 n1 n2  e.label in
-    let g4 = if m.specialKeys.ctrl then 
+    let (g3, edgeId) = Graph.newEdge g2 n1 n2  e.label in
+    let g4 = 
+         if duplicate then 
+            GraphDefs.unselect id g3 
+         else 
+            Graph.merge edgeId id g3 
+    in
+    let g5 = if m.specialKeys.ctrl then 
                      Tuple.first <| 
                      GraphDefs.mergeWithSameLoc
                        { id = newId, label = label }
-                       g3
-             else g3
+                       g4
+             else g4
     in
-    g4
+    
+    g5
     ))   
     |> Maybe.withDefault modelGraph
