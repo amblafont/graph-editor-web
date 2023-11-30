@@ -96,6 +96,7 @@ import GraphProof
 import GraphDrawing
 import String.Svg
 import Zindex exposing (defaultZ, foregroundZ)
+import Geometry.Point as Point
 
 
 port preventDefault : JE.Value -> Cmd a
@@ -474,7 +475,16 @@ update msg modeli =
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
                               , export = makeExports model })
-     SaveGridSize -> (model, saveGridSize sizeGrid)                       
+     SaveGridSize -> (model, saveGridSize sizeGrid)
+     OptimalGridSize ->
+          let selGraph = GraphDefs.selectedGraph modelGraph in
+          case Graph.nodes selGraph of
+            [n1, n2] ->
+                let (x, y) = Point.subtract n1.label.pos n2.label.pos in         
+                let newGridSize = round <| max (abs x) (abs y) in
+                let m2 = pushHistory model in
+                    noCmd <| setActiveSizeGrid m2 newGridSize
+            _ -> noCmd model
      MinuteTick -> if model.autoSave then 
                          (model, quicksaveGraph 
                          { info = toJsGraphInfo model, export = makeExports model,
@@ -1706,6 +1716,9 @@ viewGraph model =
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
            , Html.button [Html.Events.onClick SaveGridSize] [Html.text "Save grid size preferences"] 
+           , Html.button [Html.Events.onClick OptimalGridSize, 
+              Html.Attributes.title "Select two nodes. The new grid size is the max of the coordinate differences."] 
+              [Html.text "Calibrate grid size"] 
            ]
           ++ 
            (if isResizeMode model.mode then
