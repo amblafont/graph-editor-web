@@ -22,7 +22,6 @@ import Geometry exposing (LabelAlignment(..))
 import Json.Encode as JEncode
 import List.Extra as List
 import ListExtraExtra exposing (nextInList)
-
 imgDir : String
 imgDir = "img/arrow/"
 
@@ -279,9 +278,8 @@ tikzStyle stl =
             (hd, False) -> (headTikzStyle hd)
        )
     ++ (if stl.dashed then "dashed, " else "")
-    ++ (let bnd = stl.bend * 180 / pi in
-        if stl.bend /= 0 then
-            "bend right={" ++ String.fromFloat bnd ++ "}, "
+    ++ (if stl.bend /= 0 then
+           "curve={ratio=" ++ String.fromFloat stl.bend ++ "}, "
         else "")
 
         
