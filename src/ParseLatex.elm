@@ -7,6 +7,7 @@ import Result
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Polygraph as Graph
 import ArrowStyle 
+import Zindex exposing (defaultZ)
 
 
 -- type alias Node = { x : Int, y : Int, label : String }
@@ -198,7 +199,7 @@ buildGraph offset (nodes, edges) =
     let nodesPos = List.indexedMap (\ x -> 
                   List.indexedMap (\ y s -> { id =  mkId (x + 1, y + 1)
                   , label = 
-                      GraphDefs.newNodeLabel (mkPos x y) s True} ))
+                      GraphDefs.newNodeLabel (mkPos x y) s True defaultZ} ))
                   nodes |> List.concat
                   |> List.filter (\ { label } -> label.label /= "")  
                   

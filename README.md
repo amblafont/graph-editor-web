@@ -18,6 +18,7 @@ Then,
 - `yarn start -- -- arg1 arg2` to run the app
 - `yarn make` to build the .deb/.zip
 
+Alternative, some instructions to build a docker image or a virtualbox image with everything installed are available at https://github.com/amblafont/vscode-yade-example/tree/master/images.
 
 Ipc capabilities when the desktop app is launched by another node.js app using `child_process`
 ---------------

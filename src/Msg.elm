@@ -86,6 +86,7 @@ type Msg
   | ToggleHideGrid
   | ToggleAutosave
   | SaveGridSize
+  | OptimalGridSize
   | SwitchTab Int
   | NewTab
   | RemoveTab

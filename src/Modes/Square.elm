@@ -127,7 +127,7 @@ nextStep model finish state =
          
     let
         ( info, movedNode, created ) =
-            moveNodeViewInfo model state
+            moveNodeViewInfo finish model state
     in
     let m2 = addOrSetSel False movedNode <| setSaveGraph model info.graph in
      if finish then ({ m2 | mode = DefaultMode }, computeLayout ()) else
@@ -194,8 +194,8 @@ guessProofPosition m s newPos  =
     
    -- case Graph.getNodes
 
-moveNodeViewInfo : Model -> SquareState -> ( ViewInfo, NodeId, Bool )
-moveNodeViewInfo m data =
+moveNodeViewInfo : Bool -> Model -> SquareState -> ( ViewInfo, NodeId, Bool )
+moveNodeViewInfo finish m data =
     
     {- let insert1 x l = case l of 
              [] -> [ x ]
@@ -247,7 +247,7 @@ moveNodeViewInfo m data =
     let newPos = if data.guessPos then guessPosition m data else m.mousePos in
     let
         ( ( g, n ), created ) =
-            mayCreateTargetNodeAt m newPos labelNode
+            mayCreateTargetNodeAt m newPos labelNode finish
             -- mayCreateTargetNode m labelNode
     in
     {- let
@@ -310,11 +310,11 @@ makeEdges data ne1 ne2 =
     }
 
 
-stateInfo : Model -> SquareState -> ViewInfo
-stateInfo m s =
+stateInfo : Bool -> Model -> SquareState -> ViewInfo
+stateInfo finish m s =
             let
                 ( info, _, _ ) =
-                    moveNodeViewInfo m s
+                    moveNodeViewInfo finish m s
             in
             info
 
@@ -333,7 +333,7 @@ graphDrawing : Model -> SquareState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m state =
     let
         info =
-            stateInfo m state
+            stateInfo False m state
     in
     collageGraphFromGraph m info.graph
         |> graphDrawingFromInfo info.edges

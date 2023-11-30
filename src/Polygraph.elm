@@ -1,7 +1,7 @@
 module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      newNode, newEdge,
      update, updateNode, updateEdge, updateNodes, updateList,
-     invertEdge, merge,
+     invertEdge, merge, recursiveMerge,
      getNode, getNodes, getEdge, getEdges, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
@@ -437,16 +437,37 @@ invertEdge id (Graph g) =
 -- Hence, the nature of the new object (edge/node) depends
 -- only on the first object
 merge : Id -> Id -> Graph n e -> Graph n e
-merge i1 i2 (Graph g) =
+merge i1 i2 g = 
+  rawMerge i1 i2 g |> sanitise
+
+rawMerge : Id -> Id -> Graph n e -> Graph n e
+rawMerge i1 i2 (Graph g) =
+   let repl k = if k == i2 then i1 else k in
    g |> IntDict.map (\_ o -> case o of
-                   EdgeObj j1 j2 e ->
-                        let repl k = if k == i2 then i1 else k in
+                   EdgeObj j1 j2 e ->                        
                         EdgeObj (repl j1) (repl j2) e
                    NodeObj _ -> o
       )
      |> IntDict.remove i2
    |> Graph
-   |> sanitise
+   
+
+-- same as merge, but if i1 and i2 are edges, we first merge the sources and targets
+-- (recursively)
+recursiveMerge : Id -> Id -> Graph n e -> Graph n e
+recursiveMerge i1 i2 g =
+   recursiveMergeAux i1 i2 g |> sanitise
+
+recursiveMergeAux : Id -> Id -> Graph n e -> Graph n e
+recursiveMergeAux i1 i2 (Graph g) =
+   case (IntDict.get i1 g, IntDict.get i2 g) of
+      (Just (EdgeObj a1 a2 _), Just (EdgeObj b1 b2 _)) ->
+        Graph g |> recursiveMerge a1 b1 
+        |> recursiveMerge a2 b2 
+         |> rawMerge i1 i2
+      _ -> rawMerge i1 i2 (Graph g)
+
+   
 
 removeLoops : Graph n e -> Graph n e
 removeLoops = 

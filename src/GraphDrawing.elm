@@ -16,8 +16,7 @@ import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import HtmlDefs
 import Json.Decode as D
 import Html.Events.Extra.Mouse as MouseEvents
-
-foregroundZ = 10000
+import Zindex exposing (foregroundZ)
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias NormalEdgeDrawingLabel = 
@@ -46,7 +45,8 @@ type alias NodeDrawingLabel =
       -- (differ from pos in the case the node is a text)
      label : String, editable : Bool, isActive : Activity,
       isMath : Bool,
-          dims : Point 
+          dims : Point,
+          zindex : Int
           -- whether I should watch entering and leaving 
           -- node
           -- watchEnterLeave : Bool
@@ -106,7 +106,8 @@ make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
     , pos = nodePos
     , inputPos = pos
     , editable = editable, isActive = isActive, isMath = isMath,
-      dims = GraphDefs.getNodeDims l }
+      dims = GraphDefs.getNodeDims l
+    , zindex = l.zindex }
 
 
 -- create an input with id curIdInput
@@ -155,7 +156,7 @@ nodeLabelDrawing cfg attrs node =
             let label = if n.label == "" then "\\bullet" else
                      if n.isMath then n.label else "\\text{" ++ n.label ++ "}" 
             in
-            makeLatex cfg n.pos n.dims label
+            makeLatex cfg n.pos n.dims label n.zindex
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
                  -- Html.Events.on "mousemove" (D.succeed (EltHover id))
@@ -233,7 +234,7 @@ segmentLabel cfg q edgeId activity label curve =
              Drawing.empty
          else 
              let finalLabel = " \\scriptstyle " ++ label.label in
-             makeLatex cfg labelpos label.dims finalLabel
+             makeLatex cfg labelpos label.dims finalLabel foregroundZ
              
              ([   MouseEvents.onClick (EdgeClick edgeId),
                   MouseEvents.onDoubleClick (EltDoubleClick edgeId),
@@ -247,8 +248,8 @@ segmentLabel cfg q edgeId activity label curve =
             
             {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
               labelpos label.label  -}
-makeLatex cfg pos dims label attrs  =
-  Drawing.htmlAnchor foregroundZ pos dims True
+makeLatex cfg pos dims label z attrs  =
+  Drawing.htmlAnchor z pos dims True
             (makeLatexString label)
             <| HtmlDefs.makeLatex
               attrs

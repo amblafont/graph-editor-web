@@ -14,6 +14,7 @@ import Modes exposing (PullshoutKind(..))
 import Modes.Pullshout
 import Maybe.Extra
 import Drawing.Color as Color
+import Zindex exposing (defaultZ, backgroundZ)
 
 
 
@@ -50,7 +51,7 @@ initialise m =
 
 nextStep : Model -> Bool -> NewArrowState -> ( Model, Cmd Msg )
 nextStep model finish state =
-     let info = moveNodeInfo model state in
+     let info = moveNodeInfo finish model state in
      
      -- let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
      let m2 = setSaveGraph model <| GraphDefs.weaklySelect info.movedNode
@@ -130,7 +131,8 @@ update state msg model =
  
 
 moveNodeInfo :
-    Model
+    Bool
+    -> Model
     -> NewArrowState
     ->
         { graph : Graph NodeLabel EdgeLabel
@@ -138,10 +140,10 @@ moveNodeInfo :
         , edgeId : EdgeId
         , created : Bool
         }
-moveNodeInfo m state =
+moveNodeInfo finish m state =
     let modelGraph = getActiveGraph m in
     
-    let makeInfo pos = mayCreateTargetNodeAt m pos "" in
+    let makeInfo pos = mayCreateTargetNodeAt m pos "" finish in
     let
         ( ( graph, movedNode ), created ) =
            case state.pos of
@@ -176,7 +178,7 @@ graphDrawing m s =
     -- let defaultView movedNode = modelGraph{ graph = modelGraph, movedNode = movedNode}  in
     -- graphMakeEditable (renamableFromState s) <|
     collageGraphFromGraph m <|
-            let info = moveNodeInfo m s in
+            let info = moveNodeInfo False m s in
              info.graph 
             --  |> collageGraphFromGraph m
             {-  |> if info.created then 

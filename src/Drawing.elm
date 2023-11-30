@@ -7,6 +7,7 @@ module Drawing exposing (Drawing,
   zindexAttr, emptyForeign, toString
   )
 
+import Zindex exposing (defaultZ, backgroundZ)
 import String.Svg as Svg exposing (Svg)
 import Geometry.Point exposing (Point)
 import Geometry
@@ -113,7 +114,7 @@ zindexAttr = ZIndex
 type Drawing a
     = Drawing (List { svg : Svg a, zindex : Int})
 
-defaultZ = 0
+
 
 empty : Drawing a
 empty = Drawing []
@@ -282,7 +283,7 @@ emptyForeign =
      ]
    []
    -- put it in the background
-    |> ofSvg -10000
+    |> ofSvg backgroundZ
 
 
 htmlAnchor : Int -> Point -> Point -> Bool -> String -> Html.Html a -> Drawing a

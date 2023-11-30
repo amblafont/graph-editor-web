@@ -1,5 +1,5 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
-   NormalEdgeLabel, EdgeType(..), GenericEdge,
+   NormalEdgeLabel, EdgeType(..), GenericEdge, edgeToNodeLabel,
    filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
    filterNormalEdges, coqProofTexCommand,
    newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
@@ -25,6 +25,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    )
 
 import IntDict
+import Zindex exposing (defaultZ)
 import Geometry.Point as Point exposing (Point)
 import Geometry exposing (LabelAlignment(..))
 import ArrowStyle exposing (ArrowStyle)
@@ -35,8 +36,9 @@ import Json.Encode as JEncode
 import List.Extra as List
 import Maybe.Extra as Maybe
 
-type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, selected : Bool, weaklySelected : Bool,
-                         isMath : Bool}
+type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, 
+                         selected : Bool, weaklySelected : Bool,
+                         isMath : Bool, zindex: Int}
 
 type alias EdgeLabel = GenericEdge EdgeType
 type alias GenericEdge a = { details : a, selected : Bool,
@@ -51,6 +53,16 @@ type EdgeType =
 type alias NormalEdgeLabel = { label : String, style : ArrowStyle, dims : Maybe Point}
 
 coqProofTexCommand = "coqproof"
+
+edgeToNodeLabel : Point -> EdgeLabel -> NodeLabel
+edgeToNodeLabel pos l = 
+   let nodeLabel = { pos = pos, label = "", dims = Nothing,
+                 selected = l.selected, weaklySelected = l.weaklySelected,
+                 zindex = l.zindex, isMath = True}
+   in
+   case l.details of 
+     PullshoutEdge -> nodeLabel
+     NormalEdge {label, dims} -> {nodeLabel | label = label, dims = dims}
 
 filterNormalEdges : EdgeType -> Maybe NormalEdgeLabel
 filterNormalEdges d =  case d of
@@ -201,19 +213,19 @@ exportQuiver sizeGrid g =
   JEncode.list identity <|
   [JEncode.int 0, JEncode.int <| List.length nodes] ++ jnodes ++ jedges
 
-newNodeLabel : Point -> String -> Bool -> NodeLabel
-newNodeLabel p s isMath = 
+newNodeLabel : Point -> String -> Bool -> Int -> NodeLabel
+newNodeLabel p s isMath zindex = 
     { pos = p , label = s, dims = Nothing, selected = False, weaklySelected = False,
-                         isMath = isMath}
+                         isMath = isMath, zindex = zindex}
 newProofLabel : Point -> String -> NodeLabel
 newProofLabel p s =
-   newNodeLabel p ("\\" ++ coqProofTexCommand ++ "{" ++ s ++ "}") True
+   newNodeLabel p ("\\" ++ coqProofTexCommand ++ "{" ++ s ++ "}") True defaultZ
 
 newGenericLabel : a -> GenericEdge a
 newGenericLabel d = { details = d,
                       selected = False,
                       weaklySelected = False,
-                      zindex = 0}
+                      zindex = defaultZ}
 
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
 newEdgeLabel s style = newGenericLabel <| NormalEdge { label = s, style = style, dims = Nothing }
@@ -229,7 +241,7 @@ emptyEdge = newEdgeLabel "" ArrowStyle.empty
 createNodeLabel : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)
 createNodeLabel g s p =
-    let label = newNodeLabel p s True in
+    let label = newNodeLabel p s True defaultZ in
     let (g2, id) = Graph.newNode g label in
      (g2, id, p)
 
@@ -421,7 +433,7 @@ mergeWithSameLoc : Node NodeLabel -> Graph NodeLabel EdgeLabel -> (Graph NodeLab
 mergeWithSameLoc n g =
     case getNodesAt g n.label.pos |> List.filterNot ((==) n.id) of
          [ i ] -> (Graph.removeLoops 
-              <| Graph.merge i n.id g, True)
+              <| Graph.recursiveMerge i n.id g, True)
          _ -> (g, False)
 
 findReplaceInSelected : Graph NodeLabel EdgeLabel -> {search : String, replace: String} ->  Graph NodeLabel EdgeLabel

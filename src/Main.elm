@@ -59,8 +59,9 @@ import Modes.Square
 import Modes.NewArrow 
 import Modes.SplitArrow
 import Modes.Pullshout
+import Modes.CutHead
 import Drawing.Color as Color
-import Modes exposing (Mode(..), MoveMode(..), isResizeMode, ResizeState, CutHeadState, EnlargeState)
+import Modes exposing (Mode(..), MoveMode(..), isResizeMode, ResizeState, EnlargeState)
 
 import ArrowStyle
 
@@ -84,6 +85,7 @@ import Format.Version7
 import Format.Version8
 import Format.Version9
 import Format.Version10
+import Format.Version11
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo exposing (Tab)
@@ -93,6 +95,8 @@ import GraphDefs exposing (exportQuiver)
 import GraphProof
 import GraphDrawing
 import String.Svg
+import Zindex exposing (defaultZ, foregroundZ)
+import Geometry.Point as Point
 
 
 port preventDefault : JE.Value -> Cmd a
@@ -133,6 +137,7 @@ port loadedGraph7 : (LoadGraphInfo Format.Version7.Graph -> a) -> Sub a
 port loadedGraph8 : (LoadGraphInfo Format.Version8.Graph -> a) -> Sub a
 port loadedGraph9 : (LoadGraphInfo Format.Version9.Graph -> a) -> Sub a
 port loadedGraph10 : (LoadGraphInfo Format.Version10.Graph -> a) -> Sub a
+port loadedGraph11 : (LoadGraphInfo Format.Version11.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -211,6 +216,7 @@ subscriptions m =
       loadedGraph8  (mapLoadGraphInfo Format.Version8.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph9  (mapLoadGraphInfo Format.Version9.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph10 (mapLoadGraphInfo Format.Version10.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph11 (mapLoadGraphInfo Format.Version11.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
@@ -322,7 +328,8 @@ info_MoveNode model { orig, pos } =
     
     let merge = model.specialKeys.ctrl in
     let modelGraph = getActiveGraph model in
-    let nodes = modelGraph |> GraphDefs.selectedGraph |> Graph.nodes in
+    let selectedGraph = GraphDefs.selectedGraph modelGraph in
+    let nodes = Graph.nodes selectedGraph in
     let updNode delta {id, label} = 
           {id = id, label = { label | pos = Point.add label.pos delta }}
     in
@@ -357,10 +364,10 @@ info_MoveNode model { orig, pos } =
       InputPosGraph id ->         
          if not merge then 
             retDelta mouseDelta
-         else            
-            case nodes of 
-               [n] -> {graph = Graph.merge id n.id modelGraph, valid = True}
-               _ -> retDelta mouseDelta
+         else        
+            case GraphDefs.selectedId modelGraph of
+               Just selId -> { graph = Graph.recursiveMerge id selId modelGraph, valid = True }  
+               Nothing -> retDelta mouseDelta
       InputPosMouse -> retDelta mouseDelta
 
 
@@ -468,7 +475,16 @@ update msg modeli =
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
                               , export = makeExports model })
-     SaveGridSize -> (model, saveGridSize sizeGrid)                       
+     SaveGridSize -> (model, saveGridSize sizeGrid)
+     OptimalGridSize ->
+          let selGraph = GraphDefs.selectedGraph modelGraph in
+          case Graph.nodes selGraph of
+            [n1, n2] ->
+                let (x, y) = Point.subtract n1.label.pos n2.label.pos in         
+                let newGridSize = round <| max (abs x) (abs y) in
+                let m2 = pushHistory model in
+                    noCmd <| setActiveSizeGrid m2 newGridSize
+            _ -> noCmd model
      MinuteTick -> if model.autoSave then 
                          (model, quicksaveGraph 
                          { info = toJsGraphInfo model, export = makeExports model,
@@ -538,7 +554,7 @@ update msg modeli =
        -- NewNode -> update_NewNode msg model
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
-        CutHead state -> update_CutHead state msg model
+        CutHead state -> Modes.CutHead.update state msg model
         ResizeMode s -> update_Resize s msg model
         ColorMode ids -> update_Color ids msg model
 
@@ -799,18 +815,19 @@ update_DefaultMode msg model =
     in
     let createPoint isMath =
             let (newGraph, newId) = Graph.newNode modelGraph 
-                    (newNodeLabel model.mousePos "" isMath)
+                    (newNodeLabel model.mousePos "" isMath defaultZ)
                 newModel = addOrSetSel False newId
                    <| setSaveGraph model newGraph                    
             in
             noCmd <| initialise_RenameMode False [ newId ] newModel
     in
     let increaseZBy offset =
-           case GraphDefs.selectedEdgeId modelGraph of
+           case GraphDefs.selectedId modelGraph of
               Nothing -> noCmd model
               Just id -> 
                     noCmd <| setSaveGraph model <|
-                   Graph.updateEdge id 
+                   Graph.update id 
+                    (\ e -> { e | zindex = e.zindex + offset})
                     (\ e -> { e | zindex = e.zindex + offset})
                     modelGraph
     in
@@ -1142,21 +1159,7 @@ update_DebugMode msg model =
 
 
 
-update_CutHead : CutHeadState -> Msg -> Model -> (Model, Cmd Msg)
-update_CutHead state msg m =
-  let finalise () = 
-         (setActiveGraph {m | mode = DefaultMode} (graphCutHead state m), Cmd.none)
-         -- computeLayout())
-  in
-  let changeState s = { m | mode = CutHead s } in
-  case msg of
-        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay m
-        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
-        KeyChanged False _ (Control "Enter") -> finalise ()
-        MouseClick -> finalise ()
-        KeyChanged False _ (Character 'c') -> (changeState { state | head = (not state.head)} , Cmd.none)
-        KeyChanged False _ (Character 'd') -> (changeState { state | duplicate = (not state.duplicate)} , Cmd.none)
-        _ -> noCmd m
+
 
 update_Resize : ResizeState -> Msg -> Model -> (Model, Cmd Msg)
 update_Resize st msg m =
@@ -1279,34 +1282,11 @@ graphDrawingFromModel m =
         SquareMode state -> Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
         PullshoutMode state -> Modes.Pullshout.graphDrawing m state
-        CutHead state -> graphCutHead state m |> GraphDrawing.toDrawingGraph
+        CutHead state -> Modes.CutHead.makeGraph state m |> GraphDrawing.toDrawingGraph
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
         
 
 
-graphCutHead : CutHeadState -> Model -> Graph NodeLabel EdgeLabel
-graphCutHead {id, head, duplicate} m =
-   let modelGraph = getActiveGraph m in
-   let pos = m.mousePos in
-    Graph.getEdge id modelGraph 
-    |> Maybe.andThen (\e -> Graph.getNode (if head then e.to else e.from)
-         modelGraph 
-    |> Maybe.map (\ nto -> 
-    let g1 = if duplicate then GraphDefs.unselect id modelGraph else Graph.removeEdge id modelGraph in
-    let label = {nto | pos = pos } in
-    let (g2, newId) = Graph.newNode g1 label in
-    let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
-    let (g3, _) = Graph.newEdge g2 n1 n2  e.label in
-    let g4 = if m.specialKeys.ctrl then 
-                     Tuple.first <| 
-                     GraphDefs.mergeWithSameLoc
-                       { id = newId, label = label }
-                       g3
-             else g3
-    in
-    g4
-    ))   
-    |> Maybe.withDefault modelGraph
 
 
 -- tabResize : ResizeState -> Tab -> Tab
@@ -1459,7 +1439,7 @@ helpMsg model =
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, [i]nvert arrow, "
-                ++ "[+<] move to the foreground/background."
+                ++ "[+<] move to the foreground/background (also for vertices)."
 
                 ++ "\nMoving objects:"
                 ++ "[g] move selected objects with possible merge (hold g for "
@@ -1532,10 +1512,7 @@ helpMsg model =
                 ) 
                   |> msg
         CutHead _ -> "Mode cut arrow. "
-                ++ overlayHelpMsg
-                ++ " [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
-                ++ "[c] to switch between head/tail"                
-                ++ ", [d] to duplicate (or not) the arrow."
+                 ++ Modes.CutHead.help
                   |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
         EnlargeMode s -> msg <| "Enlarge mode. "
@@ -1739,6 +1716,9 @@ viewGraph model =
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
            , Html.button [Html.Events.onClick SaveGridSize] [Html.text "Save grid size preferences"] 
+           , Html.button [Html.Events.onClick OptimalGridSize, 
+              Html.Attributes.title "Select two nodes. The new grid size is the max of the coordinate differences."] 
+              [Html.text "Calibrate grid size"] 
            ]
           ++ 
            (if isResizeMode model.mode then

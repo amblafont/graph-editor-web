@@ -54,7 +54,7 @@ nextStep model finish state =
          
     let
         info =
-            stateInfo model state
+            stateInfo finish model state
     in
     let m2 = addOrSetSel False info.movedNode <| setSaveGraph model info.graph in
      if finish then ({ m2 | mode = DefaultMode }, computeLayout())  else
@@ -101,8 +101,8 @@ guessPosition m s =
        [p1, p2] -> Geometry.Point.middle p1 p2
        _ -> m.mousePos
 
-stateInfo : Model -> SplitArrowState -> Info
-stateInfo m state =
+stateInfo : Bool -> Model -> SplitArrowState -> Info
+stateInfo finish m state =
     let modelGraph = getActiveGraph m in
     let otherLabel = 
               (getActiveGraph m) |> GraphDefs.getLabelLabel 
@@ -114,7 +114,7 @@ stateInfo m state =
     in
     let
         ( ( g, n ), created ) =
-          let makeInfo pos = mayCreateTargetNodeAt m pos otherLabel in
+          let makeInfo pos = mayCreateTargetNodeAt m pos otherLabel finish in
            if state.guessPos then
              makeInfo (guessPosition m state)
            else
@@ -133,7 +133,8 @@ stateInfo m state =
     in
     let (g1, ne1) = (Graph.newEdge g state.source n l1) in
     let (g2, ne2) = (Graph.newEdge g1 n state.target l2) in
-    { graph = Graph.removeEdge state.chosenEdge g2,
+    -- TODO: it would be more efficient to just move the source/target of the chosenEdge
+    { graph = Graph.merge (if state.labelOnSource then ne1 else ne2) state.chosenEdge g2,
       created = created,
       movedNode = n,
       ne1 = ne1,
@@ -150,7 +151,7 @@ graphDrawing : Model -> SplitArrowState -> Graph NodeDrawingLabel EdgeDrawingLab
 graphDrawing m state =
     let
         info =
-            stateInfo m state
+            stateInfo False m state
     in
     collageGraphFromGraph m info.graph        
 
