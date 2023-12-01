@@ -42,6 +42,18 @@
   \deuxcellule{#1}{#2}%
 }
 
+% A TikZ style for curved arrows, inspired by AndréC's.
+\tikzset{curve/.style={settings={#1},to path={
+      let \p1 = ($(\tikztostart) - (\tikztotarget)$) in
+      (\tikztostart)
+.. controls
+($(\tikztostart)!\pv{pos}!(\tikztotarget)!{veclen(\x1,\y1)*\pv{ratio}*1pt}!270:(\tikztotarget)$)
+and ($(\tikztostart)!1-\pv{pos}!(\tikztotarget)!{veclen(\x1,\y1)*\pv{ratio}*1pt}!270:(\tikztotarget)$)
+.. (\tikztotarget)\tikztonodes}},
+settings/.code={\tikzset{yade/.cd,#1}
+\def\pv##1{\pgfkeysvalueof{/tikz/yade/##1}}},
+yade/.cd,pos/.initial=0.35,ratio/.initial=0}
+
 \newcommand{\deuxcellule}[8]{%
   \node[coordinate] (a) at (#3) {} ; %
   \node[coordinate] (b) at (#4) {} ; %

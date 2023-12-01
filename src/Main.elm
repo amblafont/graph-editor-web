@@ -61,7 +61,7 @@ import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.CutHead
 import Drawing.Color as Color
-import Modes exposing (Mode(..), MoveMode(..), isResizeMode, ResizeState, EnlargeState)
+import Modes exposing (Mode(..), MoveMode(..), MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
 import ArrowStyle
 
@@ -324,7 +324,7 @@ info_MoveNode : Model -> Modes.MoveState ->
    -- The graph is not valid if we are in merge mode
    -- and no object is pointed at
      valid : Bool }
-info_MoveNode model { orig, pos } =
+info_MoveNode model { orig, pos, direction } =
     
     let merge = model.specialKeys.ctrl in
     let modelGraph = getActiveGraph model in
@@ -357,7 +357,13 @@ info_MoveNode model { orig, pos } =
           
     in
    
-    let mouseDelta = Point.subtract model.mousePos <| GraphDefs.centerOfNodes nodes in
+    let mouseDelta = 
+            let (dx, dy) = Point.subtract model.mousePos <| GraphDefs.centerOfNodes nodes in
+              case direction of
+                      Free -> (dx, dy)
+                      Vertical -> (0, dy)
+                      Horizontal -> (dx, 0)
+    in
     let sizeGrid = getActiveSizeGrid model in
     case pos of
       InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos sizeGrid p
@@ -630,6 +636,7 @@ update_MoveNode msg state model =
          if terminable then movedRet else noCmd model
     in
     let updateState st = { model | mode = Move st } in
+    let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
     case msg of
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
@@ -645,6 +652,9 @@ update_MoveNode msg state model =
                 noCmd <| updateState { state | mode = FreeMove }
              PressMove -> movedRet
              FreeMove -> noCmd model
+        KeyChanged False _ (Character 'f') -> updateDirection Free
+        KeyChanged False _ (Character 'x') -> updateDirection Horizontal
+        KeyChanged False _ (Character 'y') -> updateDirection Vertical
        
         MouseClick -> terminedRet
         KeyChanged False _ (Control "Enter") -> terminedRet
@@ -1131,6 +1141,7 @@ initialiseMoveMode save mode model =
               { save = save, 
               orig = model.mousePos, 
               pos = InputPosMouse,
+              direction = Free,
               mode = mode }
       }    
 
@@ -1503,7 +1514,14 @@ helpMsg model =
         Move s -> "Mode Move. "                
                 ++ overlayHelpMsg
                 ++ "Use mouse or h,j,k,l."
-                ++ " Hold [ctrl] to merge the selected point onto another node." 
+                ++ " Hold [ctrl] to merge the selected point onto another node,"
+                ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree " 
+                ++ "(currently, "
+                ++ (case s.direction of
+                      Vertical -> "vertical"
+                      Horizontal -> "horizontal"
+                      Free -> "free")
+                ++ ")."
                 ++
                 (case s.mode of 
                     FreeMove ->  " [RET] or [click] to confirm."

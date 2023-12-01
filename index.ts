@@ -8,6 +8,7 @@ import argparse from 'argparse'
 import path from 'path'
 // const path = require('path')
 const { dialog } = require('electron')
+const {spawn} = require('child_process');
 import fs from 'fs';
 const tmp = require('tmp');
 const electronPrompt = require('electron-prompt');
@@ -98,7 +99,7 @@ Default prefix/suffix/include argument by extension of the watched file (default
 let parser = new argparse.ArgumentParser({formatter_class: argparse.RawDescriptionHelpFormatter, description: description});
 parser.add_argument("filename", {nargs: "?"})
 parser.add_argument("--watch", {help: 'is it a file to monitor?', action:"store_const", const: true});
-parser.add_argument("--make-cmd", {help:"make command to be executed"});
+parser.add_argument("--make-cmd", {help:"make command to be executed after updating a diagram"});
 
 parser.add_argument("--magic", {help: "prompt command"});
 parser.add_argument("--export", {help: "tex/svg/coq"});
@@ -170,7 +171,7 @@ let externalOutput:string = getOrDefault("external_output");
 let magic:string = getOrDefault("magic");
 let exportFormat:string = getOrDefault("export");
 let basedir:string = args.dir;
-
+let makeCmd:string|undefined = args.make_cmd;
 
 
 let magic_re:RegExp = new RegExp(escapeStringRegexp(magic.trim()) + "(.*)$");
@@ -380,6 +381,10 @@ function handleFileOneIteration() {
     
       
       writeContent(newcontent, generatedOutput, index);
+      if (makeCmd) {
+          console.log("executing " + makeCmd);
+          spawn(makeCmd, [], { shell: true }) ;
+      }
       handleFileOneIteration();
     }
     // console.log(content);
