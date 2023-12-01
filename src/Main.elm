@@ -652,9 +652,9 @@ update_MoveNode msg state model =
                 noCmd <| updateState { state | mode = FreeMove }
              PressMove -> movedRet
              FreeMove -> noCmd model
-        KeyChanged False _ (Character 'F') -> updateDirection Free
-        KeyChanged False _ (Character 'H') -> updateDirection Horizontal
-        KeyChanged False _ (Character 'V') -> updateDirection Vertical
+        KeyChanged False _ (Character 'f') -> updateDirection Free
+        KeyChanged False _ (Character 'x') -> updateDirection Horizontal
+        KeyChanged False _ (Character 'y') -> updateDirection Vertical
        
         MouseClick -> terminedRet
         KeyChanged False _ (Control "Enter") -> terminedRet
@@ -1515,7 +1515,7 @@ helpMsg model =
                 ++ overlayHelpMsg
                 ++ "Use mouse or h,j,k,l."
                 ++ " Hold [ctrl] to merge the selected point onto another node,"
-                ++ " Restrict to [H]orizontal / [V]ertical directions, or let it [F]ree " 
+                ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree " 
                 ++ "(currently, "
                 ++ (case s.direction of
                       Vertical -> "vertical"
