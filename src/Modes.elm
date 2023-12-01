@@ -75,8 +75,10 @@ type alias MoveState =
       -- should we save at the end
      , save : Bool
      , mode : MoveMode
+     , direction : MoveDirection
   }
-
+type MoveDirection =
+  Free | Vertical | Horizontal
 type MoveMode = 
     -- the move stops when we release the key
       PressMove
