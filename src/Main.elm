@@ -455,6 +455,7 @@ update msg modeli =
                 RenameTab s -> renameActiveTab { modeli | mode = DefaultMode} s
                 RemoveTab -> removeActiveTabs { modeli | mode = DefaultMode}
                 NewTab -> createNewTab { modeli | mode = DefaultMode} <| nextTabName modeli
+                DuplicateTab -> duplicateTab { modeli | mode = DefaultMode} <| nextTabName modeli
                 FileName s -> { modeli | fileName = s }
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
                 MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
@@ -1647,9 +1648,10 @@ renderTabs tabs =
            [Html.text tab.title]
   in
   let newButton = Html.button [Html.Events.onClick NewTab] [Html.text "New tab"] in
+  let dupButton = Html.button [Html.Events.onClick DuplicateTab] [Html.text "Duplicate tab"] in
   let removeButton = Html.button [Html.Events.onClick RemoveTab] [Html.text "Remove tab"] in
   let renameButton = Html.button [Html.Events.onClick (Do (promptTabTitle activeTab.title))] [Html.text "Rename tab"] in
-     [newButton, removeButton, renameButton ] ++ List.indexedMap renderTab tabs
+     [newButton, dupButton, removeButton, renameButton ] ++ List.indexedMap renderTab tabs
 
 viewGraph : Model -> Html Msg
 viewGraph model =

@@ -89,6 +89,7 @@ type Msg
   | OptimalGridSize
   | SwitchTab Int
   | NewTab
+  | DuplicateTab
   | RemoveTab
   | RenameTab String
   | FindReplace { search: String, replace:String}
