@@ -99,6 +99,7 @@ type Msg
   | LatexPreambleEdit String
   | SimpleMsg String
   | CompleteEquation { statement : String, script : String}
+  | AppliedProof String
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String

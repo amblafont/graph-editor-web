@@ -21,7 +21,8 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect,
    getSurroundingDiagrams, updateNormalEdge,
-   rectEnveloppe, updateStyleEdges
+   rectEnveloppe, updateStyleEdges,
+   getSelectedProofDiagram, MaybeProofDiagram(..)
    )
 
 import IntDict
@@ -142,6 +143,31 @@ getProofFromLabel s =
 getProofNodes : Graph NodeLabel EdgeLabel -> List (Node NodeLabel)
 getProofNodes g =
    Graph.nodes g |> List.filter (\n -> getProofFromLabel n.label.label /= Nothing)
+
+
+selectedProofNode : Graph NodeLabel EdgeLabel -> Maybe (Node NodeLabel, String)
+selectedProofNode g =
+  case selectedNode g |> Maybe.map 
+     (\n -> (n, getProofFromLabel n.label.label)) of
+      Nothing -> Nothing
+      Just (_, Nothing) -> Nothing
+      Just (n, Just s) -> Just (n, s)
+
+type MaybeProofDiagram =
+     NoProofNode
+   | NoDiagram
+   | JustDiagram { proof : String, diagram : Diagram}
+
+-- returns the diagram around the selected proof
+getSelectedProofDiagram : Graph NodeLabel EdgeLabel -> MaybeProofDiagram
+getSelectedProofDiagram g =
+  case selectedProofNode g of
+    Nothing -> NoProofNode
+    Just (n, s) ->
+       case getSurroundingDiagrams n.label.pos g of 
+         [] -> NoDiagram
+         d :: _ -> JustDiagram { proof = s, diagram = d }
+
 
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 

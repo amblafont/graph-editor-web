@@ -67,7 +67,7 @@ import ArrowStyle
 
 import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import GraphDefs exposing (newNodeLabel)
+import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..))
 import Tikz exposing (graphToTikz)
 import Html
 import Html.Events
@@ -166,6 +166,10 @@ port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
 port incompleteEquation : String -> Cmd a
 port completeEquation : ({ statement : String, script : String} -> a) -> Sub a
+
+port applyProof : { statement : String, script : String} -> Cmd a
+port appliedProof : (String -> a) -> Sub a
+
 port toClipboard : { content:String, success: String, failure: String } -> Cmd a
 port generateProofJs : String -> Cmd a
 port generateSvg : String -> Cmd a
@@ -220,7 +224,8 @@ subscriptions m =
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
-      completeEquation CompleteEquation
+      completeEquation CompleteEquation,
+      appliedProof AppliedProof
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
                             -- it is necessary to prevent defaults
@@ -937,10 +942,32 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
             
         KeyChanged False _ (Character 'I') -> 
                let cmd = case GraphDefs.selectedIncompleteDiagram modelGraph of 
-                      Nothing -> alert "Selected subdiagram not found."
+                      Nothing -> 
+                        case GraphDefs.getSelectedProofDiagram modelGraph of 
+                          NoProofNode -> alert "Selected subdiagram or proof node not found." 
+                          NoDiagram -> alert "No diagram found around node."
+                          JustDiagram { proof, diagram } ->
+                             applyProof <| 
+                               { script = proof, statement = 
+                                   GraphProof.statementToString diagram
+                               }
                       Just d -> incompleteEquation <| GraphProof.statementToString d
                in
                  (model, cmd)
+        AppliedProof statement ->
+          let failWith s = (model, alert s) in
+          case GraphDefs.getSelectedProofDiagram modelGraph of
+           NoProofNode -> failWith "No proof node selected."
+           NoDiagram -> failWith "no diagram around selected proof node."
+           JustDiagram { diagram } ->
+            case Parser.run equalityParser statement
+             of
+              Err _ -> failWith ("fail to parse " ++ statement)
+              Ok eqs ->
+                case Unification.unifyDiagram eqs diagram modelGraph of
+                  Err s -> failWith s
+                  Ok finalg ->                
+                      noCmd <| setSaveGraph model finalg
         CompleteEquation { statement, script } ->
             let failWith s = (model, alert s) in
             case (Parser.run equalityParser statement,
@@ -948,29 +975,10 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
              of
               (Err _, _) -> failWith ("fail to parse " ++ statement)
               (_, Nothing) -> failWith "no incomplete diagram selected"
-              (Ok (eq1 , eq2), Just d) ->
-                let unify l e = Unification.unify 
-                      {isMetavariable = .label >> .label >> String.isEmpty} 
-                      l e 
-                in
-                case (unify d.lhs eq1,
-                      unify d.rhs eq2)
-                of 
-                   (Err s1, _) -> failWith s1
-                   (_, Err s2) -> failWith s2
-                   (Ok l1, Ok l2) ->
-                      let f (a, edges) g =
-                              
-                             QuickInput.splitWithChain g 
-                               edges
-                                a.id
-                      in
-                      let ltot = Debug.log "total unified" (l1 ++ l2) in
-                      let finalg = 
-                           List.foldl f
-                           modelGraph
-                           ltot
-                      in
+              (Ok eqs, Just d) ->
+                 case Unification.unifyDiagram eqs d modelGraph of
+                  Err s -> failWith s
+                  Ok finalg ->                
                       let selectedNodes = 
                              Graph.nodes 
                              <| GraphDefs.selectedGraph 
@@ -1475,7 +1483,8 @@ helpMsg model =
                 ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [I] generate Coq script to address selected incomplete subdiagram "
-                ++ "(i.e., a subdiagram with unnamed arrows to be unified)"
+                ++ "(i.e., a subdiagram with unnamed arrows to be unified), "
+                ++ " or use the selected proof node to complete the surrounding diagram (with unnamed arrows)"
                 ++ ", [E] enter an equation (prompt)"
                 ++ ", export selection to LaTe[X]/s[V]g"
                 
