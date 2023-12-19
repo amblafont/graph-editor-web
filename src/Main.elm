@@ -67,7 +67,7 @@ import ArrowStyle
 
 import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..))
+import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..), coqProofTexCommand)
 import Tikz exposing (graphToTikz)
 import Html
 import Html.Events
@@ -832,9 +832,9 @@ update_DefaultMode msg model =
     let clearSel = noCmd <| setActiveGraph model 
                      <| GraphDefs.clearSelection modelGraph
     in
-    let createPoint isMath =
+    let createPoint isMath label =
             let (newGraph, newId) = Graph.newNode modelGraph 
-                    (newNodeLabel model.mousePos "" isMath defaultZ)
+                    (newNodeLabel model.mousePos label isMath defaultZ)
                 newModel = addOrSetSel False newId
                    <| setSaveGraph model newGraph                    
             in
@@ -1006,8 +1006,9 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'r') -> rename model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise model 
-        KeyChanged False _ (Character 't') -> createPoint False
-        KeyChanged False _ (Character 'p') -> createPoint True
+        KeyChanged False _ (Character 't') -> createPoint False ""
+        KeyChanged False _ (Character 'p') -> createPoint True ""
+        KeyChanged False _ (Character 'P') -> createPoint True <| "\\" ++ coqProofTexCommand ++ "{}" 
            --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
         --                                            Msg.focusId quickInputId)
@@ -1448,6 +1449,7 @@ helpMsg model =
 
                 ++ "\n Basic editing: "
                 ++ "new [p]oint"
+                ++ ", new [P]roof node"
                 ++ ", new [t]ext"               
                 ++ ", [del]ete selected object (also [x])"               
                 ++ ", [q] find and replace in selection"                 
