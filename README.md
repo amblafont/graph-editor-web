@@ -26,7 +26,7 @@ Ipc capabilities when the desktop app is launched by another node.js app using `
 
 Examples:
 - sends `{ key : "incomplete-equation", content: "{ f ; {_} = {_}}" }`
- when pressing 'I' on a selected triangle diagram with two unnamed arrows.
+ when pressing 'I' on a selected diagram with two unnamed arrows.
 - sends `{ key : "generate-proof", content: coq-script }`
  when generating a coq script from the diagram
 - receives `{ key : 'load', content: content}` where content is
@@ -35,6 +35,9 @@ Examples:
 - receives `{ key : "complete-equation", content : {statement : string, script: string}  }` 
    and unifies the statement with the unnamed arrows
    in the selected subdiagram, adding the script as a proof node for the subdiagram.
+- sends `{ key : "apply-proof", content: {statement:"{ f ; {_} = {_}}", script:string } }`
+when pressing 'I' on a selected proof node in a diagram
+- receives `{ key: "applied-proof", content: string }`
 
 
 

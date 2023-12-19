@@ -531,14 +531,20 @@
          };
 
          app.ports.toClipboard.subscribe(toClipboard);
+         const err = "This features is only enabled with the desktop version and the appropriate vscode extension";
 
-         if (isElectron) 
+         if (isElectron) {
             app.ports.incompleteEquation.subscribe(function(statement){
                 window.electronAPI.incompleteEquation(statement)
             });
-         else
-            app.ports.incompleteEquation.subscribe((statement) =>
-              alert("This feature is only enabled when running the appropriate vscode extension"));
+            app.ports.applyProof.subscribe(function(statement){
+                window.electronAPI.applyProof(statement)
+            });
+         }
+         else {
+            app.ports.incompleteEquation.subscribe((statement) =>  alert(err));
+            app.ports.applyProof.subscribe((statement) =>  alert(err));
+         }
 
          function copyErr(s, emptyErr, success, failure) {
             if (s == "") {
@@ -611,6 +617,9 @@
             });
             window.electronAPI.completeEquation((event, content) =>
                 app.ports.completeEquation.send(content)
+            );
+            window.electronAPI.appliedProof((event, content) =>
+                app.ports.appliedProof.send(content)
             );
          }
         

@@ -510,6 +510,7 @@ function configureIpc() {
                 setFirstTab)
             break;
           case "complete-equation":
+          case "applied-proof":
             mainWindow.webContents.send(msg.key, msg.content);
             break;
              
@@ -550,11 +551,14 @@ const createWindow = () => {
   ipcMain.handle('prompt', async (e, question, defaut) =>
     electronPrompt({label:question, value:defaut, width:800}, mainWindow)
   );
+  const errVscode = "This feature is only enabled when running the appropriate vscode extension";
   ipcMain.on('quick-save-graph', 
      (e, filename, data, exports, feedback) => is_watch ? handleSave(filename, data,exports)
       : quicksave(filename, data, exports, feedback));
   ipcMain.on('incomplete-equation', (e, s) => sendExternalMsg("incomplete-equation", s, 
-     "This feature is only enabled when running the appropriate vscode extension"));
+     errVscode));
+  ipcMain.on('apply-proof', (e, s) => sendExternalMsg("apply-proof", s, 
+     errVscode));
   ipcMain.on('generate-proof', (e, s) => sendExternalMsg("generate-proof", s));
   // ipcMain.on('save-graph', function(a) {console.log("saved")});
   if (is_watch)

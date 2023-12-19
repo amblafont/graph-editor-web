@@ -1,6 +1,9 @@
-module Unification exposing (unify, Config)
+module Unification exposing (unify, Config, unifyDiagram)
 import List.Extra
-
+import QuickInput
+import GraphProof exposing (Diagram)
+import GraphDefs exposing (NodeLabel, EdgeLabel)
+import Polygraph exposing (Graph)
 type alias Config a = {
     isMetavariable : a -> Bool
     -- eq : a -> b -> Bool 
@@ -30,3 +33,29 @@ unifyAux cfg length l1 l2 =
             Ok [(t1, t2)] 
          else
             unifyAux cfg length q1 (List.drop 1 l2)
+
+unifyDiagram : (QuickInput.HandSide, QuickInput.HandSide) -> Diagram -> Graph NodeLabel EdgeLabel -> Result String (Graph NodeLabel EdgeLabel)
+unifyDiagram (eq1, eq2) d graph = 
+    let mayUnify l e = unify 
+                      {isMetavariable = .label >> .label >> String.isEmpty} 
+                      l e 
+    in
+    case (mayUnify d.lhs eq1,
+          mayUnify d.rhs eq2)
+    of 
+       (Err s1, _) -> Err s1
+       (_, Err s2) -> Err s2
+       (Ok l1, Ok l2) ->
+          let f (a, edges) g =
+                  
+                 QuickInput.splitWithChain g 
+                   edges
+                    a.id
+          in
+          let ltot = Debug.log "total unified" (l1 ++ l2) in
+          let finalg = 
+               List.foldl f
+               graph
+               ltot
+          in
+          Ok finalg

@@ -150,6 +150,18 @@ createNewTab m title =
     ]
   }
 
+duplicateTab : Model -> String -> Model
+duplicateTab m title =
+  let tab = getActiveTab m in 
+  { m | tabs = clearActiveTabs m.tabs ++ 
+    [ 
+      { tab |
+        title = title ,
+        active = True
+      }
+    ]
+  }
+
 updateActiveTab : Model -> (Tab -> Tab) -> Model
 updateActiveTab m f = { m | tabs = List.Extra.updateIf .active f m.tabs }
 
