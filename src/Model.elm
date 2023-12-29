@@ -175,6 +175,9 @@ getActiveGraph : Model -> Graph NodeLabel EdgeLabel
 getActiveGraph m =
   getActiveTab m |> .graph
 
+getActiveTitle m =
+  getActiveTab m |> .title
+
 updateActiveGraph : Model -> (Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel)
    -> Model
 updateActiveGraph m f =

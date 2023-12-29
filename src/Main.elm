@@ -879,7 +879,7 @@ update_DefaultMode msg model =
         CopyGraph ->
               let selectedModel = { model |
                            tabs = [ {graph = GraphDefs.selectedGraph modelGraph
-                               , sizeGrid = sizeGrid, title = "", 
+                               , sizeGrid = sizeGrid, title = Model.getActiveTitle model, 
                                active = True }]
                           }
               in
