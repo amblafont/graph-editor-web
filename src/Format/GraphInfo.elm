@@ -1,10 +1,10 @@
-module Format.GraphInfo exposing (GraphInfo, Tab, defaultGridSize)
+module Format.GraphInfo exposing (GraphInfo, Tab)
 -- the data that we want to copy/save
 import Polygraph as Graph
 import GraphDefs exposing (EdgeLabel, NodeLabel)
 
-defaultGridSize : Int
-defaultGridSize = 200
+-- defaultGridSize : Int
+-- defaultGridSize = 200
 
 type alias Tab = 
   { graph : Graph.Graph NodeLabel EdgeLabel,

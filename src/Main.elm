@@ -487,7 +487,7 @@ update msg modeli =
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
                               , export = makeExports model })
-     SaveGridSize -> (model, saveGridSize sizeGrid)
+     SaveGridSize -> ({model | defaultGridSize = sizeGrid } , saveGridSize sizeGrid)
      OptimalGridSize ->
           let selGraph = GraphDefs.selectedGraph modelGraph in
           case Graph.nodes selGraph of
@@ -502,7 +502,9 @@ update msg modeli =
                          { info = toJsGraphInfo model, export = makeExports model,
                          feedback = False }) 
                    else noCmd model
-     Clear scenario -> noCmd { iniModel | scenario = scenario }--  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
+     Clear scenario -> 
+        let modelf = createModel model.defaultGridSize in
+        noCmd { modelf | scenario = scenario }--  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
@@ -522,7 +524,8 @@ update msg modeli =
                    updateActiveGraph model
                       (GraphDefs.updateNormalEdge e (\l -> {l | dims = Just dims }))
      Do cmd -> (model, cmd)
-     SimpleMsg s -> noCmd { iniModel | scenario = SimpleScenario, statusMsg = s }
+     SimpleMsg s -> let modelf = createModel model.defaultGridSize in
+                     noCmd { modelf | scenario = SimpleScenario, statusMsg = s }
      SetFirstTab g ->
          let tab = getActiveTabInTabs g.tabs in
         (updateFirstTab model <| \t ->
@@ -1777,7 +1780,7 @@ viewGraph model =
 
 
 
-main : Program () Model Msg
-main = Browser.element { init = \ _ -> (iniModel, Cmd.none),
+main : Program {defaultGridSize : Int} Model Msg
+main = Browser.element { init = \ {defaultGridSize} -> (createModel defaultGridSize, Cmd.none),
                          view = view, update = updateIntercept,
                          subscriptions = subscriptions}

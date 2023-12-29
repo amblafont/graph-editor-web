@@ -12,7 +12,7 @@ import List.Extra
 
 import Modes exposing (Mode(..))
 
-import Format.GraphInfo exposing (defaultGridSize, GraphInfo, Tab)
+import Format.GraphInfo exposing (GraphInfo, Tab)
 import ParseLatex
 import Polygraph exposing (empty)
 import Html exposing (q)
@@ -61,6 +61,7 @@ type alias Model = {
     , autoSave : Bool
     , latexPreamble : String
     , scenario : Scenario
+    , defaultGridSize : Int
     }
 
 
@@ -89,7 +90,7 @@ popHistory m = { m | history = List.tail m.history |> Maybe.withDefault []}
 
 
 emptyTab : Tab
-emptyTab = { active = True, title = "1", sizeGrid = defaultGridSize, graph = Graph.empty}
+emptyTab = { active = True, title = "1", sizeGrid = 200, graph = Graph.empty}
 
 getActiveTabInTabs : List Tab -> Tab
 getActiveTabInTabs tabs =
@@ -210,9 +211,11 @@ setSaveGraph m g =
 --       InputPosKeyboard p -> Point.add source <| deltaKeyboardPos p)
 
 
-createModel : Int -> Graph NodeLabel EdgeLabel -> Model
-createModel sizeGrid g =
+createModel : Int -> Model
+createModel sizeGrid =
+    let g = Graph.empty in
     { tabs = [ { active = True, graph = g, sizeGrid = sizeGrid, title = "1" } ]
+    , defaultGridSize = sizeGrid
     , history = []
     , mode = DefaultMode
     , statusMsg = ""
@@ -230,7 +233,7 @@ createModel sizeGrid g =
     , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
     , scenario = Standard
     , showOverlayHelp = False
-    , squareModeProof = False
+    , squareModeProof = False    
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse
@@ -245,10 +248,8 @@ createModel sizeGrid g =
     -- blitzFlag = False
     }
 
-iniModel : Model
-iniModel = 
-   let sizeGrid = defaultGridSize in
-   
+-- iniModel : Model
+-- iniModel =    
   {-  let dbg = Debug.log "test" 
         <| ParseLatex.convertString """
     \\Diag{%
@@ -294,14 +295,14 @@ iniModel =
 
          """
    in -}
-   let graph = {- dbg -} Nothing |> Maybe.map (ParseLatex.buildGraph sizeGrid) |>
-               Maybe.withDefault Graph.empty
-   in
-   createModel sizeGrid <| graph
-      {- Tuple.first <|
-        Graph.newNode Graph.empty
-         { pos = (sizeGrid / 2, sizeGrid / 2), label = "", dims = Nothing,
-           selected = True } -}
+--    let graph = {- dbg -} Nothing |> Maybe.map (ParseLatex.buildGraph sizeGrid) |>
+--                Maybe.withDefault Graph.empty
+--    in
+--    createModel sizeGrid <| graph
+--       {- Tuple.first <|
+        -- Graph.newNode Graph.empty
+        --  { pos = (sizeGrid / 2, sizeGrid / 2), label = "", dims = Nothing,
+        --    selected = True } -}
 
 initialise_RenameModeWithDefault : Bool -> List (Graph.Id, String) -> Model -> Model
 initialise_RenameModeWithDefault save l m =

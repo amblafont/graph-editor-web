@@ -2,7 +2,7 @@ module Format.Version2 exposing (Graph, Edge, fromJSGraph, version)
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
-import Format.GraphInfo exposing (GraphInfo, defaultGridSize)
+import Format.GraphInfo exposing (GraphInfo)
 import Format.Version3 as NextVersion
 
 version = 2
@@ -20,7 +20,7 @@ toNextVersion : Graph -> NextVersion.Graph
 toNextVersion { nodes, edges } = 
     { nodes = nodes, 
       edges = edges,
-      sizeGrid = defaultGridSize }
+      sizeGrid = 200 }
 
 
 
