@@ -539,16 +539,16 @@
          const err = "This features is only enabled with the desktop version and the appropriate vscode extension";
 
          if (isElectron) {
-            app.ports.incompleteEquation.subscribe(function(statement){
-                window.electronAPI.incompleteEquation(statement)
+            app.ports.incompleteEquation.subscribe(function(data){
+                window.electronAPI.incompleteEquation(data)
             });
-            app.ports.applyProof.subscribe(function(statement){
-                window.electronAPI.applyProof(statement)
+            app.ports.applyProof.subscribe(function(data){
+                window.electronAPI.applyProof(data)
             });
          }
          else {
-            app.ports.incompleteEquation.subscribe((statement) =>  alert(err));
-            app.ports.applyProof.subscribe((statement) =>  alert(err));
+            app.ports.incompleteEquation.subscribe((data) =>  alert(err));
+            app.ports.applyProof.subscribe((data) =>  alert(err));
          }
 
          function copyErr(s, emptyErr, success, failure) {

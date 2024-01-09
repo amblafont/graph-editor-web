@@ -25,7 +25,7 @@ Ipc capabilities when the desktop app is launched by another node.js app using `
 (To be used in a vscode extension building upon coq-lsp)
 
 Examples:
-- sends `{ key : "incomplete-equation", content: "{ f ; {_} = {_}}" }`
+- sends `{ key : "incomplete-equation", content: {statement :"{ f ; {_} = {_}}", script:string }`
  when pressing 'I' on a selected diagram with two unnamed arrows.
 - sends `{ key : "generate-proof", content: coq-script }`
  when generating a coq script from the diagram

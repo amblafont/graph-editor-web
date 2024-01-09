@@ -164,7 +164,7 @@ port onCopy : (() -> a) -> Sub a
 -- we return the stuff to be written
 port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
-port incompleteEquation : String -> Cmd a
+port incompleteEquation : { statement : String, script : String} -> Cmd a
 port completeEquation : ({ statement : String, script : String} -> a) -> Sub a
 
 port applyProof : { statement : String, script : String} -> Cmd a
@@ -955,7 +955,13 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                                { script = proof, statement = 
                                    GraphProof.statementToString diagram
                                }
-                      Just d -> incompleteEquation <| GraphProof.statementToString d
+                      Just d ->
+                         let gp = GraphDefs.toProofGraph modelGraph in
+                         let proof = GraphProof.findProofOfDiagram gp (Graph.nodes gp) d 
+                                    |> Maybe.withDefault ""
+                         in
+                         incompleteEquation { statement = (GraphProof.statementToString d),
+                                              script = proof }
                in
                  (model, cmd)
         AppliedProof statement ->
