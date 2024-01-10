@@ -947,7 +947,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                 --   graph = GraphDefs.clearSelection 
                 --   <| GraphDefs.clearWeakSelection modelGraph }              
             
-        KeyChanged False _ (Character 'I') -> 
+        KeyChanged False _ (Character 'v') -> 
                let cmd = case GraphDefs.selectedIncompleteDiagram modelGraph of 
                       Nothing -> 
                         case GraphDefs.selectedChain modelGraph of
@@ -1506,9 +1506,8 @@ helpMsg model =
                 ++ "[R]esize canvas and grid size" 
                 ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
-                ++ ", [I] generate Coq script to address selected incomplete subdiagram "
-                ++ "(i.e., a subdiagram with unnamed arrows to be unified, or a chain of arrows), "
-                ++ " or use the selected proof node to complete the surrounding diagram (with unnamed arrows)"
+                ++ ", [v] if a proof node is selected, check the proof, if a chain of arrows is selected, ask for a proof, if a subdiagram is selected, generate a proof goal in vscode."
+                ++ " (only works with the coreact-yade vscode extension)"
                 ++ ", [E] enter an equation (prompt)"
                 ++ ", export selection to LaTe[X]/s[V]g"
                 
