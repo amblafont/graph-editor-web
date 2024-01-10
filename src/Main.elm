@@ -67,7 +67,7 @@ import ArrowStyle
 
 import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..), coqProofTexCommand)
+import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..), coqProofTexCommand, MaybeChain(..))
 import Tikz exposing (graphToTikz)
 import Html
 import Html.Events
@@ -191,6 +191,9 @@ port promptedTabTitle : (String -> a) -> Sub a
 
 
 port saveGridSize : Int -> Cmd a
+
+-- we send a request to get a proof (by prompt?)
+port requestProofForChain : String -> Cmd a
 
 -- number of ms between autosaves
 autosaveTickMs : Float
@@ -947,14 +950,20 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'I') -> 
                let cmd = case GraphDefs.selectedIncompleteDiagram modelGraph of 
                       Nothing -> 
-                        case GraphDefs.getSelectedProofDiagram modelGraph of 
-                          NoProofNode -> alert "Selected subdiagram or proof node not found." 
-                          NoDiagram -> alert "No diagram found around node."
-                          JustDiagram { proof, diagram } ->
-                             applyProof <| 
-                               { script = proof, statement = 
-                                   GraphProof.statementToString diagram
-                               }
+                        case GraphDefs.selectedChain modelGraph of
+                          NoClearOrientation -> 
+                             alert "Not clear how to orient the equation (closing the chain should not overlap with other arrows)"
+                          NoChain ->
+                            case GraphDefs.getSelectedProofDiagram modelGraph of 
+                              NoProofNode -> alert "Selected subdiagram or proof node not found." 
+                              NoDiagram -> alert "No diagram found around node."
+                              JustDiagram { proof, diagram } ->
+                                applyProof <| 
+                                  { script = proof, statement = 
+                                      GraphProof.statementToString diagram
+                                  }
+                          JustChain (_, d) -> 
+                                requestProofForChain (GraphProof.statementToString d)
                       Just d ->
                          let gp = GraphDefs.toProofGraph modelGraph in
                          let proof = GraphProof.findProofOfDiagram gp (Graph.nodes gp) d 
@@ -966,18 +975,22 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                  (model, cmd)
         AppliedProof statement ->
           let failWith s = (model, alert s) in
-          case GraphDefs.getSelectedProofDiagram modelGraph of
-           NoProofNode -> failWith "No proof node selected."
-           NoDiagram -> failWith "no diagram around selected proof node."
-           JustDiagram { diagram } ->
-            case Parser.run equalityParser statement
-             of
-              Err _ -> failWith ("fail to parse " ++ statement)
-              Ok eqs ->
-                case Unification.unifyDiagram eqs diagram modelGraph of
-                  Err s -> failWith s
-                  Ok finalg ->                
-                      noCmd <| setSaveGraph model finalg
+          let registerProof graph diagram = 
+                case Parser.run equalityParser statement of
+                  Err _ -> failWith ("fail to parse " ++ statement)
+                  Ok eqs ->
+                    case Unification.unifyDiagram eqs diagram graph of
+                      Err s -> failWith s
+                      Ok finalg ->                
+                          noCmd <| setSaveGraph model finalg
+          in
+          case GraphDefs.selectedChain modelGraph of
+            JustChain (newGraph, diagram) -> registerProof newGraph diagram
+            NoClearOrientation -> failWith "No clear orientation of the proof."
+            NoChain -> case GraphDefs.getSelectedProofDiagram modelGraph of
+              NoProofNode -> failWith "No proof node selected."
+              NoDiagram -> failWith "no diagram around selected proof node."
+              JustDiagram { diagram } -> registerProof modelGraph diagram
         CompleteEquation { statement, script } ->
             let failWith s = (model, alert s) in
             case (Parser.run equalityParser statement,
@@ -1495,7 +1508,7 @@ helpMsg model =
                 ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [I] generate Coq script to address selected incomplete subdiagram "
-                ++ "(i.e., a subdiagram with unnamed arrows to be unified), "
+                ++ "(i.e., a subdiagram with unnamed arrows to be unified, or a chain of arrows), "
                 ++ " or use the selected proof node to complete the surrounding diagram (with unnamed arrows)"
                 ++ ", [E] enter an equation (prompt)"
                 ++ ", export selection to LaTe[X]/s[V]g"

@@ -22,7 +22,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    makeSelection, addWeaklySelected, weaklySelect,
    getSurroundingDiagrams, updateNormalEdge,
    rectEnveloppe, updateStyleEdges,
-   getSelectedProofDiagram, MaybeProofDiagram(..)
+   getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..)
    )
 
 import IntDict
@@ -188,6 +188,27 @@ selectedIncompleteDiagram g =
     GraphProof.getIncompleteDiagram gc
      <| Graph.getEdges (selectedEdges g |> List.map .id) gc
 
+type MaybeChain =
+     JustChain (Graph NodeLabel EdgeLabel, Diagram)
+   | NoClearOrientation
+   | NoChain
+{-
+Returns the graph with an edge added between the minimal and the maximal points, and the diagram
+-}
+selectedChain : Graph NodeLabel EdgeLabel -> MaybeChain
+selectedChain g = 
+   let gs = selectedGraph g in
+   case (Graph.minimal gs, Graph.maximal gs) of
+     ([ minId ] , [ maxId ]) ->
+        if minId == maxId then NoChain else
+        let (weakSel, trueSel) = if isTrueSelection gs then (False, True) else (True, False) in
+        let label = { emptyEdge | weaklySelected = weakSel, selected = trueSel } in
+        let (newGraph, _) = Graph.newEdge g minId maxId label in
+        case selectedIncompleteDiagram newGraph of
+          Nothing -> NoClearOrientation
+          Just d -> JustChain (newGraph, d)
+     (_, _) -> NoChain
+
 updateNormalEdge : EdgeId -> (NormalEdgeLabel -> NormalEdgeLabel) -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 updateNormalEdge id f =
     Graph.updateEdge id 
@@ -326,8 +347,11 @@ addNodesSelection g f =
 selectAll : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectAll g = addNodesSelection g (always True)
 
+isTrueSelection : Graph NodeLabel EdgeLabel -> Bool
+isTrueSelection g = Graph.any .selected .selected g
+
 fieldSelect : Graph NodeLabel EdgeLabel -> ({ a | selected : Bool, weaklySelected : Bool} -> Bool)
-fieldSelect g = if Graph.any .selected .selected g then .selected else .weaklySelected
+fieldSelect g = if isTrueSelection g then .selected else .weaklySelected
 
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectedGraph g = 

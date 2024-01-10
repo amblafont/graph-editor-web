@@ -11,7 +11,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty,
      normalise,
      union, edgeMap, nodeMap,
      {- findInitial, sourceNode, -} removeLoops,
-     incidence, any, connectedClosure)
+     incidence, any, connectedClosure, minimal, maximal)
 import IntDict exposing (IntDict)
 import IntDictExtra 
 import Maybe.Extra as Maybe
@@ -582,13 +582,25 @@ connectedClosure fn fe (Graph g) =
    (\{n} -> { n = n, isIn = False})(\{e} -> { e = e, isIn = False})
 
 
+minimal : Graph n e -> List NodeId
+minimal g = 
+  let gedges = edges g in
+  nodes g |> List.map .id 
+  |> List.filter (\ id -> List.all (\ e -> e.to /= id) gedges)
+
+maximal : Graph n e -> List NodeId
+maximal g = 
+  let gedges = edges g in
+  nodes g |> List.map .id 
+  |> List.filter (\ id -> List.all (\ e -> e.from /= id) gedges)
+
 any : (n -> Bool) -> (e -> Bool) -> Graph n e -> Bool
 any fn fe (Graph g) =
        IntDictExtra.any 
        (\ o -> case o of 
                  NodeObj n -> fn n
                  EdgeObj _ _ e -> fe e) g
-  
+     
    
 {- sourceNode : Graph n e -> Id -> NodeId
 sourceNode (Graph g) id =
@@ -604,4 +616,4 @@ findInitial g start =
   |> Maybe.map .from
   |> Maybe.map (findInitial (remove start g))
   |> Maybe.withDefault start -}
-  
+
