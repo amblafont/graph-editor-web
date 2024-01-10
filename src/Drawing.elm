@@ -282,8 +282,8 @@ emptyForeign =
    [Svg.x "1", Svg.y "1", Svg.width "100%", Svg.height "100%"
      ]
    []
-   -- put it in the background
-    |> ofSvg backgroundZ
+   -- put it in the very background
+    |> ofSvg (2 * backgroundZ)
 
 
 htmlAnchor : Int -> Point -> Point -> Bool -> String -> Html.Html a -> Drawing a
