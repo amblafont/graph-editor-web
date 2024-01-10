@@ -267,7 +267,7 @@ moveNodeViewInfo finish m data =
     let (g2, ne2) = Graph.newEdge g1 e2n1 e2n2 <| GraphDefs.newEdgeLabel labelEdge2 ArrowStyle.empty in
     let g3 = if not m.squareModeProof then g2 else 
          let proofPos = guessProofPosition m data newPos in
-         GraphDefs.createProofNode g2 "naturality." proofPos
+         GraphDefs.createProofNode g2 "naturality." False proofPos
     in
     
         

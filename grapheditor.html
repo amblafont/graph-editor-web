@@ -627,11 +627,8 @@
             app.ports.generateProofJs.subscribe(function(script){
                 window.electronAPI.generateProof(script)
             });
-            window.electronAPI.completeEquation((event, content) =>
-                app.ports.completeEquation.send(content)
-            );
             window.electronAPI.appliedProof((event, content) =>
-                app.ports.appliedProof.send(content)
+                { app.ports.appliedProof.send(content);}
             );
          }
         

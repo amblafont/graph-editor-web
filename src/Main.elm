@@ -97,6 +97,7 @@ import GraphDrawing
 import String.Svg
 import Zindex exposing (defaultZ, foregroundZ)
 import Geometry.Point as Point
+import GraphDefs exposing (isProofLabel)
 
 
 port preventDefault : JE.Value -> Cmd a
@@ -165,10 +166,9 @@ port onCopy : (() -> a) -> Sub a
 port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
 port incompleteEquation : { statement : String, script : String} -> Cmd a
-port completeEquation : ({ statement : String, script : String} -> a) -> Sub a
 
 port applyProof : { statement : String, script : String} -> Cmd a
-port appliedProof : (String -> a) -> Sub a
+port appliedProof : ({ statement : String, script : String} -> a) -> Sub a
 
 port toClipboard : { content:String, success: String, failure: String } -> Cmd a
 port generateProofJs : String -> Cmd a
@@ -227,7 +227,7 @@ subscriptions m =
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
-      completeEquation CompleteEquation,
+      -- completeEquation CompleteEquation,
       appliedProof AppliedProof
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
@@ -973,7 +973,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                                               script = proof }
                in
                  (model, cmd)
-        AppliedProof statement ->
+        AppliedProof {statement, script} ->
           let failWith s = (model, alert s) in
           let registerProof graph diagram = 
                 case Parser.run equalityParser statement of
@@ -984,35 +984,34 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                       Ok finalg ->                
                           noCmd <| setSaveGraph model finalg
           in
-          case GraphDefs.selectedChain modelGraph of
-            JustChain (newGraph, diagram) -> registerProof newGraph diagram
-            NoClearOrientation -> failWith "No clear orientation of the proof."
-            NoChain -> case GraphDefs.getSelectedProofDiagram modelGraph of
-              NoProofNode -> failWith "No proof node selected."
-              NoDiagram -> failWith "no diagram around selected proof node."
-              JustDiagram { diagram } -> registerProof modelGraph diagram
-        CompleteEquation { statement, script } ->
-            let failWith s = (model, alert s) in
-            case (Parser.run equalityParser statement,
-                 GraphDefs.selectedIncompleteDiagram modelGraph)
-             of
-              (Err _, _) -> failWith ("fail to parse " ++ statement)
-              (_, Nothing) -> failWith "no incomplete diagram selected"
-              (Ok eqs, Just d) ->
-                 case Unification.unifyDiagram eqs d modelGraph of
-                  Err s -> failWith s
-                  Ok finalg ->                
-                      let selectedNodes = 
-                             Graph.nodes 
-                             <| GraphDefs.selectedGraph 
-                                modelGraph
-                      in
-                      let g_with_proof =
-                             GraphDefs.createProofNode finalg script
-                             <| Geometry.Point.barycenter 
-                             <| List.map (.label >> .pos) selectedNodes                        
-                      in
-                      noCmd <| setSaveGraph model g_with_proof
+          let registerAndCreateProof newGraph diagram =
+                    let nodes =  Graph.nodes 
+                                <| GraphDefs.selectedGraph 
+                                    modelGraph 
+                    in
+                    let g_with_proof = GraphDefs.createValidProofAtBarycenter newGraph nodes script in
+                    registerProof g_with_proof diagram
+          in
+          case GraphDefs.selectedIncompleteDiagram modelGraph of
+            Nothing ->  case GraphDefs.selectedChain modelGraph of
+                JustChain (newGraph, diagram) -> registerAndCreateProof newGraph diagram
+                    
+                NoClearOrientation -> failWith "No clear orientation of the proof."
+                NoChain -> case GraphDefs.getSelectedProofDiagram modelGraph of
+                  NoProofNode -> failWith "No proof node selected."
+                  NoDiagram -> failWith "no diagram around selected proof node."
+                  JustDiagram { diagram } -> 
+                    let validGraph = 
+                          case GraphDefs.selectedNode modelGraph of
+                            Nothing -> modelGraph
+                            Just n -> 
+                              if isProofLabel n.label then 
+                                Graph.updateNode n.id (\ l -> { l | isCoqValidated = True, 
+                                                     label = GraphDefs.makeProofString script}) modelGraph
+                              else modelGraph
+                    in
+                    registerProof validGraph diagram
+            Just d -> registerAndCreateProof modelGraph d
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
         KeyChanged False _ (Character 'Q') -> 

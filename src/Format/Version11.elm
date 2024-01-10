@@ -87,7 +87,7 @@ fromNodeLabel { pos, label, isMath, zindex } =
 toNodeLabel : Node -> NodeLabel
 toNodeLabel { pos, label, isMath, zindex } = { pos = pos, label = label
    , dims = Nothing, selected = False, weaklySelected = False, isMath = isMath,
-     zindex = zindex}
+     zindex = zindex, isCoqValidated = False}
 
 
 toJSTab : GraphInfo.Tab -> Tab

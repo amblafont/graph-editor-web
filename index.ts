@@ -509,7 +509,6 @@ function configureIpc() {
             loadData(msg.content as string, "graph.json", coqlspScenario, 
                 setFirstTab)
             break;
-          case "complete-equation":
           case "applied-proof":
             mainWindow.webContents.send(msg.key, msg.content);
             break;

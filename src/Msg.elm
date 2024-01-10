@@ -99,8 +99,7 @@ type Msg
   | PressTimeout
   | LatexPreambleEdit String
   | SimpleMsg String
-  | CompleteEquation { statement : String, script : String}
-  | AppliedProof String
+  | AppliedProof { statement : String, script : String}
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String
