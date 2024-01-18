@@ -165,7 +165,10 @@ port onCopy : (() -> a) -> Sub a
 -- we return the stuff to be written
 port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
-port incompleteEquation : { statement : String, script : String} -> Cmd a
+-- port incompleteEquation : { statement : String, script : String} -> Cmd a
+
+-- we send a request to get a proof (by prompt?)
+port requestProof : { statement : String, script : String} -> Cmd a
 
 port applyProof : { statement : String, script : String} -> Cmd a
 port appliedProof : ({ statement : String, script : String} -> a) -> Sub a
@@ -192,8 +195,6 @@ port promptedTabTitle : (String -> a) -> Sub a
 
 port saveGridSize : Int -> Cmd a
 
--- we send a request to get a proof (by prompt?)
-port requestProofForChain : String -> Cmd a
 
 -- number of ms between autosaves
 autosaveTickMs : Float
@@ -963,13 +964,15 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                                       GraphProof.statementToString diagram
                                   }
                           JustChain (_, d) -> 
-                                requestProofForChain (GraphProof.statementToString d)
+                                requestProof { statement = GraphProof.statementToString d,
+                                                       script = "reflexivity." }
                       Just d ->
                          let gp = GraphDefs.toProofGraph modelGraph in
                          let proof = GraphProof.findProofOfDiagram gp (Graph.nodes gp) d 
                                     |> Maybe.withDefault ""
                          in
-                         incompleteEquation { statement = (GraphProof.statementToString d),
+                        --  requestProofForChain (GraphProof.statementToString d)
+                         requestProof { statement = (GraphProof.statementToString d),
                                               script = proof }
                in
                  (model, cmd)
@@ -1026,7 +1029,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
             Modes.Square.initialise model 
         KeyChanged False _ (Character 't') -> createPoint False ""
         KeyChanged False _ (Character 'p') -> createPoint True ""
-        KeyChanged False _ (Character 'P') -> createPoint True <| "\\" ++ coqProofTexCommand ++ "{}" 
+        -- KeyChanged False _ (Character 'P') -> createPoint True <| "\\" ++ coqProofTexCommand ++ "{}" 
            --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
         --                                            Msg.focusId quickInputId)
@@ -1467,7 +1470,7 @@ helpMsg model =
 
                 ++ "\n Basic editing: "
                 ++ "new [p]oint"
-                ++ ", new [P]roof node"
+                -- ++ ", new [P]roof node"
                 ++ ", new [t]ext"               
                 ++ ", [del]ete selected object (also [x])"               
                 ++ ", [q] find and replace in selection"                 

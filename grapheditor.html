@@ -108,7 +108,7 @@
             // electron does not support synchronous window.prompt
             var customPrompt = function(question, defaut, callback) {
                 var ret = window.prompt(question, defaut);
-                if (ret)                   
+                if (ret !== null)                   
                    callback(ret);
             }
 
@@ -490,7 +490,7 @@
             customPrompt("Replace in selection (/find/replace, where '/' can be replaced by any character)", 
                   "/find/replace",
                   function (rep) {
-             if (rep && rep.length > 2) {
+             if (rep.length > 2) {
                 reps = rep.split(rep[0])                
                 if (reps && reps.length == 3 && reps[1]) {
                     var search = reps[1];
@@ -504,8 +504,7 @@
          answerElmRequestCallback('promptEquation', 'promptedEquation', (a, callback) =>
             customPrompt("Enter equation", 
                   "a -- f -> b -- g -> c = a -- h -> d -- k -> c", function (rep) {
-            console.log("reponse: " + rep);
-             if (rep && rep.length > 0) {                
+             if (rep.length > 0) {                
                     callback(rep); //{ equation : rep, final: false, scenario: ""};
              }
             })
@@ -539,23 +538,26 @@
          const err = "This features is only enabled with the desktop version and the appropriate vscode extension";
 
          if (isElectron) {
-            app.ports.incompleteEquation.subscribe(function(data){
-                window.electronAPI.incompleteEquation(data)
-            });
+            // app.ports.incompleteEquation.subscribe(function(data){
+            //     window.electronAPI.incompleteEquation(data)
+            // });
             app.ports.applyProof.subscribe(function(data){ window.electronAPI.applyProof(data) });
-            app.ports.requestProofForChain.subscribe((statement) => {
-                customPrompt("Enter proof for " + statement, "reflexivity.", (proof) => {
-                    if (proof) {
-                    //    alert(proof);
-                       window.electronAPI.applyProof({script: proof, statement:statement});
+            app.ports.requestProof.subscribe((data) => {
+                customPrompt("Enter proof for " + data.statement + " (leave blank for interactive)", data.script, (proof) => {
+                    newData = {script: proof, statement:data.statement};
+                    if (proof == "") {
+                        window.electronAPI.incompleteEquation(newData);
+                    }
+                    else {
+                        window.electronAPI.applyProof(newData);
                     }
                 });
             });
          }
          else {
-            app.ports.incompleteEquation.subscribe((data) =>  alert(err));
+            // app.ports.incompleteEquation.subscribe((data) =>  alert(err));
             app.ports.applyProof.subscribe((data) =>  alert(err));
-            app.ports.requestProofForChain.subscribe((data) =>  alert(err));
+            app.ports.requestProof.subscribe((data) =>  alert(err));
          }
 
          function copyErr(s, emptyErr, success, failure) {
@@ -601,7 +603,11 @@
          // Setting up interaction with electron
          if (isElectron) {
             customPrompt = function (question, defaut, callback) {
-                window.electronAPI.prompt(question, defaut).then(callback);
+                window.electronAPI.prompt(question, defaut).then(
+                    function(rep) {
+                        if (rep !== null)
+                           callback(rep);
+                    });
             };
 
             console.log("electron detected");
