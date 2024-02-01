@@ -163,6 +163,25 @@ duplicateTab m title =
     ]
   }
 
+swapActiveTab : List Tab -> Bool -> List Tab
+swapActiveTab l forward =
+  case l of 
+     t1 :: t2 :: q -> 
+          if (forward && t1.active) || (not forward && t2.active) then 
+            t2 :: t1 :: q 
+          else 
+            t1 :: swapActiveTab (t2 :: q) forward
+     _ -> l
+      
+            
+
+moveTabRight : Model -> Model
+moveTabRight m = {m | tabs = swapActiveTab m.tabs True}
+
+
+moveTabLeft : Model -> Model
+moveTabLeft m = {m | tabs = swapActiveTab m.tabs False}
+
 updateActiveTab : Model -> (Tab -> Tab) -> Model
 updateActiveTab m f = { m | tabs = List.Extra.updateIf .active f m.tabs }
 

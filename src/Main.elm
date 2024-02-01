@@ -460,6 +460,8 @@ update msg modeli =
                 RemoveTab -> removeActiveTabs { modeli | mode = DefaultMode}
                 NewTab -> createNewTab { modeli | mode = DefaultMode} <| nextTabName modeli
                 DuplicateTab -> duplicateTab { modeli | mode = DefaultMode} <| nextTabName modeli
+                TabMoveLeft  -> moveTabLeft { modeli | mode = DefaultMode }
+                TabMoveRight -> moveTabRight { modeli | mode = DefaultMode }
                 FileName s -> { modeli | fileName = s }
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
                 MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
@@ -1657,26 +1659,28 @@ toDrawing model graph =
 renderTabs : List Tab -> List (Html Msg)
 renderTabs tabs =
   let activeTab = getActiveTabInTabs tabs in
+  let leftButton = Html.button [Html.Events.onClick TabMoveLeft, Html.Attributes.title "Swap tab order"] [Html.text "<"] in
+  let rightButton = Html.button [Html.Events.onClick TabMoveRight, Html.Attributes.title "Swap tab order"] [Html.text ">"] in
   let renderTab i tab =
         
          let classes = 
                 Html.Attributes.class "tab-button" :: 
                 if tab.active then [Html.Attributes.class "active-tab"] else []
          in
-        --  Html.input ([Html.Events.onClick <| SwitchTab i
-        --              , Html.Attributes.value tab.title] ++ classes) 
-        --    []
-           Html.button ([(Html.Events.onClick <| SwitchTab i)
-              -- Html.Attributes.contenteditable True,
-              -- Html.Events.onInput <| RenameTab i
-              ] ++ classes) 
-           [Html.text tab.title]
+         let mainButton = 
+                Html.button ([(Html.Events.onClick <| SwitchTab i)
+                    ] ++ classes) 
+                [Html.text tab.title]
+         in
+           mainButton
   in
   let newButton = Html.button [Html.Events.onClick NewTab] [Html.text "New tab"] in
   let dupButton = Html.button [Html.Events.onClick DuplicateTab] [Html.text "Duplicate tab"] in
   let removeButton = Html.button [Html.Events.onClick RemoveTab] [Html.text "Remove tab"] in
+  
   let renameButton = Html.button [Html.Events.onClick (Do (promptTabTitle activeTab.title))] [Html.text "Rename tab"] in
      [newButton, dupButton, removeButton, renameButton ] ++ List.indexedMap renderTab tabs
+     ++ [leftButton, rightButton]
 
 viewGraph : Model -> Html Msg
 viewGraph model =

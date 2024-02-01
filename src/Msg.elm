@@ -92,6 +92,8 @@ type Msg
   | DuplicateTab
   | RemoveTab
   | RenameTab String
+  | TabMoveRight
+  | TabMoveLeft
   | FindReplace { search: String, replace:String}
   | MinuteTick
   -- means that some key has been pressed
