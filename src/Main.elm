@@ -324,7 +324,7 @@ graph_RenameMode l m =
    case l of
       [] -> g
       (id, s) :: _ ->   Graph.update id 
-                        (\ n -> {n | label = s })  
+                        (\ n -> {n | label = s, isCoqValidated = False })  
                          (GraphDefs.mapNormalEdge (\e -> {e | label = s }))
                                g
 
