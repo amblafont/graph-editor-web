@@ -40,7 +40,9 @@ mapNormalEdge f e =
 
 
 type alias NodeDrawingLabel =
-    { pos : Point,
+    { pos : Point, 
+    -- is it marked as validated
+    isValidated : Bool,
       inputPos : Point, -- where the input text should be located
       -- (differ from pos in the case the node is a text)
      label : String, editable : Bool, isActive : Activity,
@@ -105,6 +107,7 @@ make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
     { label = label {- if l.isMath || editable then label else "\\text{" ++ label ++ "}" -}
     , pos = nodePos
     , inputPos = pos
+    , isValidated = l.isCoqValidated
     , editable = editable, isActive = isActive, isMath = isMath,
       dims = GraphDefs.getNodeDims l
     , zindex = l.zindex }
@@ -153,8 +156,9 @@ nodeLabelDrawing cfg attrs node =
         --  if n.label == "" then
             --  (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
         --  else 
-            let label = if n.label == "" then "\\bullet" else
-                     if n.isMath then n.label else "\\text{" ++ n.label ++ "}" 
+            let label = (if n.isValidated then "\\color{green}" else "")
+                     ++ (if n.label == "" then "\\bullet" else
+                     if n.isMath then n.label else "\\text{" ++ n.label ++ "}" )
             in
             makeLatex cfg n.pos n.dims label n.zindex
             ([   MouseEvents.onClick (NodeClick id),

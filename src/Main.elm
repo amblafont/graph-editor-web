@@ -67,7 +67,7 @@ import ArrowStyle
 
 import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..))
+import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..), coqProofTexCommand, MaybeChain(..))
 import Tikz exposing (graphToTikz)
 import Html
 import Html.Events
@@ -97,6 +97,7 @@ import GraphDrawing
 import String.Svg
 import Zindex exposing (defaultZ, foregroundZ)
 import Geometry.Point as Point
+import GraphDefs exposing (isProofLabel)
 
 
 port preventDefault : JE.Value -> Cmd a
@@ -164,11 +165,13 @@ port onCopy : (() -> a) -> Sub a
 -- we return the stuff to be written
 port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
-port incompleteEquation : String -> Cmd a
-port completeEquation : ({ statement : String, script : String} -> a) -> Sub a
+-- port incompleteEquation : { statement : String, script : String} -> Cmd a
+
+-- we send a request to get a proof (by prompt?)
+port requestProof : { statement : String, script : String} -> Cmd a
 
 port applyProof : { statement : String, script : String} -> Cmd a
-port appliedProof : (String -> a) -> Sub a
+port appliedProof : ({ statement : String, script : String} -> a) -> Sub a
 
 port toClipboard : { content:String, success: String, failure: String } -> Cmd a
 port generateProofJs : String -> Cmd a
@@ -191,6 +194,7 @@ port promptedTabTitle : (String -> a) -> Sub a
 
 
 port saveGridSize : Int -> Cmd a
+
 
 -- number of ms between autosaves
 autosaveTickMs : Float
@@ -224,7 +228,7 @@ subscriptions m =
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
-      completeEquation CompleteEquation,
+      -- completeEquation CompleteEquation,
       appliedProof AppliedProof
       {- Html.Events.preventDefaultOn "keydown"
         (D.map (\tab -> if tab then 
@@ -320,7 +324,7 @@ graph_RenameMode l m =
    case l of
       [] -> g
       (id, s) :: _ ->   Graph.update id 
-                        (\ n -> {n | label = s })  
+                        (\ n -> {n | label = s, isCoqValidated = False })  
                          (GraphDefs.mapNormalEdge (\e -> {e | label = s }))
                                g
 
@@ -456,6 +460,8 @@ update msg modeli =
                 RemoveTab -> removeActiveTabs { modeli | mode = DefaultMode}
                 NewTab -> createNewTab { modeli | mode = DefaultMode} <| nextTabName modeli
                 DuplicateTab -> duplicateTab { modeli | mode = DefaultMode} <| nextTabName modeli
+                TabMoveLeft  -> moveTabLeft { modeli | mode = DefaultMode }
+                TabMoveRight -> moveTabRight { modeli | mode = DefaultMode }
                 FileName s -> { modeli | fileName = s }
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
                 MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
@@ -487,7 +493,7 @@ update msg modeli =
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
      Save -> (model, saveGraph { graph = toJsGraphInfo model 
                               , export = makeExports model })
-     SaveGridSize -> (model, saveGridSize sizeGrid)
+     SaveGridSize -> ({model | defaultGridSize = sizeGrid } , saveGridSize sizeGrid)
      OptimalGridSize ->
           let selGraph = GraphDefs.selectedGraph modelGraph in
           case Graph.nodes selGraph of
@@ -502,7 +508,9 @@ update msg modeli =
                          { info = toJsGraphInfo model, export = makeExports model,
                          feedback = False }) 
                    else noCmd model
-     Clear scenario -> noCmd { iniModel | scenario = scenario }--  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
+     Clear scenario -> 
+        let modelf = createModel model.defaultGridSize in
+        noCmd { modelf | scenario = scenario }--  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
@@ -522,7 +530,8 @@ update msg modeli =
                    updateActiveGraph model
                       (GraphDefs.updateNormalEdge e (\l -> {l | dims = Just dims }))
      Do cmd -> (model, cmd)
-     SimpleMsg s -> noCmd { iniModel | scenario = SimpleScenario, statusMsg = s }
+     SimpleMsg s -> let modelf = createModel model.defaultGridSize in
+                     noCmd { modelf | scenario = SimpleScenario, statusMsg = s }
      SetFirstTab g ->
          let tab = getActiveTabInTabs g.tabs in
         (updateFirstTab model <| \t ->
@@ -829,9 +838,9 @@ update_DefaultMode msg model =
     let clearSel = noCmd <| setActiveGraph model 
                      <| GraphDefs.clearSelection modelGraph
     in
-    let createPoint isMath =
+    let createPoint isMath label =
             let (newGraph, newId) = Graph.newNode modelGraph 
-                    (newNodeLabel model.mousePos "" isMath defaultZ)
+                    (newNodeLabel model.mousePos label isMath defaultZ)
                 newModel = addOrSetSel False newId
                    <| setSaveGraph model newGraph                    
             in
@@ -876,7 +885,7 @@ update_DefaultMode msg model =
         CopyGraph ->
               let selectedModel = { model |
                            tabs = [ {graph = GraphDefs.selectedGraph modelGraph
-                               , sizeGrid = sizeGrid, title = "", 
+                               , sizeGrid = sizeGrid, title = Model.getActiveTitle model, 
                                active = True }]
                           }
               in
@@ -941,56 +950,73 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                 --   graph = GraphDefs.clearSelection 
                 --   <| GraphDefs.clearWeakSelection modelGraph }              
             
-        KeyChanged False _ (Character 'I') -> 
+        KeyChanged False _ (Character 'v') -> 
                let cmd = case GraphDefs.selectedIncompleteDiagram modelGraph of 
                       Nothing -> 
-                        case GraphDefs.getSelectedProofDiagram modelGraph of 
-                          NoProofNode -> alert "Selected subdiagram or proof node not found." 
-                          NoDiagram -> alert "No diagram found around node."
-                          JustDiagram { proof, diagram } ->
-                             applyProof <| 
-                               { script = proof, statement = 
-                                   GraphProof.statementToString diagram
-                               }
-                      Just d -> incompleteEquation <| GraphProof.statementToString d
+                        case GraphDefs.selectedChain modelGraph of
+                          NoClearOrientation -> 
+                             alert "Not clear how to orient the equation (closing the chain should not overlap with other arrows)"
+                          NoChain ->
+                            case GraphDefs.getSelectedProofDiagram modelGraph of 
+                              NoProofNode -> alert "Selected subdiagram or proof node not found." 
+                              NoDiagram -> alert "No diagram found around node."
+                              JustDiagram { proof, diagram } ->
+                                applyProof <| 
+                                  { script = proof, statement = 
+                                      GraphProof.statementToString diagram
+                                  }
+                          JustChain (_, d) -> 
+                                requestProof { statement = GraphProof.statementToString d,
+                                                       script = "reflexivity." }
+                      Just d ->
+                         let gp = GraphDefs.toProofGraph modelGraph in
+                         let proof = GraphProof.findProofOfDiagram gp (Graph.nodes gp) d 
+                                    |> Maybe.withDefault ""
+                         in
+                        --  requestProofForChain (GraphProof.statementToString d)
+                         requestProof { statement = (GraphProof.statementToString d),
+                                              script = proof }
                in
                  (model, cmd)
-        AppliedProof statement ->
+        AppliedProof {statement, script} ->
           let failWith s = (model, alert s) in
-          case GraphDefs.getSelectedProofDiagram modelGraph of
-           NoProofNode -> failWith "No proof node selected."
-           NoDiagram -> failWith "no diagram around selected proof node."
-           JustDiagram { diagram } ->
-            case Parser.run equalityParser statement
-             of
-              Err _ -> failWith ("fail to parse " ++ statement)
-              Ok eqs ->
-                case Unification.unifyDiagram eqs diagram modelGraph of
-                  Err s -> failWith s
-                  Ok finalg ->                
-                      noCmd <| setSaveGraph model finalg
-        CompleteEquation { statement, script } ->
-            let failWith s = (model, alert s) in
-            case (Parser.run equalityParser statement,
-                 GraphDefs.selectedIncompleteDiagram modelGraph)
-             of
-              (Err _, _) -> failWith ("fail to parse " ++ statement)
-              (_, Nothing) -> failWith "no incomplete diagram selected"
-              (Ok eqs, Just d) ->
-                 case Unification.unifyDiagram eqs d modelGraph of
-                  Err s -> failWith s
-                  Ok finalg ->                
-                      let selectedNodes = 
-                             Graph.nodes 
-                             <| GraphDefs.selectedGraph 
-                                modelGraph
-                      in
-                      let g_with_proof =
-                             GraphDefs.createProofNode finalg script
-                             <| Geometry.Point.barycenter 
-                             <| List.map (.label >> .pos) selectedNodes                        
-                      in
-                      noCmd <| setSaveGraph model g_with_proof
+          let registerProof graph diagram = 
+                case Parser.run equalityParser statement of
+                  Err _ -> failWith ("fail to parse " ++ statement)
+                  Ok eqs ->
+                    case Unification.unifyDiagram eqs diagram graph of
+                      Err s -> failWith s
+                      Ok finalg ->                
+                          noCmd <| setSaveGraph model finalg
+          in
+          let registerAndCreateProof newGraph diagram =
+                    let nodes =  Graph.nodes 
+                                <| GraphDefs.selectedGraph 
+                                    modelGraph 
+                    in
+                    let g_with_proof = GraphDefs.createValidProofAtBarycenter newGraph nodes script in
+                    registerProof g_with_proof diagram
+          in
+          case GraphDefs.selectedIncompleteDiagram modelGraph of
+            Nothing ->  case GraphDefs.selectedChain modelGraph of
+                JustChain (newGraph, diagram) -> registerAndCreateProof newGraph diagram
+                    
+                NoClearOrientation -> failWith "No clear orientation of the proof."
+                NoChain -> case GraphDefs.getSelectedProofDiagram modelGraph of
+                  NoProofNode -> failWith "No proof node selected."
+                  NoDiagram -> failWith "no diagram around selected proof node."
+                  JustDiagram { diagram } -> 
+                    let validGraph = 
+                          case GraphDefs.selectedNode modelGraph of
+                            Nothing -> modelGraph
+                            Just n -> 
+                              if isProofLabel n.label then 
+                                Graph.updateNode n.id (\ l -> { l | isCoqValidated = True, 
+                                                     label = GraphDefs.makeProofString script}) modelGraph
+                              else modelGraph
+                    in
+                    registerProof validGraph diagram
+            Just d -> registerAndCreateProof modelGraph d
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
         KeyChanged False _ (Character 'Q') -> 
@@ -1003,8 +1029,9 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'r') -> rename model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise model 
-        KeyChanged False _ (Character 't') -> createPoint False
-        KeyChanged False _ (Character 'p') -> createPoint True
+        KeyChanged False _ (Character 't') -> createPoint False ""
+        KeyChanged False _ (Character 'p') -> createPoint True ""
+        -- KeyChanged False _ (Character 'P') -> createPoint True <| "\\" ++ coqProofTexCommand ++ "{}" 
            --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
         --                                            Msg.focusId quickInputId)
@@ -1445,6 +1472,7 @@ helpMsg model =
 
                 ++ "\n Basic editing: "
                 ++ "new [p]oint"
+                -- ++ ", new [P]roof node"
                 ++ ", new [t]ext"               
                 ++ ", [del]ete selected object (also [x])"               
                 ++ ", [q] find and replace in selection"                 
@@ -1483,9 +1511,8 @@ helpMsg model =
                 ++ "[R]esize canvas and grid size" 
                 ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
-                ++ ", [I] generate Coq script to address selected incomplete subdiagram "
-                ++ "(i.e., a subdiagram with unnamed arrows to be unified), "
-                ++ " or use the selected proof node to complete the surrounding diagram (with unnamed arrows)"
+                ++ ", [v] if a proof node is selected, check the proof, if a chain of arrows is selected, ask for a proof, if a subdiagram is selected, generate a proof goal in vscode."
+                ++ " (only works with the coreact-yade vscode extension)"
                 ++ ", [E] enter an equation (prompt)"
                 ++ ", export selection to LaTe[X]/s[V]g"
                 
@@ -1632,26 +1659,28 @@ toDrawing model graph =
 renderTabs : List Tab -> List (Html Msg)
 renderTabs tabs =
   let activeTab = getActiveTabInTabs tabs in
+  let leftButton = Html.button [Html.Events.onClick TabMoveLeft, Html.Attributes.title "Swap tab order"] [Html.text "<"] in
+  let rightButton = Html.button [Html.Events.onClick TabMoveRight, Html.Attributes.title "Swap tab order"] [Html.text ">"] in
   let renderTab i tab =
         
          let classes = 
                 Html.Attributes.class "tab-button" :: 
                 if tab.active then [Html.Attributes.class "active-tab"] else []
          in
-        --  Html.input ([Html.Events.onClick <| SwitchTab i
-        --              , Html.Attributes.value tab.title] ++ classes) 
-        --    []
-           Html.button ([(Html.Events.onClick <| SwitchTab i)
-              -- Html.Attributes.contenteditable True,
-              -- Html.Events.onInput <| RenameTab i
-              ] ++ classes) 
-           [Html.text tab.title]
+         let mainButton = 
+                Html.button ([(Html.Events.onClick <| SwitchTab i)
+                    ] ++ classes) 
+                [Html.text tab.title]
+         in
+           mainButton
   in
   let newButton = Html.button [Html.Events.onClick NewTab] [Html.text "New tab"] in
   let dupButton = Html.button [Html.Events.onClick DuplicateTab] [Html.text "Duplicate tab"] in
   let removeButton = Html.button [Html.Events.onClick RemoveTab] [Html.text "Remove tab"] in
+  
   let renameButton = Html.button [Html.Events.onClick (Do (promptTabTitle activeTab.title))] [Html.text "Rename tab"] in
      [newButton, dupButton, removeButton, renameButton ] ++ List.indexedMap renderTab tabs
+     ++ [leftButton, rightButton]
 
 viewGraph : Model -> Html Msg
 viewGraph model =
@@ -1777,7 +1806,7 @@ viewGraph model =
 
 
 
-main : Program () Model Msg
-main = Browser.element { init = \ _ -> (iniModel, Cmd.none),
+main : Program {defaultGridSize : Int} Model Msg
+main = Browser.element { init = \ {defaultGridSize} -> (createModel defaultGridSize, Cmd.none),
                          view = view, update = updateIntercept,
                          subscriptions = subscriptions}

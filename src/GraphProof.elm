@@ -3,7 +3,7 @@ module GraphProof exposing (loopFrom, getAllValidDiagrams,
     proofStatementToString, proofStepToString, loopToDiagram,
     fullProofs, getIncompleteDiagram, isEmptyBranch, 
     LoopEdge, LoopNode, Diagram,
-    nodesOfDiag, edgesOfDiag)
+    nodesOfDiag, edgesOfDiag, findProofOfDiagram)
 
 import Polygraph as Graph exposing (Graph, EdgeId, Edge, Node)
 import Geometry.Point as Point exposing (Point)

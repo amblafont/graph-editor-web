@@ -92,6 +92,8 @@ type Msg
   | DuplicateTab
   | RemoveTab
   | RenameTab String
+  | TabMoveRight
+  | TabMoveLeft
   | FindReplace { search: String, replace:String}
   | MinuteTick
   -- means that some key has been pressed
@@ -99,8 +101,7 @@ type Msg
   | PressTimeout
   | LatexPreambleEdit String
   | SimpleMsg String
-  | CompleteEquation { statement : String, script : String}
-  | AppliedProof String
+  | AppliedProof { statement : String, script : String}
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String

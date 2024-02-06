@@ -15,7 +15,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   incompleteEquation: (statement) => ipcRenderer.send('incomplete-equation', statement),
   applyProof: (statement) => ipcRenderer.send('apply-proof', statement),
   appliedProof: (callback) => ipcRenderer.on("applied-proof", callback),
-  generateProof: (script) => ipcRenderer.send('generate-proof', script),
-  completeEquation: (callback) => ipcRenderer.on("complete-equation", callback)
-
+  generateProof: (script) => ipcRenderer.send('generate-proof', script)
 })

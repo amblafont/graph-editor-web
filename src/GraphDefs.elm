@@ -22,7 +22,8 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    makeSelection, addWeaklySelected, weaklySelect,
    getSurroundingDiagrams, updateNormalEdge,
    rectEnveloppe, updateStyleEdges,
-   getSelectedProofDiagram, MaybeProofDiagram(..)
+   getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
+   createValidProofAtBarycenter, isProofLabel, makeProofString
    )
 
 import IntDict
@@ -36,10 +37,11 @@ import GraphProof exposing (LoopNode, LoopEdge, Diagram)
 import Json.Encode as JEncode
 import List.Extra as List
 import Maybe.Extra as Maybe
+import Geometry.Point
 
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, 
                          selected : Bool, weaklySelected : Bool,
-                         isMath : Bool, zindex: Int}
+                         isMath : Bool, zindex: Int, isCoqValidated: Bool}
 
 type alias EdgeLabel = GenericEdge EdgeType
 type alias GenericEdge a = { details : a, selected : Bool,
@@ -59,7 +61,7 @@ edgeToNodeLabel : Point -> EdgeLabel -> NodeLabel
 edgeToNodeLabel pos l = 
    let nodeLabel = { pos = pos, label = "", dims = Nothing,
                  selected = l.selected, weaklySelected = l.weaklySelected,
-                 zindex = l.zindex, isMath = True}
+                 zindex = l.zindex, isMath = True, isCoqValidated = False}
    in
    case l.details of 
      PullshoutEdge -> nodeLabel
@@ -140,9 +142,12 @@ getProofFromLabel s =
    else
       Nothing
 
+isProofLabel : NodeLabel -> Bool
+isProofLabel l = getProofFromLabel l.label /= Nothing
+
 getProofNodes : Graph NodeLabel EdgeLabel -> List (Node NodeLabel)
 getProofNodes g =
-   Graph.nodes g |> List.filter (\n -> getProofFromLabel n.label.label /= Nothing)
+   Graph.nodes g |> List.filter (\n -> isProofLabel n.label)
 
 
 selectedProofNode : Graph NodeLabel EdgeLabel -> Maybe (Node NodeLabel, String)
@@ -187,6 +192,27 @@ selectedIncompleteDiagram g =
    let gc = (toProofGraph g) in
     GraphProof.getIncompleteDiagram gc
      <| Graph.getEdges (selectedEdges g |> List.map .id) gc
+
+type MaybeChain =
+     JustChain (Graph NodeLabel EdgeLabel, Diagram)
+   | NoClearOrientation
+   | NoChain
+{-
+Returns the graph with an edge added between the minimal and the maximal points, and the diagram
+-}
+selectedChain : Graph NodeLabel EdgeLabel -> MaybeChain
+selectedChain g = 
+   let gs = selectedGraph g in
+   case (Graph.minimal gs, Graph.maximal gs) of
+     ([ minId ] , [ maxId ]) ->
+        if minId == maxId then NoChain else
+        let (weakSel, trueSel) = if isTrueSelection gs then (False, True) else (True, False) in
+        let label = { emptyEdge | weaklySelected = weakSel, selected = trueSel } in
+        let (newGraph, _) = Graph.newEdge g minId maxId label in
+        case selectedIncompleteDiagram newGraph of
+          Nothing -> NoClearOrientation
+          Just d -> JustChain (newGraph, d)
+     (_, _) -> NoChain
 
 updateNormalEdge : EdgeId -> (NormalEdgeLabel -> NormalEdgeLabel) -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 updateNormalEdge id f =
@@ -242,10 +268,14 @@ exportQuiver sizeGrid g =
 newNodeLabel : Point -> String -> Bool -> Int -> NodeLabel
 newNodeLabel p s isMath zindex = 
     { pos = p , label = s, dims = Nothing, selected = False, weaklySelected = False,
-                         isMath = isMath, zindex = zindex}
+                         isMath = isMath, zindex = zindex, isCoqValidated = False}
+
+makeProofString : String -> String
+makeProofString s = "\\" ++ coqProofTexCommand ++ "{" ++ s ++ "}"
+
 newProofLabel : Point -> String -> NodeLabel
 newProofLabel p s =
-   newNodeLabel p ("\\" ++ coqProofTexCommand ++ "{" ++ s ++ "}") True defaultZ
+   newNodeLabel p (makeProofString s) True defaultZ
 
 newGenericLabel : a -> GenericEdge a
 newGenericLabel d = { details = d,
@@ -271,11 +301,17 @@ createNodeLabel g s p =
     let (g2, id) = Graph.newNode g label in
      (g2, id, p)
 
-createProofNode : Graph NodeLabel EdgeLabel -> String -> Point -> Graph NodeLabel EdgeLabel
-createProofNode g s p =
+createProofNode : Graph NodeLabel EdgeLabel -> String -> Bool -> Point -> Graph NodeLabel EdgeLabel
+createProofNode g s coqValidated p =
     let label = newProofLabel p s in
-    let (g2, id) = Graph.newNode g label in
+    let (g2, id) = Graph.newNode g { label | isCoqValidated = coqValidated } in
      g2
+
+createValidProofAtBarycenter : Graph NodeLabel EdgeLabel -> List (Node NodeLabel) -> String -> Graph NodeLabel EdgeLabel
+createValidProofAtBarycenter g nodes proof =
+   let nodePositions = Debug.log "Node positions" <| List.map (.label >> .pos) <| nodes in
+   createProofNode g proof True
+          <| Geometry.Point.barycenter nodePositions
 
 getNodeLabelOrCreate : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)
@@ -326,8 +362,11 @@ addNodesSelection g f =
 selectAll : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectAll g = addNodesSelection g (always True)
 
+isTrueSelection : Graph NodeLabel EdgeLabel -> Bool
+isTrueSelection g = Graph.any .selected .selected g
+
 fieldSelect : Graph NodeLabel EdgeLabel -> ({ a | selected : Bool, weaklySelected : Bool} -> Bool)
-fieldSelect g = if Graph.any .selected .selected g then .selected else .weaklySelected
+fieldSelect g = if isTrueSelection g then .selected else .weaklySelected
 
 selectedGraph : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 selectedGraph g = 

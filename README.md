@@ -25,19 +25,19 @@ Ipc capabilities when the desktop app is launched by another node.js app using `
 (To be used in a vscode extension building upon coq-lsp)
 
 Examples:
-- sends `{ key : "incomplete-equation", content: "{ f ; {_} = {_}}" }`
+- sends `{ key : "incomplete-equation", content: {statement :"{ f ; {_} = {_}}", script:string }`
  when pressing 'I' on a selected diagram with two unnamed arrows.
 - sends `{ key : "generate-proof", content: coq-script }`
  when generating a coq script from the diagram
 - receives `{ key : 'load', content: content}` where content is
   a json graph or an equation of the user-friendly format, and loads it 
   in the editor
-- receives `{ key : "complete-equation", content : {statement : string, script: string}  }` 
-   and unifies the statement with the unnamed arrows
-   in the selected subdiagram, adding the script as a proof node for the subdiagram.
 - sends `{ key : "apply-proof", content: {statement:"{ f ; {_} = {_}}", script:string } }`
 when pressing 'I' on a selected proof node in a diagram
-- receives `{ key: "applied-proof", content: string }`
+- receives `{ key: "applied-proof", content : {statement : string, script: string}  }`
+   Three cases:
+   If a subdiagram or a proof node is selected, unifies the statement with the unnamed arrows and add (or mark it as validated) the proof node
+   If a chain is selected, creates the other branch and the proof node
 
 
 
