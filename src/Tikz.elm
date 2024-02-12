@@ -11,15 +11,16 @@ encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
     let (x, y) = n.label.pos in
     let coord u = (u / 21) in -- 17.7667
+    let label = (if n.label.label == "" then "\\bullet" else n.label.label ) in
     "\\node ("
         ++ String.fromInt n.id
         ++ ") at ("
         ++ String.fromFloat (coord x)
         ++ "em, "
         ++ String.fromFloat (0 - coord y)
-        ++ "em) {$"
-        ++ (if n.label.label == "" then "\\bullet" else n.label.label )
-        ++ "$} ; \n"
+        ++ "em) {"
+        ++ (if n.label.isMath then "$" ++ label ++ "$" else label)
+        ++ "} ; \n"
 
 encodeFakeEdgeTikZ : Edge EdgeLabel -> String
 encodeFakeEdgeTikZ e =
