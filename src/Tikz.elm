@@ -17,9 +17,11 @@ encodeNodeTikZ sizeGrid n =
         ++ String.fromFloat (coord x)
         ++ "em, "
         ++ String.fromFloat (0 - coord y)
-        ++ "em) {$"
+        ++ "em) {"
+        ++ (if n.label.isMath then "$" else "")
         ++ (if n.label.label == "" then "\\bullet" else n.label.label )
-        ++ "$} ; \n"
+        ++ (if n.label.isMath then "$" else "")
+        ++ "} ; \n"
 
 encodeFakeEdgeTikZ : Edge EdgeLabel -> String
 encodeFakeEdgeTikZ e =
