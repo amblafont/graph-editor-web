@@ -9,3 +9,5 @@ make-test:
 	yarn compile
 start:
 	yarn start -- -- 
+elm:
+	elm make src/Main.elm --output=elm.js
