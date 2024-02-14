@@ -59,11 +59,13 @@ tailToString tail =
          DefaultTail -> "none"
          Hook -> "hook"
          HookAlt -> "hookalt"
+         Mapsto -> "mapsto"
 tailFromString : String -> TailStyle
 tailFromString tail =
    case tail of         
          "hook" -> Hook
          "hookalt" -> HookAlt
+         "mapsto" -> Mapsto
          _ -> DefaultTail
 
 headToString : HeadStyle -> String
@@ -105,7 +107,7 @@ isDouble { double } = double
   
 
 type HeadStyle = DefaultHead | TwoHeads | NoHead
-type TailStyle = DefaultTail | Hook | HookAlt
+type TailStyle = DefaultTail | Hook | HookAlt | Mapsto
 
 
 
@@ -117,7 +119,11 @@ toggleHead s =  { s | head = nextInList [DefaultHead, NoHead, TwoHeads] s.head }
 
 toggleHook : Style -> Style
 toggleHook s =  
-        { s | tail = nextInList [DefaultTail, Hook, HookAlt] s.tail }
+        { s | tail = nextInList [Hook, HookAlt, DefaultTail] s.tail }
+
+toggleMapsto : Style -> Style
+toggleMapsto s =  { s | tail = nextInList [Mapsto, DefaultTail] s.tail }
+
 
 toggleLabelAlignement : Style -> Style
 toggleLabelAlignement s =  
@@ -187,7 +193,7 @@ makeHeadTailImgs {from, to, controlPoint} style =
 
 
 -- chars used to control in keyUpdateStyle
-controlChars = ">(=-bBA]["
+controlChars = "|>(=-bBA]["
 maxLabelPosition = 0.9
 minLabelPosition = 0.1
 
@@ -195,6 +201,7 @@ minLabelPosition = 0.1
 keyMaybeUpdateStyle : Key -> Style -> Maybe Style
 keyMaybeUpdateStyle k style = 
    case k of 
+        Character '|' -> Just <| toggleMapsto style
         Character '>' -> Just <| toggleHead style
         Character '(' -> Just <| toggleHook style
         Character '=' -> Just <| toggleDouble style
@@ -235,6 +242,7 @@ quiverStyle st =
    in
    let tailStyle = case tail of 
           DefaultTail -> []
+          Mapsto -> [("tail", [("name", "maps to")])]
           Hook -> [("tail", [("name", "hook"),("side", "top")])]
           HookAlt -> [("tail", [("name", "hook"),("side", "bottom")])]
    in
@@ -270,6 +278,7 @@ tikzStyle stl =
     Color.toString stl.color ++ "," ++
     (case stl.tail of
          DefaultTail -> ""
+         Mapsto -> "mapsto"
          Hook -> "into, "
          HookAlt -> "linto, ")
     ++ (case (stl.head, stl.double) of
