@@ -276,12 +276,7 @@ tikzStyle : ArrowStyle -> String
 tikzStyle stl =
     "fore, " ++
     Color.toString stl.color ++ "," ++
-    (case stl.tail of
-         DefaultTail -> ""
-         Mapsto -> "mapsto"
-         Hook -> "into, "
-         HookAlt -> "linto, ")
-    ++ (case (stl.head, stl.double) of
+      (case (stl.head, stl.double) of
             (NoHead, True) -> "identity"
             (hd, True) -> (headTikzStyle hd) ++ "cell=0.2, "
             (hd, False) -> (headTikzStyle hd)
@@ -290,5 +285,10 @@ tikzStyle stl =
     ++ (if stl.bend /= 0 then
            "curve={ratio=" ++ String.fromFloat stl.bend ++ "}, "
         else "")
+    ++  (case stl.tail of
+         DefaultTail -> ""
+         Mapsto -> "mapsto,"
+         Hook -> "into, "
+         HookAlt -> "linto, ")
 
         
