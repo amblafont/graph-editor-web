@@ -9,7 +9,7 @@ import ArrowStyle
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
-    let (x, y) = n.label.pos in
+    let (x, y) = GraphDefs.getNodePos n.label in
     let coord u = (u / 21) in -- 17.7667
     let label = (if n.label.label == "" then "\\bullet" else n.label.label ) in
     "\\node ("
