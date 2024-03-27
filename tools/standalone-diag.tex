@@ -1,0 +1,586 @@
+\begin{tikzpicture}[every node/.style={inner sep=2pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] 
+\node (0) at (10.928571428571429em, -7.214285714285714em) {1. Models of sketches via lifting} ; 
+\node (1) at (35.04786707106091em, -2.9205111549014138em) {\Large A simple combinatorial starting point for specifying diagrammatic reasoning moves } ; 
+\node (2) at (18.976190476190474em, -9.119047619047619em) {(Very well known, see, e.g., Adamek and Rosicky, abbreviated as [AR].)} ; 
+\node (3) at (15.738343261537098em, -12.682415916806175em) {a) Cocones as presheaf morphisms, by example} ; 
+\node (4) at (11.19072421391805em, -16.58717782156808em) {In the category} ; 
+\node (5) at (10.476190476190476em, -20em) {$[0]$} ; 
+\node (6) at (16.19047619047619em, -20em) {$[1]$} ; 
+\node (7) at (21.904761904761905em, -20em) {$[2]$} ; 
+\node (8) at (10.285962309156146em, -23.47606658935547em) {the cocone} ; 
+\node (9) at (18.095238095238095em, -27.61904761904762em) {$[2]$} ; 
+\node (10) at (18.095238095238095em, -23.80952380952381em) {$[0]$} ; 
+\node (11) at (14.285714285714286em, -25.714285714285715em) {$[1]$} ; 
+\node (12) at (21.904761904761905em, -25.714285714285715em) {$[1]$} ; 
+\node (13) at (15.857390880584717em, -30.77765364873977em) {gives rise to the presheaf morphism} ; 
+\node (14) at (11.80977183296567em, -33.27765364873977em) {$\mathbf{y}_{[1]} +_{\mathbf{y}_{[0]}} \mathbf{y}_{[1]}$} ; 
+\node (15) at (20.38095238095238em, -33.333333333333336em) {$\mathbf{y}_{[2]}$} ; 
+\node (16) at (19.33358135677519em, -37.031622023809526em) {obtained by universal property of pushout, as follows.} ; 
+\node (17) at (15.904761904761905em, -50.476190476190474em) {$\mathbf{y}_{[2]}$} ; 
+\node (18) at (15.904761904761905em, -39.04761904761905em) {$\mathbf{y}_{[0]}$} ; 
+\node (19) at (12.333333333333334em, -42.857142857142854em) {$\mathbf{y}_{[1]}$} ; 
+\node (20) at (19.333333333333332em, -42.857142857142854em) {$\mathbf{y}_{[1]}$} ; 
+\node (21) at (15.904761904761905em, -46.666666666666664em) {$\mathbf{y}_{[1]} +_{\mathbf{y}_{[0]}} \mathbf{y}_{[1]}$} ; 
+\node (22) at (27.19047619047619em, -89.16666666666667em) {\textbf{Proposition.} [AR Representation Theorem 1.46 (iii)] A presheaf $X$ is a model for a sketch iff } ; 
+\node (23) at (21.571428571428573em, -56.785714285714285em) {Now, recall that a presheaf $X$ is a \textcolor{green}{model} of a sketch when it maps } ; 
+\node (24) at (23.095238095238095em, -58.69047619047619em) {distinguished cocones to limit cones. In this case: $X[2] \cong  X[1] ×_{X[0]} X[1]$.} ; 
+\node (25) at (14.285714285714286em, -82.85714285714286em) {$X$} ; 
+\node (26) at (14.285714285714286em, -71.42857142857143em) {$\mathbf{y}_{[0]}$} ; 
+\node (27) at (10.476190476190476em, -75.23809523809524em) {$\mathbf{y}_{[1]}$} ; 
+\node (28) at (18.095238095238095em, -75.23809523809524em) {$\mathbf{y}_{[1]}$} ; 
+\node (29) at (14.285714285714286em, -79.04761904761905em) {$\mathbf{y}_{[1]} +_{\mathbf{y}_{[0]}} \mathbf{y}_{[1]}$} ; 
+\node (30) at (25.571428571428573em, -68.21428571428571em) {But by Yoneda, elements of the pullback are in 1-1 correspondence with cocones to $X$,} ; 
+\node (31) at (22.071428571428573em, -85.30952380952381em) {or equivalently with dashed maps, by universal property of pushout.} ; 
+\node (32) at (16.523809523809526em, -60.54761904761905em) {Otherwise said, when the canonical map} ; 
+\node (33) at (12.380952380952381em, -63.80952380952381em) {$X[2]$} ; 
+\node (34) at (20em, -63.80952380952381em) {$X[1] ×_{X[0]} X[1]$} ; 
+\node (35) at (10.261904761904763em, -66.26190476190476em) {is an iso.} ; 
+\node (36) at (13.714285714285714em, -87.21428571428571em) {We have (almost) proved:} ; 
+\node (37) at (25.61904761904762em, -91.07142857142857em) {$X$ admits unique liftings along all distinguished cocones viewed as morphisms $S → \mathbf{y}_c$.} ; 
+\node (38) at (12.380952380952381em, -94.28571428571429em) {$S$} ; 
+\node (39) at (20em, -94.28571428571429em) {$X$} ; 
+\node (40) at (12.380952380952381em, -98.0952380952381em) {$\mathbf{y}_c$} ; 
+\node (41) at (31.428571428571427em, -94.28571428571429em) {$\mathbf{y}_{[1]} +_{\mathbf{y}_{[0]}} \mathbf{y}_{[1]}$} ; 
+\node (42) at (39.04761904761905em, -94.28571428571429em) {$X$} ; 
+\node (43) at (31.428571428571427em, -98.0952380952381em) {$\mathbf{y}_{[2]}$} ; 
+\node (44) at (26.404761904761905em, -94.83333333333333em) {Ex:} ; 
+\node (45) at (56.023809523809526em, -7.214285714285714em) {2. Interpreting structured categories as presheaves with extensions} ; 
+\node (46) at (10.571428571428571em, -54.833333333333336em) {b) Models by lifting} ; 
+\node (47) at (50.357142857142854em, -9.119047619047619em) {Again by example.} ; 
+\node (48) at (60.11904761904762em, -12.952380952380953em) {A standard sketch $\mathbb{C}$ for categories is like our previous base category} ; 
+\node (49) at (48.57142857142857em, -20em) {$[0]$} ; 
+\node (50) at (54.285714285714285em, -20em) {$[1]$} ; 
+\node (51) at (60em, -20em) {$[2]$} ; 
+\node (52) at (61em, -14.833333333333334em) {but with additional morphisms for identity and composition (and more).} ; 
+\node (53) at (61.833333333333336em, -26.261904761904763em) {If we want to reason about pullbacks, we can reify diagram shapes of interest} ; 
+\node (54) at (54.142857142857146em, -28.166666666666668em) { as new objects in an augmented base.} ; 
+\node (55) at (51.166666666666664em, -31.976190476190474em) {a) Commuting squares} ; 
+\node (56) at (50.023809523809526em, -35.785714285714285em) {Shape: } ; 
+\node (57) at (58.095238095238095em, -35.23809523809524em) {$\mathbf{y}_{[1]}$} ; 
+\node (58) at (58.095238095238095em, -39.04761904761905em) {$\mathbf{y}_{[2]}$} ; 
+\node (59) at (65.71428571428571em, -35.23809523809524em) {$\mathbf{y}_{[2]}$} ; 
+\node (60) at (65.71428571428571em, -39.04761904761905em) {$\mathit{sq}$} ; 
+\node (61) at (64.52380952380952em, -43.404761904761905em) {(a morphism which is a composite of two potentially different composable pairs.)} ; 
+\node (62) at (52.333333333333336em, -45.30952380952381em) {b) Pullback squares (formal)} ; 
+\node (63) at (59.19047619047619em, -47.26190476190476em) {Add an object $\mathit{pb}$ to $\mathbb{C}$ with a morphism $\partial: \mathit{sq} → \mathbf{y}_{[\mathit{pb}]}$.} ; 
+\node (64) at (55.214285714285715em, -62.45238095238095em) {c) Input for universal property of pullbacks} ; 
+\node (65) at (72.66666666666667em, -60.595238095238095em) {For now $X(\mathit{pb})$ could be any set of squares, e.g., pushouts. Only the interpretation will enforce the fact that they are pbks.} ; 
+\node (66) at (60.95238095238095em, -66.26190476190476em) {Diagram shape: a square and a pb square whose cospans agree.} ; 
+\node (67) at (61.904761904761905em, -73.33333333333333em) {$\mathbf{y}_{[1]}$} ; 
+\node (68) at (65.71428571428571em, -69.52380952380952em) {$\mathbf{y}_{[1]}$} ; 
+\node (69) at (61.904761904761905em, -77.14285714285714em) {$\mathbf{y}_{[2]}$} ; 
+\node (70) at (63.80952380952381em, -80.95238095238095em) {$\mathit{sq}$} ; 
+\node (71) at (69.52380952380952em, -73.33333333333333em) {$\mathbf{y}_{[2]}$} ; 
+\node (72) at (82.85714285714286em, -71.42857142857143em) {$\mathbf{y}_{\mathit{pb}}$} ; 
+\node (73) at (65.71428571428571em, -75.23809523809524em) {$\mathbf{y}_{[2]}$} ; 
+\node (74) at (73.33333333333333em, -69.52380952380952em) {$\mathbf{y}_{[2]}$} ; 
+\node (75) at (82.85714285714286em, -80.95238095238095em) {$\mathit{iuppb}$} ; 
+\node (76) at (54.19047619047619em, -92.97619047619048em) {e) Categories as presheaves over $\mathbb{C}[\mathit{pb}]$} ; 
+\node (77) at (60.357142857142854em, -96.80952380952381em) {For any category $\mathscr{X}$, consider the presheaf $\llbracket\mathscr{X}\rrbracket$ defined by:} ; 
+\node (78) at (53.76190476190476em, -100.61904761904762em) {- \ $\llbracket\mathscr{X}\rrbracket[0] = $ objects of $\mathscr{X}$,} ; 
+\node (79) at (54.54761904761905em, -102.52380952380952em) {- \ $\llbracket\mathscr{X}\rrbracket[1] = $ morphisms of $\mathscr{X}$,} ; 
+\node (80) at (58.57142857142857em, -104.42857142857143em) {- \ $\llbracket\mathscr{X}\rrbracket[2] = $ composable pairs in morphisms in $\mathscr{X}$,} ; 
+\node (81) at (56em, -106.33333333333333em) {- \ $\llbracket\mathscr{X}\rrbracket(\mathit{pb}) = $ pullback squares in $\mathscr{X}$,} ; 
+\node (82) at (71.71428571428571em, -112.04761904761905em) {morphisms $\mathit{iuppb} → \llbracket\mathscr{X}\rrbracket$  \ \ \ \ \ $\leftrightarrow$ \ \ \ \ \  inputs for the univ prop of pullback in $\mathscr{X}$,} ; 
+\node (83) at (55.57142857142857em, -85.30952380952381em) {d) Output for universal property of pullback.} ; 
+\node (84) at (62.976190476190474em, -89.16666666666667em) {Same, but with mediating morphism $\leadsto$ diagram shape $\mathit{ouppb}$. Exercise.} ; 
+\node (85) at (66.21428571428571em, -117.76190476190476em) {\textbf{Proposition.} $\llbracket\mathscr{X}\rrbracket$ has (unique for the first $n$) extensions along the following morphisms.} ; 
+\node (86) at (58.095238095238095em, -130.47619047619048em) {$\mathit{iuppb}$} ; 
+\node (87) at (65.71428571428571em, -130.47619047619048em) {$\llbracket\mathscr{X}\rrbracket$} ; 
+\node (88) at (58.095238095238095em, -134.28571428571428em) {${\mathit{ouppb}}$} ; 
+\node (89) at (50.476190476190474em, -120.95238095238095em) {$\mathit{iuppb}$} ; 
+\node (90) at (50.476190476190474em, -124.76190476190476em) {${\mathit{ouppb}}$} ; 
+\node (91) at (56.19047619047619em, -120.95238095238095em) {$\mathbf{y}_{[1]} +_{\mathbf{y}_{[0]}} \mathbf{y}_{[1]}$} ; 
+\node (92) at (56.19047619047619em, -124.76190476190476em) {$\mathbf{y}_{[2]}$} ; 
+\node (93) at (61.904761904761905em, -120.95238095238095em) {$\mathbf{y}_{[0]}$} ; 
+\node (94) at (61.904761904761905em, -124.76190476190476em) {$\mathit{loop}$} ; 
+\node (95) at (65.71428571428571em, -122.85714285714286em) {$…$} ; 
+\node (96) at (51.404761904761905em, -129.11904761904762em) {E.g.,} ; 
+\node (97) at (110em, -7.214285714285714em) {3. Software states as presheaf morphisms} ; 
+\node (98) at (103.78571428571429em, -11.023809523809524em) {Proposal:} ; 
+\node (99) at (117.52380952380952em, -12.976190476190476em) {-\ The current diagram is modelled as a finite presheaf on $\mathbb{C}[\mathit{pb}]$, say $S$.} ; 
+\node (100) at (124.5em, -14.904761904761905em) {-\  Its semantics is modelled as a morphism $S → \llbracket\mathscr{X}\rrbracket$ to the representation of the considered category $\mathscr{X}$.} ; 
+\node (101) at (127.02380952380952em, -16.80952380952381em) {-\ Reasoning rules are merely some fixed morphisms along which we know $\llbracket\mathscr{X}\rrbracket$ admits extensions, e.g., $\mathit{iuppb} → \mathit{ouppb}$} ; 
+\node (102) at (117.57142857142857em, -18.69047619047619em) {To apply a reasoning rule $A → B$ to the current state $S$, we } ; 
+\node (103) at (116.64285714285714em, -20.595238095238095em) {+\ find a ``redex'', i.e., a morphism $A → S$ and} ; 
+\node (104) at (113.47619047619048em, -22.452380952380953em) {+\ take the following pushout.} ; 
+\node (105) at (113.33333333333333em, -25.714285714285715em) {$A$} ; 
+\node (106) at (113.33333333333333em, -29.523809523809526em) {$S$} ; 
+\node (107) at (119.04761904761905em, -25.714285714285715em) {$B$} ; 
+\node (108) at (119.04761904761905em, -29.523809523809526em) {$S'$} ; 
+\node (109) at (113.71428571428571em, -33.88095238095238em) {Diagrammatic reasoning is thus viewed as a series of moves.} ; 
+\node (110) at (109.78571428571429em, -35.857142857142854em) {Semantics is given by extension in $\llbracket\mathscr{X}\rrbracket$.} ; 
+\node (111) at (105.71428571428571em, -39.04761904761905em) {$A_1$} ; 
+\node (112) at (105.71428571428571em, -42.857142857142854em) {$S_0$} ; 
+\node (113) at (109.52380952380952em, -39.04761904761905em) {$B_1$} ; 
+\node (114) at (111.42857142857143em, -42.857142857142854em) {$S_1$} ; 
+\node (115) at (111.42857142857143em, -39.04761904761905em) {$A_2$} ; 
+\node (116) at (115.23809523809524em, -39.04761904761905em) {$B_2$} ; 
+\node (117) at (117.14285714285714em, -42.857142857142854em) {$S_2$} ; 
+\node (118) at (119.04761904761905em, -42.705357142857146em) {$…$} ; 
+\node (119) at (120.95238095238095em, -39.04761904761905em) {$A_n$} ; 
+\node (120) at (120.95238095238095em, -42.857142857142854em) {$S_{n-1}$} ; 
+\node (121) at (124.76190476190476em, -39.04761904761905em) {$B_n$} ; 
+\node (122) at (126.66666666666667em, -42.857142857142854em) {$S_n$} ; 
+\node (123) at (116.95238095238095em, -48.467261904761905em) {$\llbracket\mathscr{X}\rrbracket$} ; 
+\node (124) at (112.88095238095238em, -52.976190476190474em) {\textbf{Example.}\ Let $S_0$ and $S_1$ be (the presheaves modelling)} ; 
+\node (125) at (109.52380952380952em, -60em) {$\bullet$} ; 
+\node (126) at (115.23809523809524em, -60em) {$\bullet$} ; 
+\node (127) at (115.23809523809524em, -63.80952380952381em) {$\bullet$} ; 
+\node (128) at (109.52380952380952em, -63.80952380952381em) {$\bullet$} ; 
+\node (129) at (120.95238095238095em, -60em) {$\bullet$} ; 
+\node (130) at (120.95238095238095em, -63.80952380952381em) {$\bullet$} ; 
+\node (131) at (105.71428571428571em, -56.19047619047619em) {$\bullet$} ; 
+\node (132) at (110.57142857142857em, -68.01488095238095em) {E.g., formally, $S_0$ is the colimit of:} ; 
+\node (133) at (124.76190476190476em, -84.76190476190476em) {$\mathbf{y}_{\mathit{pb}}$} ; 
+\node (134) at (136.1904761904762em, -84.76190476190476em) {$\mathbf{y}_{\mathit{pb}}$} ; 
+\node (135) at (128.57142857142858em, -80.95238095238095em) {$\mathbf{y}_{[2]}$} ; 
+\node (136) at (132.38095238095238em, -88.57142857142857em) {$\mathbf{y}_{[2]}$} ; 
+\node (137) at (130.47619047619048em, -84.76190476190476em) {$\mathbf{y}_{[1]}$} ; 
+\node (138) at (130.47619047619048em, -92.38095238095238em) {$\mathbf{y}_{[2]}$} ; 
+\node (139) at (120.95238095238095em, -88.57142857142857em) {$\mathbf{y}_{[2]}$} ; 
+\node (140) at (124.76190476190476em, -90.47619047619048em) {$\mathbf{y}_{[1]}$} ; 
+\node (141) at (136.1904761904762em, -90.47619047619048em) {$\mathbf{y}_{[1]}$} ; 
+\node (142) at (130.47619047619048em, -96.19047619047619em) {$\mathbf{y}_{[1]}$} ; 
+\node (143) at (145.71428571428572em, -77.14285714285714em) {$\mathbf{y}_{[2]}$} ; 
+\node (144) at (107.61904761904762em, -96.19047619047619em) {$\mathbf{y}_{[2]}$} ; 
+\node (145) at (117.14285714285714em, -77.14285714285714em) {$\mathit{sq}$} ; 
+\node (146) at (140em, -80.95238095238095em) {$\mathbf{y}_{[2]}$} ; 
+\node (147) at (141.9047619047619em, -84.76190476190476em) {$\mathbf{y}_{[1]}$} ; 
+\node (148) at (119.04761904761905em, -79.04761904761905em) {$\bullet$} ; 
+\node (149) at (130.47619047619048em, -79.04761904761905em) {$\bullet$} ; 
+\node (150) at (130.47619047619048em, -90.47619047619048em) {$\bullet$} ; 
+\node (151) at (119.04761904761905em, -90.47619047619048em) {$\bullet$} ; 
+\node (152) at (141.9047619047619em, -79.04761904761905em) {$\bullet$} ; 
+\node (153) at (141.9047619047619em, -90.47619047619048em) {$\bullet$} ; 
+\node (154) at (107.61904761904762em, -71.42857142857143em) {$\bullet$} ; 
+\node (155) at (134.28571428571428em, -60em) {$\bullet$} ; 
+\node (156) at (140em, -60em) {$\bullet$} ; 
+\node (157) at (140em, -63.80952380952381em) {$\bullet$} ; 
+\node (158) at (134.28571428571428em, -63.80952380952381em) {$\bullet$} ; 
+\node (159) at (145.71428571428572em, -60em) {$\bullet$} ; 
+\node (160) at (145.71428571428572em, -63.80952380952381em) {$\bullet$} ; 
+\node (161) at (130.47619047619048em, -56.19047619047619em) {$\bullet$} ; 
+\node (162) at (125.5em, -60.54761904761905em) {and} ; 
+\node (163) at (110.0952380952381em, -104.4047619047619em) {Reasoning moves from $S_0$ to $S_1$:} ; 
+\node (164) at (109.52380952380952em, -111.42857142857143em) {$\bullet$} ; 
+\node (165) at (115.23809523809524em, -111.42857142857143em) {$\bullet$} ; 
+\node (166) at (115.23809523809524em, -115.23809523809524em) {$\bullet$} ; 
+\node (167) at (109.52380952380952em, -115.23809523809524em) {$\bullet$} ; 
+\node (168) at (120.95238095238095em, -111.42857142857143em) {$\bullet$} ; 
+\node (169) at (120.95238095238095em, -115.23809523809524em) {$\bullet$} ; 
+\node (170) at (105.71428571428571em, -107.61904761904762em) {$\bullet$} ; 
+\node (171) at (109.52380952380952em, -122.85714285714286em) {$\bullet$} ; 
+\node (172) at (115.23809523809524em, -122.85714285714286em) {$\bullet$} ; 
+\node (173) at (115.23809523809524em, -126.66666666666667em) {$\bullet$} ; 
+\node (174) at (109.52380952380952em, -126.66666666666667em) {$\bullet$} ; 
+\node (175) at (120.95238095238095em, -122.85714285714286em) {$\bullet$} ; 
+\node (176) at (120.95238095238095em, -126.66666666666667em) {$\bullet$} ; 
+\node (177) at (105.71428571428571em, -119.04761904761905em) {$\bullet$} ; 
+\node (178) at (129.76190476190476em, -119.5952380952381em) {by associativity} ; 
+\node (179) at (109.52380952380952em, -134.28571428571428em) {$\bullet$} ; 
+\node (180) at (115.23809523809524em, -134.28571428571428em) {$\bullet$} ; 
+\node (181) at (115.23809523809524em, -138.0952380952381em) {$\bullet$} ; 
+\node (182) at (109.52380952380952em, -138.0952380952381em) {$\bullet$} ; 
+\node (183) at (120.95238095238095em, -134.28571428571428em) {$\bullet$} ; 
+\node (184) at (120.95238095238095em, -138.0952380952381em) {$\bullet$} ; 
+\node (185) at (105.71428571428571em, -130.47619047619048em) {$\bullet$} ; 
+\node (186) at (128.33333333333334em, -131.07142857142858em) {by $\mathit{iuppb} → \mathit{ouppb}$} ; 
+\node (187) at (129.5em, -104.35714285714286em) {Key:} ; 
+\node (188) at (136.3095238095238em, -104.35714285714286em) {\textcolor{blue}{source of next move}} ; 
+\node (189) at (137.04761904761904em, -106.26190476190476em) {\textcolor{red}{target of previous move}} ; 
+\node (190) at (133.3095238095238em, -108.16666666666667em) {\textcolor{purple}{both}} ; 
+\node (191) at (109.71428571428571em, -143.7529761904762em) {$\bullet$} ; 
+\node (192) at (115.42857142857143em, -143.7529761904762em) {$\bullet$} ; 
+\node (193) at (115.42857142857143em, -147.5625em) {$\bullet$} ; 
+\node (194) at (109.71428571428571em, -147.5625em) {$\bullet$} ; 
+\node (195) at (121.14285714285714em, -143.7529761904762em) {$\bullet$} ; 
+\node (196) at (121.14285714285714em, -147.5625em) {$\bullet$} ; 
+\node (197) at (105.9047619047619em, -139.94345238095238em) {$\bullet$} ; 
+\node (198) at (128.33333333333334em, -142.5em) {by $\mathit{iuppb} → \mathit{ouppb}$} ; 
+\node (199) at (129.11904761904762em, -144.35714285714286em) {and then associativity} ; 
+\node (200) at (55.61904761904762em, -49.11904761904762em) {The new category is the lax colimit:} ; 
+\node (201) at (52.38095238095238em, -52.38095238095238em) {$\oint\mathit{sq}$} ; 
+\node (202) at (52.38095238095238em, -56.19047619047619em) {$\mathbb{C}$} ; 
+\node (203) at (58.095238095238095em, -52.38095238095238em) {$1$} ; 
+\node (204) at (58.095238095238095em, -56.19047619047619em) {$\mathbb{C}[\mathit{pb}]$} ; 
+\node (205) at (76.38095238095238em, -51.04761904761905em) {In particular, we get a square in $\mathbb{C}$:} ; 
+\node (206) at (71.33333333333333em, -52.51488095238095em) {${[1]}$} ; 
+\node (207) at (71.33333333333333em, -56.32440476190476em) {${[2]}$} ; 
+\node (208) at (78.95238095238095em, -52.51488095238095em) {${[2]}$} ; 
+\node (209) at (78.95238095238095em, -56.32440476190476em) {$\mathit{pb}$} ; 
+\node (210) at (63.666666666666664em, -110.14285714285714em) {By construction, morphisms $\mathit{sq} → \llbracket\mathscr{X}\rrbracket$ \ \ \ \ \ $\leftrightarrow$ \ \ \ \ \  commuting squares in $\mathscr{X}$,} ; 
+\node (211) at (72.0952380952381em, -113.95238095238095em) {morphisms $\mathit{ouppb} → \llbracket\mathscr{X}\rrbracket$  \ \ \ \ \ $\leftrightarrow$ \ \ \ \ \  outputs for the univ prop of pullback in $\mathscr{X}$.} ; 
+\path 
+(5) to[fore, black,->, curve={ratio=-0.2}, ] node[coordinate](212){} (6) 
+(6) to[fore, black,->, curve={ratio=-0.2}, ] node[coordinate](213){} (7) 
+(6) to[fore, black,->, curve={ratio=0.2}, ] node[coordinate](214){} (7) 
+(5) to[fore, black,->, curve={ratio=0.2}, ] node[coordinate](215){} (6) 
+(10) to[fore, black,->, ] node[coordinate](216){} (11) 
+(10) to[fore, black,->, ] node[coordinate](217){} (12) 
+(11) to[fore, black,->, ] node[coordinate](218){} (9) 
+(12) to[fore, black,->, ] node[coordinate](219){} (9) 
+(14) to[fore, black,->, ] node[coordinate](220){} (15) 
+(18) to[fore, black,->, ] node[coordinate](221){} (19) 
+(18) to[fore, black,->, ] node[coordinate](222){} (20) 
+(19) to[fore, black,->, curve={ratio=0.30000000000000004}, ] node[coordinate](223){} (17) 
+(20) to[fore, black,->, curve={ratio=-0.30000000000000004}, ] node[coordinate](224){} (17) 
+(19) to[fore, black,->, ] node[coordinate](225){} (21) 
+(20) to[fore, black,->, ] node[coordinate](226){} (21) 
+(21) to[fore, black,->, dashed, ] node[coordinate](227){} (17) 
+(26) to[fore, black,->, ] node[coordinate](228){} (27) 
+(26) to[fore, black,->, ] node[coordinate](229){} (28) 
+(27) to[fore, black,->, curve={ratio=0.30000000000000004}, ] node[coordinate](230){} (25) 
+(28) to[fore, black,->, curve={ratio=-0.30000000000000004}, ] node[coordinate](231){} (25) 
+(27) to[fore, black,->, ] node[coordinate](232){} (29) 
+(28) to[fore, black,->, ] node[coordinate](233){} (29) 
+(29) to[fore, black,->, dashed, ] node[coordinate](234){} (25) 
+(33) to[fore, black,->, ] node[coordinate](235){} (34) 
+(38) to[fore, black,->, ] node[coordinate](236){} (39) 
+(38) to[fore, black,->, ] node[coordinate](237){} (40) 
+(40) to[fore, black,->, dashed, ] node[coordinate](238){} (39) 
+(41) to[fore, black,->, ] node[coordinate](239){} (42) 
+(41) to[fore, black,->, ] node[coordinate](240){} (43) 
+(43) to[fore, black,->, dashed, ] node[coordinate](241){} (42) 
+(49) to[fore, black,->, curve={ratio=-0.6}, ] node[coordinate](242){} (50) 
+(50) to[fore, black,->, curve={ratio=-0.6}, ] node[coordinate](243){} (51) 
+(50) to[fore, black,->, curve={ratio=0.6}, ] node[coordinate](244){} (51) 
+(49) to[fore, black,->, curve={ratio=0.6}, ] node[coordinate](245){} (50) 
+(50) to[fore, black,->, ] node[coordinate](246){} (49) 
+(50) to[fore, black,->, ] node[coordinate](247){} (51) 
+(57) to[fore, black,->, ] node[coordinate](248){} (58) 
+(57) to[fore, black,->, ] node[coordinate](249){} (59) 
+(58) to[fore, black,->, ] node[coordinate](250){} (60) 
+(59) to[fore, black,->, ] node[coordinate](251){} (60) 
+(67) to[fore, black,->, ] node[coordinate](252){} (69) 
+(69) to[fore, black,->, ] node[coordinate](253){} (70) 
+(67) to[fore, black,->, ] node[coordinate](254){} (71) 
+(71) to[fore, black,->, ] node[coordinate](255){} (72) 
+(73) to[fore, black,->, ] node[coordinate](256){} (70) 
+(68) to[fore, black,->, ] node[coordinate](257){} (73) 
+(68) to[fore, black,->, ] node[coordinate](258){} (74) 
+(74) to[fore, black,->, ] node[coordinate](259){} (72) 
+(72) to[fore, black,->, ] node[coordinate](260){} (75) 
+(70) to[fore, black,->, ] node[coordinate](261){} (75) 
+(86) to[fore, black,->, ] node[coordinate](262){} (87) 
+(86) to[fore, black,->, ] node[coordinate](263){} (88) 
+(88) to[fore, black,->, dashed, ] node[coordinate](264){} (87) 
+(89) to[fore, black,->, ] node[coordinate](265){} (90) 
+(91) to[fore, black,->, ] node[coordinate](266){} (92) 
+(93) to[fore, black,->, ] node[coordinate](267){} (94) 
+(105) to[fore, black,->, ] node[coordinate](268){} (106) 
+(105) to[fore, black,->, ] node[coordinate](269){} (107) 
+(106) to[fore, black,->, ] node[coordinate](270){} (108) 
+(107) to[fore, black,->, ] node[coordinate](271){} (108) 
+(111) to[fore, black,->, ] node[coordinate](272){} (112) 
+(111) to[fore, black,->, ] node[coordinate](273){} (113) 
+(112) to[fore, black,->, ] node[coordinate](274){} (114) 
+(113) to[fore, black,->, ] node[coordinate](275){} (114) 
+(115) to[fore, black,->, ] node[coordinate](276){} (114) 
+(115) to[fore, black,->, ] node[coordinate](277){} (116) 
+(114) to[fore, black,->, ] node[coordinate](278){} (117) 
+(116) to[fore, black,->, ] node[coordinate](279){} (117) 
+(119) to[fore, black,->, ] node[coordinate](280){} (120) 
+(119) to[fore, black,->, ] node[coordinate](281){} (121) 
+(120) to[fore, black,->, ] node[coordinate](282){} (122) 
+(121) to[fore, black,->, ] node[coordinate](283){} (122) 
+(112) to[fore, black,->, curve={ratio=0.30000000000000004}, ] node[coordinate](284){} (123) 
+(114) to[fore, black,->, dashed, ] node[coordinate](285){} (123) 
+(117) to[fore, black,->, dashed, ] node[coordinate](286){} (123) 
+(120) to[fore, black,->, dashed, ] node[coordinate](287){} (123) 
+(122) to[fore, black,->, dashed, curve={ratio=-0.2}, ] node[coordinate](288){} (123) 
+(125) to[fore, black,->, ] node[coordinate](289){} (126) 
+(126) to[fore, black,->, ] node[coordinate](290){} (127) 
+(125) to[fore, black,->, ] node[coordinate](291){} (128) 
+(128) to[fore, black,->, ] node[coordinate](292){} (127) 
+(126) to[fore, black,->, ] node[coordinate](293){} (129) 
+(129) to[fore, black,->, ] node[coordinate](294){} (130) 
+(127) to[fore, black,->, ] node[coordinate](295){} (130) 
+(131) to[fore, black,->, curve={ratio=-0.2}, ] node[coordinate](296){} (129) 
+(131) to[fore, black,->, curve={ratio=0.2}, ] node[coordinate](297){} (128) 
+(135) to[fore, black,->, ] node[coordinate](298){} (133) 
+(136) to[fore, black,->, ] node[coordinate](299){} (134) 
+(137) to[fore, black,->, ] node[coordinate](300){} (135) 
+(137) to[fore, black,->, ] node[coordinate](301){} (136) 
+(139) to[fore, black,->, ] node[coordinate](302){} (133) 
+(140) to[fore, black,->, ] node[coordinate](303){} (139) 
+(140) to[fore, black,->, ] node[coordinate](304){} (138) 
+(141) to[fore, black,->, ] node[coordinate](305){} (136) 
+(141) to[fore, black,->, ] node[coordinate](306){} (138) 
+(142) to[fore, black,->, ] node[coordinate](307){} (138) 
+(147) to[fore, black,->, ] node[coordinate](308){} (143) 
+(142) to[fore, black,->, ] node[coordinate](309){} (144) 
+(143) to[fore, black,->, ] node[coordinate](310){} (145) 
+(144) to[fore, black,->, ] node[coordinate](311){} (145) 
+(146) to[fore, black,->, ] node[coordinate](312){} (134) 
+(147) to[fore, black,->, ] node[coordinate](313){} (146) 
+(148) to[fore, blue,->, ] node[coordinate](314){} (149) 
+(149) to[fore, blue,->, ] node[coordinate](315){} (150) 
+(148) to[fore, blue,->, ] node[coordinate](316){} (151) 
+(151) to[fore, blue,->, ] node[coordinate](317){} (150) 
+(149) to[fore, blue,->, ] node[coordinate](318){} (152) 
+(152) to[fore, blue,->, ] node[coordinate](319){} (153) 
+(150) to[fore, blue,->, ] node[coordinate](320){} (153) 
+(154) to[fore, blue,->, curve={ratio=-0.2}, ] node[coordinate](321){} (152) 
+(154) to[fore, blue,->, curve={ratio=0.2}, ] node[coordinate](322){} (151) 
+(151) to[fore, blue,->, curve={ratio=0.5}, ] node[coordinate](323){} (153) 
+(155) to[fore, black,->, ] node[coordinate](324){} (156) 
+(156) to[fore, black,->, ] node[coordinate](325){} (157) 
+(155) to[fore, black,->, ] node[coordinate](326){} (158) 
+(158) to[fore, black,->, ] node[coordinate](327){} (157) 
+(156) to[fore, black,->, ] node[coordinate](328){} (159) 
+(159) to[fore, black,->, ] node[coordinate](329){} (160) 
+(157) to[fore, black,->, ] node[coordinate](330){} (160) 
+(161) to[fore, black,->, curve={ratio=-0.2}, ] node[coordinate](331){} (159) 
+(161) to[fore, black,->, curve={ratio=0.2}, ] node[coordinate](332){} (158) 
+(161) to[fore, black,->, ] node[coordinate](333){} (155) 
+(164) to[fore, black,->, ] node[coordinate](334){} (165) 
+(165) to[fore, black,->, ] node[coordinate](335){} (166) 
+(164) to[fore, black,->, ] node[coordinate](336){} (167) 
+(167) to[fore, blue,->, ] node[coordinate](337){} (166) 
+(165) to[fore, black,->, ] node[coordinate](338){} (168) 
+(168) to[fore, blue,->, ] node[coordinate](339){} (169) 
+(166) to[fore, blue,->, ] node[coordinate](340){} (169) 
+(170) to[fore, blue,->, curve={ratio=-0.2}, ] node[coordinate](341){} (168) 
+(170) to[fore, blue,->, curve={ratio=0.2}, ] node[coordinate](342){} (167) 
+(171) to[fore, black,->, ] node[coordinate](343){} (172) 
+(172) to[fore, blue,->, ] node[coordinate](344){} (173) 
+(171) to[fore, black,->, ] node[coordinate](345){} (174) 
+(174) to[fore, red,->, ] node[coordinate](346){} (173) 
+(172) to[fore, blue,->, ] node[coordinate](347){} (175) 
+(175) to[fore, purple,->, ] node[coordinate](348){} (176) 
+(173) to[fore, purple,->, ] node[coordinate](349){} (176) 
+(177) to[fore, purple,->, curve={ratio=-0.2}, ] node[coordinate](350){} (175) 
+(177) to[fore, red,->, curve={ratio=0.2}, ] node[coordinate](351){} (174) 
+(177) to[fore, purple,->, curve={ratio=0.30000000000000004}, ] node[coordinate](352){} (173) 
+(179) to[fore, blue,->, ] node[coordinate](353){} (180) 
+(180) to[fore, blue,->, ] node[coordinate](354){} (181) 
+(179) to[fore, blue,->, ] node[coordinate](355){} (182) 
+(182) to[fore, blue,->, ] node[coordinate](356){} (181) 
+(180) to[fore, red,->, ] node[coordinate](357){} (183) 
+(183) to[fore, red,->, ] node[coordinate](358){} (184) 
+(181) to[fore, red,->, ] node[coordinate](359){} (184) 
+(185) to[fore, red,->, curve={ratio=-0.2}, ] node[coordinate](360){} (183) 
+(185) to[fore, blue,->, curve={ratio=0.2}, ] node[coordinate](361){} (182) 
+(185) to[fore, red,->, curve={ratio=0.30000000000000004}, ] node[coordinate](362){} (181) 
+(185) to[fore, purple,->, ] node[coordinate](363){} (180) 
+(191) to[fore, red,->, ] node[coordinate](364){} (192) 
+(192) to[fore, red,->, ] node[coordinate](365){} (193) 
+(191) to[fore, red,->, ] node[coordinate](366){} (194) 
+(194) to[fore, red,->, ] node[coordinate](367){} (193) 
+(192) to[fore, black,->, ] node[coordinate](368){} (195) 
+(195) to[fore, black,->, ] node[coordinate](369){} (196) 
+(193) to[fore, black,->, ] node[coordinate](370){} (196) 
+(197) to[fore, black,->, curve={ratio=-0.2}, ] node[coordinate](371){} (195) 
+(197) to[fore, red,->, curve={ratio=0.2}, ] node[coordinate](372){} (194) 
+(197) to[fore, black,->, curve={ratio=0.30000000000000004}, ] node[coordinate](373){} (193) 
+(197) to[fore, red,->, ] node[coordinate](374){} (192) 
+(197) to[fore, red,->, ] node[coordinate](375){} (191) 
+(201) to[fore, black,->, ] node[coordinate](376){} (202) 
+(201) to[fore, black,->, ] node[coordinate](377){} (203) 
+(202) to[fore, black,->, ] node[coordinate](378){} (204) 
+(203) to[fore, black,->, ] node[coordinate](379){} (204) 
+(206) to[fore, black,->, ] node[coordinate](380){} (207) 
+(206) to[fore, black,->, ] node[coordinate](381){} (208) 
+(207) to[fore, black,->, ] node[coordinate](382){} (209) 
+(208) to[fore, black,->, ] node[coordinate](383){} (209) 
+(378) to[fore, black,->, cell=0.2, curve={ratio=-0.30000000000000004}, ] node[coordinate](406){} (379) 
+; 
+\path[->] 
+(68) edge["${\scriptstyle \mathbf{y}_{l}}$"', pos=0.20000000000000004, fore, black,->, ] (73) 
+(177) edge["${\scriptstyle }$", pos=0.5, fore, purple,->, curve={ratio=0.30000000000000004}, ] (173) 
+(185) edge["${\scriptstyle }$", pos=0.5, fore, red,->, curve={ratio=0.30000000000000004}, ] (181) 
+(197) edge["${\scriptstyle }$", pos=0.5, fore, black,->, curve={ratio=0.30000000000000004}, ] (193) 
+(5) edge["${\scriptstyle s}$", pos=0.5, fore, black,->, curve={ratio=-0.2}, ] (6) 
+(6) edge["${\scriptstyle l}$", pos=0.5, fore, black,->, curve={ratio=-0.2}, ] (7) 
+(6) edge["${\scriptstyle r}$"', pos=0.5, fore, black,->, curve={ratio=0.2}, ] (7) 
+(5) edge["${\scriptstyle t}$"', pos=0.5, fore, black,->, curve={ratio=0.2}, ] (6) 
+(10) edge["${\scriptstyle s}$"', pos=0.5, fore, black,->, ] (11) 
+(10) edge["${\scriptstyle t}$", pos=0.5, fore, black,->, ] (12) 
+(11) edge["${\scriptstyle l}$"', pos=0.5, fore, black,->, ] (9) 
+(12) edge["${\scriptstyle r}$", pos=0.5, fore, black,->, ] (9) 
+(14) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (15) 
+(18) edge["${\scriptstyle \mathbf{y}_s}$"', pos=0.5, fore, black,->, ] (19) 
+(18) edge["${\scriptstyle \mathbf{y}_t}$", pos=0.5, fore, black,->, ] (20) 
+(19) edge["${\scriptstyle \mathbf{y}_l}$"', pos=0.5, fore, black,->, curve={ratio=0.30000000000000004}, ] (17) 
+(20) edge["${\scriptstyle \mathbf{y}_r}$", pos=0.5, fore, black,->, curve={ratio=-0.30000000000000004}, ] (17) 
+(19) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (21) 
+(20) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (21) 
+(21) edge["${\scriptstyle }$", pos=0.5, fore, black,->, dashed, ] (17) 
+(26) edge["${\scriptstyle \mathbf{y}_s}$"', pos=0.5, fore, black,->, ] (27) 
+(26) edge["${\scriptstyle \mathbf{y}_t}$", pos=0.5, fore, black,->, ] (28) 
+(27) edge["${\scriptstyle u}$"', pos=0.5, fore, black,->, curve={ratio=0.30000000000000004}, ] (25) 
+(28) edge["${\scriptstyle v}$", pos=0.5, fore, black,->, curve={ratio=-0.30000000000000004}, ] (25) 
+(27) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (29) 
+(28) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (29) 
+(29) edge["${\scriptstyle }$", pos=0.5, fore, black,->, dashed, ] (25) 
+(33) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (34) 
+(38) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (39) 
+(38) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (40) 
+(40) edge["${\scriptstyle \exists!}$"', pos=0.5, fore, black,->, dashed, ] (39) 
+(41) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (42) 
+(41) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (43) 
+(43) edge["${\scriptstyle \exists!}$"', pos=0.5, fore, black,->, dashed, ] (42) 
+(49) edge["${\scriptstyle s}$", pos=0.5, fore, black,->, curve={ratio=-0.6}, ] (50) 
+(50) edge["${\scriptstyle l}$", pos=0.5, fore, black,->, curve={ratio=-0.6}, ] (51) 
+(50) edge["${\scriptstyle r}$"', pos=0.5, fore, black,->, curve={ratio=0.6}, ] (51) 
+(49) edge["${\scriptstyle t}$"', pos=0.5, fore, black,->, curve={ratio=0.6}, ] (50) 
+(50) edge["${\scriptstyle e}$"', pos=0.5, fore, black,->, ] (49) 
+(50) edge["${\scriptstyle m}$", pos=0.5, fore, black,->, ] (51) 
+(57) edge["${\scriptstyle \mathbf{y}_m}$"', pos=0.5, fore, black,->, ] (58) 
+(57) edge["${\scriptstyle \mathbf{y}_m}$", pos=0.5, fore, black,->, ] (59) 
+(58) edge["${\scriptstyle s_2}$"', pos=0.5, fore, black,->, ] (60) 
+(59) edge["${\scriptstyle s_1}$", pos=0.5, fore, black,->, ] (60) 
+(67) edge["${\scriptstyle \mathbf{y}_{l}}$"', pos=0.5, fore, black,->, ] (69) 
+(69) edge["${\scriptstyle {s_1}}$"', pos=0.5, fore, black,->, ] (70) 
+(67) edge["${\scriptstyle \mathbf{y}_{l}}$", pos=0.7, fore, black,->, ] (71) 
+(71) edge["${\scriptstyle \mathbf{y}_{\partial_{s_1}}}$"', pos=0.5, fore, black,->, ] (72) 
+(73) edge["${\scriptstyle {s_2}}$", pos=0.5, fore, black,->, ] (70) 
+(68) edge["${\scriptstyle \mathbf{y}_{l}}$"', pos=0.5, fore, black,->, ] (74) 
+(74) edge["${\scriptstyle \mathbf{y}_{\partial_{s_2}}}$", pos=0.5, fore, black,->, ] (72) 
+(72) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (75) 
+(70) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (75) 
+(86) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (87) 
+(86) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (88) 
+(88) edge["${\scriptstyle \exists!}$"', pos=0.5, fore, black,->, dashed, ] (87) 
+(89) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (90) 
+(91) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (92) 
+(93) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (94) 
+(105) edge["${\scriptstyle \text{redex}}$"', pos=0.5, fore, black,->, ] (106) 
+(105) edge["${\scriptstyle \text{rule}}$", pos=0.5, fore, black,->, ] (107) 
+(106) edge["${\scriptstyle \text{move}}$"', pos=0.5, fore, black,->, ] (108) 
+(107) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (108) 
+(111) edge["${\scriptstyle }$"', pos=0.5, fore, black,->, ] (112) 
+(111) edge["${\scriptstyle \text{rule}_1}$", pos=0.5, fore, black,->, ] (113) 
+(112) edge["${\scriptstyle \text{move}_1}$"', pos=0.5, fore, black,->, ] (114) 
+(113) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (114) 
+(115) edge["${\scriptstyle }$"', pos=0.5, fore, black,->, ] (114) 
+(115) edge["${\scriptstyle \text{rule}_1}$", pos=0.5, fore, black,->, ] (116) 
+(114) edge["${\scriptstyle \text{move}_1}$"', pos=0.5, fore, black,->, ] (117) 
+(116) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (117) 
+(119) edge["${\scriptstyle }$"', pos=0.5, fore, black,->, ] (120) 
+(119) edge["${\scriptstyle \text{rule}_n}$", pos=0.5, fore, black,->, ] (121) 
+(120) edge["${\scriptstyle \text{move}_n}$"', pos=0.5, fore, black,->, ] (122) 
+(121) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (122) 
+(112) edge["${\scriptstyle \text{semantics of the diagram we started from}}$"', pos=0.20000000000000004, fore, black,->, curve={ratio=0.30000000000000004}, ] (123) 
+(114) edge["${\scriptstyle }$", pos=0.5, fore, black,->, dashed, ] (123) 
+(117) edge["${\scriptstyle }$", pos=0.5, fore, black,->, dashed, ] (123) 
+(120) edge["${\scriptstyle }$", pos=0.5, fore, black,->, dashed, ] (123) 
+(122) edge["${\scriptstyle \text{semantics of final diagram}}$", pos=0.5, fore, black,->, dashed, curve={ratio=-0.2}, ] (123) 
+(125) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (126) 
+(126) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (127) 
+(125) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (128) 
+(128) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (127) 
+(126) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (129) 
+(129) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (130) 
+(127) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (130) 
+(131) edge["${\scriptstyle }$", pos=0.5, fore, black,->, curve={ratio=-0.2}, ] (129) 
+(131) edge["${\scriptstyle }$", pos=0.5, fore, black,->, curve={ratio=0.2}, ] (128) 
+(135) edge["${\scriptstyle \mathbf{y}_{\partial_{s_1}}}$"', pos=0.5, fore, black,->, ] (133) 
+(136) edge["${\scriptstyle \mathbf{y}_{\partial_{s_2}}}$", pos=0.5, fore, black,->, ] (134) 
+(137) edge["${\scriptstyle \mathbf{y}_{l}}$"', pos=0.5, fore, black,->, ] (135) 
+(137) edge["${\scriptstyle \mathbf{y}_{r}}$", pos=0.5, fore, black,->, ] (136) 
+(139) edge["${\scriptstyle \mathbf{y}_{\partial_{s_2}}}$", pos=0.5, fore, black,->, ] (133) 
+(140) edge["${\scriptstyle \mathbf{y}_{l}}$"', pos=0.5, fore, black,->, ] (139) 
+(140) edge["${\scriptstyle \mathbf{y}_{r}}$"', pos=0.5, fore, black,->, ] (138) 
+(141) edge["${\scriptstyle \mathbf{y}_{l}}$"', pos=0.5, fore, black,->, ] (136) 
+(141) edge["${\scriptstyle \mathbf{y}_{l}}$", pos=0.5, fore, black,->, ] (138) 
+(142) edge["${\scriptstyle \mathbf{y}_{m}}$", pos=0.5, fore, black,->, ] (138) 
+(147) edge["${\scriptstyle \mathbf{y}_{l}}$"', pos=0.5, fore, black,->, ] (143) 
+(142) edge["${\scriptstyle \mathbf{y}_{l}}$", pos=0.5, fore, black,->, ] (144) 
+(143) edge["${\scriptstyle \mathbf{y}_{s_1}}$", pos=0.5, fore, black,->, ] (145) 
+(144) edge["${\scriptstyle \mathbf{y}_{s_2}}$", pos=0.5, fore, black,->, ] (145) 
+(146) edge["${\scriptstyle \mathbf{y}_{\partial_{s_1}}}$"', pos=0.5, fore, black,->, ] (134) 
+(147) edge["${\scriptstyle \mathbf{y}_{l}}$", pos=0.5, fore, black,->, ] (146) 
+(148) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (149) 
+(149) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (150) 
+(148) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (151) 
+(151) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (150) 
+(149) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (152) 
+(152) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (153) 
+(150) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (153) 
+(154) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, curve={ratio=-0.2}, ] (152) 
+(154) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, curve={ratio=0.2}, ] (151) 
+(151) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, curve={ratio=0.5}, ] (153) 
+(155) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (156) 
+(156) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (157) 
+(155) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (158) 
+(158) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (157) 
+(156) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (159) 
+(159) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (160) 
+(157) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (160) 
+(161) edge["${\scriptstyle }$", pos=0.5, fore, black,->, curve={ratio=-0.2}, ] (159) 
+(161) edge["${\scriptstyle }$", pos=0.5, fore, black,->, curve={ratio=0.2}, ] (158) 
+(161) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (155) 
+(164) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (165) 
+(165) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (166) 
+(164) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (167) 
+(167) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (166) 
+(165) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (168) 
+(168) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (169) 
+(166) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (169) 
+(170) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, curve={ratio=-0.2}, ] (168) 
+(170) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, curve={ratio=0.2}, ] (167) 
+(171) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (172) 
+(172) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (173) 
+(171) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (174) 
+(174) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (173) 
+(172) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (175) 
+(175) edge["${\scriptstyle }$", pos=0.5, fore, purple,->, ] (176) 
+(173) edge["${\scriptstyle }$", pos=0.5, fore, purple,->, ] (176) 
+(177) edge["${\scriptstyle }$", pos=0.5, fore, purple,->, curve={ratio=-0.2}, ] (175) 
+(177) edge["${\scriptstyle }$", pos=0.5, fore, red,->, curve={ratio=0.2}, ] (174) 
+(179) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (180) 
+(180) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (181) 
+(179) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (182) 
+(182) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, ] (181) 
+(180) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (183) 
+(183) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (184) 
+(181) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (184) 
+(185) edge["${\scriptstyle }$", pos=0.5, fore, red,->, curve={ratio=-0.2}, ] (183) 
+(185) edge["${\scriptstyle }$", pos=0.5, fore, blue,->, curve={ratio=0.2}, ] (182) 
+(185) edge["${\scriptstyle }$", pos=0.5, fore, purple,->, ] (180) 
+(191) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (192) 
+(192) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (193) 
+(191) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (194) 
+(194) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (193) 
+(192) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (195) 
+(195) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (196) 
+(193) edge["${\scriptstyle }$", pos=0.5, fore, black,->, ] (196) 
+(197) edge["${\scriptstyle }$", pos=0.5, fore, black,->, curve={ratio=-0.2}, ] (195) 
+(197) edge["${\scriptstyle }$", pos=0.5, fore, red,->, curve={ratio=0.2}, ] (194) 
+(197) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (192) 
+(197) edge["${\scriptstyle }$", pos=0.5, fore, red,->, ] (191) 
+(201) edge["${\scriptstyle \pi^{\mathit{sq}}}$"', pos=0.5, fore, black,->, ] (202) 
+(201) edge["${\scriptstyle !}$", pos=0.5, fore, black,->, ] (203) 
+(202) edge["${\scriptstyle \textbf{i}_{\mathit{pb}}}$"', pos=0.5, fore, black,->, ] (204) 
+(203) edge["${\scriptstyle \mathit{pb}}$", pos=0.5, fore, black,->, ] (204) 
+(206) edge["${\scriptstyle m}$"', pos=0.5, fore, black,->, ] (207) 
+(206) edge["${\scriptstyle m}$", pos=0.5, fore, black,->, ] (208) 
+(207) edge["${\scriptstyle \partial_{s_2}}$"', pos=0.5, fore, black,->, ] (209) 
+(208) edge["${\scriptstyle \partial_{s_1}}$", pos=0.5, fore, black,->, ] (209) 
+(378) edge["${\scriptstyle \partial}$", pos=0.5, fore, black,->, cell=0.2, curve={ratio=-0.30000000000000004}, ] (379) 
+; 
+\pullbackk{19}{21}{20}{draw} % 
+\pullbackk{27}{29}{28}{draw} % 
+\pullbackk{58}{60}{59}{draw} % 
+\pullbackk{70}{75}{72}{draw} % 
+\pullbackk{106}{108}{107}{draw} % 
+\pullbackk{112}{114}{113}{draw} % 
+\pullbackk{114}{117}{116}{draw} % 
+\pullbackk{120}{122}{121}{draw} % 
+\pullbackk{128}{125}{126}{draw} % 
+\pullbackk{127}{126}{129}{draw} % 
+\pullbackk{151}{148}{149}{draw} % 
+\pullbackk{150}{149}{152}{draw} % 
+\pullbackk{158}{155}{156}{draw} % 
+\pullbackk{157}{156}{159}{draw} % 
+\pullbackk{167}{164}{165}{draw} % 
+\pullbackk{166}{165}{168}{draw} % 
+\pullbackk{174}{171}{172}{draw} % 
+\pullbackk{173}{172}{175}{draw} % 
+\pullbackk{182}{179}{180}{draw} % 
+\pullbackk{181}{180}{183}{draw} % 
+\pullbackk{194}{191}{192}{draw} % 
+\pullbackk{193}{192}{195}{draw} % 
+\end{tikzpicture}
