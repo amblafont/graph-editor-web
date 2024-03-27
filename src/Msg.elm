@@ -6,7 +6,7 @@ import Geometry.Point exposing (Point)
 -- import Graph exposing (Graph, NodeId)
 -- import GraphExtra exposing (EdgeId)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph)
-import Format.GraphInfo exposing (GraphInfo)
+import Format.GraphInfo exposing (GraphInfo, Tab)
 
 import HtmlDefs exposing (Key)
 import Task
@@ -17,6 +17,7 @@ import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Html.Events.Extra.Mouse as MouseEvents
 import Html
 import Json.Encode as JE
+import List.Extra
 
 -- SimpleScenario: just display the model status message
 type Scenario = Standard | Exercise1 | SimpleScenario | Watch | CoqLsp
@@ -38,12 +39,14 @@ type alias LoadGraphInfo a =
      clipboard : Bool, -- is it a paste event?
      setFirstTab : Bool -- set the active tab on the first tab
      -- (if true, the clipboard flag is ignored)
+     , rule : Bool -- is it a diagrammatic rule must be applied?
+     -- if so clipboard and setFirstTab are ignored
    }
 
 mapLoadGraphInfo : (a -> b) -> LoadGraphInfo a -> LoadGraphInfo b 
-mapLoadGraphInfo f { graph, fileName, scenario, clipboard, setFirstTab } =
+mapLoadGraphInfo f { graph, fileName, scenario, clipboard, setFirstTab, rule } =
    { graph = f graph, fileName = fileName, scenario = scenario,
-     clipboard = clipboard, setFirstTab = setFirstTab }
+     clipboard = clipboard, setFirstTab = setFirstTab, rule = rule }
 
 -- the model automatically updates its record of HtmlDefs.Keys (shift,alt,ctrl status) in any case
 -- when the message gives it, so there is a kind of redundancy on this matter
@@ -75,7 +78,9 @@ type Msg
   | Loaded (LoadGraphInfo GraphInfo)
   | SetFirstTab GraphInfo  
   -- a graph is pasted
-  | PasteGraph GraphInfo
+  | PasteGraph (Graph NodeLabel EdgeLabel)
+  -- we want to apply a rule
+  | ApplyRule (Graph NodeLabel EdgeLabel)
   | QuickInput Bool String -- flag: is it the final string?
   | SetFirstTabEquation String
   | NodeRendered NodeId Point
@@ -110,11 +115,18 @@ type Msg
 
 loadGraphInfoToMsg : LoadGraphInfo GraphInfo -> Msg
 loadGraphInfoToMsg g =
-   if g.setFirstTab then
+   let applyGraph f =
+            case List.Extra.find .active g.graph.tabs of
+              Nothing -> noOp
+              Just tab -> f tab.graph
+   in
+   if g.rule then
+      applyGraph ApplyRule
+   else if g.setFirstTab then
       SetFirstTab g.graph
    else if g.clipboard then
   --  Debug.log "coucou" <|
-      PasteGraph g.graph
+      applyGraph PasteGraph
    else
       Loaded g
 

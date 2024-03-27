@@ -122,6 +122,8 @@ port alert : String -> Cmd a
 port simpleMsg : (String -> a) -> Sub a
 port renameFile : (String -> a) -> Sub a
 
+port getRuleFromClipboard : () -> Cmd a
+
 -- we ask js to open a graph file
 port openFile : () -> Cmd a
 -- or to retrieve the saved graph
@@ -791,6 +793,10 @@ generateProofString debug g =
       in
       s
 
+initialise_applyRule : Model -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel -> Model
+initialise_applyRule model modelGraph graph = 
+  model
+
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     let delta_angle = pi / 5 in
@@ -1078,18 +1084,15 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'h') -> move pi
         KeyChanged False _ (Character 'j') -> move (pi/2)
         KeyChanged False _ (Character 'k') -> move (3 * pi / 2)
-        KeyChanged False _ (Character 'l') -> move 0       
-        PasteGraph gi ->
-          if not model.mouseOnCanvas then noCmd model else
-         -- we ignore the other tabs
-          case List.Extra.find .active gi.tabs of
-              Nothing -> noCmd model
-              Just tab ->
+        KeyChanged False _ (Character 'l') -> move 0
+        ApplyRule graph ->
+           noCmd <| initialise_applyRule model modelGraph graph
+        PasteGraph graph ->
                    noCmd <| initialiseMoveMode False FreeMove
                    <|  setSaveGraph model <|              
                     Graph.union 
                       (GraphDefs.clearSelection modelGraph)
-                      (GraphDefs.selectAll tab.graph)
+                      (GraphDefs.selectAll graph)
         KeyChanged False _ (Character 'u') ->
              let f = GraphDefs.fieldSelect modelGraph in
              let connectedGraph =  Graph.connectedClosure f f modelGraph in
@@ -1118,6 +1121,8 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                
         KeyChanged False k (Character 'z') -> 
              if k.ctrl then noCmd <| undo model else noCmd model
+        KeyChanged False k (Character 'n') ->
+           (model, getRuleFromClipboard ())
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise modelGraph
         KeyChanged False k (Character '+') -> increaseZBy 1
         KeyChanged False k (Character '<') -> increaseZBy (-1)

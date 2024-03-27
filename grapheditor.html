@@ -260,7 +260,7 @@
          
 
 
-         function sendGraphToElm(json, filename, scenario = "standard", clipboard = false, setFirstTab = false) {
+         function sendGraphToElm(json, filename, scenario = "standard", clipboard = false, setFirstTab = false, rule = false) {
             var graph = json;
             var version = 0;
             if (json.hasOwnProperty('version')) {
@@ -268,7 +268,7 @@
                graph = json.graph;
             }
             var args = { graph , fileName : filename, scenario,
-                clipboard, setFirstTab};
+                clipboard, setFirstTab, rule};
             console.log(args);
             app.ports["loadedGraph" + version].send(args);
          }
@@ -276,7 +276,7 @@
          const queryString = window.location.search;
          const urlParams = new URLSearchParams(queryString);
          var tutoData = {"graph" : tutorial, "fileName" : "graph.json", "scenario" : "standard", "clipboard" : false, 
-        setFirstTab : false };
+        setFirstTab : false, "rule" : false };
 
          if (urlParams.has("scenario") && scenarios.hasOwnProperty(urlParams.get("scenario"))) {
             scenario = urlParams.get("scenario"); 
@@ -585,6 +585,22 @@
               "Copy failed"
               );
          });
+
+         app.ports.getRuleFromClipboard.subscribe(function () {
+            navigator.clipboard.readText().then((copiedText) => {
+                var json;
+                try { 
+                    json = JSON.parse(copiedText);
+                 }
+                catch (e) { json = false; }
+                // console.log(json);
+                if (json) {
+                    sendGraphToElm(json, "", "standard", true, false, true);
+                    // cnonsole.log(json);
+                }
+           });
+            
+         })
 
 
          document.addEventListener("copy", function(event) {
