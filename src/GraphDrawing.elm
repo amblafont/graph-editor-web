@@ -1,7 +1,7 @@
 
 module GraphDrawing exposing(..)
 
-import Polygraph as Graph exposing (Graph, Node, Edge)
+import Polygraph as Graph exposing (Graph, Node, Edge, Id)
 import Html 
 import Html.Attributes
 import Html.Events
@@ -295,32 +295,48 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     , posDims : Geometry.PosDims    
     } -}
 
+type alias Extrem =
+ { bez : QuadraticBezier,
+   fromId : Id,
+   toId : Id,
+   fromPos : Point,
+   toPos : Point}
 -- draw a pullback or a pushout, depending on whehter the sources 
 -- or the targets are equal
-drawPullshout : Graph.EdgeId -> Activity -> (Point, Point) -> (Point, Point) -> Drawing Msg
-drawPullshout edgeId a (x1, x2) (y1, y2) =
-     let shift = 30 in
-     let (p1, p2) = if x1 == y1 then (x1, x2) else (x2, x1)
-         (q1, q2) = if x1 == y1 then (y1, y2) else (y2, y1)
+drawPullshout : Graph.EdgeId -> Activity -> Int ->
+           Extrem -> Extrem -> Drawing Msg
+drawPullshout edgeId a z e1 e2 =
+    let vertex = 
+            if e1.fromId == e2.fromId then
+                e1.fromPos
+            else 
+                e1.toPos
      in
+     let shift = 30 in
+    --  let shift = 15 in
      let smallshift = 5 in
 
-     let r1 = Point.towards p1 p2 shift
-         r2 = Point.towards q1 q2 shift
+     let r1 = Point.towards vertex e1.bez.controlPoint shift
+         r2 = Point.towards vertex e2.bez.controlPoint shift
      in
-     let extrem = Point.diamondPave r1 p1 r2 in
+     let extrem = Point.diamondPave r1 vertex r2 in
      let s1 = Point.towards r1 extrem smallshift
          s2 = Point.towards r2 extrem smallshift
      in
-     let classes = List.map Drawing.class <| activityToEdgeClasses a in
-     let blackline = Drawing.line 
+     let blackline classes = Drawing.line 
                (classes ++ 
-               [ Drawing.onClick (EdgeClick edgeId),
+               [ Drawing.zindexAttr z,
+                 Drawing.onClick (EdgeClick edgeId),
                  Drawing.color Color.black
                  ])
      in
+     let mk_pbk classes = 
+           Drawing.group 
+           [blackline classes s1 extrem, blackline classes extrem s2] 
+     in
+     let classes = List.map Drawing.class <| activityToEdgeClasses a in
      Drawing.group 
-     [blackline s1 extrem, blackline extrem s2] 
+     [mk_pbk (Drawing.class Drawing.shadowClass :: classes), mk_pbk classes] 
 
 {-
 
@@ -335,10 +351,11 @@ graphDrawing cfg g0 =
       let drawEdge id n1 n2 e = 
              case e.details of
                PullshoutEdge -> { drawing = 
-                                   Maybe.map2 (drawPullshout id e.isActive) n1.extrems n2.extrems
+                                   Maybe.map2 (drawPullshout id e.isActive e.zindex) n1.extrems n2.extrems
                                    |> Maybe.withDefault Drawing.empty
                                , posDims = { pos = (0, 0), dims = (0, 0)}
-                               , extrems = Just (n1.posDims.pos, n2.posDims.pos)
+                               , extrems = Nothing
+                               , id = id
                                }
                NormalEdge l ->
                    let q = Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
@@ -347,15 +364,21 @@ graphDrawing cfg g0 =
                          posDims = {
                              pos = Bez.middle q,
                              dims = (padding, padding) |> Point.resize 4
-
                          },
-                         extrems = Just (n1.posDims.pos, n2.posDims.pos)
+                         extrems = Just 
+                              { bez = q,
+                                fromId = n1.id,
+                                toId = n2.id,
+                                fromPos = n1.posDims.pos,
+                                toPos   = n2.posDims.pos },
+                         id = id
                        }
       in
       let g = Graph.mapRecAll     
               identity identity      
               (\id n -> { drawing = nodeDrawing cfg (Node id n), 
                       extrems = Nothing,
+                      id = id,
                       posDims = {
                       dims = 
                       

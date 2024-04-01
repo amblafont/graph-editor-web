@@ -4,7 +4,7 @@ module Drawing exposing (Drawing,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
   svg,
   class, empty, grid, htmlAnchor,
-  zindexAttr, emptyForeign, toString
+  zindexAttr, emptyForeign, toString, shadowClass
   )
 
 import Zindex exposing (defaultZ, backgroundZ)
@@ -22,6 +22,8 @@ import List.Extra
 import Msg exposing (Msg)
 import String.Html exposing (ghostAttribute)
 import Drawing.Color as Color exposing (Color)
+
+shadowClass = "shadow-line"
 
 svgHelper : List (String.Html.Attribute a) -> Drawing a -> Svg a
 svgHelper l d =
@@ -178,12 +180,12 @@ arrow attrs0 arrowStyle q =
     let imgs = ArrowStyle.makeHeadTailImgs q arrowStyle in    
     let mkgen d l = mkPath d (l ++ attrs) in
     let mkl = mkgen arrowStyle.dashed [] in
-    -- let mkshadow = mkgen False [class "shadow-line"] in
+    let mkshadow = mkgen False [class shadowClass] in
     
     -- let mkshadow = mkgen False [style "stroke-width : 4;  stroke: white;"] in
     -- overriding the black color with style attribute 
     -- TODO: do it more properly
-    let mkshadow = mkgen False [style "stroke: white;", strokeWidth "4"] in
+    -- let mkshadow = mkgen False [style "stroke: white;", strokeWidth "4"] in
     let mkall l = List.map mkshadow l ++ List.map mkl l in
     let lines = if ArrowStyle.isDouble arrowStyle then
                 -- let delta = Point.subtract q.to q.controlPoint 
@@ -203,13 +205,13 @@ line : List (Attribute a) -> Point -> Point -> Drawing a
 line l (fromx, fromy) (tox, toy) = 
    let z = attributesToZIndex l in
    let f = String.fromFloat in
-      Svg.line 
-      ([Svg.x1 <| f fromx
-      , Svg.y1 <| f fromy
-      , Svg.x2 <| f tox
-      , Svg.y2 <| f toy
+            Svg.line 
+            ([Svg.x1 <| f fromx
+            , Svg.y1 <| f fromy
+            , Svg.x2 <| f tox
+            , Svg.y2 <| f toy
       ] ++ attrsToSvgAttrs Svg.stroke l)
-      []
+            []
       |> ofSvg z
 
 
