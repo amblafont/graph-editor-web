@@ -19,7 +19,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    selectSurroundingDiagram,
    centerOfNodes, mergeWithSameLoc,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
-   makeSelection, addWeaklySelected, weaklySelect,
+   makeSelection, addWeaklySelected, weaklySelect, weaklySelectMany,
    getSurroundingDiagrams, updateNormalEdge,
    rectEnveloppe, updateStyleEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
@@ -464,12 +464,11 @@ unselect id = Graph.update id
 
 weaklySelect : Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 weaklySelect id = 
-      Graph.map 
-         (\_ n -> { n | weaklySelected = False})
-         (\_ e -> { e | weaklySelected = False})
-         >>
-      Graph.update id 
-               (\ n -> { n | weaklySelected = True})
+      weaklySelectMany [id]
+weaklySelectMany : List Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+weaklySelectMany ids g =
+   clearWeakSelection g 
+   |> Graph.updateList ids  (\ n -> { n | weaklySelected = True})
                (\ e -> { e | weaklySelected = True}) 
 
 

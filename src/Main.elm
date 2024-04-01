@@ -988,7 +988,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
               Just tab ->
                    noCmd <| Modes.Move.initialise False FreeMove
                    <|  setSaveGraph model <|              
-                    Graph.union 
+                    Graph.disjointUnion 
                       (GraphDefs.clearSelection modelGraph)
                       (GraphDefs.selectAll tab.graph)
         KeyChanged False _ (Character 'u') ->
@@ -1363,7 +1363,7 @@ helpMsg model =
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
 
                 ++ "\nArrows: "
-                ++ "new [a]rrow from selected point"                
+                ++ "new [a]rrow/cylinder/cone from selected objects"                
                 ++ ", [/] split arrow" 
                 ++ ", [C]ut head of selected arrow" 
                 ++ ", [c]olor arrow" 

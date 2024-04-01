@@ -5,7 +5,7 @@ import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
 import QuickInput
 import InputPosition exposing (InputPosition)
-import GraphDefs
+import GraphDefs exposing (NodeLabel, EdgeLabel)
 
 
 type Mode
@@ -113,11 +113,17 @@ type alias PullshoutState =
 
 type PullshoutKind = Pullback | Pushout
 
-
+type ArrowMode =
+    CreateArrow
+  | CreateCylinder
+  | CreateCone
 
 
 type alias NewArrowState =
-    { chosenNode : NodeId, style : ArrowStyle, pos : InputPosition, inverted : Bool }
+    { chosen : Graph.Graph NodeLabel EdgeLabel,
+      mode : ArrowMode, 
+      style : ArrowStyle, 
+      pos : InputPosition, inverted : Bool }
 
 
 type alias SquareState =

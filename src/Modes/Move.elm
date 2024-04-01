@@ -1,4 +1,4 @@
-module Modes.Move exposing (update, initialise, graphDrawing, help)
+module Modes.Move exposing (update, initialise, graphDrawing, help, mkGraph)
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import Msg exposing (Msg(..))
@@ -32,7 +32,7 @@ initialise save mode model =
 
 update : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
 update msg state model =
-    let movedRet = 
+    let movedRet () = 
            let info = mkInfo model state in
            if info.valid then
               switch_Default 
@@ -41,11 +41,12 @@ update msg state model =
                  else
                    setActiveGraph model info.graph
            else
+              
               noCmd model
     in
     let terminable = state.mode /= PressMove in
-    let terminedRet = 
-         if terminable then movedRet else noCmd model
+    let terminedRet () = 
+         if terminable then movedRet () else noCmd model
     in
     let updateState st = { model | mode = Move st } in
     let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
@@ -62,28 +63,24 @@ update msg state model =
            case state.mode of              
              UndefinedMove -> 
                 noCmd <| updateState { state | mode = FreeMove }
-             PressMove -> movedRet
+             PressMove -> movedRet ()
              FreeMove -> noCmd model
         KeyChanged False _ (Character 'f') -> updateDirection Free
         KeyChanged False _ (Character 'x') -> updateDirection Horizontal
         KeyChanged False _ (Character 'y') -> updateDirection Vertical
        
-        MouseClick -> terminedRet
-        KeyChanged False _ (Control "Enter") -> terminedRet
+        MouseClick -> terminedRet ()
+        KeyChanged False _ (Control "Enter") -> terminedRet ()
         _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
-
-mkInfo : Model -> Modes.MoveState -> 
-   { graph : Graph NodeLabel EdgeLabel,
+mkGraph : Model -> InputPosition -> Bool -> Maybe Graph.Id -> MoveDirection -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel ->  { graph : Graph NodeLabel EdgeLabel,
    -- The graph is not valid if we are in merge mode
    -- and no object is pointed at
      valid : Bool }
-
-mkInfo model { pos, direction } =    
-    let merge = model.specialKeys.ctrl in
-    let modelGraph = getActiveGraph model in
-    let selectedGraph = GraphDefs.selectedGraph modelGraph in
+     -- not sure about merge and mergeId
+     -- TODO: remove the redundancy
+mkGraph model pos merge mergeId direction modelGraph selectedGraph = 
     let nodes = Graph.nodes selectedGraph in
     let updNode delta {id, label} = 
           {id = id, label = { label | pos = Point.add label.pos delta }}
@@ -126,10 +123,23 @@ mkInfo model { pos, direction } =
          if not merge then 
             retDelta mouseDelta
          else        
-            case GraphDefs.selectedId modelGraph of
+            case mergeId of
                Just selId -> { graph = Graph.recursiveMerge id selId modelGraph, valid = True }  
                Nothing -> retDelta mouseDelta
       InputPosMouse -> retDelta mouseDelta
+
+mkInfo : Model -> Modes.MoveState -> 
+   { graph : Graph NodeLabel EdgeLabel,
+   -- The graph is not valid if we are in merge mode
+   -- and no object is pointed at
+     valid : Bool }
+
+mkInfo model { pos, direction } =    
+    let merge = model.specialKeys.ctrl in
+    let modelGraph = getActiveGraph model in
+    let selectedGraph = GraphDefs.selectedGraph modelGraph in
+    mkGraph model pos merge (GraphDefs.selectedId modelGraph) direction modelGraph selectedGraph 
+  
 
 graphDrawing : Model -> MoveState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s = mkInfo m s |> .graph |>
