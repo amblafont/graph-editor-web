@@ -79,8 +79,8 @@ mkInfo : Model -> Modes.MoveState ->
    -- The graph is not valid if we are in merge mode
    -- and no object is pointed at
      valid : Bool }
-mkInfo model { pos, direction } =
-    
+
+mkInfo model { pos, direction } =    
     let merge = model.specialKeys.ctrl in
     let modelGraph = getActiveGraph model in
     let selectedGraph = GraphDefs.selectedGraph modelGraph in
