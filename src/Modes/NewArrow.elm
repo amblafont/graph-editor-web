@@ -207,7 +207,8 @@ help  =
 --  case s of
 --         NewArrowMoveNode _ ->
             -- Debug.toString st ++
-            "[?] toggle help overlay, [ESC] cancel, [click, TAB] name the point (if new), "
+            HtmlDefs.overlayHelpMsg ++
+            ", [ESC] cancel, [click, TAB] name the point (if new), "
             ++ "[hjkl] position the new point with the keyboard, "
              ++ "[RET] terminate the arrow creation, "
              ++ "[\""

@@ -60,6 +60,7 @@ import Modes.NewArrow
 import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.CutHead
+import Modes.Move
 import Drawing.Color as Color
 import Modes exposing (Mode(..), MoveMode(..), MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
@@ -328,64 +329,6 @@ graph_RenameMode l m =
                          (GraphDefs.mapNormalEdge (\e -> {e | label = s }))
                                g
 
-info_MoveNode : Model -> Modes.MoveState -> 
-   { graph : Graph NodeLabel EdgeLabel,
-   -- The graph is not valid if we are in merge mode
-   -- and no object is pointed at
-     valid : Bool }
-info_MoveNode model { orig, pos, direction } =
-    
-    let merge = model.specialKeys.ctrl in
-    let modelGraph = getActiveGraph model in
-    let selectedGraph = GraphDefs.selectedGraph modelGraph in
-    let nodes = Graph.nodes selectedGraph in
-    let updNode delta {id, label} = 
-          {id = id, label = { label | pos = Point.add label.pos delta }}
-    in
-    let moveNodes delta = nodes |> List.map (updNode delta) in
-   --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) modelGraph in
-    let mkRet movedNodes = 
-            let g = Graph.updateNodes movedNodes modelGraph in
-            { graph =  g, valid = not merge } in
-    let retMerge movedNodes =                  
-           case movedNodes of
-              [ n ] ->        
-                let (g, valid) = GraphDefs.mergeWithSameLoc n modelGraph in
-                if valid then
-                  {graph = g, valid = True }
-                else
-                  mkRet movedNodes
-              _ -> mkRet movedNodes      
-    in       
-    let retDelta delta =
-            let movedNodes = moveNodes delta in
-            if merge then
-                retMerge movedNodes
-            else
-                mkRet movedNodes      
-          
-    in
-   
-    let mouseDelta = 
-            let (dx, dy) = Point.subtract model.mousePos <| GraphDefs.centerOfNodes nodes in
-              case direction of
-                      Free -> (dx, dy)
-                      Vertical -> (0, dy)
-                      Horizontal -> (dx, 0)
-    in
-    let sizeGrid = getActiveSizeGrid model in
-    case pos of
-      InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos sizeGrid p
-      InputPosGraph id ->         
-         if not merge then 
-            retDelta mouseDelta
-         else        
-            case GraphDefs.selectedId modelGraph of
-               Just selId -> { graph = Graph.recursiveMerge id selId modelGraph, valid = True }  
-               Nothing -> retDelta mouseDelta
-      InputPosMouse -> retDelta mouseDelta
-
-
 
 
 
@@ -570,7 +513,7 @@ update msg modeli =
         PullshoutMode astate -> Modes.Pullshout.update astate msg model
             -- update_Modes.NewArrow astate msg m
         RenameMode b l -> update_RenameMode b l msg model
-        Move s -> update_MoveNode msg s model
+        Move s -> Modes.Move.update msg s model
         DebugMode -> update_DebugMode msg model
        -- NewNode -> update_NewNode msg model
         SquareMode state -> Modes.Square.update state msg model
@@ -632,48 +575,6 @@ update_QuickInput ch msg model =
                   noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
         _ -> noCmd model
 
-
-update_MoveNode : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
-update_MoveNode msg state model =
-    let movedRet = 
-           let info = info_MoveNode model state in
-           if info.valid then
-              switch_Default 
-              <| if state.save then
-                   setSaveGraph model info.graph
-                 else
-                   setActiveGraph model info.graph
-           else
-              noCmd model
-    in
-    let terminable = state.mode /= PressMove in
-    let terminedRet = 
-         if terminable then movedRet else noCmd model
-    in
-    let updateState st = { model | mode = Move st } in
-    let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
-    case msg of
-        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
-        KeyChanged False _ (Control "Escape") -> switch_Default model
-        PressTimeout ->
-          noCmd <| 
-            if state.mode == UndefinedMove then
-              updateState { state | mode = PressMove }
-            else
-              model
-        KeyChanged False _ (Character 'g') -> 
-           case state.mode of              
-             UndefinedMove -> 
-                noCmd <| updateState { state | mode = FreeMove }
-             PressMove -> movedRet
-             FreeMove -> noCmd model
-        KeyChanged False _ (Character 'f') -> updateDirection Free
-        KeyChanged False _ (Character 'x') -> updateDirection Horizontal
-        KeyChanged False _ (Character 'y') -> updateDirection Vertical
-       
-        MouseClick -> terminedRet
-        KeyChanged False _ (Control "Enter") -> terminedRet
-        _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
 
@@ -904,7 +805,7 @@ update_DefaultMode msg model =
             noCmd <| { model | mode = DebugMode }
         KeyChanged True _ (Character 'g') -> 
             let pressTimeoutMs = 100 in
-            (initialiseMoveMode True UndefinedMove model,
+            (Modes.Move.initialise True UndefinedMove model,
              Task.attempt (always PressTimeout) 
                <| Process.sleep pressTimeoutMs)
         KeyChanged False _ (Character 'i') -> 
@@ -1085,7 +986,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
           case List.Extra.find .active gi.tabs of
               Nothing -> noCmd model
               Just tab ->
-                   noCmd <| initialiseMoveMode False FreeMove
+                   noCmd <| Modes.Move.initialise False FreeMove
                    <|  setSaveGraph model <|              
                     Graph.union 
                       (GraphDefs.clearSelection modelGraph)
@@ -1163,23 +1064,7 @@ selectByClick model =
                        GraphDefs.clearSelection modelGraph )
     else
             model
-               
-initialiseMoveMode : Bool -> MoveMode -> Model -> Model
-initialiseMoveMode save mode model =
-   let modelGraph = getActiveGraph model in
-   { model | mode = 
-        if GraphDefs.isEmptySelection modelGraph
-         then
-           -- Nothing is selected
-           DefaultMode
-         else 
-           Move 
-              { save = save, 
-              orig = model.mousePos, 
-              pos = InputPosMouse,
-              direction = Free,
-              mode = mode }
-      }    
+
 
 initialise_Resize : Model -> Model
 initialise_Resize model =
@@ -1305,9 +1190,7 @@ graphDrawingFromModel m =
              |> collageGraphFromGraph m
 --        NewNode -> collageGraphFromGraph m modelGraph
         QuickInputMode ch -> collageGraphFromGraph m <| graphQuickInput m ch
-        Move s -> 
-          info_MoveNode m s |> .graph |>
-            collageGraphFromGraph m 
+        Move s -> Modes.Move.graphDrawing m s          
         RenameMode _ l ->
             let g = graph_RenameMode l m in
             let g2 = collageGraphFromGraph m g in
@@ -1428,9 +1311,9 @@ helpStr_collage (s , h) =
         
 
 
-overlayHelpMsg : String
-overlayHelpMsg = "[?] to toggle help overlay.\n"
 
+overlayHelpMsgNewLine : String
+overlayHelpMsgNewLine = HtmlDefs.overlayHelpMsg ++ ".\n"
 
 helpMsg : Model -> Html Msg
 helpMsg model =
@@ -1450,7 +1333,7 @@ helpMsg model =
             -- msg <| "Default mode. couc[c]" 
             msg <| "Default mode.\n "
                 ++ "Sumary of commands:\n"
-                ++ overlayHelpMsg
+                ++ overlayHelpMsgNewLine
 
                 ++ "Selection:"
                 ++ "  [click] for point/edge selection (hold for selection rectangle)"
@@ -1542,36 +1425,19 @@ helpMsg model =
                           -- ++ Debug.toString model 
                            ++  Modes.Pullshout.help |> msg
         ColorMode _ -> "Mode color. "
-                        ++ overlayHelpMsg
+                        ++ overlayHelpMsgNewLine
                         ++ "[ESC] or colorise selected edges: " ++ Color.helpMsg |> msg
         SquareMode _ -> "Mode Commutative square. "
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
                              ++ Modes.SplitArrow.help |> msg
-        Move s -> "Mode Move. "                
-                ++ overlayHelpMsg
-                ++ "Use mouse or h,j,k,l."
-                ++ " Hold [ctrl] to merge the selected point onto another node,"
-                ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree " 
-                ++ "(currently, "
-                ++ (case s.direction of
-                      Vertical -> "vertical"
-                      Horizontal -> "horizontal"
-                      Free -> "free")
-                ++ ")."
-                ++
-                (case s.mode of 
-                    FreeMove ->  " [RET] or [click] to confirm."
-                    PressMove -> " Release [g] to confirm."
-                    UndefinedMove -> ""
-                ) 
-                  |> msg
+        Move s -> Modes.Move.help s |> msg
         CutHead _ -> "Mode cut arrow. "
                  ++ Modes.CutHead.help
                   |> msg
         RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
         EnlargeMode s -> msg <| "Enlarge mode. "
-                            ++ overlayHelpMsg
+                            ++ overlayHelpMsgNewLine
                             ++ "Draw a rectangle to create space. "
                             ++ "Use mouse or h,j,k,l. [RET] or click to confirm."
                          {-    ++ (if s.onlySubdiag then
@@ -1588,7 +1454,7 @@ helpMsg model =
                           ++ " is selected, it will replace the empty branch with"
                           ++ " the lhs or the rhs (depending on the orientation)."
         ResizeMode { onlyGrid } -> msg <| "Resize mode. "
-                         ++ overlayHelpMsg
+                         ++ overlayHelpMsgNewLine
                          ++ "[k]/[j] to increase/decrease, "
                          ++ "or use the slider above. "
                          ++ 

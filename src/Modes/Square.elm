@@ -363,8 +363,8 @@ update state msg model =
         _ -> noCmd model
 
 help : String
-help =
-            "[ESC] cancel, [?] toggle help overlay"
+help = HtmlDefs.overlayHelpMsg ++ 
+            ", [ESC] cancel"
             ++ "[click] name the point (if new), "
              ++ "[RET] terminate the square creation, "
              ++ " alternative possible [s]quares, "

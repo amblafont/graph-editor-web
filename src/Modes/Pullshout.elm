@@ -83,8 +83,8 @@ update state msg model =
 
 help : String
 help =
-            "[ESC] cancel, "
-            ++ "[?] to toggle help overlay, "
-            ++ "cycle between [p]ullback/[P]ushout possibilities, "
+            "[ESC] cancel, " ++
+            HtmlDefs.overlayHelpMsg 
+            ++ ", cycle between [p]ullback/[P]ushout possibilities, "
             ++ "[RET] confirm"             
              

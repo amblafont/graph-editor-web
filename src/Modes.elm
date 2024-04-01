@@ -67,10 +67,7 @@ type alias ResizeState =
    }
 
 type alias MoveState = 
-   { orig : Point,  -- mouse original point at the beginning of the move mode
-     -- this was used to compute the move relative to this point, but this
-     -- is no longer used
-      pos : InputPosition
+   {   pos : InputPosition
       -- , merge : Bool 
       -- should we save at the end
      , save : Bool

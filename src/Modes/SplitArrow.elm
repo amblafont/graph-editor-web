@@ -184,8 +184,9 @@ update state msg model =
            
 help : String
 help =
-            "[ESC] cancel, [?] toggle help overlay, "
-            ++ "[click] name the point (if new), "
+            "[ESC] cancel, " ++
+            HtmlDefs.overlayHelpMsg 
+            ++ ", [click] name the point (if new), "
             ++ "[/] to move the existing label on the other edge, "
             ++ "[RET] terminate the square creation"             
              

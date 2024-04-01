@@ -7,8 +7,8 @@ import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, edgeToNodeLabel)
 
 help : String 
-help =             "[?] to toggle help overlay,"
-                ++ " [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
+help =          HtmlDefs.overlayHelpMsg
+                ++ ", [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
                 ++ "[c] to switch between head/tail"                
                 ++ ", [d] to duplicate (or not) the arrow."
 
