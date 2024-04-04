@@ -48,11 +48,11 @@ makeGraph  {id, head, duplicate} m =
          else 
             Graph.merge edgeId id g3 
     in
-    let g5 = if m.specialKeys.ctrl then 
-                     Tuple.first <| 
+    let g5 = if m.specialKeys.ctrl then                       
                      GraphDefs.mergeWithSameLoc
                        { id = newId, label = label }
                        g4
+                     |> Maybe.withDefault g4
              else g4
     in
     

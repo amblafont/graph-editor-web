@@ -74,10 +74,11 @@ update msg state model =
         _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
-mkGraph : Model -> InputPosition -> Bool -> Maybe Graph.Id -> MoveDirection -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel ->  { graph : Graph NodeLabel EdgeLabel,
+mkGraph : Model -> InputPosition -> Bool -> Maybe Graph.Id -> MoveDirection -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel -> 
+   { graph : Graph NodeLabel EdgeLabel,
    -- The graph is not valid if we are in merge mode
    -- and no object is pointed at
-     valid : Bool }
+     merged : Bool }
      -- not sure about merge and mergeId
      -- TODO: remove the redundancy
 mkGraph model pos merge mergeId direction modelGraph selectedGraph = 
@@ -89,15 +90,13 @@ mkGraph model pos merge mergeId direction modelGraph selectedGraph =
    --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) modelGraph in
     let mkRet movedNodes = 
             let g = Graph.updateNodes movedNodes modelGraph in
-            { graph =  g, valid = not merge } in
+            { graph = g, merged = False } in
     let retMerge movedNodes =                  
            case movedNodes of
               [ n ] ->        
-                let (g, valid) = GraphDefs.mergeWithSameLoc n modelGraph in
-                if valid then
-                  {graph = g, valid = True }
-                else
-                  mkRet movedNodes
+                case GraphDefs.mergeWithSameLoc n modelGraph of
+                  Nothing -> mkRet movedNodes
+                  Just g -> {graph = g, merged = True }
               _ -> mkRet movedNodes      
     in       
     let retDelta delta =
@@ -124,7 +123,7 @@ mkGraph model pos merge mergeId direction modelGraph selectedGraph =
             retDelta mouseDelta
          else        
             case mergeId of
-               Just selId -> { graph = Graph.recursiveMerge id selId modelGraph, valid = True }  
+               Just selId -> { graph = Graph.recursiveMerge id selId modelGraph, merged = True }  
                Nothing -> retDelta mouseDelta
       InputPosMouse -> retDelta mouseDelta
 
@@ -138,7 +137,8 @@ mkInfo model { pos, direction } =
     let merge = model.specialKeys.ctrl in
     let modelGraph = getActiveGraph model in
     let selectedGraph = GraphDefs.selectedGraph modelGraph in
-    mkGraph model pos merge (GraphDefs.selectedId modelGraph) direction modelGraph selectedGraph 
+    let {merged, graph} = mkGraph model pos merge (GraphDefs.selectedId modelGraph) direction modelGraph selectedGraph in
+    { graph = graph, valid = merged == merge }
   
 
 graphDrawing : Model -> MoveState -> Graph NodeDrawingLabel EdgeDrawingLabel

@@ -493,12 +493,11 @@ selectSurroundingDiagram pos gi =
 centerOfNodes : List (Node NodeLabel) -> Point
 centerOfNodes nodes = ((Geometry.rectEnveloppe <| List.map (.pos << .label) nodes) |> Geometry.centerRect)
 
-mergeWithSameLoc : Node NodeLabel -> Graph NodeLabel EdgeLabel -> (Graph NodeLabel EdgeLabel, Bool)
+mergeWithSameLoc : Node NodeLabel -> Graph NodeLabel EdgeLabel -> Maybe (Graph NodeLabel EdgeLabel)
 mergeWithSameLoc n g =
     case getNodesAt g n.label.pos |> List.filterNot ((==) n.id) of
-         [ i ] -> (Graph.removeLoops 
-              <| Graph.recursiveMerge i n.id g, True)
-         _ -> (g, False)
+         [ i ] -> Just (Graph.removeLoops <| Graph.recursiveMerge i n.id g)
+         _ -> Nothing
 
 findReplaceInSelected : Graph NodeLabel EdgeLabel -> {search : String, replace: String} ->  Graph NodeLabel EdgeLabel
 findReplaceInSelected g r =
