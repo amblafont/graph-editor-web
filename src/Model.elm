@@ -379,6 +379,7 @@ addOrSetSel keep o m =
 -- True if created
 
 
+-- TODO: check if it is still used
 mayCreateTargetNodeAt : Model -> Point -> String -> Bool -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
 mayCreateTargetNodeAt m pos s isDefaultZ =
    let g = getActiveGraph m in

@@ -987,7 +987,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
               Nothing -> noCmd model
               Just tab ->
                    noCmd <| Modes.Move.initialise False FreeMove
-                   <|  setSaveGraph model <|              
+                   <|  setSaveGraph model <| .extendedGraph <|          
                     Graph.disjointUnion 
                       (GraphDefs.clearSelection modelGraph)
                       (GraphDefs.selectAll tab.graph)

@@ -114,7 +114,7 @@ type alias PullshoutState =
 type PullshoutKind = Pullback | Pushout
 
 type ArrowMode =
-    CreateArrow
+    CreateArrow Graph.Id
   | CreateCylinder
   | CreateCone
 

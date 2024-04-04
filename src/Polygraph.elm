@@ -1,7 +1,7 @@
 module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds,
      newNode, newEdge,
      update, updateNode, updateEdge, updateNodes, updateList,
-     invertEdge, merge, recursiveMerge, makeCylinder, makeCone,
+     invertEdge, merge, recursiveMerge, makeCylinder, makeCone, makeEdge,
      getNode, getNodes, getEdge, getEdges, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
@@ -11,7 +11,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds,
      normalise, 
      disjointUnion, edgeMap, nodeMap,
      {- findInitial, sourceNode, -} removeLoops,
-     incidence, any, connectedClosure, minimal, maximal, complement)
+     incidence, any, connectedClosure, minimal, maximal, complement, topmostObject)
 import IntDict exposing (IntDict)
 import IntDictExtra 
 import Maybe.Extra as Maybe
@@ -508,9 +508,11 @@ makeDisjoint (Graph base) (Graph ext) =
    Graph extUp
 
 -- indices in the base graphe are kept
-disjointUnion : Graph n e -> Graph n e -> Graph n e
+disjointUnion : Graph n e -> Graph n e -> 
+    { extendedGraph : Graph n e, subGraph : Graph n e }
 disjointUnion base ext = 
-   union base (makeDisjoint base ext)
+   let subGraph = makeDisjoint base ext in
+   { extendedGraph = union base subGraph, subGraph = subGraph }
 
 
 computeDimensions : Graph n e -> Graph n (e, Int)
@@ -611,6 +613,18 @@ maximal g =
   nodes g |> List.map .id 
   |> List.filter (\ id -> List.all (\ e -> e.from /= id) gedges)
 
+topmostObjects : Graph n e -> List Id
+topmostObjects g = 
+  let gedges = edges g in
+  allIds g |>
+  List.filter (\ id -> List.all (\ e -> e.to /= id && e.from /= id) gedges)
+
+topmostObject : Graph n e -> Maybe Id
+topmostObject g =
+   case topmostObjects g of
+       [ id ] -> Just id
+       _ -> Nothing
+
 nodeIds : Graph n e -> List NodeId
 nodeIds g = 
    nodes g |> List.map .id  
@@ -621,12 +635,12 @@ allIds (Graph g) = IntDict.keys g
 makeCylinder : Graph n e -> Graph n e -> e -> Bool -> 
    { extendedGraph : Graph n e, newSubGraph : Graph n e, edgeIds : List EdgeId}
 makeCylinder g subGraph label inverted = 
-   let disjointGraph = makeDisjoint g subGraph in
-   let idPairs = List.Extra.zip (nodeIds subGraph) (nodeIds disjointGraph) 
+   let extGraph = disjointUnion g subGraph in
+   let idPairs = List.Extra.zip (nodeIds subGraph) (nodeIds extGraph.subGraph) 
            |> List.map (\ (id1, id2) -> if inverted then (id2, id1) else (id1, id2))
    in
-   let (extendedGraph, idEdges) = newEdges (union g disjointGraph) idPairs label in
-   { extendedGraph = extendedGraph, newSubGraph = disjointGraph, edgeIds = idEdges}
+   let (extendedGraph, idEdges) = newEdges extGraph.extendedGraph idPairs label in
+   { extendedGraph = extendedGraph, newSubGraph = extGraph.subGraph, edgeIds = idEdges}
 
 newEdges : Graph n e -> List (Id, Id) -> e -> (Graph n e, List EdgeId)
 newEdges g idPairs labelEdge = 
@@ -639,19 +653,28 @@ newEdges g idPairs labelEdge =
     in
       (extendedGraph, idEdges)
 
+-- TODO: factor makeCone and makeEdge (and makeCylinder)
 makeCone : Graph n e -> Graph n e -> n -> e -> Bool -> 
    { extendedGraph : Graph n e, newSubGraph : Graph n e, edgeIds : List EdgeId}
 makeCone g subGraph labelNode labelEdge inverted = 
-   let (extendedGraph1, idNode) = newNode g labelNode in
-   let newSubGraph = 
-          Graph (IntDict.singleton idNode (NodeObj labelNode))
-   in
+   let extGraph = newNode empty labelNode |> Tuple.first |> disjointUnion g in
+   let newId = nodeIds extGraph.subGraph |> List.head |> Maybe.withDefault 0 in
    let idPairs = 
-        List.map (\ id -> if inverted then (idNode, id) else (id, idNode))
+        List.map (\ id -> if inverted then (newId, id) else (id, newId))
         (nodeIds subGraph)
    in
-   let (extendedGraph2, idEdges) = newEdges extendedGraph1 idPairs labelEdge in
-   { extendedGraph = extendedGraph2, newSubGraph = newSubGraph, edgeIds = idEdges}
+   let (extendedGraph2, idEdges) = newEdges extGraph.extendedGraph idPairs labelEdge in
+   { extendedGraph = extendedGraph2, newSubGraph = extGraph.subGraph, edgeIds = idEdges}
+
+
+makeEdge : Graph n e -> Id -> n -> e -> Bool -> 
+   { extendedGraph : Graph n e, newSubGraph : Graph n e, edgeIds : List EdgeId}
+makeEdge g id n e inverted = 
+   let extGraph = newNode empty n |> Tuple.first |> disjointUnion g in
+   let newId = nodeIds extGraph.subGraph |> List.head |> Maybe.withDefault 0 in
+   let (id1, id2) = if inverted then (newId, id) else (id, newId) in
+   let (extendedGraph, edgeId) = newEdge extGraph.extendedGraph id1 id2 e in
+   { extendedGraph = extendedGraph, newSubGraph = extGraph.subGraph, edgeIds = [ edgeId ]}
 
 
 complement : Graph n e -> Graph n e -> Graph n e
