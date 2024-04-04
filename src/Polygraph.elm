@@ -1,7 +1,7 @@
-module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds,
+module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds, nodeIds,
      newNode, newEdge,
      update, updateNode, updateEdge, updateNodes, updateList,
-     invertEdge, merge, recursiveMerge, makeCylinder, makeCone, makeEdge,
+     invertEdge, merge, recursiveMerge, makeCylinder, makeCone,
      getNode, getNodes, getEdge, getEdges, get, removeNode, removeEdge,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
@@ -653,28 +653,18 @@ newEdges g idPairs labelEdge =
     in
       (extendedGraph, idEdges)
 
--- TODO: factor makeCone and makeEdge (and makeCylinder)
-makeCone : Graph n e -> Graph n e -> n -> e -> Bool -> 
+-- TODO: factor makeCone and makeCylinder
+makeCone : Graph n e -> List Id -> n -> e -> Bool -> 
    { extendedGraph : Graph n e, newSubGraph : Graph n e, edgeIds : List EdgeId}
-makeCone g subGraph labelNode labelEdge inverted = 
+makeCone g ids labelNode labelEdge inverted = 
    let extGraph = newNode empty labelNode |> Tuple.first |> disjointUnion g in
    let newId = nodeIds extGraph.subGraph |> List.head |> Maybe.withDefault 0 in
    let idPairs = 
         List.map (\ id -> if inverted then (newId, id) else (id, newId))
-        (nodeIds subGraph)
+        ids
    in
    let (extendedGraph2, idEdges) = newEdges extGraph.extendedGraph idPairs labelEdge in
    { extendedGraph = extendedGraph2, newSubGraph = extGraph.subGraph, edgeIds = idEdges}
-
-
-makeEdge : Graph n e -> Id -> n -> e -> Bool -> 
-   { extendedGraph : Graph n e, newSubGraph : Graph n e, edgeIds : List EdgeId}
-makeEdge g id n e inverted = 
-   let extGraph = newNode empty n |> Tuple.first |> disjointUnion g in
-   let newId = nodeIds extGraph.subGraph |> List.head |> Maybe.withDefault 0 in
-   let (id1, id2) = if inverted then (newId, id) else (id, newId) in
-   let (extendedGraph, edgeId) = newEdge extGraph.extendedGraph id1 id2 e in
-   { extendedGraph = extendedGraph, newSubGraph = extGraph.subGraph, edgeIds = [ edgeId ]}
 
 
 complement : Graph n e -> Graph n e -> Graph n e

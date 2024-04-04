@@ -161,9 +161,9 @@ moveNodeInfo _ model state =
                         CreateCylinder ->                        
                             Graph.makeCylinder modelGraph state.chosen edgeLabel state.inverted
                         CreateCone ->                            
-                            Graph.makeCone modelGraph state.chosen nodeLabel edgeLabel state.inverted
+                            Graph.makeCone modelGraph (Graph.nodeIds state.chosen) nodeLabel edgeLabel state.inverted
                         CreateArrow id ->
-                            Graph.makeEdge modelGraph id nodeLabel edgeLabel state.inverted        
+                            Graph.makeCone modelGraph [id] nodeLabel edgeLabel state.inverted        
                 in            
                 let merge = model.specialKeys.ctrl in 
                 let mergeId = Graph.topmostObject extendedGraph.newSubGraph in
