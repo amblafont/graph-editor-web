@@ -11,7 +11,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds,
      normalise, 
      disjointUnion, edgeMap, nodeMap,
      {- findInitial, sourceNode, -} removeLoops,
-     incidence, any, connectedClosure, minimal, maximal)
+     incidence, any, connectedClosure, minimal, maximal, complement)
 import IntDict exposing (IntDict)
 import IntDictExtra 
 import Maybe.Extra as Maybe
@@ -438,6 +438,7 @@ invertEdge id (Graph g) =
 -- only on the first object
 merge : Id -> Id -> Graph n e -> Graph n e
 merge i1 i2 g = 
+  if i1 == i2 then g else 
   rawMerge i1 i2 g |> sanitise
 
 rawMerge : Id -> Id -> Graph n e -> Graph n e
@@ -454,9 +455,11 @@ rawMerge i1 i2 (Graph g) =
 
 -- same as merge, but if i1 and i2 are edges, we first merge the sources and targets
 -- (recursively)
+-- if i1 is a vertex and i2 is an edge, we merge the source and the target of i2 with i1
 recursiveMerge : Id -> Id -> Graph n e -> Graph n e
 recursiveMerge i1 i2 g =
-   recursiveMergeAux i1 i2 g |> sanitise
+   if i1 == i2 then g else 
+   recursiveMergeAux i1 i2 g |> sanitise |> removeLoops
 
 recursiveMergeAux : Id -> Id -> Graph n e -> Graph n e
 recursiveMergeAux i1 i2 (Graph g) =
@@ -465,6 +468,10 @@ recursiveMergeAux i1 i2 (Graph g) =
         Graph g |> recursiveMerge a1 b1 
         |> recursiveMerge a2 b2 
          |> rawMerge i1 i2
+      (Just (NodeObj _), Just (EdgeObj a1 a2 _)) ->
+         Graph g |> recursiveMerge i1 a1
+                 |> recursiveMerge i1 a2
+                 |> rawMerge i1 i2
       _ -> rawMerge i1 i2 (Graph g)
 
    
@@ -645,6 +652,16 @@ makeCone g subGraph labelNode labelEdge inverted =
    in
    let (extendedGraph2, idEdges) = newEdges extendedGraph1 idPairs labelEdge in
    { extendedGraph = extendedGraph2, newSubGraph = newSubGraph, edgeIds = idEdges}
+
+
+complement : Graph n e -> Graph n e -> Graph n e
+complement graph subGraph =
+   let markedGraph = map (\ _ n -> (False, n)) (\ _ n -> (False, n)) graph in
+   let ids = nodeIds subGraph in
+
+   updateList ids (\ (_, n) -> (True, n)) (\ (_, n) -> (True, n)) markedGraph 
+   |> drop (Tuple.first) (Tuple.first)
+   |> map (always Tuple.second) (always Tuple.second)
 
 any : (n -> Bool) -> (e -> Bool) -> Graph n e -> Bool
 any fn fe (Graph g) =

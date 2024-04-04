@@ -47,7 +47,7 @@ initialise m =
 
 getSingleIdFromGraph : Graph  n e -> Maybe Graph.Id
 getSingleIdFromGraph g =
-      case Graph.edges g of 
+      case (Graph.edges g) of 
       [] -> Graph.nodes g |>
             List.head |> Maybe.map .id
       [ e ] -> Just e.id
@@ -185,9 +185,7 @@ moveNodeInfo finish model state =
                             let nodeLabel = GraphDefs.newNodeLabel model.mousePos "" True Zindex.defaultZ  in
                             Graph.makeCone modelGraph state.chosen nodeLabel label state.inverted
                 in            
-                let merge = if state.mode == CreateCylinder then False else
-                            model.specialKeys.ctrl 
-                in 
+                let merge = model.specialKeys.ctrl in 
                 let mergeId = getSingleIdFromGraph extendedGraph.newSubGraph in
                 let direction = Free in
                 let moveInfo =

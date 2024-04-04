@@ -75,37 +75,39 @@ update msg state model =
 
 
 mkGraph : Model -> InputPosition -> Bool -> Maybe Graph.Id -> MoveDirection -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel -> 
+ -- what is marked as weakly selected are the potential merged target
    { graph : Graph NodeLabel EdgeLabel,
-   -- The graph is not valid if we are in merge mode
-   -- and no object is pointed at
      merged : Bool }
-     -- not sure about merge and mergeId
-     -- TODO: remove the redundancy
-mkGraph model pos merge mergeId direction modelGraph selectedGraph = 
+-- even if shouldMerge is false, it could attempt a merge if
+-- there is a node precisely at the location, and the move is
+-- directed by the keyboard
+mkGraph model pos shouldMerge mergeId direction modelGraph selectedGraph = 
+    let complementGraph = Graph.complement modelGraph selectedGraph in
     let nodes = Graph.nodes selectedGraph in
     let updNode delta {id, label} = 
           {id = id, label = { label | pos = Point.add label.pos delta }}
     in
     let moveNodes delta = nodes |> List.map (updNode delta) in
-   --  let moveGraph delta =  Graph.updateNodes (moveNodes delta) modelGraph in
-    let mkRet movedNodes = 
-            let g = Graph.updateNodes movedNodes modelGraph in
-            { graph = g, merged = False } in
-    let retMerge movedNodes =                  
-           case movedNodes of
-              [ n ] ->        
-                case GraphDefs.mergeWithSameLoc n modelGraph of
-                  Nothing -> mkRet movedNodes
-                  Just g -> {graph = g, merged = True }
-              _ -> mkRet movedNodes      
-    in       
-    let retDelta delta =
-            let movedNodes = moveNodes delta in
-            if merge then
-                retMerge movedNodes
-            else
-                mkRet movedNodes      
-          
+   
+    let retDelta allowOverlap delta =
+          let movedNodes = moveNodes delta in
+          let newPos = GraphDefs.centerOfNodes movedNodes in
+          let overlapId = 
+                 if allowOverlap then (GraphDefs.getNodesAt complementGraph newPos |> List.head)
+                 else Nothing
+          in
+          let closestId = GraphDefs.closest newPos complementGraph in 
+          let retMerge id1 id2 =
+                    { graph = Graph.recursiveMerge id1 id2 modelGraph, 
+                        merged = True } 
+          in
+          case (overlapId, mergeId, shouldMerge) of
+             (Just targetId, Just sourceId, _) -> retMerge targetId sourceId
+             (_, Just sourceId, True) -> retMerge closestId sourceId
+             _ -> let g = Graph.updateNodes movedNodes modelGraph 
+                         |>  GraphDefs.weaklySelect closestId 
+                  in
+                    { graph = g, merged = False }           
     in
    
     let mouseDelta = 
@@ -116,16 +118,17 @@ mkGraph model pos merge mergeId direction modelGraph selectedGraph =
                       Horizontal -> (dx, 0)
     in
     let sizeGrid = getActiveSizeGrid model in
+    
     case pos of
-      InputPosKeyboard p -> retDelta <| InputPosition.deltaKeyboardPos sizeGrid p
-      InputPosGraph id ->         
-         if not merge then 
-            retDelta mouseDelta
-         else        
-            case mergeId of
-               Just selId -> { graph = Graph.recursiveMerge id selId modelGraph, merged = True }  
-               Nothing -> retDelta mouseDelta
-      InputPosMouse -> retDelta mouseDelta
+      InputPosKeyboard p -> retDelta 
+                           True
+                           (InputPosition.deltaKeyboardPos sizeGrid p)
+      -- not reliable, as it could be the moving stuff
+      InputPosGraph _ ->  
+         retDelta False mouseDelta
+      InputPosMouse -> 
+        -- let _ = Debug.log "input pos mouse" "" in
+        retDelta False mouseDelta 
 
 mkInfo : Model -> Modes.MoveState -> 
    { graph : Graph NodeLabel EdgeLabel,
@@ -137,7 +140,8 @@ mkInfo model { pos, direction } =
     let merge = model.specialKeys.ctrl in
     let modelGraph = getActiveGraph model in
     let selectedGraph = GraphDefs.selectedGraph modelGraph in
-    let {merged, graph} = mkGraph model pos merge (GraphDefs.selectedId modelGraph) direction modelGraph selectedGraph in
+    let mergeId = GraphDefs.selectedId modelGraph in
+    let {merged, graph} = mkGraph model pos merge mergeId direction modelGraph selectedGraph in
     { graph = graph, valid = merged == merge }
   
 
