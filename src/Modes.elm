@@ -51,7 +51,7 @@ toString m = case m of
     PullshoutMode _ -> "Pullshout"
     ColorMode _ -> "Color"
 
-type alias CutHeadState = { id: Graph.EdgeId
+type alias CutHeadState = { edge: Graph.Edge EdgeLabel
     , head : Bool -- the head or the tail?
     , duplicate : Bool -- duplicate the arrow? 
     }

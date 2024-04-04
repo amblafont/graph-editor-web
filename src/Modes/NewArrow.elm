@@ -165,12 +165,9 @@ moveNodeInfo _ model state =
                         CreateArrow id ->
                             Graph.makeCone modelGraph [id] nodeLabel edgeLabel state.inverted        
                 in            
-                let merge = model.specialKeys.ctrl in 
-                let mergeId = Graph.topmostObject extendedGraph.newSubGraph in
-                let direction = Free in
                 let moveInfo =
-                        Modes.Move.mkGraph model state.pos merge mergeId
-                        direction 
+                        Modes.Move.mkGraph model state.pos
+                        Free 
                          extendedGraph.extendedGraph extendedGraph.newSubGraph 
                 in
                 let selectable = Graph.allIds extendedGraph.newSubGraph in

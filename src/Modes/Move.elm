@@ -74,14 +74,17 @@ update msg state model =
         _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
-mkGraph : Model -> InputPosition -> Bool -> Maybe Graph.Id -> MoveDirection -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel -> 
+mkGraph : Model -> InputPosition -> MoveDirection -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel -> 
  -- what is marked as weakly selected are the potential merged target
    { graph : Graph NodeLabel EdgeLabel,
      merged : Bool }
+
+mkGraph model pos direction modelGraph selectedGraph = 
 -- even if shouldMerge is false, it could attempt a merge if
 -- there is a node precisely at the location, and the move is
 -- directed by the keyboard
-mkGraph model pos shouldMerge mergeId direction modelGraph selectedGraph = 
+    let shouldMerge = model.specialKeys.ctrl in
+    let mergeId = Graph.topmostObject selectedGraph in
     let complementGraph = Graph.complement modelGraph selectedGraph in
     let nodes = Graph.nodes selectedGraph in
     let updNode delta {id, label} = 
@@ -137,12 +140,10 @@ mkInfo : Model -> Modes.MoveState ->
      valid : Bool }
 
 mkInfo model { pos, direction } =    
-    let merge = model.specialKeys.ctrl in
     let modelGraph = getActiveGraph model in
     let selectedGraph = GraphDefs.selectedGraph modelGraph in
-    let mergeId = GraphDefs.selectedId modelGraph in
-    let {merged, graph} = mkGraph model pos merge mergeId direction modelGraph selectedGraph in
-    { graph = graph, valid = merged == merge }
+    let {merged, graph} = mkGraph model pos direction modelGraph selectedGraph in
+    { graph = graph, valid = True } -- merge ==> merged
   
 
 graphDrawing : Model -> MoveState -> Graph NodeDrawingLabel EdgeDrawingLabel

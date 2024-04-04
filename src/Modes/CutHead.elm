@@ -1,10 +1,21 @@
-module Modes.CutHead exposing (update, makeGraph, help)
-import Modes exposing (CutHeadState, Mode(..))
+module Modes.CutHead exposing (update, makeGraph, help, initialise)
+import Modes exposing (CutHeadState, Mode(..), MoveDirection(..))
+import Modes.Move
 import Model exposing (Model, setActiveGraph, noCmd, toggleHelpOverlay, getActiveGraph)
 import Msg exposing (Msg(..))
 import Polygraph as Graph exposing (Graph)
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, edgeToNodeLabel)
+import InputPosition exposing (InputPosition(..))
+import Zindex
+
+initialise : Model -> Model
+initialise model =
+   let modelGraph = getActiveGraph model in
+   case GraphDefs.selectedEdge modelGraph of
+      Nothing -> model
+      Just e -> if GraphDefs.isPullshout e.label then model else 
+                 {  model | mode = CutHead { edge = e, head = True, duplicate = False } }   
 
 help : String 
 help =          HtmlDefs.overlayHelpMsg
@@ -28,34 +39,26 @@ update state msg m =
         KeyChanged False _ (Character 'd') -> (changeState { state | duplicate = (not state.duplicate)} , Cmd.none)
         _ -> noCmd m
 
-
+-- TODO: factor with newArrow.moveNodeInfo
 makeGraph  : CutHeadState -> Model -> Graph NodeLabel EdgeLabel
-makeGraph  {id, head, duplicate} m =
-   let modelGraph = getActiveGraph m in
-   let pos = m.mousePos in
-    Graph.getEdge id modelGraph 
-    |> Maybe.andThen (\e -> Graph.get (if head then e.to else e.from)
-       (\label -> {label | pos = pos})(edgeToNodeLabel pos)
-         modelGraph 
-    |> Maybe.map (\ label -> 
-    let g1 = modelGraph in
-    let (g2, newId) = Graph.newNode g1 label in
-    let (n1, n2) = if head then (e.from, newId) else (newId, e.to) in
-    let (g3, edgeId) = Graph.newEdge g2 n1 n2  e.label in
+makeGraph  {edge, head, duplicate} model =
+   let modelGraph = getActiveGraph model in
+   let pos = model.mousePos in
+   let (id1, id2) = if head then (edge.from, edge.to) else (edge.to, edge.from) in
+   let nodeLabel = Graph.get id2
+         (\label -> {label | pos = pos})(edgeToNodeLabel pos)
+         modelGraph |> 
+         Maybe.withDefault (GraphDefs.newNodeLabel pos "" True Zindex.defaultZ )
+   in
+   let extGraph =  Graph.makeCone modelGraph [id1] nodeLabel edge.label (not head) in
     let g4 = 
          if duplicate then 
-            GraphDefs.unselect id g3 
-         else 
-            Graph.merge edgeId id g3 
+            GraphDefs.unselect edge.id extGraph.extendedGraph 
+         else
+            List.foldl (\ id -> Graph.merge id edge.id) extGraph.extendedGraph
+            extGraph.edgeIds
     in
-    let g5 = if m.specialKeys.ctrl then                       
-                     GraphDefs.mergeWithSameLoc
-                       { id = newId, label = label }
-                       g4
-                     |> Maybe.withDefault g4
-             else g4
-    in
-    
-    g5
-    ))   
-    |> Maybe.withDefault modelGraph
+   let moveInfo =
+         Modes.Move.mkGraph model InputPosMouse Free g4 extGraph.newSubGraph 
+   in
+    moveInfo.graph
