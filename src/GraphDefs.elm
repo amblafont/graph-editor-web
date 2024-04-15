@@ -178,7 +178,7 @@ getSelectedProofDiagram g =
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
     keepNormalEdges >>
-   
+    Graph.removeLoops >>
     Graph.mapRecAll (\n -> n.pos)
              (\n -> n.pos)
              (\ _ n -> { pos = n.pos, label = n.label, proof = getProofFromLabel n.label })
