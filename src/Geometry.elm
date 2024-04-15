@@ -94,6 +94,26 @@ pxFromRatio p1 p2 r =
 
 segmentRectBent : PosDims -> PosDims -> Float -> QuadraticBezier
 segmentRectBent r1 r2 bent = 
+    let (r1_bis, r2_bis, bent_bis) =
+             if r1.pos /= r2.pos then 
+              (r1, r2, bent)
+             else 
+               let (w1, h1) = r1.dims
+                   (w2, h2) = r2.dims
+               in               
+              --  let offset = max ((min w1 w2) / 3) 7 in
+              let offset = 7 in
+               let new_w w = 2 in -- max 1 (w - offset) in
+               let newBent = -40 / offset in
+               ({pos = Point.add r1.pos (-offset, 0), dims = (new_w w1, h1)},
+                {pos = Point.add r2.pos ( offset, 0), dims = (new_w w2, h2)},
+                newBent)
+    in
+      segmentRectBent_aux r1_bis r2_bis bent_bis
+
+
+segmentRectBent_aux : PosDims -> PosDims -> Float -> QuadraticBezier
+segmentRectBent_aux r1 r2 bent = 
     let controlPoint = Point.diamondPx r1.pos r2.pos 
                         <| pxFromRatio r1.pos r2.pos bent 
     in
