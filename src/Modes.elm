@@ -54,6 +54,7 @@ toString m = case m of
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
     , head : Bool -- the head or the tail?
     , duplicate : Bool -- duplicate the arrow? 
+    , merge : Bool
     }
 
 isResizeMode : Mode -> Bool
@@ -73,6 +74,7 @@ type alias MoveState =
      , save : Bool
      , mode : MoveMode
      , direction : MoveDirection
+     , merge : Bool
   }
 type MoveDirection =
   Free | Vertical | Horizontal
@@ -123,7 +125,8 @@ type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,
       mode : ArrowMode, 
       style : ArrowStyle, 
-      pos : InputPosition, inverted : Bool }
+      pos : InputPosition, inverted : Bool,
+      merge : Bool }
 
 
 type alias SquareState =

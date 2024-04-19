@@ -27,6 +27,7 @@ initialise save mode model =
               { save = save,               
               pos = InputPosMouse,
               direction = Free,
+              merge = False,
               mode = mode }
       }    
 
@@ -51,6 +52,7 @@ update msg state model =
     let updateState st = { model | mode = Move st } in
     let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
     case msg of
+        KeyChanged False _ (Control "Control") -> noCmd <| updateState { state | merge =  not state.merge}         
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         PressTimeout ->
@@ -74,16 +76,16 @@ update msg state model =
         _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
-mkGraph : Model -> InputPosition -> MoveDirection -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel -> 
+mkGraph : Model -> InputPosition -> MoveDirection -> Bool -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel -> 
  -- what is marked as weakly selected are the potential merged target
    { graph : Graph NodeLabel EdgeLabel,
      merged : Bool }
 
-mkGraph model pos direction modelGraph selectedGraph = 
+mkGraph model pos direction shouldMerge modelGraph selectedGraph = 
 -- even if shouldMerge is false, it could attempt a merge if
 -- there is a node precisely at the location, and the move is
 -- directed by the keyboard
-    let shouldMerge = model.specialKeys.ctrl in
+    -- let shouldMerge = model.specialKeys.ctrl in
     let mergeId = Graph.topmostObject selectedGraph in
     let complementGraph = Graph.complement modelGraph selectedGraph in
     let nodes = Graph.nodes selectedGraph in
@@ -139,10 +141,10 @@ mkInfo : Model -> Modes.MoveState ->
    -- and no object is pointed at
      valid : Bool }
 
-mkInfo model { pos, direction } =    
+mkInfo model { pos, direction, merge } =    
     let modelGraph = getActiveGraph model in
     let selectedGraph = GraphDefs.selectedGraph modelGraph in
-    let {merged, graph} = mkGraph model pos direction modelGraph selectedGraph in
+    let {merged, graph} = mkGraph model pos direction merge modelGraph selectedGraph in
     { graph = graph, valid = True } -- merge ==> merged
   
 
@@ -154,8 +156,8 @@ help : MoveState -> String
 help s =
          "Mode Move. " ++
                 HtmlDefs.overlayHelpMsg        
-                ++ "Use mouse or h,j,k,l."
-                ++ " Hold [ctrl] to merge the selected point onto another node,"
+                ++ ". Use mouse or h,j,k,l."
+                ++ " [ctrl] to toggle merging,"
                 ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree " 
                 ++ "(currently, "
                 ++ (case s.direction of

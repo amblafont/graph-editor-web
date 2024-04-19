@@ -41,7 +41,8 @@ initialise m =
             pos = InputPosMouse,                                 
             chosen = GraphDefs.selectedGraph modelGraph,
             mode = mode,
-            inverted = False }
+            inverted = False,
+            merge = False }
         }  
             
 nextStep : Model -> Bool -> NewArrowState -> ( Model, Cmd Msg )
@@ -97,7 +98,7 @@ update state msg model =
     in
     case msg of
       
-
+        KeyChanged False _ (Control "Control") -> noCmd <| updateState model { state | merge =  not state.merge}         
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
@@ -167,7 +168,7 @@ moveNodeInfo _ model state =
                 in            
                 let moveInfo =
                         Modes.Move.mkGraph model state.pos
-                        Free 
+                        Free state.merge
                          extendedGraph.extendedGraph extendedGraph.newSubGraph 
                 in
                 let selectable = Graph.allIds extendedGraph.newSubGraph in
@@ -193,6 +194,7 @@ help =
             HtmlDefs.overlayHelpMsg ++
             ", [ESC] cancel, [click, TAB] name the point (if new), "
             ++ "[hjkl] position the new point with the keyboard, "
+            ++ "[ctrl] toggle merge mode, "
              ++ "[RET] terminate the arrow creation, "
              ++ "[\""
              ++ ArrowStyle.controlChars

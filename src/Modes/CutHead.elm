@@ -15,11 +15,11 @@ initialise model =
    case GraphDefs.selectedEdge modelGraph of
       Nothing -> model
       Just e -> if GraphDefs.isPullshout e.label then model else 
-                 {  model | mode = CutHead { edge = e, head = True, duplicate = False } }   
+                 {  model | mode = CutHead { edge = e, merge = False, head = True, duplicate = False } }   
 
 help : String 
 help =          HtmlDefs.overlayHelpMsg
-                ++ ", [RET] or [click] to confirm, [ctrl] to merge the endpoint with existing node. [ESC] to cancel. "
+                ++ ", [RET] or [click] to confirm, [ctrl] to toggle merging. [ESC] to cancel. "
                 ++ "[c] to switch between head/tail"                
                 ++ ", [d] to duplicate (or not) the arrow."
 
@@ -41,7 +41,7 @@ update state msg m =
 
 -- TODO: factor with newArrow.moveNodeInfo
 makeGraph  : CutHeadState -> Model -> Graph NodeLabel EdgeLabel
-makeGraph  {edge, head, duplicate} model =
+makeGraph  {edge, head, duplicate, merge} model =
    let modelGraph = getActiveGraph model in
    let pos = model.mousePos in
    let (id1, id2) = if head then (edge.from, edge.to) else (edge.to, edge.from) in
@@ -59,6 +59,6 @@ makeGraph  {edge, head, duplicate} model =
             extGraph.edgeIds
     in
    let moveInfo =
-         Modes.Move.mkGraph model InputPosMouse Free g4 extGraph.newSubGraph 
+         Modes.Move.mkGraph model InputPosMouse Free merge g4 extGraph.newSubGraph 
    in
     moveInfo.graph
