@@ -52,7 +52,7 @@ update msg state model =
     let updateState st = { model | mode = Move st } in
     let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
     case msg of
-        KeyChanged False _ (Control "Control") -> noCmd <| updateState { state | merge =  not state.merge}         
+        KeyChanged True _ (Control "Control") -> noCmd <| updateState { state | merge =  not state.merge}         
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         PressTimeout ->

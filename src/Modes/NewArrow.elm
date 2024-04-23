@@ -98,7 +98,7 @@ update state msg model =
     in
     case msg of
       
-        KeyChanged False _ (Control "Control") -> noCmd <| updateState model { state | merge =  not state.merge}         
+        KeyChanged True _ (Control "Control") -> noCmd <| updateState model { state | merge =  not state.merge}         
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
