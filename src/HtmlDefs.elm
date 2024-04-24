@@ -34,6 +34,7 @@ introHtml = (textHtml <| """
         <a href="https://github.com/amblafont/graph-editor-web">github</a>).
             Higher cells are supported.
 	    For a short description, see <a href="https://hal.science/hal-04407118v1">here</a>.
+        For a video demonstrating the mechanisation features, see <a href="https://github.com/amblafont/vscode-yade-example/releases/download/v0.1/demo-yade-example.mp4">here</a>.
 	    </p>
 	    <p>
 	    For LaTeX export, press (capital) 'X' after selection. The output code relies on
