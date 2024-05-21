@@ -1,11 +1,13 @@
 -- deprecated: we now use Bezier (from Quiver)
 -- TODO: delete this file
-module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx)
+module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx, dummy)
 import Geometry.Point as Point exposing (Point)
 
 type alias QuadraticBezier = 
   { from : Point, to : Point, controlPoint : Point}
 
+dummy : QuadraticBezier
+dummy = { from = (0,0), to = (0,0), controlPoint = (0,0) }
 
 middle : QuadraticBezier -> Point
 middle {from, to, controlPoint } =

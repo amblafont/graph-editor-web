@@ -21,7 +21,7 @@ import Zindex exposing (foregroundZ)
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias NormalEdgeDrawingLabel = 
    { label : String, editable : Bool,
-     style : ArrowStyle, dims : Point }
+     style : ArrowStyle, dims : Point, bezier : QuadraticBezier }
 
 type EdgeType = 
     PullshoutEdge
@@ -62,12 +62,13 @@ type Activity =
    | NoActive
 
 toDrawingGraph : Graph NodeLabel EdgeLabel -> Graph NodeDrawingLabel EdgeDrawingLabel
-toDrawingGraph =
+toDrawingGraph g =
     let makeActivity r =
            if r.selected then MainActive
            else if r.weaklySelected then WeakActive
            else NoActive
     in
+    let graphWithPos = GraphDefs.posGraph g in
     Graph.map
         (\ _ n ->  make_nodeDrawingLabel
           { editable = False
@@ -75,9 +76,11 @@ toDrawingGraph =
           } n)
         (\ _ e ->  make_edgeDrawingLabel
                     { editable = False, 
-                      isActive = makeActivity e
-                    } e
+                      isActive = makeActivity e.label,
+                      bezier = e.bezier
+                    } e.label
         )
+        graphWithPos
 
 makeActive : List Graph.Id -> Graph NodeDrawingLabel EdgeDrawingLabel ->  Graph NodeDrawingLabel EdgeDrawingLabel
 makeActive l = Graph.updateList l 
@@ -85,16 +88,17 @@ makeActive l = Graph.updateList l
              (\ e -> { e | isActive = MainActive})
              
 
-make_edgeDrawingLabel : {editable : Bool, isActive : Activity} 
+make_edgeDrawingLabel : {editable : Bool, isActive : Activity, bezier : Maybe QuadraticBezier} 
                       -> EdgeLabel -> EdgeDrawingLabel
-make_edgeDrawingLabel {editable, isActive} e =
+make_edgeDrawingLabel {editable, isActive, bezier} e =
    { isActive = isActive, zindex = e.zindex,
      details = case e.details of 
         GraphDefs.PullshoutEdge -> PullshoutEdge
         GraphDefs.NormalEdge ({label, style} as l) ->
            NormalEdge { label = label, editable = editable, 
               style = style,
-              dims = GraphDefs.getEdgeDims l
+              dims = GraphDefs.getEdgeDims l,
+              bezier = bezier |> Maybe.withDefault Bez.dummy
             }
    }
     
@@ -109,7 +113,7 @@ make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
     , inputPos = pos
     , isValidated = l.isCoqValidated
     , editable = editable, isActive = isActive, isMath = isMath,
-      dims = GraphDefs.getNodeDims l
+      dims = if editable then (0,0) else GraphDefs.getNodeDims l
     , zindex = l.zindex }
 
 
@@ -347,30 +351,26 @@ Fin
 graphDrawing : Config -> Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 graphDrawing cfg g0 =
      
-      let padding = 5 in
       let drawEdge id n1 n2 e = 
              case e.details of
                PullshoutEdge -> { drawing = 
                                    Maybe.map2 (drawPullshout id e.isActive e.zindex) n1.extrems n2.extrems
                                    |> Maybe.withDefault Drawing.empty
-                               , posDims = { pos = (0, 0), dims = (0, 0)}
                                , extrems = Nothing
                                , id = id
+                               , pos = (0, 0)
                                }
                NormalEdge l ->
-                   let q = Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
+                   let q = l.bezier in -- Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
                        { drawing = normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend,                     
+                         pos = Bez.middle q,
                         -- TODO
-                         posDims = {
-                             pos = Bez.middle q,
-                             dims = (padding, padding) |> Point.resize 4
-                         },
                          extrems = Just 
                               { bez = q,
                                 fromId = n1.id,
                                 toId = n2.id,
-                                fromPos = n1.posDims.pos,
-                                toPos   = n2.posDims.pos },
+                                fromPos = n1.pos,
+                                toPos   = n2.pos },
                          id = id
                        }
       in
@@ -379,15 +379,7 @@ graphDrawing cfg g0 =
               (\id n -> { drawing = nodeDrawing cfg (Node id n), 
                       extrems = Nothing,
                       id = id,
-                      posDims = {
-                      dims = 
-                      
-                      if n.editable then (0, 0) else
-                      -- copied from source code of Collage                         
-                         n.dims, 
-                      pos = n.pos
-                      } |> Geometry.pad padding
-                       } )
+                      pos = n.pos })
                drawEdge
               g0 
       in

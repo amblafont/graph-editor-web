@@ -24,13 +24,14 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    getSurroundingDiagrams, updateNormalEdge,
    rectEnveloppe, updateStyleEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
-   createValidProofAtBarycenter, isProofLabel, makeProofString
+   createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
    )
 
 import IntDict
 import Zindex exposing (defaultZ)
 import Geometry.Point as Point exposing (Point)
 import Geometry exposing (LabelAlignment(..))
+import Geometry.QuadraticBezier as Bez
 import ArrowStyle exposing (ArrowStyle)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 import GraphProof exposing (LoopNode, LoopEdge, Diagram)
@@ -39,6 +40,7 @@ import Json.Encode as JEncode
 import List.Extra as List
 import Maybe.Extra as Maybe
 import Geometry.Point
+import Geometry.QuadraticBezier exposing (QuadraticBezier)
 
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, 
                          selected : Bool, weaklySelected : Bool,
@@ -528,6 +530,45 @@ unnamedGraph =
    Graph.keepBelow (.label >> String.isEmpty)
      (.label >> String.isEmpty) -}
 
+posGraph : Graph NodeLabel EdgeLabel -> 
+   Graph NodeLabel
+         {label : EdgeLabel, bezier : Maybe QuadraticBezier}
+posGraph g = 
+      let padding = 5 in
+      let computeEdge _ n1 n2 e = 
+            
+             case e.details of
+               PullshoutEdge -> 
+                 {label = e, posDims = { pos = (0, 0), dims = (0, 0)}, bezier = Nothing}
+               NormalEdge l ->
+                   let q = Geometry.segmentRectBent n1 n2 l.style.bend in
+                   {label = e, 
+                    posDims = 
+                         {
+                             pos = Bez.middle q,
+                             dims = (padding, padding) |> Point.resize 4
+                         },
+                     bezier = Just q}
+            
+      in
+      Graph.mapRecAll     
+              .posDims .posDims      
+              (\id n -> { 
+                      label = n,
+                      posDims = {
+                      dims =                       
+                     --  if n.editable then (0, 0) else
+                      -- copied from source code of Collage                         
+                         getNodeDims n, 
+                      pos = n.pos
+                      } |> Geometry.pad padding
+                       } )
+                 computeEdge
+              g
+   |> Graph.map 
+       (\_ {label} -> label) 
+       (\_ {label, bezier } -> { bezier = bezier, label = label })
+
 closest : Point -> Graph NodeLabel EdgeLabel -> Graph.Id
 -- ordered by distance to Point
 closest pos ug =
@@ -535,33 +576,25 @@ closest pos ug =
    case getNodesAt ug pos of
      t :: _ -> t
      _ -> 
+        let edgeDistance e = 
+             Maybe.map Bez.middle e.bezier |>
+                        Maybe.map (Point.distance pos)
+        in
+        let ug2 = posGraph ug 
+                 |> Graph.map 
+                   (always <| distanceToNode pos)
+                   (always edgeDistance)
+        in
    
-   
-         -- we need the pos
-         let ug2 = Graph.mapRecAll .pos .pos 
-               (\ _ n -> { distance = distanceToNode pos n, pos = n.pos})
-               (\ _ p1 p2 e -> 
-                  let epos = Point.middle p1 p2 in
-                  { pos = epos,
-                    distance = Point.distance pos <| Point.middle p1 p2
-                  })
-                  
-               ug
-         in
-         let getEmptysDistance l = l
-               -- |> List.filter (.label >> .empty)
-               |> List.map (\ o -> 
-                           {  id = o.id, 
-                              distance = o.label.distance})
-               
-         in
-         let unnamedEdges = Graph.edges ug2 |> getEmptysDistance in
-         let unnamedNodes = Graph.nodes ug2 |> getEmptysDistance in
-         let unnamedAll = unnamedEdges ++ unnamedNodes 
-               |> List.minimumBy .distance 
+        let unnamedEdges = Graph.edges ug2 |> List.filterMap 
+                           (\ {id, label} -> Maybe.map (\ l -> {id = id, label = l}) label)
+            unnamedNodes = Graph.nodes ug2 
+        in
+        let unnamedAll = unnamedEdges ++ unnamedNodes 
+               |> List.minimumBy .label 
                |> Maybe.map .id
                |> Maybe.withDefault 0
-         in
+        in
          unnamedAll
 {- 
 
