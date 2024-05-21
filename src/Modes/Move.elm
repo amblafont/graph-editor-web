@@ -27,14 +27,14 @@ initialise save mode model =
               { save = save,               
               pos = InputPosMouse,
               direction = Free,
-              merge = False,
+              -- merge = False,
               mode = mode }
       }    
 
 update : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
 update msg state model =
-    let movedRet () = 
-           let info = mkInfo model state in
+    let movedRet merge = 
+           let info = mkInfo model merge state in
            if info.valid then
               switch_Default 
               <| if state.save then
@@ -46,13 +46,13 @@ update msg state model =
               noCmd model
     in
     let terminable = state.mode /= PressMove in
-    let terminedRet () = 
-         if terminable then movedRet () else noCmd model
+    let terminedRet merge = 
+         if terminable then movedRet merge else noCmd model
     in
     let updateState st = { model | mode = Move st } in
     let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
     case msg of
-        KeyChanged True _ (Control "Control") -> noCmd <| updateState { state | merge =  not state.merge}         
+        KeyChanged True _ (Control "Control") -> terminedRet True
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         PressTimeout ->
@@ -65,14 +65,14 @@ update msg state model =
            case state.mode of              
              UndefinedMove -> 
                 noCmd <| updateState { state | mode = FreeMove }
-             PressMove -> movedRet ()
+             PressMove -> movedRet False
              FreeMove -> noCmd model
         KeyChanged False _ (Character 'f') -> updateDirection Free
         KeyChanged False _ (Character 'x') -> updateDirection Horizontal
         KeyChanged False _ (Character 'y') -> updateDirection Vertical
        
-        MouseClick -> terminedRet ()
-        KeyChanged False _ (Control "Enter") -> terminedRet ()
+        MouseClick -> terminedRet False
+        KeyChanged False _ (Control "Enter") -> terminedRet False
         _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
 
 
@@ -135,13 +135,13 @@ mkGraph model pos direction shouldMerge modelGraph selectedGraph =
         -- let _ = Debug.log "input pos mouse" "" in
         retDelta False mouseDelta 
 
-mkInfo : Model -> Modes.MoveState -> 
+mkInfo : Model -> Bool -> Modes.MoveState -> 
    { graph : Graph NodeLabel EdgeLabel,
    -- The graph is not valid if we are in merge mode
    -- and no object is pointed at
      valid : Bool }
 
-mkInfo model { pos, direction, merge } =    
+mkInfo model merge { pos, direction } =    
     let modelGraph = getActiveGraph model in
     let selectedGraph = GraphDefs.selectedGraph modelGraph in
     let {merged, graph} = mkGraph model pos direction merge modelGraph selectedGraph in
@@ -149,7 +149,7 @@ mkInfo model { pos, direction, merge } =
   
 
 graphDrawing : Model -> MoveState -> Graph NodeDrawingLabel EdgeDrawingLabel
-graphDrawing m s = mkInfo m s |> .graph |>
+graphDrawing m s = mkInfo m False s |> .graph |>
             collageGraphFromGraph m 
 
 help : MoveState -> String
@@ -157,7 +157,7 @@ help s =
          "Mode Move. " ++
                 HtmlDefs.overlayHelpMsg        
                 ++ ". Use mouse or h,j,k,l."
-                ++ " [ctrl] to toggle merging,"
+                ++ " [ctrl] to merge,"
                 ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree " 
                 ++ "(currently, "
                 ++ (case s.direction of

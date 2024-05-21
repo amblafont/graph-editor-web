@@ -1209,7 +1209,7 @@ graphDrawingFromModel m =
         SquareMode state -> Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
         PullshoutMode state -> Modes.Pullshout.graphDrawing m state
-        CutHead state -> Modes.CutHead.makeGraph state m |> GraphDrawing.toDrawingGraph
+        CutHead state -> Modes.CutHead.graphDrawing m state
         ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
         
 

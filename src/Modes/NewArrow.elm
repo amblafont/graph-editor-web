@@ -41,13 +41,14 @@ initialise m =
             pos = InputPosMouse,                                 
             chosen = GraphDefs.selectedGraph modelGraph,
             mode = mode,
-            inverted = False,
-            merge = False }
+            inverted = False
+            -- merge = False 
+            }
         }  
             
-nextStep : Model -> Bool -> NewArrowState -> ( Model, Cmd Msg )
-nextStep model finish state =
-     let info = moveNodeInfo finish model state in
+nextStep : Model -> {finish:Bool, merge:Bool} -> NewArrowState -> ( Model, Cmd Msg )
+nextStep model {finish, merge} state =
+     let info = moveNodeInfo merge model state in
      
      -- let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
      let m2 = setSaveGraph model <| GraphDefs.weaklySelectMany info.selectable
@@ -83,7 +84,7 @@ keyToAction k step =
 update : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let modelGraph = getActiveGraph model in
-    let next finish = nextStep model finish state in
+    let next finishMerge = nextStep model finishMerge state in
     let pullshoutMode k = 
            noCmd <|
            
@@ -98,13 +99,13 @@ update state msg model =
     in
     case msg of
       
-        KeyChanged True _ (Control "Control") -> noCmd <| updateState model { state | merge =  not state.merge}         
+        KeyChanged True _ (Control "Control") -> next {finish = False, merge = True}
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
-        MouseClick -> next False          
-        KeyChanged False _ (Control "Enter") -> next True
+        MouseClick -> next {finish = False, merge = False}
+        KeyChanged False _ (Control "Enter") -> next {finish = True, merge = False}
     --     TabInput -> Just <| ValidateNext
-        KeyChanged False _ (Control "Tab") -> next False
+        KeyChanged False _ (Control "Tab") -> next {finish = False, merge = False}
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
         KeyChanged False _ (Character 'p') -> pullshoutMode Pullback
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
@@ -152,7 +153,7 @@ moveNodeInfo :
         , selectable : List Graph.Id
         , renamable : List Graph.Id
         }
-moveNodeInfo _ model state = 
+moveNodeInfo merge model state = 
                 let modelGraph = getActiveGraph model in
                 let edgeLabel = GraphDefs.newEdgeLabel "" state.style in
                 let nodePos = GraphDefs.centerOfNodes (Graph.nodes state.chosen) in
@@ -168,7 +169,7 @@ moveNodeInfo _ model state =
                 in            
                 let moveInfo =
                         Modes.Move.mkGraph model state.pos
-                        Free state.merge
+                        Free merge
                          extendedGraph.extendedGraph extendedGraph.newSubGraph 
                 in
                 let selectable = Graph.allIds extendedGraph.newSubGraph in
@@ -192,9 +193,9 @@ help =
 --         NewArrowMoveNode _ ->
             -- Debug.toString st ++
             HtmlDefs.overlayHelpMsg ++
-            ", [ESC] cancel, [click, TAB] name the point (if new), "
+            ", [ESC] cancel, [click, TAB] name the point (if new) and arrow, "
             ++ "[hjkl] position the new point with the keyboard, "
-            ++ "[ctrl] toggle merge mode, "
+            ++ "[ctrl] merge, "
              ++ "[RET] terminate the arrow creation, "
              ++ "[\""
              ++ ArrowStyle.controlChars
