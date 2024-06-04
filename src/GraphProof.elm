@@ -15,21 +15,21 @@ import Set exposing (Set)
 import Maybe.Extra as Maybe
 import Parser exposing (Step(..))
 
-type alias LoopEdge = { pos : Point, angle : Float, label : String, identity : Bool }
+type alias LoopEdge = { pos : Point, angleIn : Float, angleOut : Float, label : String, identity : Bool }
 type alias LoopNode = { pos : Point, label : String, proof : Maybe String }
 
 
-isInDiag : Graph LoopNode LoopEdge -> Point -> Diagram -> Bool
+isInDiag : Graph LoopNode e -> Point -> Diagram -> Bool
 isInDiag g pos d =
    Graph.getNodes (nodesOfDiag d)
                g |> List.map (.label >> .pos) |> Point.isInPoly pos
 
-proofNodes : Graph LoopNode LoopEdge -> List (Node LoopNode)
+proofNodes : Graph LoopNode e -> List (Node LoopNode)
 proofNodes g = 
    Graph.nodes g 
    |> List.filter (.label >> .proof >> Maybe.isJust) 
 
-findProofOfDiagram : Graph LoopNode LoopEdge -> List (Node LoopNode) -> Diagram -> Maybe String
+findProofOfDiagram : Graph LoopNode e -> List (Node LoopNode) -> Diagram -> Maybe String
 findProofOfDiagram g l d =
    List.find (\ n -> isInDiag g n.label.pos d) l
    |> Maybe.andThen (.label >> .proof)
@@ -46,7 +46,8 @@ nameIdentities =
                            else l.label })
 
 angleDir : Bool -> LoopEdge -> Float
-angleDir dir edge = if dir then edge.angle else Point.flipAngle edge.angle
+angleDir dir edge = if dir then edge.angleIn else edge.angleOut
+-- Point.flipAngle edge.angle
 
 extremePath : Bool -> Graph.Id -> Graph LoopNode LoopEdge 
               -> Edge LoopEdge -> List (Edge LoopEdge, Bool)
@@ -102,9 +103,9 @@ invertDiagram { lhs, rhs, proof } = { lhs = rhs, rhs = lhs, proof = proof }
 isOuterDiagram : Diagram -> Bool
 isOuterDiagram {lhs, rhs} = 
    
-   let makeAngles = List.map (.label >> .angle) in
-   let anglesLhs = makeAngles lhs
-       anglesRhs = makeAngles rhs |> List.map Point.flipAngle
+   let makeAngles angleField = List.map (.label >> angleField) in
+   let anglesLhs = makeAngles .angleIn lhs
+       anglesRhs = makeAngles .angleOut rhs -- |> List.map Point.flipAngle
    in
    
    let angles = (List.head anglesRhs |> Maybe.withDefault 0) :: anglesLhs
@@ -143,16 +144,34 @@ checkEndPoints { lhs, rhs } =
 adjacentEdges : Graph LoopNode LoopEdge -> 
                List ({ edge : Edge LoopEdge, incoming : Bool }, 
                      { edge : Edge LoopEdge, incoming : Bool })
-adjacentEdges g = Graph.incidence g 
+adjacentEdges g = 
+     let inc = (Graph.incidence g ) in
+     let dumpEdge {label, angleIn, angleOut} =
+              { label = label, angleIn = angleIn, angleOut = angleOut }
+     in
+     let dump (id, stuff) =
+                     -- let stuff = ed.label in
+                     let _ = Debug.log "incomings" id in
+                     let f = List.map (.label >> dumpEdge >> Debug.log "d") stuff.incomings in
+                     let _ = Debug.log "outgoings" id in
+                     List.map (.label >> dumpEdge >> Debug.log "d") stuff.outgoings
+      in
+   --   let _ = List.map (Debug.log "incidence") (IntDict.toList inc) in
+   --   let _ = List.map dump (IntDict.toList inc) in
+      inc
          |> IntDict.values
          |> List.concatMap
-          (\ i -> List.map (\e -> { edge = e, incoming = True } ) i.incomings
+          (\ i -> -- let _ = Debug.log "incidence" "" in 
+             List.map (\e -> { edge = e, incoming = True } ) i.incomings
                  ++ List.map (\e -> { edge = e, incoming = False} ) i.outgoings
                  |> List.sortBy 
                      (\{edge, incoming} -> 
-                         if incoming then edge.label.angle else 
-                         Point.flipAngle edge.label.angle |> Point.normaliseAngle
+                         if incoming then (edge.label.angleOut) else (edge.label.angleIn)
+                         -- |> Point.normaliseAngle
+                        --  Point.flipAngle edge.label.angle |> Point.normaliseAngle
                      )
+                 |> List.map (\e -> -- let _ = Debug.log "" (dumpEdge e.edge.label, e.incoming) in 
+                             e)
                  |> List.succCyclePairs
           )
 
@@ -174,6 +193,7 @@ adjacentListToDict l =
 getAllValidDiagrams : Graph LoopNode LoopEdge -> List Diagram
 getAllValidDiagrams g =
    let inc = adjacentEdges g in
+   -- let inc = Debug.log "adjacences" <| adjacentEdges g in
    let nextLefts  = List.filter (\ (e1, e2) -> e1.incoming && not e2.incoming) inc
        nextRights = List.filter (\ (e1, e2) -> not e1.incoming && e2.incoming) inc
                     |> List.map (\ (e1, e2) -> (e2, e1))

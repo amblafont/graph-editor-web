@@ -176,18 +176,23 @@ getSelectedProofDiagram g =
          [] -> NoDiagram
          d :: _ -> JustDiagram { proof = s, diagram = d }
 
-
 toProofGraph :  Graph NodeLabel EdgeLabel -> Graph LoopNode LoopEdge
 toProofGraph = 
-    keepNormalEdges >>
     Graph.removeLoops >>
-    Graph.mapRecAll (\n -> n.pos)
-             (\n -> n.pos)
+    posGraph >>
+    Graph.filterMap Just (
+      \e -> case (filterLabelNormal e.label, e.bezier) of 
+             (Just l, Just b) -> Just { details = l.details, bezier = b }
+             (_ , _) -> Nothing
+      )
+    >>
+    Graph.map 
              (\ _ n -> { pos = n.pos, label = n.label, proof = getProofFromLabel n.label })
-             (\ _ fromP toP {details}  -> 
-                        { angle = Point.subtract toP fromP |> Point.pointToAngle ,
+             (\ _ {details, bezier}  -> 
+                        { angleIn = Point.subtract bezier.controlPoint bezier.from |> Point.pointToAngle ,
+                          angleOut= Point.subtract bezier.controlPoint bezier.to |> Point.pointToAngle,
                           label = details.label, -- (if l.label == "" && l.style.double then fromLabel else l.label),
-                          pos = Point.middle fromP toP,
+                          pos = Bez.middle bezier,
                           identity = details.style.double })
 
 selectedIncompleteDiagram : Graph NodeLabel EdgeLabel -> Maybe Diagram
