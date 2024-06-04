@@ -576,7 +576,15 @@
          }
 
          app.ports.generateProofJs.subscribe(function(script) {
-            copyErr(script, 
+            var s = script.proof;
+            if (s != "") {
+                var json = JSON.stringify(script.graph);
+                if (json)
+                   s = 
+                      "(*\n YADE DIAGRAM " + 
+                       json + "\n *)\n" + s;
+            }
+            copyErr(s, 
               "No selected diagram found!",
               "Coq script successfully copied",
               "Copy failed"

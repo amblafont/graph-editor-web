@@ -175,7 +175,7 @@ port applyProof : { statement : String, script : String} -> Cmd a
 port appliedProof : ({ statement : String, script : String} -> a) -> Sub a
 
 port toClipboard : { content:String, success: String, failure: String } -> Cmd a
-port generateProofJs : String -> Cmd a
+port generateProofJs : { proof : String, graph : JsGraphInfo } -> Cmd a
 port generateSvg : String -> Cmd a
 
 -- ask js to prompt find and replace
@@ -717,10 +717,12 @@ update_DefaultMode msg model =
     in
     -- TODO: remove if not used
     let generateProof debug =
-           let s = generateProofString debug
+
+           let proof = generateProofString debug
                  <| GraphDefs.selectedGraph modelGraph
            in
-           (model, generateProofJs s) 
+           let json = toJsGraphInfo <| Model.restrictSelection model in
+           (model, generateProofJs {proof = proof, graph = json}) 
                 -- toClipboard 
                 --   {content = s,
                 --    success = "Proof successfully copied",
@@ -784,15 +786,10 @@ update_DefaultMode msg model =
             else
               noCmd <| setActiveGraph model <| GraphDefs.selectAll modelGraph
         CopyGraph ->
-              let selectedModel = { model |
-                           tabs = [ {graph = GraphDefs.selectedGraph modelGraph
-                               , sizeGrid = sizeGrid, title = Model.getActiveTitle model, 
-                               active = True }]
-                          }
-              in
+              
               (model,
                clipboardWriteGraph <| 
-               toJsGraphInfo selectedModel
+               toJsGraphInfo <| Model.restrictSelection model
                 --  { graph = LastFormat.toJSGraph 
                 --     { tabs = [ {graph = GraphDefs.selectedGraph modelGraph
                 --       , sizeGrid = sizeGrid, title = "", 

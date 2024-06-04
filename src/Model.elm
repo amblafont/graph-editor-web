@@ -428,3 +428,14 @@ keyboardPosToPoint m chosenNode p =
 
 toggleHelpOverlay : Model -> Model
 toggleHelpOverlay model = {model | showOverlayHelp = not model.showOverlayHelp } 
+
+restrictSelection : Model -> Model
+restrictSelection model = 
+    let modelGraph = getActiveGraph model in
+    let sizeGrid = getActiveSizeGrid model in
+       { model |
+                           tabs = [ {graph = GraphDefs.selectedGraph modelGraph
+                               , sizeGrid = sizeGrid, title = getActiveTitle model, 
+                               active = True }]
+      }
+              
