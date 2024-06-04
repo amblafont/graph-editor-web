@@ -193,6 +193,8 @@ toProofGraph =
                           angleOut= Point.subtract bezier.controlPoint bezier.to |> Point.pointToAngle,
                           label = details.label, -- (if l.label == "" && l.style.double then fromLabel else l.label),
                           pos = Bez.middle bezier,
+                          from = bezier.from,
+                          to = bezier.to,
                           identity = details.style.double })
 
 selectedIncompleteDiagram : Graph NodeLabel EdgeLabel -> Maybe Diagram

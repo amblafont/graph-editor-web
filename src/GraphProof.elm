@@ -15,14 +15,20 @@ import Set exposing (Set)
 import Maybe.Extra as Maybe
 import Parser exposing (Step(..))
 
-type alias LoopEdge = { pos : Point, angleIn : Float, angleOut : Float, label : String, identity : Bool }
+type alias LoopEdge = { pos : Point, from : Point, to : Point, angleIn : Float, angleOut : Float, label : String, identity : Bool }
 type alias LoopNode = { pos : Point, label : String, proof : Maybe String }
 
+positionsInDiagram : Diagram -> List Point
+positionsInDiagram {lhs, rhs} =
+  let getPositions {label} = [label.from, label.pos, label.to] in
+  List.concatMap getPositions lhs ++ 
+  (List.reverse <| List.concatMap getPositions rhs)
 
 isInDiag : Graph LoopNode e -> Point -> Diagram -> Bool
 isInDiag g pos d =
-   Graph.getNodes (nodesOfDiag d)
-               g |> List.map (.label >> .pos) |> Point.isInPoly pos
+   -- Graph.getNodes (nodesOfDiag d)
+   --             g |> List.map (.label >> .pos) 
+                positionsInDiagram d |> Point.isInPoly pos
 
 proofNodes : Graph LoopNode e -> List (Node LoopNode)
 proofNodes g = 
