@@ -81,7 +81,7 @@ type Msg
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
   | MouseOn Graph.Id
-  | Clear Scenario
+  | Clear {fileName : String, scenario : Scenario, preamble : String}
   | SizeGrid Int
   | ToggleHideGrid
   | ToggleAutosave

@@ -105,7 +105,7 @@ port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
 
-port clear : (String -> a) -> Sub a
+port clear : ({fileName : String, scenario : String, preamble: String} -> a) -> Sub a
 
 -- tell js to save the graph, version  is the format version
 type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
@@ -211,7 +211,10 @@ subscriptions m =
       simpleMsg SimpleMsg,
       renameFile FileName,
       promptedTabTitle RenameTab,
-      clear (scenarioOfString >> Clear),
+      clear (\ {scenario, preamble, fileName} ->
+          Clear {scenario = scenarioOfString scenario
+               , fileName = fileName
+               , preamble = preamble }),
       -- upload a graph (triggered by js)
       
       loadedGraph0  (mapLoadGraphInfo Format.Version0.fromJSGraph >> loadGraphInfoToMsg),
@@ -451,9 +454,14 @@ update msg modeli =
                          { info = toJsGraphInfo model, export = makeExports model,
                          feedback = False }) 
                    else noCmd model
-     Clear scenario -> 
+     Clear {fileName, scenario,preamble} -> 
         let modelf = createModel model.defaultGridSize in
-        noCmd { modelf | scenario = scenario }--  (iniModel, Task.attempt (always Msg.noOp) (Dom.focus HtmlDefs.canvasId))
+        let or s1 s2 = if s1 == "" then s2 else s1 in 
+        noCmd { modelf | scenario = scenario,
+            latexPreamble = or preamble modelf.latexPreamble
+          , fileName =  or fileName modelf.fileName
+         }
+         --  (iniModel, Task.attempt (always Msg.noyarn comOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
@@ -1622,7 +1630,7 @@ viewGraph model =
              Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button", 
                Html.Attributes.title "Opens a save dialog box"] 
                [Html.text "Save"]
-           , Html.button [Html.Events.onClick (Clear model.scenario)] [Html.text "Clear"]
+           , Html.button [Html.Events.onClick (Clear {fileName = "", scenario = model.scenario, preamble = ""})] [Html.text "Clear"]
            
            
            , Html.a [Html.Attributes.href  ("#" ++ HtmlDefs.latexPreambleId)] [Html.text "Latex preamble"]
@@ -1652,7 +1660,7 @@ viewGraph model =
                else "" ]
            , svg
            , Html.p [] [
-            Html.text "latex preamble",
+            Html.text "LaTeX preamble",
             Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
               Html.Attributes.placeholder "latex Preamble",
               Html.Attributes.value model.latexPreamble, 

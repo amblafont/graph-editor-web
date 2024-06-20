@@ -1,5 +1,4 @@
 // main.js (electron)
-
 // Modules to control application life and create native browser window
 import { app, BrowserWindow, ipcMain } from 'electron'
 // const { app, BrowserWindow, ipcMain } = require('electron')
@@ -22,7 +21,6 @@ type Scenario = "watch" | "standard" | "coqlsp";
 const watchScenario = "watch" as Scenario;
 const standardScenario = "standard" as Scenario;
 const coqlspScenario = "coqlsp" as Scenario;
-const emptyGraph = {"graph":{"edges":[],"latexPreamble":"\\newcommand{\\coqproof}[1]{\\checkmark{}}","nodes":[],"sizeGrid":136},"version":9};
 type Exports = Record<string,string>;
 // const watchScenario = "watch";
 // const normalScenario = "standard"
@@ -105,6 +103,7 @@ parser.add_argument("--magic", {help: "prompt command"});
 parser.add_argument("--export", {help: "tex/svg/coq"});
 parser.add_argument("--prefix");
 parser.add_argument("--suffix");
+parser.add_argument("--preamble", {help: "latex file whose contents will be added to the preamble of any new diagram"});
 //  parser.add_argument("--ext", {default:".json"});
 parser.add_argument("--dir", {default:"", help:"relative directory of diagram files (tex/svg/coq/json)"});
 parser.add_argument("--include-cmd", {help:"use in combination with --external-output"});
@@ -138,9 +137,8 @@ function getOrDefault(s:keyof typeof defaults) {
 let args = parser.parse_args();
 // console.log(args);
 let main_file = args.filename;
-let main_directory: string;
+let main_directory: string = ".";
 let watched_file: string = "";
-
 
 
 
@@ -176,6 +174,8 @@ let makeCmd:string|undefined = args.make_cmd;
 
 let magic_re:RegExp = new RegExp(escapeStringRegexp(magic.trim()) + "(.*)$");
 
+const defaultPreamble:string = getPreamble(args["preamble"]);
+
 let handleSave: (filename:string, data:Object, exports:Exports) => void;
 let onfocus :()=> void;
 // those reset functions could be 
@@ -193,6 +193,21 @@ resetHandleSave();
 resetOnFocus();
 
 let mainWindow:BrowserWindow;
+
+function getPreamble(preambleFile:any):string {
+  if (preambleFile === undefined) 
+    return "";
+  let fullPreambleFile = preambleFile;
+  if (!fs.existsSync(fullPreambleFile))
+    fullPreambleFile = path.join(main_directory, preambleFile);
+  if (!fs.existsSync(fullPreambleFile)) {
+    console.log("!! preamble file " + preambleFile + " doesn't exist.");
+    return "";
+  }
+  return fs.readFileSync(fullPreambleFile).toString();          
+}
+
+
 function waitIncompleteMsg() {
   mainWindow.webContents.send('simple-msg', 
   "Waiting for incomplete diagram in " + watched_file);
@@ -279,7 +294,7 @@ function loadEditor(diag:string) {
   if (stripped_diag == "") {
     console.log("Creating new diagram");
     // clear();
-    mainWindow.webContents.send('clear-graph', "watch"); 
+    mainWindow.webContents.send('clear-graph', "", "watch", defaultPreamble); 
   } else {
     console.log("Loading diagram ");
     loadData(stripped_diag, "", watchScenario);
@@ -318,8 +333,12 @@ function handleFileOneIteration() {
     }
   }
 
+  if (!((remainder === null || remainder.length > 0) && content !== null)){
+    waitIncompleteMsg();
+    onfocus = handleFileOneIteration;
+    return false;
+  }
   
-  if ((remainder === null || remainder.length > 0) && content !== null) {
     console.log("do something with " + content);
     let diagFile:null|string = null;
   
@@ -389,11 +408,7 @@ function handleFileOneIteration() {
     }
     // console.log(content);
     loadEditor(content);
-  }
-  else {
-    waitIncompleteMsg();
-    onfocus = handleFileOneIteration;
-  }
+
   
  //  handleSave({"graph":{"edges":[],"latexPreamble":"","nodes":[{"id":0,"label":{"isMath":true,"label":"","pos":[277,89.13333129882812]}}],"sizeGrid":200},"version":8});
   
@@ -476,16 +491,15 @@ function openGraphFile() {
 }
 
 function loadGraph(path:string) {
-  let json:any = emptyGraph;
-  if (fs.existsSync(path))
-    json = JSON.parse(fs.readFileSync(path).toString());
-  else
+  let scenario:Scenario = is_watch ? watchScenario : standardScenario;
+  if (!fs.existsSync(path)) {
     dialog.showMessageBoxSync(mainWindow, 
        { message : `Note: the file ${path} does not exist.` });
-     
-  
-  
-  let scenario:Scenario = is_watch ? watchScenario : standardScenario;
+    mainWindow.webContents.send('clear-graph', 
+       path, scenario, defaultPreamble);   
+    return;
+  }
+  let json:any = JSON.parse(fs.readFileSync(path).toString());
   mainWindow.webContents.send('load-graph', 
      json, path, scenario);   
 }
@@ -563,7 +577,7 @@ const createWindow = () => {
   if (is_watch)
   {
     let scenario:Scenario = "watch"
-    mainWindow.webContents.send('clear-graph', scenario); 
+    mainWindow.webContents.send('clear-graph', "", scenario, defaultPreamble); 
     mainWindow.on('focus', (e:any) => onfocus());
     handleFileOneIteration();
   }
@@ -576,7 +590,7 @@ const createWindow = () => {
     }
   }
 
-    // if we are using ipc
+    // if we are using ipc (to communicate with the vsode extension)
   if (process.send) {
     configureIpc();
   }
