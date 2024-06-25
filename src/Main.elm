@@ -283,13 +283,7 @@ subscriptions m =
                       DefaultMode  -> Do <| preventDefault e
                       SplitArrow _ -> Do <| preventDefault e
                       _ -> Msg.noOp 
-                 Character 'a' -> checkCtrl
-                 Control "Tab" ->  
-                    case m.mode of
-                      SquareMode _  -> Do <| preventDefault e
-                      SplitArrow _ -> Do <| preventDefault e
-                      NewArrow _ -> Do <| preventDefault e
-                      _ -> Msg.noOp                
+                 Character 'a' -> checkCtrl             
                  _ -> Msg.noOp
                 
                 )                

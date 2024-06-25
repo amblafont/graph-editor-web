@@ -172,7 +172,19 @@
         const isElectron = window.electronAPI != undefined;
         var appDiv = document.getElementById('myapp');
 
-       
+        document.addEventListener('keydown', function(e) { 
+            // Desactivate globally the tab key
+            // Before, I did with ports: one to notify elm the keydown, another to tell js to prevent the default
+            // but the delay was too long and meanwhile the browser had dealt with the event.
+            if (e.keyCode == 9) 
+              e.preventDefault(); 
+
+            // Desactivate reloading with ctrl-R
+            if (e.ctrlKey || e.key === "r")
+              e.preventDefault();                    
+            
+  
+        });
      
         
          
@@ -364,7 +376,7 @@
          });
 
          app.ports.preventDefault.subscribe(function (e) {
-             e.preventDefault();
+            e.preventDefault(); 
          });
 
                   // asks the user to download some file, generated from content
