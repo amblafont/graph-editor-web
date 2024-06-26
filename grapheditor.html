@@ -179,9 +179,9 @@
             if (e.keyCode == 9) 
               e.preventDefault(); 
 
-            // Desactivate reloading with ctrl-R
-            if (e.ctrlKey || e.key === "r")
-              e.preventDefault();                    
+            // Deactivate reloading with ctrl-R
+            if (e.ctrlKey && e.key === "r") 
+              e.preventDefault();            
             
   
         });
