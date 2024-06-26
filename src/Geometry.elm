@@ -115,7 +115,7 @@ segmentRectBent r1 r2 bent =
 segmentRectBent_aux : PosDims -> PosDims -> Float -> QuadraticBezier
 segmentRectBent_aux r1 r2 bent = 
     let controlPoint = Point.diamondPx r1.pos r2.pos 
-                        <| pxFromRatio r1.pos r2.pos bent 
+          <| pxFromRatio r1.pos r2.pos bent 
     in
    
     let p1 =
@@ -125,7 +125,15 @@ segmentRectBent_aux r1 r2 bent =
              raytraceRect controlPoint r2.pos (rectFromPosDims r2) |>
              Maybe.withDefault r2.pos 
     in
-        { from = p1, to = p2, controlPoint = controlPoint }
+    -- we recompute the controlPoint to avoid
+    -- glitch (e.g., if the source is much bigger than the target,
+    -- there the control point could be in a vert wrong location,
+    -- resulting in inversion of the arrow head or strange double arrows)
+    let betterControlPoint =
+          Point.diamondPx p1 p2
+          <| pxFromRatio p1 p2 bent 
+    in
+        { from = p1, to = p2, controlPoint = betterControlPoint }
 
 
 raytraceRect : Point -> Point -> Rect -> Maybe Point
