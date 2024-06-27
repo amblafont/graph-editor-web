@@ -32,6 +32,7 @@ import Zindex exposing (defaultZ)
 import Geometry.Point as Point exposing (Point)
 import Geometry exposing (LabelAlignment(..))
 import Geometry.QuadraticBezier as Bez
+import EdgeShape exposing (EdgeShape(..), pullshoutHat)
 import ArrowStyle exposing (ArrowStyle)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 import GraphProof exposing (LoopNode, LoopEdge, Diagram)
@@ -40,7 +41,6 @@ import Json.Encode as JEncode
 import List.Extra as List
 import Maybe.Extra as Maybe
 import Geometry.Point
-import Geometry.QuadraticBezier exposing (QuadraticBezier)
 
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, 
                          selected : Bool, weaklySelected : Bool,
@@ -181,8 +181,8 @@ toProofGraph =
     Graph.removeLoops >>
     posGraph >>
     Graph.filterMap Just (
-      \e -> case (filterLabelNormal e.label, e.bezier) of 
-             (Just l, Just b) -> Just { details = l.details, bezier = b }
+      \e -> case (filterLabelNormal e.label, e.shape) of 
+             (Just l, Bezier b) -> Just { details = l.details, bezier = b }
              (_ , _) -> Nothing
       )
     >>
@@ -539,42 +539,70 @@ unnamedGraph =
 
 posGraph : Graph NodeLabel EdgeLabel -> 
    Graph NodeLabel
-         {label : EdgeLabel, bezier : Maybe QuadraticBezier}
+         {label : EdgeLabel, shape : EdgeShape, pos : Point}
 posGraph g = 
       let padding = 5 in
-      let computeEdge _ n1 n2 e = 
+      -- ca c'est utile pour calculer les coordonnes du symbole de pullback
+      let dummyExtrem = { fromId = 0, fromPos = (0, 0), toPos = (2,2), controlPoint = (1,1)} in
+      let dummyAcc id pos = {
+                      id = id,
+                      posDims = 
+                         { pos = pos, dims = (0, 0)},
+                      extrems = dummyExtrem
+                      }
+      in
+      let computeEdge id n1 n2 e = 
             
              case e.details of
                PullshoutEdge -> 
-                 {label = e, posDims = { pos = (0, 0), dims = (0, 0)}, bezier = Nothing}
+                 let h = pullshoutHat n1.extrems n2.extrems in
+                 {label = e, 
+                  acc = dummyAcc id h.summit,                     
+                  shape = HatShape h }
                NormalEdge l ->
-                   let q = Geometry.segmentRectBent n1 n2 l.style.bend in
+                   let q = Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
                    {label = e, 
-                    posDims = 
+                    shape = Bezier q,
+                    acc = {
+                     id = id,
+                     posDims = 
                          {
                              pos = Bez.middle q,
                              dims = (padding, padding) |> Point.resize 4
                          },
-                     bezier = Just q}
+                     extrems = { fromId = n1.id, 
+                                 fromPos = n1.posDims.pos, 
+                                 toPos = n2.posDims.pos,
+                                 controlPoint = q.controlPoint}
+                   }
+                     
+                  }
             
       in
       Graph.mapRecAll     
-              .posDims .posDims      
+              .acc .acc      
               (\id n -> { 
                       label = n,
-                      posDims = {
-                      dims =                       
-                     --  if n.editable then (0, 0) else
-                      -- copied from source code of Collage                         
-                         getNodeDims n, 
-                      pos = n.pos
-                      } |> Geometry.pad padding
+                      acc = {
+                        id = id,                        
+                        extrems = dummyExtrem,
+                        posDims = {
+                           dims =                       
+                        --  if n.editable then (0, 0) else
+                        -- copied from source code of Collage                         
+                                  getNodeDims n, 
+                           pos = n.pos
+                         } |> Geometry.pad padding
+                        }
                        } )
                  computeEdge
               g
    |> Graph.map 
        (\_ {label} -> label) 
-       (\_ {label, bezier } -> { bezier = bezier, label = label })
+       (\_ {label, shape, acc } -> 
+          {pos = acc.posDims.pos, 
+           shape = shape, 
+           label = label })
 
 closest : Point -> Graph NodeLabel EdgeLabel -> Graph.Id
 -- ordered by distance to Point
@@ -583,9 +611,9 @@ closest pos ug =
    case getNodesAt ug pos of
      t :: _ -> t
      _ -> 
-        let edgeDistance e = 
-             Maybe.map Bez.middle e.bezier |>
-                        Maybe.map (Point.distance pos)
+        let edgeDistance e = e.pos |>            
+                        Point.distance pos
+                        -- |> Just
         in
         let ug2 = posGraph ug 
                  |> Graph.map 
@@ -593,8 +621,9 @@ closest pos ug =
                    (always edgeDistance)
         in
    
-        let unnamedEdges = Graph.edges ug2 |> List.filterMap 
-                           (\ {id, label} -> Maybe.map (\ l -> {id = id, label = l}) label)
+        let unnamedEdges = Graph.edges ug2 
+                          |> List.map 
+                             (\ {id, label} -> {id = id, label = label})
             unnamedNodes = Graph.nodes ug2 
         in
         let unnamedAll = unnamedEdges ++ unnamedNodes 

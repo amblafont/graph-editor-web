@@ -14,25 +14,26 @@ import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
 import Geometry 
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import HtmlDefs
-import Json.Decode as D
 import Html.Events.Extra.Mouse as MouseEvents
 import Zindex exposing (foregroundZ)
+import EdgeShape exposing (EdgeShape(..), Hat)
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias NormalEdgeDrawingLabel = 
    { label : String, editable : Bool,
-     style : ArrowStyle, dims : Point, bezier : QuadraticBezier }
+     style : ArrowStyle, dims : Point }
 
 type EdgeType = 
     PullshoutEdge
   | NormalEdge NormalEdgeDrawingLabel
 
-type alias EdgeDrawingLabel = { details : EdgeType, isActive : Activity, zindex : Int}
+type alias EdgeDrawingLabel = { details : EdgeType, shape : EdgeShape, isActive : Activity, zindex : Int}
 
 mapNormalEdge : (NormalEdgeDrawingLabel -> NormalEdgeDrawingLabel) -> EdgeDrawingLabel -> EdgeDrawingLabel
 mapNormalEdge f e = 
   {isActive = e.isActive,
    zindex = e.zindex,
+   shape = e.shape,
    details = case e.details of
                PullshoutEdge -> PullshoutEdge
                NormalEdge l -> NormalEdge <| f l
@@ -77,7 +78,7 @@ toDrawingGraph g =
         (\ _ e ->  make_edgeDrawingLabel
                     { editable = False, 
                       isActive = makeActivity e.label,
-                      bezier = e.bezier
+                      shape = e.shape
                     } e.label
         )
         graphWithPos
@@ -88,17 +89,17 @@ makeActive l = Graph.updateList l
              (\ e -> { e | isActive = MainActive})
              
 
-make_edgeDrawingLabel : {editable : Bool, isActive : Activity, bezier : Maybe QuadraticBezier} 
+make_edgeDrawingLabel : {editable : Bool, isActive : Activity, shape : EdgeShape} 
                       -> EdgeLabel -> EdgeDrawingLabel
-make_edgeDrawingLabel {editable, isActive, bezier} e =
-   { isActive = isActive, zindex = e.zindex,
+make_edgeDrawingLabel {editable, isActive, shape} e =
+   { isActive = isActive, zindex = e.zindex, shape = shape,
      details = case e.details of 
         GraphDefs.PullshoutEdge -> PullshoutEdge
         GraphDefs.NormalEdge ({label, style} as l) ->
            NormalEdge { label = label, editable = editable, 
               style = style,
-              dims = GraphDefs.getEdgeDims l,
-              bezier = bezier |> Maybe.withDefault Bez.dummy
+              dims = GraphDefs.getEdgeDims l
+              -- bezier = bezier |> Maybe.withDefault Bez.dummy
             }
    }
     
@@ -305,29 +306,10 @@ type alias Extrem =
    toId : Id,
    fromPos : Point,
    toPos : Point}
--- draw a pullback or a pushout, depending on whehter the sources 
--- or the targets are equal
-drawPullshout : Graph.EdgeId -> Activity -> Int ->
-           Extrem -> Extrem -> Drawing Msg
-drawPullshout edgeId a z e1 e2 =
-    let vertex = 
-            if e1.fromId == e2.fromId then
-                e1.fromPos
-            else 
-                e1.toPos
-     in
-     let shift = 30 in
-    --  let shift = 15 in
-     let smallshift = 5 in
 
-     let r1 = Point.towards vertex e1.bez.controlPoint shift
-         r2 = Point.towards vertex e2.bez.controlPoint shift
-     in
-     let extrem = Point.diamondPave r1 vertex r2 in
-     let s1 = Point.towards r1 extrem smallshift
-         s2 = Point.towards r2 extrem smallshift
-     in
-     let blackline classes = Drawing.line 
+drawHat : Graph.EdgeId -> Activity -> Int -> Hat -> Drawing Msg
+drawHat edgeId a z hat =
+    let blackline classes = Drawing.line 
                (classes ++ 
                [ Drawing.zindexAttr z,
                  Drawing.onClick (EdgeClick edgeId),
@@ -336,7 +318,7 @@ drawPullshout edgeId a z e1 e2 =
      in
      let mk_pbk classes = 
            Drawing.group 
-           [blackline classes s1 extrem, blackline classes extrem s2] 
+           [blackline classes hat.p1 hat.summit, blackline classes hat.summit hat.p2] 
      in
      let classes = List.map Drawing.class <| activityToEdgeClasses a in
      Drawing.group 
@@ -351,40 +333,26 @@ Fin
 graphDrawing : Config -> Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 graphDrawing cfg g0 =
      
-      let drawEdge id n1 n2 e = 
-             case e.details of
-               PullshoutEdge -> { drawing = 
-                                   Maybe.map2 (drawPullshout id e.isActive e.zindex) n1.extrems n2.extrems
-                                   |> Maybe.withDefault Drawing.empty
-                               , extrems = Nothing
-                               , id = id
-                               , pos = (0, 0)
-                               }
-               NormalEdge l ->
-                   let q = l.bezier in -- Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
-                       { drawing = normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend,                     
-                         pos = Bez.middle q,
-                        -- TODO
-                         extrems = Just 
-                              { bez = q,
-                                fromId = n1.id,
-                                toId = n2.id,
-                                fromPos = n1.pos,
-                                toPos   = n2.pos },
-                         id = id
-                       }
+      let drawEdge id e = 
+             case (e.details, e.shape) of
+               (PullshoutEdge, HatShape hat) -> 
+                                drawHat id e.isActive e.zindex hat
+                              
+               (NormalEdge l, Bezier q) ->
+                  
+                        normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend
+                  
+               _ -> Drawing.empty
+               
       in
-      let g = Graph.mapRecAll     
-              identity identity      
-              (\id n -> { drawing = nodeDrawing cfg (Node id n), 
-                      extrems = Nothing,
-                      id = id,
-                      pos = n.pos })
+      let g = Graph.map     
+              -- identity identity      
+              (\id n -> nodeDrawing cfg (Node id n))
                drawEdge
               g0 
       in
-      let nodes = Graph.nodes g |> List.map (.label >> .drawing)
-          edges = Graph.edges g |> List.map (.label >> .drawing)
+      let nodes = Graph.nodes g |> List.map .label
+          edges = Graph.edges g |> List.map .label
       in
       let
           drawings = nodes ++ edges
