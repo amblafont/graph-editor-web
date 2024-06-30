@@ -105,10 +105,10 @@ port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
 
-port clear : ({fileName : String, scenario : String, preamble: String} -> a) -> Sub a
+port clear : ({scenario : String, preamble: String} -> a) -> Sub a
 
 -- tell js to save the graph, version  is the format version
-type alias JsGraphInfo = { graph : LastFormat.Graph, fileName : String, version : Int }
+type alias JsGraphInfo = { graph : LastFormat.Graph, version : Int }
 type alias ExportFormats = {tex:String, svg:String, coq:String}
 
 -- feedback: do we want a confirmation alert box?
@@ -211,9 +211,8 @@ subscriptions m =
       simpleMsg SimpleMsg,
       renameFile FileName,
       promptedTabTitle RenameTab,
-      clear (\ {scenario, preamble, fileName} ->
+      clear (\ {scenario, preamble} ->
           Clear {scenario = scenarioOfString scenario
-               , fileName = fileName
                , preamble = preamble }),
       -- upload a graph (triggered by js)
       
@@ -349,7 +348,7 @@ switch_RenameMode model =
 toJsGraphInfo : Model -> JsGraphInfo
 toJsGraphInfo model= { graph = LastFormat.toJSGraph 
                                     <| Model.toGraphInfo model,
-                              fileName = model.fileName,
+                              -- fileName = model.fileName,
                               version = LastFormat.version}
 
 updateIntercept : Msg -> Model -> (Model, Cmd Msg)
@@ -448,12 +447,11 @@ update msg modeli =
                          { info = toJsGraphInfo model, export = makeExports model,
                          feedback = False }) 
                    else noCmd model
-     Clear {fileName, scenario,preamble} -> 
+     Clear {scenario,preamble} -> 
         let modelf = createModel model.defaultGridSize in
         let or s1 s2 = if s1 == "" then s2 else s1 in 
         noCmd { modelf | scenario = scenario,
             latexPreamble = or preamble modelf.latexPreamble
-          , fileName =  or fileName modelf.fileName
          }
          --  (iniModel, Task.attempt (always Msg.noyarn comOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
@@ -486,7 +484,6 @@ update msg modeli =
         let scenario = scenarioOfString g.scenario in
         let m =  clearHistory <| updateWithGraphInfo { model | 
                                               mode = DefaultMode, 
-                                              fileName = g.fileName,
                                               scenario = scenario
                                             } g.graph 
         in
@@ -1614,6 +1611,7 @@ viewGraph model =
                   Html.text "Filename: "
                 , Html.input  [Html.Attributes.type_ "text",                       
                         Html.Events.onInput FileName,
+                        Html.Attributes.id "filename",
                         -- Html.Events.onFocus (QuickInput ""),
                         Html.Attributes.value model.fileName
                         ] []
@@ -1624,7 +1622,7 @@ viewGraph model =
              Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button", 
                Html.Attributes.title "Opens a save dialog box"] 
                [Html.text "Save"]
-           , Html.button [Html.Events.onClick (Clear {fileName = "", scenario = model.scenario, preamble = ""})] [Html.text "Clear"]
+           , Html.button [Html.Events.onClick (Clear {scenario = model.scenario, preamble = ""})] [Html.text "Clear"]
            
            
            , Html.a [Html.Attributes.href  ("#" ++ HtmlDefs.latexPreambleId)] [Html.text "Latex preamble"]

@@ -32,7 +32,7 @@ scenarioOfString s =
       _ -> Standard
 
 type alias LoadGraphInfo a = 
-   { graph : a, fileName : String, 
+   { graph : a, -- fileName : String, 
    -- TODO: remove this
      scenario : String,
      clipboard : Bool, -- is it a paste event?
@@ -41,8 +41,8 @@ type alias LoadGraphInfo a =
    }
 
 mapLoadGraphInfo : (a -> b) -> LoadGraphInfo a -> LoadGraphInfo b 
-mapLoadGraphInfo f { graph, fileName, scenario, clipboard, setFirstTab } =
-   { graph = f graph, fileName = fileName, scenario = scenario,
+mapLoadGraphInfo f { graph, scenario, clipboard, setFirstTab } =
+   { graph = f graph, scenario = scenario,
      clipboard = clipboard, setFirstTab = setFirstTab }
 
 -- the model automatically updates its record of HtmlDefs.Keys (shift,alt,ctrl status) in any case
@@ -81,7 +81,7 @@ type Msg
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
   | MouseOn Graph.Id
-  | Clear {fileName : String, scenario : Scenario, preamble : String}
+  | Clear { scenario : Scenario, preamble : String}
   | SizeGrid Int
   | ToggleHideGrid
   | ToggleAutosave

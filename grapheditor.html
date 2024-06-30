@@ -100,7 +100,7 @@
                 stroke:white;
             }    
         </style> 
-        <script>         
+        <script>      
             // LocalStorage key used for quicksave
             const storageKey = "yadegraph";
             const gridStorageKey = "yadegridsize"
@@ -245,6 +245,18 @@
              node: appDiv,
              flags: { defaultGridSize : gridSize }
          });
+
+
+        function getFileName() {
+                var ob = document.getElementById("filename");
+                if (!ob)
+                    return "unnamed.json";
+                return ob.value;
+            }
+        function setFileName(newName) {
+            app.ports.renameFile.send(newName);
+        }      
+
          // we send a signal [keyInput] to elm and recieve
          // the answer on [keyOutput]
          function makeElmRequest(keyInput, keyOutput, f) {
@@ -276,14 +288,14 @@
          
 
 
-         function sendGraphToElm(json, filename, scenario = "standard", clipboard = false, setFirstTab = false) {
+         function sendGraphToElm(json, scenario = "standard", clipboard = false, setFirstTab = false) {
             var graph = json;
             var version = 0;
             if (json.hasOwnProperty('version')) {
                version = json.version;
                graph = json.graph;
             }
-            var args = { graph , fileName : filename, scenario,
+            var args = { graph , scenario,
                 clipboard, setFirstTab};
             console.log(args);
             app.ports["loadedGraph" + version].send(args);
@@ -291,12 +303,12 @@
         
          const queryString = window.location.search;
          const urlParams = new URLSearchParams(queryString);
-         var tutoData = {"graph" : tutorial, "fileName" : "graph.json", "scenario" : "standard", "clipboard" : false, 
+         var tutoData = {"graph" : tutorial, "scenario" : "standard", "clipboard" : false, 
         setFirstTab : false };
 
          if (urlParams.has("scenario") && scenarios.hasOwnProperty(urlParams.get("scenario"))) {
             scenario = urlParams.get("scenario"); 
-            sendGraphToElm(scenarios[scenario], scenario + ".json", scenario);
+            sendGraphToElm(scenarios[scenario], scenario);
          }
          else {            
             app.ports["loadedGraph" + tutorial_format_version].send(tutoData);
@@ -312,9 +324,10 @@
                  var fr=new FileReader();
                  fr.onload=function(){
                      var json = JSON.parse (fr.result);
-                     sendGraphToElm(json, file.name);
+                     sendGraphToElm(json);
                  }
                  fr.readAsText(file);
+                 setFileName(file.name);
                  document.title = file.name;
              }
 
@@ -350,8 +363,9 @@
             }
             
             var json = JSON.parse(result);
-            var fileName = json.fileName;                  
-            sendGraphToElm(json, json.fileName);     
+            var fileName = json.fileName;
+            setFileName(fileName);               
+            sendGraphToElm(json);     
          };
 
 
@@ -396,7 +410,7 @@
             console.log("Quicksaving...");
             var a = arg.info
             var d = fromElmGraph(a);
-            d.fileName = a.fileName;
+            d.fileName = getFileName();
              // Check browser support
             if (!supportStorage) {           
                if (arg.feedback)
@@ -416,7 +430,7 @@
             app.ports.quicksaveGraph.subscribe(function (a) {
                     var d = a.info;
                     var g = fromElmGraph(d);
-                    window.electronAPI.quicksaveGraph(d.fileName, g, a.export, a.feedback);
+                    window.electronAPI.quicksaveGraph(getFileName(), g, a.export, a.feedback);
             });
          else
             app.ports.quicksaveGraph.subscribe(quicksaveStorage);
@@ -441,7 +455,7 @@
 
          function saveGraph(b) {
             var a = b.graph;
-            var name = a.fileName;
+            var name = getFileName();
             var d = fromElmGraph(a);
             download(JSON.stringify(d), name /* + '.json' */, 'application/json');
                
@@ -450,7 +464,7 @@
 
          if (isElectron)
             app.ports.saveGraph.subscribe(function (d) {
-                window.electronAPI.saveGraph(d.graph.fileName, fromElmGraph(d.graph), d.export);
+                window.electronAPI.saveGraph(getFileName(), fromElmGraph(d.graph), d.export);
             });
          else
             app.ports.saveGraph.subscribe(saveGraph);
@@ -481,7 +495,7 @@
                 catch (e) { json = false; }
                 // console.log(json);
                 if (json) {
-                    sendGraphToElm(json, "", "standard", true);
+                    sendGraphToElm(json, "standard", true);
                     // cnonsole.log(json);
                 }
                 // app.ports.onPaste.send(text); 
@@ -641,10 +655,10 @@
 
             console.log("electron detected.");
             // window.electronAPI.loadGraph((event, json, fileName, scenario) => alert('coucou') );
-            window.electronAPI.loadGraph((event, json, fileName, scenario) => sendGraphToElm(json, fileName, scenario));
+            window.electronAPI.loadGraph((event, json, fileName, scenario) => {setFileName(fileName);  sendGraphToElm(json, scenario);});
             window.electronAPI.clearGraph((event, fileName, scenario, latexPreamble) => {
-            app.ports.clear.send({fileName:fileName, scenario:scenario, preamble:latexPreamble});});
-            window.electronAPI.setFirstTab((event, json) => sendGraphToElm(json, "", "coqlsp", false, true));
+            app.ports.clear.send({scenario:scenario, preamble:latexPreamble});});
+            window.electronAPI.setFirstTab((event, json) => sendGraphToElm(json, "coqlsp", false, true));
             window.electronAPI.loadEquation(function (event, equation, scenario) {
                 //    console.log(equation);
                 //   app.ports.clear.send(scenario);
@@ -652,7 +666,7 @@
                 app.ports.setFirstTabEquation.send(equation);
             }
             );
-            window.electronAPI.rename((event, fileName) => app.ports.renameFile.send(fileName));
+            window.electronAPI.rename((event, fileName) => setFileName(fileName));
             window.electronAPI.simpleMsg((event, msg) => app.ports.simpleMsg.send(msg));
  
             // }

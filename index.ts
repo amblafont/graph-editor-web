@@ -511,7 +511,7 @@ function configureIpc() {
                          && "key" in msg
                          && "content" in msg;
        if (!validMsg) {
-          console.log ("received unknwon message: ");
+          console.log ("received unknown message: ");
           console.log(msg);
           return;
        }
