@@ -12,6 +12,7 @@ svg = node "svg"
 
 text = String.Html.text
 foreignObject = node "foreignObject"
+g = node "g"
 image = node "image"
 circle = node "circle"
 line = node "line"
@@ -19,6 +20,7 @@ pattern = node "pattern"
 path = node "path"
 rect = node "rect"
 text_ = node "text"
+use = node "use"
 
 -- svg = node "svg"
 
@@ -40,6 +42,9 @@ fill = attribute "fill"
 stroke = attribute "stroke"
 
 strokeDasharray = attribute "stroke-dasharray"
+strokeLinecap = attribute "stroke-linecap"
+strokeLinejoin = attribute "stroke-linejoin"
+strokeMiterlimit = attribute "stroke-miterlimit"
 
 d = attribute "d"
 id = attribute "id"

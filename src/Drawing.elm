@@ -14,6 +14,7 @@ import Geometry
 import Json.Decode as D
 import Html 
 import ArrowStyle exposing (ArrowStyle)
+import Drawing.ArrowStyle
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
 import Svg.Events
@@ -177,7 +178,7 @@ arrow : List (Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
 arrow attrs0 arrowStyle q =
     let attrs = Color arrowStyle.color :: attrs0 in
     let zindex = attributesToZIndex attrs in
-    let imgs = ArrowStyle.makeHeadTailImgs q arrowStyle in    
+    let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    
     let mkgen d l = mkPath d (l ++ attrs) in
     let mkl = mkgen arrowStyle.dashed [] in
     let mkshadow = mkgen False [class shadowClass] in
