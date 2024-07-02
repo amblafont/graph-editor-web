@@ -6,9 +6,9 @@ To test offline: open grapheditor.html in your browser.
 To compile: elm make src/Main.elm --output=elm.js
 (or download the latest elm.js from https://amblafont.github.io/graph-editor/elm.js)
 
-The desktop application (check the release pages) embeds the web app using electron and offers additional features:
-- easy editing of diagrams in latex documents (see the directory tools/),
-- Coq mechanisation features (see https://github.com/amblafont/vscode-yade-example).
+The desktop application (check the release pages) embeds the web app using electron and offers easy editing of diagrams in latex documents (see the directory tools/).
+
+There is also a vscode extension which embeds the web app to provide Coq mechanisation features (see https://github.com/amblafont/vscode-yade-example).
 
 To compile the desktop application, you first need `yarn` to be installed. For this, you need to install `npm`, and then `npm install --global yarn`.
 Then,
