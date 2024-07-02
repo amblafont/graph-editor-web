@@ -177,7 +177,7 @@
         <script>
         const isElectron = window.electronAPI != undefined;
         var vscode = undefined;
-        if (acquireVsCodeApi) {
+        if (typeof acquireVsCodeApi != 'undefined') {
             vscode = acquireVsCodeApi();
         }
 
