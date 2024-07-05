@@ -7,7 +7,7 @@
 \textclass article
 \begin_preamble
 \usepackage{tikz-cd}
-\usepackage{yade}
+\usepackage{../yade}
 \end_preamble
 \use_default_options true
 \maintain_unincluded_children false
@@ -82,8 +82,8 @@
 \begin_body
 
 \begin_layout Standard
-Running genlatex on this file (using the command in the readme) and then
- deleting the diagram displayed below (keeping the note with YADE DIAGRAM)
+Open this directory in the editor.
+ Deleting the diagram displayed below (keeping the note with YADE DIAGRAM)
  will trigger the edition of the diagram file diagrams/diagram0.json (and
  generation of diagrams/diagram0.tex)
 \end_layout
@@ -101,7 +101,7 @@ status open
 
 \begin_inset Preview
 
-\begin_layout Standard 
+\begin_layout Standard
 \begin_inset CommandInset include
 LatexCommand input
 preview true

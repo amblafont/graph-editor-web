@@ -8,6 +8,8 @@
             const renderedEvent = "rendered";
         </script>
         <script src="elm.js"></script>
+        <!-- This script is used for the open directory feature  -->
+        <script src="watcher.js"></script>
         
         <!-- The loading of KaTeX is deferred to speed up page rendering -->
         <script src="js/katex.min.css.js"></script>
@@ -176,6 +178,8 @@
         <div id="myapp"></div>
         <script>
         const isElectron = window.electronAPI != undefined;
+        const isFileAPI = typeof showDirectoryPicker != 'undefined';
+        const configFilename = "yade-config.json";
         var vscode = undefined;
         if (typeof acquireVsCodeApi != 'undefined') {
             vscode = acquireVsCodeApi();
@@ -183,7 +187,6 @@
 
         // copied from index.ts
         function sendExternalMsg(key, content) {
-                console.log({key:key, content:content});
                 vscode.postMessage({key:key, content:content})
         }
 
@@ -314,7 +317,6 @@
             }
             var args = { graph , scenario,
                 clipboard, setFirstTab};
-            console.log(args);
             app.ports["loadedGraph" + version].send(args);
          }
         
@@ -358,6 +360,105 @@
          else
             app.ports.openFile.subscribe(openFile);
 
+        function processWatchedFile(config,preamble,dirHandle) {
+            function doit() {
+              return checkWatchedFile(config,dirHandle)
+                .then(function (r) {
+                    if (r === undefined) {
+                        return;
+                    }
+                    if(!r) {
+                        app.ports.simpleMsg.send(
+                            "Waiting for incomplete diagram in " + config.watchedFile);
+                        window.onfocus =  function () {
+                            window.onfocus = function () {};
+                            doit();
+                        };
+                        return;
+                    }
+                    saveGraphFun = function(d){
+                        saveGraphFun = function (d) {};
+                        quicksaveFun = function (d) {};
+                        watchSaveDiagram(config, r, dirHandle, fromElmGraph(d.info), d.export)
+                        .then(() => { 
+                             doit();
+                    });
+                    }
+                    quicksaveFun = saveGraphFun;
+                    loadEditor(preamble, r.content);
+                });
+            };
+            doit();
+        }
+
+
+        
+        function loadEditor(defaultPreamble, diag) {
+            let stripped_diag = diag.trim();
+
+            if (stripped_diag == "") {
+                console.log("Creating new diagram");
+                app.ports.clear.send({scenario:"watch", preamble:defaultPreamble});
+            } else {
+                console.log("Loading diagram ");
+                let json = JSON.parse (stripped_diag);
+                sendGraphToElm(json, "watch");
+            }    
+        }
+
+  
+        function extractExtensionFromPath(path) {
+            var parts = path.split(".");
+            if (parts.length < 2)
+                return "";
+            return parts[parts.length - 1];
+        }
+
+        app.ports.openDirectory.subscribe(
+            function() {
+                if (!isFileAPI) {
+                    alert("Your browser does not support the File System Access API");
+                    return;
+                }
+
+            showDirectoryPicker().then(function (dirHandle) { 
+                dirHandle.getFileHandle(configFilename)
+                .then((f) => f.getFile(),(e) => { 
+                      alert("Cannot access " + configFilename + ": " + e.toString());
+                     throw (e); })
+               .then((file) => file.text())
+               .then((text) => {
+                var json = JSON.parse(text);
+                if (!json.watchedFile) {
+                    alert("watchedFile unspecified in the json");
+                    return;
+                }
+                var extension = extractExtensionFromPath(json.watchedFile);
+                
+                var data = [];
+                if (extension in defaultsExt)
+                    data.push(defaultsExt[extension]);
+                else
+                    console.log("Unknown e  xtension " + extension + ".");
+                data.push(json);
+                var config = defaultConfig;
+                for (conf of data) {
+                    config = Object.assign(config, conf);
+                }
+                var promise = new Promise((resolve) => resolve("") );
+                if (config.preambleFile)
+                    promise = getTextFromFilepath(dirHandle,config.preambleFile);
+                promise.then(function(preamble) {
+                    app.ports.clear.send({scenario:"watch", preamble:preamble});
+                    processWatchedFile(config,preamble, dirHandle);
+                });
+               });
+            })
+            .catch((e) => { console.log(e); alert("Cannot access the directory"); });
+            
+             
+            }
+        );
         // load a json graph file, from local storage
         function quickloadGraph() {
             if (!supportStorage) {           
@@ -423,7 +524,7 @@
              return {graph : a.graph, version : a.version };;
          }
 
-         function quicksaveStorage(arg) {
+         var quicksaveFun = function(arg) {
             console.log("Quicksaving...");
             var a = arg.info
             var d = fromElmGraph(a);
@@ -442,15 +543,15 @@
             if (arg.feedback)
                 alert("Successful quicksave"); 
          }
+          
+         app.ports.quicksaveGraph.subscribe((e) => quicksaveFun(e));
 
          if (isElectron)
-            app.ports.quicksaveGraph.subscribe(function (a) {
+            quicksaveFun = function(a) {
                     var d = a.info;
                     var g = fromElmGraph(d);
                     window.electronAPI.quicksaveGraph(getFileName(), g, a.export, a.feedback);
-            });
-         else
-            app.ports.quicksaveGraph.subscribe(quicksaveStorage);
+            };
 
          app.ports.saveGridSize.subscribe(function(arg) {
             console.log("Saving grid size preferences.");
@@ -470,8 +571,8 @@
               window.open(s);             
          });
 
-         function saveGraph(b) {
-            var a = b.graph;
+         var saveGraphFun = function (b) {
+            var a = b.info;
             var name = getFileName();
             var d = fromElmGraph(a);
             download(JSON.stringify(d), name /* + '.json' */, 'application/json');
@@ -479,12 +580,13 @@
             document.title = name;
          };
 
+         
+         app.ports.saveGraph.subscribe((b) => saveGraphFun(b));
+
          if (isElectron)
-            app.ports.saveGraph.subscribe(function (d) {
-                window.electronAPI.saveGraph(getFileName(), fromElmGraph(d.graph), d.export);
-            });
-         else
-            app.ports.saveGraph.subscribe(saveGraph);
+            saveGraphFun = function (d) {
+                window.electronAPI.saveGraph(getFileName(), fromElmGraph(d.info), d.export);
+            };
 
 
          // this event handler computes the relative position
@@ -727,14 +829,6 @@
                 promptCallback = (ret) => callback(ret);
                 vscode.postMessage({key:"prompt", content: {question: question, default: defaut}});
             };
-            /*
-            ipcMain.on('incomplete-equation', (e, s) => sendExternalMsg("incomplete-equation", s, 
-     errVscode));
-  ipcMain.on('apply-proof', (e, s) => sendExternalMsg("apply-proof", s, 
-     errVscode));
-  ipcMain.on('generate-proof', (e, s) => sendExternalMsg("generate-proof", s));
-  
-            */
             app.ports.generateProofJs.subscribe(function(script){
                 sendExternalMsg("generate-proof",processProof(script));
             });
@@ -742,7 +836,7 @@
 
          // copied from index.ts
 
-         function loadData(data, filename, scenario,  setFirstTab = false) {
+function loadDataFromVscode(data, filename, scenario,  setFirstTab = false) {
 
   let stripped_diag = data.trim();
   try {
@@ -786,13 +880,12 @@
           case "prompt": 
               var callback = promptCallback;
               promptCallback = undefined;
-              console.log("prompt recu: " + msg.content);  
               callback(msg.content); 
               break;
           case "set-first-tab":
             setFirstTab = true;
           case "load":
-            loadData(msg.content, "graph.json", "coqlsp", 
+            loadDataFromVscode(msg.content, "graph.json", "coqlsp", 
                 setFirstTab)
             break;
           case "applied-proof":

@@ -114,7 +114,7 @@ type alias ExportFormats = {tex:String, svg:String, coq:String}
 -- feedback: do we want a confirmation alert box?
 port quicksaveGraph : { info : JsGraphInfo, export: ExportFormats, feedback : Bool} -> Cmd a
 -- we ask js to save the graph
-port saveGraph : {graph: JsGraphInfo, export: ExportFormats} -> Cmd a
+port saveGraph : {info: JsGraphInfo, export: ExportFormats} -> Cmd a
 
 port exportQuiver : JE.Value -> Cmd a
 port alert : String -> Cmd a
@@ -125,6 +125,7 @@ port renameFile : (String -> a) -> Sub a
 
 -- we ask js to open a graph file
 port openFile : () -> Cmd a
+port openDirectory : () -> Cmd a
 -- or to retrieve the saved graph
 port quickLoad : () -> Cmd a
 -- js returns the graph
@@ -430,7 +431,7 @@ update msg modeli =
     let sizeGrid = getActiveSizeGrid model in
     case msg of
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
-     Save -> (model, saveGraph { graph = toJsGraphInfo model 
+     Save -> (model, saveGraph { info = toJsGraphInfo model 
                               , export = makeExports model })
      SaveGridSize -> ({model | defaultGridSize = sizeGrid } , saveGridSize sizeGrid)
      OptimalGridSize ->
@@ -1592,7 +1593,10 @@ viewGraph model =
             Html.button [Html.Events.onClick (openFile () |> Do),
                Html.Attributes.id "load-button"] [Html.text "Load graph"] 
             ,  Html.button [Html.Events.onClick (quickLoad () |> Do),
-               Html.Attributes.title "Local or session storage"] [Html.text "QuickLoad graph"]     
+               Html.Attributes.title "Local or session storage"] [Html.text "QuickLoad graph"]
+            -- Button to open a directory     
+            , Html.button [Html.Events.onClick (openDirectory () |> Do),
+               Html.Attributes.title "Open a directory"] [Html.text "Open directory"]
             ]
             else []
             ),
