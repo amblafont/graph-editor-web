@@ -1,7 +1,7 @@
 A diagram editor in your browser. Try it out: https://amblafont.github.io/graph-editor/index.html.
 See https://www.youtube.com/watch?v=iWSw4RK8wEk and https://amblafont.github.io/articles/yade.pdf for a short presentation. 
 
-To test offline: open grapheditor.html in your browser (but the button "open directory" might not work because of the file system API security restrictions, unless you open the page on a local web server).
+To test offline: open grapheditor.html in your browser. The button "open directory" might not work because of the file system API security restrictions, unless you open the page on a local web server. Alternatively you can install the web application (an install button will show up at the top of the html file if your browser allows it).
 
 There is also a vscode extension which embeds the web app to provide Coq mechanisation features (see https://github.com/amblafont/vscode-yade-example).
 

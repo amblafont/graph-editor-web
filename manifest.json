@@ -1,0 +1,13 @@
+{
+    "short_name": "YADE",
+    "name": "Yet Another Diagram Editor",
+    "start_url": "./grapheditor.html",
+    "description": "This is a diagram editor",
+    "display": "standalone",
+    "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "292x292",
+      "type": "image/png"
+    }]
+}

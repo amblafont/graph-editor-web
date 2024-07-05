@@ -3,6 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Main</title>
+        <link rel="manifest" href="manifest.json">
         <script>
             const renderedClass = "rendered-callback";
             const renderedEvent = "rendered";
@@ -108,7 +109,19 @@
                 stroke:white;
             }    
         </style> 
-        <script>      
+        <script>    
+// This is for caching the files for offline use in the PWA version
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }, err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+  });
+}
+        
             // LocalStorage key used for quicksave
             const storageKey = "yadegraph";
             const gridStorageKey = "yadegridsize"
@@ -147,6 +160,7 @@
 
     <body>       
         <h1>Diagram editor</h1>
+        <button id="install" hidden>Install for offline use</button>
    
      
         <!-- <p>
@@ -177,6 +191,30 @@
         <math-latex> </math-latex>
         <div id="myapp"></div>
         <script>
+let installPrompt = null;
+const installButton = document.querySelector("#install");
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  console.log("salut!");
+  installButton.removeAttribute("hidden");
+});
+
+installButton.addEventListener("click", async () => {
+  if (!installPrompt) {
+    return;
+  }
+  const result = await installPrompt.prompt();
+  console.log(`Install prompt was: ${result.outcome}`);
+  disableInAppInstallPrompt();
+});
+
+function disableInAppInstallPrompt() {
+  installPrompt = null;
+  installButton.setAttribute("hidden", "");
+}
+
         const isElectron = window.electronAPI != undefined;
         const isFileAPI = typeof showDirectoryPicker != 'undefined';
         const configFilename = "yade-config.json";
