@@ -197,7 +197,6 @@ const installButton = document.querySelector("#install");
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   installPrompt = event;
-  console.log("salut!");
   installButton.removeAttribute("hidden");
 });
 
@@ -219,6 +218,7 @@ function disableInAppInstallPrompt() {
         const isFileAPI = typeof showDirectoryPicker != 'undefined';
         const configFilename = "yade-config.json";
         var vscode = undefined;
+        var currentFileHandle = undefined;
         if (typeof acquireVsCodeApi != 'undefined') {
             vscode = acquireVsCodeApi();
         }
@@ -313,6 +313,7 @@ function disableInAppInstallPrompt() {
             }
         function setFileName(newName) {
             app.ports.renameFile.send(newName);
+            document.title = newName;
         }      
 
          // we send a signal [keyInput] to elm and recieve
@@ -372,7 +373,7 @@ function disableInAppInstallPrompt() {
          }
          
          // load a json graph file, send it to the elm component
-         function openFile() {
+         var openFileFun = function() {
              var input = document.createElement('input');
              input.type = 'file';
              input.accept = ".json";
@@ -385,18 +386,46 @@ function disableInAppInstallPrompt() {
                  }
                  fr.readAsText(file);
                  setFileName(file.name);
-                 document.title = file.name;
+                //  document.title = file.name;
              }
 
              input.click();
          };
 
+         function openFile() {
+            openFileFun();
+         }
+
+         app.ports.openFile.subscribe(openFile);
+
          if (isElectron)
-            app.ports.openFile.subscribe(function (d) {
+            openFileFun = function (d) {
                 window.electronAPI.openFile();
-            });
-         else
-            app.ports.openFile.subscribe(openFile);
+            };
+
+         if(isFileAPI) {
+            // open the file picker with showFilePicker and sends the content to Elm
+            openFileFun = function() {
+                console.log("Opening file");
+                showOpenFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }] })
+                .then(function (fileHandles) {
+                    if (fileHandles.length != 1) {
+                        throw new Error("No file selected");
+                    }
+                    currentFileHandle = fileHandles[0];
+                    return currentFileHandle.getFile();
+                })
+                .then(function (file) {
+                    setFileName(file.name);
+                    return file.text();
+                })
+                .then(function (text) {
+                    var json = JSON.parse(text);
+                    sendGraphToElm(json);                    
+                });
+            };
+         }
+         
 
         function processWatchedFile(config,preamble,dirHandle) {
             function doit() {
@@ -562,7 +591,7 @@ function disableInAppInstallPrompt() {
              return {graph : a.graph, version : a.version };;
          }
 
-         var quicksaveFun = function(arg) {
+         function defaultQuickSave(arg) {
             console.log("Quicksaving...");
             var a = arg.info
             var d = fromElmGraph(a);
@@ -581,6 +610,9 @@ function disableInAppInstallPrompt() {
             if (arg.feedback)
                 alert("Successful quicksave"); 
          }
+         var quicksaveFun = function(a) {
+            defaultQuickSave(a);
+         };
           
          app.ports.quicksaveGraph.subscribe((e) => quicksaveFun(e));
 
@@ -590,6 +622,38 @@ function disableInAppInstallPrompt() {
                     var g = fromElmGraph(d);
                     window.electronAPI.quicksaveGraph(getFileName(), g, a.export, a.feedback);
             };
+        
+         function saveFileApi(arg) {
+            var a = arg.info;
+            var d = fromElmGraph(a);
+            return currentFileHandle.createWritable()
+            .then(
+                 (fileWriter) =>
+                    fileWriter.write(JSON.stringify(d))
+                    .then(() => {
+                        return fileWriter.close();
+                    })                
+            );
+         };
+         if (isFileAPI) {
+            quicksaveFun = function(arg) {
+                
+                if (!currentFileHandle) {
+                    defaultQuickSave(arg);
+                    return;
+                }
+                var feedback = arg.feedback;
+                arg.feedback = false;
+                defaultQuickSave(arg);
+                arg.feedback = feedback;
+                saveFileApi(arg)
+                .then(() => {
+                    if (arg.feedback) {
+                        alert("Successful quicksave to " + currentFileHandle.name);
+                    }
+                });
+            };
+         }
 
          app.ports.saveGridSize.subscribe(function(arg) {
             console.log("Saving grid size preferences.");
@@ -625,6 +689,17 @@ function disableInAppInstallPrompt() {
             saveGraphFun = function (d) {
                 window.electronAPI.saveGraph(getFileName(), fromElmGraph(d.info), d.export);
             };
+        if (isFileAPI) {
+            saveGraphFun = function (d) {
+                // open showsavefilepicker
+                showSaveFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }] })
+                .then(function (fileHandle) {
+                    currentFileHandle = fileHandle;
+                    setFileName(currentFileHandle.name);
+                    return saveFileApi(d);
+                })
+            };
+        }
 
 
          // this event handler computes the relative position
