@@ -304,14 +304,7 @@ function disableInAppInstallPrompt() {
          });
 
 
-        function getFileName() {
-                var ob = document.getElementById("filename");
-                if (!ob)
-                    return "unnamed.json";
-                return ob.value;
-            }
         function setFileName(newName) {
-            app.ports.renameFile.send(newName);
             document.title = newName;
         }      
 
@@ -589,7 +582,7 @@ function disableInAppInstallPrompt() {
             console.log("Quicksaving...");
             var a = arg.info
             var d = fromElmGraph(a);
-            d.fileName = getFileName();
+            // d.fileName = getFileName();
              // Check browser support
             if (!supportStorage) {           
                if (arg.feedback)
@@ -663,7 +656,8 @@ function disableInAppInstallPrompt() {
 
          var saveGraphFun = function (b) {
             var a = b.info;
-            var name = getFileName();
+            // var name = getFileName();
+            var name = "graph.json"
             var d = fromElmGraph(a);
             download(JSON.stringify(d), name /* + '.json' */, 'application/json');
                

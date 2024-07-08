@@ -121,7 +121,6 @@ port alert : String -> Cmd a
 
 
 port simpleMsg : (String -> a) -> Sub a
-port renameFile : (String -> a) -> Sub a
 
 -- we ask js to open a graph file
 port openFile : () -> Cmd a
@@ -210,7 +209,6 @@ subscriptions m =
     [
       findReplace FindReplace,
       simpleMsg SimpleMsg,
-      renameFile FileName,
       promptedTabTitle RenameTab,
       clear (\ {scenario, preamble} ->
           Clear {scenario = scenarioOfString scenario
@@ -401,7 +399,6 @@ update msg modeli =
                 DuplicateTab -> duplicateTab { modeli | mode = DefaultMode} <| nextTabName modeli
                 TabMoveLeft  -> moveTabLeft { modeli | mode = DefaultMode }
                 TabMoveRight -> moveTabRight { modeli | mode = DefaultMode }
-                FileName s -> { modeli | fileName = s }
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
                 MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
                 MouseMove p -> { modeli | mousePos = p} -- , mouseOnCanvas = True}
@@ -1548,20 +1545,6 @@ viewGraph model =
             ([ helpMsg model
             ] ++ overlayHelp)
           ] ++
-          ( 
-          if model.scenario == Watch then [] 
-          else
-              [ 
-                  Html.text "Filename: "
-                , Html.input  [Html.Attributes.type_ "text",                       
-                        Html.Events.onInput FileName,
-                        Html.Attributes.id "filename",
-                        -- Html.Events.onFocus (QuickInput ""),
-                        Html.Attributes.value model.fileName
-                        ] []
-              ]
-          )
-          ++
           [
              Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button", 
                Html.Attributes.title "Opens a save dialog box"] 

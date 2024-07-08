@@ -51,7 +51,6 @@ type Msg
   = -- call some js function
     Do (Cmd Msg)
   | Save
-  | FileName String -- new file name
   | ExportQuiver
     -- on reception of this message, the js function onMouseMove is called
     -- which sends back a MouseMove message with the relative position to 

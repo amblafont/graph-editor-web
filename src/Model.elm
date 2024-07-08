@@ -42,8 +42,6 @@ type alias Model = {
     , statusMsg : String
     , mode : Mode
     , hideGrid : Bool
-    -- filename in the web version / full path in the electron version
-    , fileName : String
     , showOverlayHelp : Bool
     -- do we add a proof node when creating a square?
     , squareModeProof : Bool
@@ -246,7 +244,6 @@ createModel sizeGrid =
     , mousePos = ( 0, 0 )
     , specialKeys = { ctrl = False, alt = False, shift = False }
     , hideGrid = False
-    , fileName = "graph.json"
     -- , bottomText = ""
     , autoSave = False
     , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
