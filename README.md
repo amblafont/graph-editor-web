@@ -18,25 +18,10 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 (or download the latest elm.js and watcher.js from https://amblafont.github.io/graph-editor/elm.js and https://amblafont.github.io/graph-editor/watcher.js)
 
 
-# Compiling the desktop app
-
-The desktop app (embedding the web app in an electron runtime) is now deprecated as its features are now available  using the feature "open directory".
-
-To compile the desktop application, you first need `yarn` to be installed. For this, you need to install `npm`, and then `npm install --global yarn`.
-Then,
-
-- `yarn install` to install the nodejs dependencies
-- `yarn compile` to compile the app
-- `yarn start -- -- arg1 arg2` to run the app
-- `yarn make` to build the .deb/.zip
-
-Alternatively, some instructions to build a docker image or a virtualbox image with everything installed are available at https://github.com/amblafont/vscode-yade-example/tree/master/images.
-
 # Ipc capabilities
 
 (This section may be slightly outdated.)
 
-When the desktop (electron) app is launched by another node.js app using `child_process`.
 This is also the interface used for communicating when it is embeded in a vscode webview.
 
 Examples:

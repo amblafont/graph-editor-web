@@ -130,7 +130,7 @@ if ('serviceWorker' in navigator) {
             var tutorial = fulltutorial["graph"];
             var tutorial_format_version = fulltutorial["version"];
 
-            // electron does not support synchronous window.prompt
+            // webview does not support synchronous window.prompt
             var customPrompt = function(question, defaut, callback) {
                 var ret = window.prompt(question, defaut);
                 if (ret !== null)                   
@@ -214,7 +214,6 @@ function disableInAppInstallPrompt() {
   installButton.setAttribute("hidden", "");
 }
 
-        const isElectron = window.electronAPI != undefined;
         const isFileAPI = typeof showDirectoryPicker != 'undefined';
         const configFilename = "yade-config.json";
         var vscode = undefined;
@@ -397,11 +396,6 @@ function disableInAppInstallPrompt() {
          }
 
          app.ports.openFile.subscribe(openFile);
-
-         if (isElectron)
-            openFileFun = function (d) {
-                window.electronAPI.openFile();
-            };
 
          if(isFileAPI) {
             // open the file picker with showFilePicker and sends the content to Elm
@@ -616,12 +610,6 @@ function disableInAppInstallPrompt() {
           
          app.ports.quicksaveGraph.subscribe((e) => quicksaveFun(e));
 
-         if (isElectron)
-            quicksaveFun = function(a) {
-                    var d = a.info;
-                    var g = fromElmGraph(d);
-                    window.electronAPI.quicksaveGraph(getFileName(), g, a.export, a.feedback);
-            };
         
          function saveFileApi(arg) {
             var a = arg.info;
@@ -685,10 +673,6 @@ function disableInAppInstallPrompt() {
          
          app.ports.saveGraph.subscribe((b) => saveGraphFun(b));
 
-         if (isElectron)
-            saveGraphFun = function (d) {
-                window.electronAPI.saveGraph(getFileName(), fromElmGraph(d.info), d.export);
-            };
         if (isFileAPI) {
             saveGraphFun = function (d) {
                 // open showsavefilepicker
@@ -797,26 +781,10 @@ function disableInAppInstallPrompt() {
          };
 
          app.ports.toClipboard.subscribe(toClipboard);
-         const err = "This features is only enabled with the desktop version and the appropriate vscode extension";
+         const err = "This features is only enabled with the webview version embedded in the appropriate vscode extension";
 
-         if (isElectron) {
-            // app.ports.incompleteEquation.subscribe(function(data){
-            //     window.electronAPI.incompleteEquation(data)
-            // });
-            app.ports.applyProof.subscribe(function(data){ window.electronAPI.applyProof(data) });
-            app.ports.requestProof.subscribe((data) => {
-                customPrompt("Enter proof for " + data.statement + " (leave blank for interactive)", data.script, (proof) => {
-                    newData = {script: proof, statement:data.statement};
-                    if (proof == "") {
-                        window.electronAPI.incompleteEquation(newData);
-                    }
-                    else {
-                        window.electronAPI.applyProof(newData);
-                    }
-                });
-            });
-         }
-         else if (vscode) {
+       
+         if (vscode) {
             app.ports.applyProof.subscribe(function(data){ 
                 sendExternalMsg("apply-proof", data)
                 });
@@ -890,45 +858,6 @@ function disableInAppInstallPrompt() {
          document.addEventListener("keydown", function(event)  {
                     app.ports.onKeyDownActive.send(event);
          });
-
-         // Setting up interaction with electron
-         if (isElectron) {
-            customPrompt = function (question, defaut, callback) {
-                window.electronAPI.prompt(question, defaut).then(
-                    function(rep) {
-                        if (rep !== null)
-                           callback(rep);
-                    });
-            };
-
-            console.log("electron detected.");
-            // window.electronAPI.loadGraph((event, json, fileName, scenario) => alert('coucou') );
-            window.electronAPI.loadGraph((event, json, fileName, scenario) => {setFileName(fileName);  sendGraphToElm(json, scenario);});
-            window.electronAPI.clearGraph((event, fileName, scenario, latexPreamble) => {
-            app.ports.clear.send({scenario:scenario, preamble:latexPreamble});});
-            window.electronAPI.setFirstTab((event, json) => sendGraphToElm(json, "coqlsp", false, true));
-            window.electronAPI.loadEquation(function (event, equation, scenario) {
-                //    console.log(equation);
-                //   app.ports.clear.send(scenario);
-                //   app.ports.promptedEquation.send(equation) ;
-                app.ports.setFirstTabEquation.send(equation);
-            }
-            );
-            window.electronAPI.rename((event, fileName) => setFileName(fileName));
-            window.electronAPI.simpleMsg((event, msg) => app.ports.simpleMsg.send(msg));
- 
-            // }
-
-
-
-
-            app.ports.generateProofJs.subscribe(function(script){
-                window.electronAPI.generateProof(processProof(script))
-            });
-            window.electronAPI.appliedProof((event, content) =>
-                { app.ports.appliedProof.send(content);}
-            );
-         }
         
         /*
 
