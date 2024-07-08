@@ -76,7 +76,7 @@ type Msg
   | SetFirstTab GraphInfo  
   -- a graph is pasted
   | PasteGraph GraphInfo
-  | QuickInput Bool String -- flag: is it the final string?
+  | QuickInput String
   | SetFirstTabEquation String
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point

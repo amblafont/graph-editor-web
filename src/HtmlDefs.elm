@@ -1,4 +1,4 @@
-port module HtmlDefs exposing (onRendered, quickInputId, idInput, canvasId,
+port module HtmlDefs exposing (onRendered, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown,
    computeLayout, latexPreambleId, select, introHtml, overlayHelpMsg)
@@ -60,8 +60,6 @@ latexPreambleId = "latex-preamble"
 
 latexElement = "math-latex"
 
-quickInputId : String
-quickInputId = "quickinput"
 
 renderedClass = "rendered-callback"
 renderedEvent = "rendered"

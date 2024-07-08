@@ -17,8 +17,7 @@ type Mode
       -- the boolean specifies whether we need to save the state at the
       -- end
     | RenameMode Bool (List (Graph.Id, String))
-    | DebugMode    
-    | QuickInputMode (Maybe QuickInput.Equation)
+    | DebugMode
     | SquareMode SquareState
     | RectSelect Point
     -- Bool -- keep previous selection?
@@ -41,7 +40,6 @@ toString m = case m of
     Move _ -> "Move"
     RenameMode _ _ -> "Rename"
     DebugMode -> "Debug"
-    QuickInputMode _ -> "QuickInput"
     SquareMode _ -> "Square"
     RectSelect _ -> "Rect select"
     SplitArrow _ -> "Split arrow"

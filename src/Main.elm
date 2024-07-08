@@ -66,7 +66,7 @@ import Modes exposing (Mode(..), MoveMode(..), MoveDirection(..), isResizeMode, 
 
 import ArrowStyle
 
-import HtmlDefs exposing (Key(..), quickInputId, computeLayout)
+import HtmlDefs exposing (Key(..), computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..), coqProofTexCommand, MaybeChain(..))
 import Tikz exposing (graphToTikz)
@@ -249,7 +249,7 @@ subscriptions m =
        [ Time.every autosaveTickMs (always MinuteTick) ]
     else [])
     ++
-    (if m.scenario == Watch then [promptedEquation (QuickInput True)]
+    (if m.scenario == Watch then [promptedEquation QuickInput]
     else [])
     -- ++
     -- (if m.mode == DefaultMode && m.mouseOnCanvas then
@@ -258,11 +258,10 @@ subscriptions m =
     ++
     if case m.mode of
         ResizeMode _ -> False
-        QuickInputMode _ -> False
         _ -> not m.mouseOnCanvas
     then [] 
     else
-    (if m.scenario == Watch then [] else [promptedEquation (QuickInput True)]
+    (if m.scenario == Watch then [] else [promptedEquation QuickInput]
      -- is scenario is watch, we have already subscribed
     ) ++
     [ E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
@@ -410,8 +409,6 @@ update msg modeli =
                 MouseLeaveCanvas -> 
                     { modeli | mouseOnCanvas = False }
                 {- FindInitial -> selectInitial model -}
-                QuickInput final s ->
-                     { modeli | quickInput = s, mode = QuickInputMode Nothing} -- , mouseOnCanvas = False}
                 LatexPreambleEdit s -> { modeli | latexPreamble = s }
                 -- EditBottomText s -> 
                 --     let _ = Debug.log "bottomText" model.bottomText in
@@ -505,7 +502,6 @@ update msg modeli =
                           <| GraphDefs.findReplaceInSelected modelGraph req
      _ ->
       case model.mode of
-        QuickInputMode c -> update_QuickInput c msg model 
         DefaultMode -> update_DefaultMode msg model
         RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
         EnlargeMode state -> update_Enlarge msg state model
@@ -537,46 +533,6 @@ update_Color ids msg model =
                  Nothing -> noCmd model
                  Just g -> switch_Default <| setSaveGraph model g
         _ -> noCmd model
-
-update_QuickInput : Maybe QuickInput.Equation -> Msg -> Model -> (Model, Cmd Msg)
-update_QuickInput ch msg model =
-    let finalRet chain = 
-            (Model.setSaveGraph {model |  
-                     quickInput = "",
-                     mode = DefaultMode }
-                     <| graphQuickInput model chain, 
-                     Cmd.batch
-                     [-- new nodes may have sent their dimensions
-                     -- but the model graph did not contain
-                     -- them at this time
-                     -- so we need to compute them again
-                     -- TODO: take these dimensions into account
-                     -- even before
-                     computeLayout (),
-                     Msg.unfocusId HtmlDefs.quickInputId                     
-                     ])
-    in
-    case msg of
-        KeyChanged False _ (Control "Escape") ->
-            ({model | mode = DefaultMode}, 
-                 Task.attempt (\_ -> Msg.noOp) (Dom.blur quickInputId))
-        KeyChanged False _ (Control "Enter") ->
-            finalRet ch
-        QuickInput final s ->
-                let (statusMsg, chain) =
-                        case Parser.run equalityParser s of
-                            -- Ok l -> (Debug.toString l, Just l)
-                            Ok l -> ("ok", Just l)
-                            Err e -> (Parser.deadEndsToString e, Nothing)
-                in
-                if final then
-                    finalRet chain 
-                else
-                  noCmd {model | statusMsg = statusMsg, mode = QuickInputMode chain} -- , mouseOnCanvas = False}
-        _ -> noCmd model
-
-
-
 
 
         
@@ -692,6 +648,27 @@ generateProofString debug g =
       in
       s
 
+
+graphQuickInput : Model -> QuickInput.Equation -> Graph NodeLabel EdgeLabel
+graphQuickInput model (eq1, eq2) = 
+  let modelGraph = getActiveGraph model in
+  let sizeGrid = getActiveSizeGrid model in
+
+  -- if an incomplete subdiagram is selected, we use it
+  let od = GraphDefs.selectedIncompleteDiagram modelGraph in
+  let default = graphDrawingChain sizeGrid modelGraph (eq1, eq2) in 
+  let split l edges = GraphProof.isEmptyBranch l |> 
+          Maybe.map (QuickInput.splitWithChain modelGraph edges) 
+  in
+  case od of
+    Nothing -> default
+    Just d ->           
+        Maybe.or (split d.lhs eq2)
+              (split d.rhs eq2)
+                |> Maybe.withDefault default
+               
+
+
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     let delta_angle = pi / 5 in
@@ -769,6 +746,17 @@ update_DefaultMode msg model =
               weaklySelect id
              
         MouseClick -> noCmd <| selectByClick model
+        QuickInput s ->
+          
+              case Parser.run equalityParser s of
+                  Err e -> noCmd <| {model | statusMsg = Parser.deadEndsToString e}
+                  Ok chain ->
+                    (Model.setSaveGraph model
+                     <| graphQuickInput model chain, 
+                     computeLayout ()                    
+                     )
+                           
+          
            
         MouseMove _ -> 
              weaklySelect <| GraphDefs.closest model.mousePos modelGraph             
@@ -1183,7 +1171,6 @@ graphDrawingFromModel m =
              enlargeGraph m p
              |> collageGraphFromGraph m
 --        NewNode -> collageGraphFromGraph m modelGraph
-        QuickInputMode ch -> collageGraphFromGraph m <| graphQuickInput m ch
         Move s -> Modes.Move.graphDrawing m s          
         RenameMode _ l ->
             let g = graph_RenameMode l m in
@@ -1232,27 +1219,6 @@ graphResize st m =
     modelGraph
    
 
-
-graphQuickInput : Model -> Maybe QuickInput.Equation -> Graph NodeLabel EdgeLabel
-graphQuickInput model ch = 
-  let modelGraph = getActiveGraph model in
-  let sizeGrid = getActiveSizeGrid model in
-  case ch of
-    Nothing -> modelGraph
-    Just (eq1, eq2) ->
-      -- if an incomplete subdiagram is selected, we use it
-      let od = GraphDefs.selectedIncompleteDiagram modelGraph in
-      let default = graphDrawingChain sizeGrid modelGraph (eq1, eq2) in 
-      let split l edges = GraphProof.isEmptyBranch l |> 
-              Maybe.map (QuickInput.splitWithChain modelGraph edges) 
-      in
-      case od of
-        Nothing -> default
-        Just d ->           
-            Maybe.or (split d.lhs eq2)
-                  (split d.rhs eq2)
-                    |> Maybe.withDefault default
-               
 
 graphDrawingChain : Int -> Graph NodeLabel EdgeLabel -> QuickInput.Equation -> Graph NodeLabel EdgeLabel
 graphDrawingChain offset g eq =         
@@ -1439,14 +1405,6 @@ helpMsg model =
                                else
                                     "Moving all right and bottom vertices") -}
                             -- ++ " (press [s] to toggle)."
-        QuickInputMode _ -> msg <| "Equation mode: enter equation in the textfield "
-                          -- ++ "(e.g., a - f ⟩ b - g ⟩ c =  a - h ⟩ d - k ⟩ c)"
-                          ++ "(e.g., a -- f -> b -- g -> c =  a -- h -> d -- k -> c)"
-                          ++ ",  [RET] to confirm, [ESC] to cancel."
-                          ++ " If an incomplete subdiagram (i.e. a subdiagram "
-                          ++ "where one branch is a single arrow with empty label)"
-                          ++ " is selected, it will replace the empty branch with"
-                          ++ " the lhs or the rhs (depending on the orientation)."
         ResizeMode { onlyGrid } -> msg <| "Resize mode. "
                          ++ overlayHelpMsgNewLine
                          ++ "[k]/[j] to increase/decrease, "
@@ -1463,23 +1421,6 @@ helpMsg model =
                    ++ " mode."
              in
                 makeHelpDiv [ Html.text txt ]
-
-quickInputView : Model -> Html Msg
-quickInputView m = 
-             Html.p []
-                 [
-         Html.text "Enter equation: ",
-         Html.input  [Html.Attributes.type_ "text",
-                       Html.Attributes.id quickInputId,
-                     Html.Events.onInput (QuickInput False),
-                     -- Html.Events.onFocus (QuickInput ""),
-                     Html.Attributes.value m.quickInput
-                     ]
-                          -- ++
-                          -- case m.mode of
-                          --     QuickInputMode _ -> []
-                          --     _ -> [Html.Attributes.value ""]
-                     []]
 
 additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m = 
@@ -1604,8 +1545,7 @@ viewGraph model =
             -- if model.unnamedFlag then Html.p [] [Html.text "Unnamed flag On"] else Html.text "",
             -- if state.blitzFlag then Html.p [] [Html.text "Blitz flag"] else Html.text "",
             Html.p [] 
-            ([ helpMsg model,
-              quickInputView model
+            ([ helpMsg model
             ] ++ overlayHelp)
           ] ++
           ( 

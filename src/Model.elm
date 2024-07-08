@@ -40,8 +40,6 @@ type alias Model = {
     -- , -- if the mouse is over some node or edge
     --  mousePointOver : Obj
     , statusMsg : String
-    , -- unnamedFlag : Bool,
-      quickInput : String
     , mode : Mode
     , hideGrid : Bool
     -- filename in the web version / full path in the electron version
@@ -242,10 +240,9 @@ createModel sizeGrid =
     , mode = DefaultMode
     , statusMsg = ""
     , mouseOnCanvas = False
-    , -- Debug.toString ([pointToAngle (0,1), pointToAngle (0.001,1),
+     -- Debug.toString ([pointToAngle (0,1), pointToAngle (0.001,1),
       --                    pointToAngle (1,0), pointToAngle(0,-1),
       --                        pointToAngle (-1, 0.01)]),
-      quickInput = ""
     , mousePos = ( 0, 0 )
     , specialKeys = { ctrl = False, alt = False, shift = False }
     , hideGrid = False
