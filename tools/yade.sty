@@ -47,8 +47,8 @@
       let \p1 = ($(\tikztostart) - (\tikztotarget)$) in
       (\tikztostart)
 .. controls
-($(\tikztostart)!\pv{pos}!(\tikztotarget)!{veclen(\x1,\y1)*\pv{ratio}*1pt}!270:(\tikztotarget)$)
-and ($(\tikztostart)!1-\pv{pos}!(\tikztotarget)!{veclen(\x1,\y1)*\pv{ratio}*1pt}!270:(\tikztotarget)$)
+($(\tikztostart)!\pv{pos}!(\tikztotarget)!{veclen(\x1,\y1)*\pv{ratio}*0.65pt}!270:(\tikztotarget)$)
+and ($(\tikztostart)!1-\pv{pos}!(\tikztotarget)!{veclen(\x1,\y1)*\pv{ratio}*0.65pt}!270:(\tikztotarget)$)
 .. (\tikztotarget)\tikztonodes}},
 settings/.code={\tikzset{yade/.cd,#1}
 \def\pv##1{\pgfkeysvalueof{/tikz/yade/##1}}},
