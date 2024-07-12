@@ -87,6 +87,7 @@ import Format.Version8
 import Format.Version9
 import Format.Version10
 import Format.Version11
+import Format.Version12
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo exposing (Tab)
@@ -140,6 +141,7 @@ port loadedGraph8 : (LoadGraphInfo Format.Version8.Graph -> a) -> Sub a
 port loadedGraph9 : (LoadGraphInfo Format.Version9.Graph -> a) -> Sub a
 port loadedGraph10 : (LoadGraphInfo Format.Version10.Graph -> a) -> Sub a
 port loadedGraph11 : (LoadGraphInfo Format.Version11.Graph -> a) -> Sub a
+port loadedGraph12 : (LoadGraphInfo Format.Version12.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -227,6 +229,7 @@ subscriptions m =
       loadedGraph9  (mapLoadGraphInfo Format.Version9.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph10 (mapLoadGraphInfo Format.Version10.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph11 (mapLoadGraphInfo Format.Version11.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph12 (mapLoadGraphInfo Format.Version12.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),

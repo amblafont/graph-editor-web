@@ -122,7 +122,8 @@ type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,
       mode : ArrowMode, 
       style : ArrowStyle, 
-      pos : InputPosition, inverted : Bool
+      pos : InputPosition, inverted : Bool,
+      isAdjunction : Bool
       -- merge : Bool
        }
 

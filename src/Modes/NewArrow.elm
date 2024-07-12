@@ -41,7 +41,8 @@ initialise m =
             pos = InputPosMouse,                                 
             chosen = GraphDefs.selectedGraph modelGraph,
             mode = mode,
-            inverted = False
+            inverted = False,
+            isAdjunction = False
             -- merge = False 
             }
         }  
@@ -107,6 +108,7 @@ update state msg model =
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = False}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
+        KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}         
         KeyChanged False _ (Character 'p') -> pullshoutMode Pullback
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
@@ -156,7 +158,8 @@ moveNodeInfo :
         }
 moveNodeInfo merge model state = 
                 let modelGraph = getActiveGraph model in
-                let edgeLabel = GraphDefs.newEdgeLabel "" state.style in
+                let edgeLabel = GraphDefs.newEdgeLabelAdj "" state.style state.isAdjunction
+                in
                 let nodePos = GraphDefs.centerOfNodes (Graph.nodes state.chosen) in
                 let nodeLabel = GraphDefs.newNodeLabel nodePos "" True Zindex.defaultZ  in
                 let extendedGraph = 
@@ -176,7 +179,9 @@ moveNodeInfo merge model state =
                 let selectable = Graph.allIds extendedGraph.newSubGraph in
                 { graph = moveInfo.graph,
                 selectable = selectable,
-                renamable = (if moveInfo.merged then [] else selectable) ++ extendedGraph.edgeIds}
+                renamable = (if moveInfo.merged then [] else selectable) ++ 
+                            (if state.isAdjunction then [] else extendedGraph.edgeIds)
+                }
 
 
 
@@ -202,6 +207,7 @@ help =
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
              ++ "[i]nvert arrow, "
+             ++ "create a[d]junction arrow, "
              ++ "[p]ullback/[P]ushout mode, "
              ++ "[C] switch to cone/cylinder creation (if relevant).\n"
              ++ "[p]ullback/[P]ushout mode.\n"
