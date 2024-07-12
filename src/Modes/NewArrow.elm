@@ -106,7 +106,8 @@ update state msg model =
         KeyChanged False _ (Control "Enter") -> next {finish = True, merge = False}
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = False}
-        KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted =  not state.inverted}         
+        KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
+        KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}         
         KeyChanged False _ (Character 'p') -> pullshoutMode Pullback
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
         KeyChanged False _ (Character 'C') -> 
@@ -195,7 +196,7 @@ help =
             HtmlDefs.overlayHelpMsg ++
             ", [ESC] cancel, [click, TAB] name the point (if new) and arrow, "
             ++ "[hjkl] position the new point with the keyboard, "
-            ++ "[ctrl] merge, "
+            ++ "[ctrl] merge, [a] merge without renaming, "
              ++ "[RET] terminate the arrow creation, "
              ++ "[\""
              ++ ArrowStyle.controlChars
