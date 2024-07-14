@@ -7,7 +7,9 @@ import Format.GraphInfo exposing (GraphInfo)
 
 version = 11
 
-type alias ArrowStyle = NextVersion.ArrowStyle
+type alias ArrowStyle = { tail : String, head : String, double : Bool
+   , dashed : Bool, bend : Float, alignment : String, 
+   position : Float, color : String }
 
 type alias Edge = { label : String, style : ArrowStyle, isPullshout : Bool,
        zindex : Int }
@@ -26,14 +28,16 @@ type alias Graph = {
 
 
 
-
+toNextStyle : ArrowStyle -> NextVersion.ArrowStyle
+toNextStyle {tail, head, double, dashed, bend, alignment, position, color} =
+  { tail = tail, head = head, kind = if double then "double" else "normal" , dashed = dashed, bend = bend, alignment = alignment, position = position, color = color }
 
 toNextEdge : Edge -> NextVersion.Edge
 toNextEdge e =
   -- { label : String, style : ArrowStyle, kind : String,
   --      zindex : Int }
   { label = e.label,
-    style = e.style,
+    style = toNextStyle e.style,
     kind = if e.isPullshout then NextVersion.pullshoutKey else NextVersion.normalKey,
     zindex = e.zindex }
 

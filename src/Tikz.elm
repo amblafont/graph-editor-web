@@ -102,6 +102,11 @@ encodeEdgeTikZ e =
         ++ String.fromInt e.to
         ++ ") \n"
 
+{-
+encodeAdjunction : GraphDefs.NormalEdgeLabel -> String
+encodeAdjunction e = "edge[draw=none] node[midway, anchor=center, sloped]{$\\dashv$}"
+-}
+
 encodeLabel : Edge EdgeLabel -> String
 encodeLabel e =
     case e.label.details of
@@ -109,17 +114,18 @@ encodeLabel e =
             ""
 
         NormalEdge l ->
-            let lbl = "${\\scriptstyle " ++ 
+let style = ArrowStyle.getStyle l in
+                                   let lbl = "${\\scriptstyle " ++ 
                     l.label 
                     ++ "}$"
             in
-            (case l.style.labelAlignment of
-                 Over -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "
-                 Centre -> "labelonat={" ++ lbl ++ "}{" ++ String.fromFloat l.style.labelPosition ++ "}, "                 
+            (case style.labelAlignment of
+                 Over -> "labelonatsloped={" ++ lbl ++ "}{" ++ String.fromFloat style.labelPosition ++ "}, "
+                 Centre -> "labelonat={" ++ l.label ++ "}{" ++ String.fromFloat style.labelPosition ++ "}, "                 
                  Left -> "\"" ++ lbl ++ "\", "
                  Right -> "\"" ++ lbl ++ "\"', ")
-            ++ "pos=" ++ String.fromFloat l.style.labelPosition ++ ", "
-            ++ ArrowStyle.tikzStyle l.style
+            ++ "pos=" ++ String.fromFloat style.labelPosition ++ ", "
+            ++ ArrowStyle.tikzStyle style
 
 labelfromAlignment : LabelAlignment -> String
 labelfromAlignment a =

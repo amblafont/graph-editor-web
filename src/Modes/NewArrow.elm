@@ -109,8 +109,8 @@ update state msg model =
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = False}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
-        KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}         
-        KeyChanged False _ (Character 'p') -> pullshoutMode Pullback
+        KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}                 
+        KeyChanged False _ (Character 'p') -> pullshoutMode Pullback 
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
         KeyChanged False _ (Character 'C') -> 
               let mode = nextPossibleMode state
@@ -158,7 +158,10 @@ moveNodeInfo :
         }
 moveNodeInfo merge model state = 
                 let modelGraph = getActiveGraph model in
-                let edgeLabel = GraphDefs.newEdgeLabelAdj "" state.style state.isAdjunction
+                let style = ArrowStyle.getStyle state in                       
+                let edgeLabel = GraphDefs.newEdgeLabelAdj 
+                              (if state.isAdjunction then "\\vdash" else "") 
+                              style state.isAdjunction
                 in
                 let nodePos = GraphDefs.centerOfNodes (Graph.nodes state.chosen) in
                 let nodeLabel = GraphDefs.newNodeLabel nodePos "" True Zindex.defaultZ  in
@@ -190,7 +193,7 @@ graphDrawing m s =
     -- let defaultView movedNode = modelGraph{ graph = modelGraph, movedNode = movedNode}  in
     -- graphMakeEditable (renamableFromState s) <|
     collageGraphFromGraph m <|
-            let info = moveNodeInfo False m s in
+            let info = moveNodeInfo (s.isAdjunction) m s in
              info.graph 
          
 help : String

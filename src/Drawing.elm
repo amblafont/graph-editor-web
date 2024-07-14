@@ -176,6 +176,9 @@ mkPath dashed attrs q =
 
 arrow : List (Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
 arrow attrs0 arrowStyle q =
+    if ArrowStyle.isNone arrowStyle then
+        empty
+    else
     let attrs = Color arrowStyle.color :: attrs0 in
     let zindex = attributesToZIndex attrs in
     let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    

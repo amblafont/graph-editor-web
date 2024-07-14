@@ -196,6 +196,7 @@ determine_label_position length angle edge_width start end curve label_position 
    in
    let centre = Bezier.point bezier (start + (end - start) * label_position)
    in
+   if label_alignement == Over then centre else
    let offset_angle = case label_alignement of
             Centre -> 0
             Over -> 0

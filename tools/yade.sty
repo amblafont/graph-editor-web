@@ -379,6 +379,15 @@ markings,
 mark=at position #2 with {\node[inner sep=0.1pt,fill=white] {$\scriptstyle #1$} ;}
 }}}}
 
+\tikzset{
+labelonatsloped/.style 2 args={postaction={ 
+decorate, 
+decoration={ 
+markings, 
+mark=at position #2 with {\node[inner sep=0.1pt,fill=white,transform shape] {#1} ;}
+}}}}
+
+
 
 
 

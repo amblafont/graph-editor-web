@@ -13,12 +13,12 @@ pullshoutKey = "pullshout"
 normalKey = "normal"
 adjunctionKey = "adjunction"
 
-type alias ArrowStyle = { tail : String, head : String, double : Bool
+type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 
    position : Float, color : String }
 
 emptyArrowStyle : ArrowStyle
-emptyArrowStyle = ArrowStyle "" "" False False 0 "" 0 "black"
+emptyArrowStyle = ArrowStyle "" "" "normal" False 0 "" 0 "black"
 
 type alias Edge = { label : String, style : ArrowStyle, kind : String,
        zindex : Int }
@@ -43,13 +43,14 @@ fromEdgeLabel : EdgeLabel -> Edge
 fromEdgeLabel e = 
    case e.details of
        PullshoutEdge -> pullshoutEdge e.zindex
-       NormalEdge {label, style, isAdjunction} ->
+       NormalEdge ({label, isAdjunction} as l)->
+            let style = ArrowStyle.getStyle l in
             { label = label,
               kind = if isAdjunction then adjunctionKey else normalKey,       
               style = { tail = ArrowStyle.tailToString style.tail
                , head = ArrowStyle.headToString style.head
                , alignment = ArrowStyle.alignmentToString style.labelAlignment
-               , double = style.double
+               , kind = ArrowStyle.kindToString style.kind
                , dashed = style.dashed
                , bend = style.bend
                , position = style.labelPosition
@@ -68,7 +69,7 @@ toEdgeLabel { label, style, kind, zindex } =
            , isAdjunction = kind == adjunctionKey      
            , style = { tail = ArrowStyle.tailFromString style.tail
                    , head = ArrowStyle.headFromString style.head
-                   , double = style.double
+                   , kind = ArrowStyle.kindFromString style.kind
                    , dashed = style.dashed
                    , bend = style.bend
                    , color = Color.fromString style.color

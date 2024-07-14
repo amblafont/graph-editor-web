@@ -244,13 +244,21 @@ segmentLabel cfg q edgeId activity label curve =
              Drawing.empty
          else 
              let finalLabel = " \\scriptstyle " ++ label.label in
+             let rotateAttr = 
+                   if label.style.labelAlignment == Geometry.Over then
+                      let angle = Point.pointToAngle <| Point.subtract q.to q.from in
+                      [ Html.Attributes.style "transform"
+                      ("rotate(" ++ String.fromFloat angle ++ "rad)")]
+                   else
+                       []
+             in
              makeLatex cfg labelpos label.dims finalLabel foregroundZ
              
              ([   MouseEvents.onClick (EdgeClick edgeId),
                   MouseEvents.onDoubleClick (EltDoubleClick edgeId),
                   MouseEvents.onMove  (always (MouseOn edgeId))
                  -- Html.Events.onMouseOver (EltHover edgeId)
-             ] ++ 
+             ] ++ rotateAttr ++  
              (activityToClasses activity |> List.map Html.Attributes.class)        
               ++
               HtmlDefs.onRendered (Msg.EdgeRendered edgeId)
@@ -268,7 +276,7 @@ makeLatex cfg pos dims label z attrs  =
 makeLatexString s = "\\(" ++ s ++ "\\)"
 withPreamble cfg s = cfg.latexPreamble ++ "\n" ++ s
 
-
+{-
 adjunctionArrow : Graph.EdgeId -> List String -> Int -> NormalEdgeDrawingLabel -> QuadraticBezier -> Drawing Msg
 adjunctionArrow id classes z label q =
    let p = Bez.middle q in 
@@ -281,7 +289,8 @@ adjunctionArrow id classes z label q =
             ] ++ (List.map Html.Attributes.class classes)
    in
    makeLatex {latexPreamble = ""} 
-        p (0,24) "⊢" z attrs
+        p (12,24) "⊢" z attrs
+-}
 
 normalEdgeDrawing : Config -> Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims
@@ -289,10 +298,7 @@ normalEdgeDrawing : Config -> Graph.EdgeId
      -> Int
      -> NormalEdgeDrawingLabel -> QuadraticBezier -> Float -> Drawing Msg
 normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
-    -- let c = Color.merge (activityToColor activity) label.style.color in
-    let c = label.style.color in
-    let oldstyle = label.style in
-    let style = { oldstyle | color = c } in
+    let style = ArrowStyle.getStyle label in
     let classes =  
          if label.isAdjunction then 
             activityToClasses activity 
@@ -311,12 +317,12 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
           ] 
           )
     in
-    if label.isAdjunction then
-        adjunctionArrow edgeId classes z label q
-        -- makeLatex {latexPreamble = ""} 
-        --     pos dims label z attrs
-        -- Drawing.adjunctionArrow attrs style q
-    else
+    -- if label.isAdjunction then
+    --     adjunctionArrow edgeId classes z label q
+    --     -- makeLatex {latexPreamble = ""} 
+    --     --     pos dims label z attrs
+    --     -- Drawing.adjunctionArrow attrs style q
+    -- else
         Drawing.group [
          Drawing.arrow 
           attrs
