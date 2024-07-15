@@ -440,6 +440,8 @@ function disableInAppInstallPrompt() {
                     }
                     quicksaveFun = saveGraphFun;
                     loadEditor(preamble, r.content);
+                    if (r.onlyExternalFile)
+                       app.ports.makeSave.send(null);
                 });
             };
             doit();

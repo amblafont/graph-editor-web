@@ -117,6 +117,7 @@ type alias ExportFormats = {tex:String, svg:String, coq:String}
 port quicksaveGraph : { info : JsGraphInfo, export: ExportFormats, feedback : Bool} -> Cmd a
 -- we ask js to save the graph
 port saveGraph : {info: JsGraphInfo, export: ExportFormats} -> Cmd a
+port makeSave : (() -> a) -> Sub a
 
 port exportQuiver : JE.Value -> Cmd a
 port alert : String -> Cmd a
@@ -210,6 +211,7 @@ subscriptions m =
     Sub.batch 
      <|
     [
+      makeSave (always Save),
       findReplace FindReplace,
       simpleMsg SimpleMsg,
       promptedTabTitle RenameTab,

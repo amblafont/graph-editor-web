@@ -95,7 +95,7 @@ function outputFileName(config:Config, content:string):string {
     return joinPath(config.baseDir, pathBasename(content) + "." + config.exportFormat);
   }
 
-  async function getFilehandleFromPath(d:FileSystemDirectoryHandle, filePath:string, options?:FileSystemGetFileOptions):Promise<FileSystemFileHandle>{
+async function getFilehandleFromPath(d:FileSystemDirectoryHandle, filePath:string, options?:FileSystemGetFileOptions):Promise<FileSystemFileHandle>{
     let parts = filePath.split('/'); // Split the path into parts
     let currentHandle = d;
     while (parts.length > 1) {
@@ -105,6 +105,16 @@ function outputFileName(config:Config, content:string):string {
         currentHandle = await currentHandle.getDirectoryHandle(part);        
     }
     return currentHandle.getFileHandle(parts[0],options);
+}
+
+async function checkFileExistsFromPath(d:FileSystemDirectoryHandle, filePath:string):Promise<boolean>{
+    try {
+        await getFilehandleFromPath(d,filePath);
+        return true;
+    }
+    catch (e) {
+        return false;
+    }
 }
 
 async function getTextFromFilepath(d:FileSystemDirectoryHandle, filePath : string):Promise<string>{
@@ -242,7 +252,10 @@ interface HandleFileConfig {
     diagFile : null|string,
     index: number,
     // not used by handleSave
-    content:string
+    content:string,
+    // true if we need to regenerate the external file
+    // because it does not exists
+    onlyExternalFile:boolean
 }
 // save
 async function watchSaveDiagram(config:Config,
@@ -263,11 +276,32 @@ async function watchSaveDiagram(config:Config,
       }
     }
   
-    
-    await writeContent(config, d, newcontent, generatedOutput, handleConfig.index);
+    if (!handleConfig.onlyExternalFile)
+        await writeContent(config, d, newcontent, generatedOutput, handleConfig.index);
 
   }
 
+async function getContent(d:FileSystemDirectoryHandle, config:Config, diagFile:string) {
+  let content = "";
+  let rfile = contentToFileName(config, diagFile);
+  try {
+    let fileHandle = await getFilehandleFromPath(d, rfile);
+    let file = await fileHandle.getFile();
+    content = await file.text();
+  }
+  // catch NotFoundError
+  catch (e) {
+      console.log("Error when accessing " + rfile);
+      console.log(e);
+      // if (e.name === "NotFoundError")
+      //     console.log(rfile + " doesn't exist.");
+      // else 
+      //     console.log(e.message);
+  }
+  return content;
+}
+  // undefined means error
+  // false means no update
 async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Promise<undefined|false|HandleFileConfig> {
 //    resetOnFocus();
    let file_lines:string[];
@@ -298,6 +332,17 @@ async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Prom
         break;
       
       console.log("Graph found");
+      // check if the tex file exists
+      if (content !== null && config.exportFormat && contentIsFile(content)) {
+        let diagFile = content;
+        let outputFile = outputFileName(config,diagFile);
+        let checkExist = await checkFileExistsFromPath(d,outputFile);
+        if (!checkExist) {
+          let data = await getContent(d, config, diagFile);
+          return {diagFile:diagFile, index:index, content:data,
+                     onlyExternalFile:true};
+        }
+      }
       remainder = config.prefixes;
       while (remainder !== null && remainder.length > 0) {
         line = readLine(file_lines);
@@ -316,29 +361,13 @@ async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Prom
       let diagFile:null|string = null;
     
       if (contentIsFile(content)) {
-        diagFile = content;
-        let rfile = contentToFileName(config, diagFile);
-        try {
-          let fileHandle = await getFilehandleFromPath(d, rfile);
-          let file = await fileHandle.getFile();
-          content = await file.text();
-        }
-        // catch NotFoundError
-        catch (e) {
-            console.log("Error when accessing " + rfile);
-            console.log(e);
-            // if (e.name === "NotFoundError")
-            //     console.log(rfile + " doesn't exist.");
-            // else 
-            //     console.log(e.message);
-            content = "";
-        }
-
+        content = await getContent(d, config, content);
       }
     
       
       
-    let handleConfig:HandleFileConfig = {content:content, diagFile:diagFile, index:index};
+    let handleConfig:HandleFileConfig = 
+       {content:content, diagFile:diagFile, index:index, onlyExternalFile: false};
     return handleConfig;
       // console.log(content);
     //   loadEditor(content);
