@@ -11,6 +11,7 @@ import GraphDefs exposing (NodeLabel, EdgeLabel)
 type Mode
     = DefaultMode
     | NewArrow NewArrowState
+    | NewLine NewLineState
     | Move MoveState
       -- the list of ids to be edited, with associated default labels 
       -- (which may differ from the labels of the objects in the model)
@@ -37,6 +38,7 @@ toString : Mode -> String
 toString m = case m of
     DefaultMode -> "Default"
     NewArrow _ -> "New arrow"
+    NewLine _ -> "New line"
     Move _ -> "Move"
     RenameMode _ _ -> "Rename"
     DebugMode -> "Debug"
@@ -117,6 +119,10 @@ type ArrowMode =
   | CreateCylinder
   | CreateCone
 
+
+type alias NewLineState = {
+    initialPos : Point
+    }
 
 type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,

@@ -7,7 +7,7 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
     keyMaybeUpdateStyle,
-    keyMaybeUpdateColor, makeHeadShape, makeTailShape, getStyle, isNone)
+    keyMaybeUpdateColor, makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle)
 
 import HtmlDefs exposing (Key(..))
 
@@ -36,6 +36,11 @@ type alias Style = { tail : TailStyle,
                      labelPosition : Float,
                      color : Color
                     } 
+
+simpleLineStyle : Style
+simpleLineStyle = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashed = False,
+          bend = 0, labelAlignment = Left,
+          labelPosition = 0.5, color = Color.black }
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
 

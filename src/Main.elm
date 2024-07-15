@@ -57,6 +57,7 @@ import Maybe exposing (withDefault)
 
 import Modes.Square
 import Modes.NewArrow 
+import Modes.NewLine
 import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.CutHead
@@ -502,6 +503,7 @@ update msg modeli =
                           <| GraphDefs.findReplaceInSelected modelGraph req
      _ ->
       case model.mode of
+        NewLine state -> Modes.NewLine.update state msg model
         DefaultMode -> update_DefaultMode msg model
         RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
         EnlargeMode state -> update_Enlarge msg state model
@@ -832,7 +834,8 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                 -- , 
                 --   graph = GraphDefs.clearSelection 
                 --   <| GraphDefs.clearWeakSelection modelGraph }              
-            
+        KeyChanged False _ (Character 'n') -> 
+           Modes.NewLine.initialise model
         KeyChanged False _ (Character 'v') -> 
                let cmd = case GraphDefs.selectedIncompleteDiagram modelGraph of 
                       Nothing -> 
@@ -1189,6 +1192,7 @@ graphDrawingFromModel m =
                 |> Graph.map
                    (\id n ->  {n | label = String.fromInt id}) 
                    (\_ -> identity)
+        NewLine astate -> Modes.NewLine.graphDrawing m astate  
         NewArrow astate -> Modes.NewArrow.graphDrawing m astate
         SquareMode state -> Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
@@ -1324,6 +1328,7 @@ helpMsg model =
 
                 ++ "\nArrows: "
                 ++ "new [a]rrow/cylinder/cone from selected objects"                
+                ++ ", new li[n]e"  
                 ++ ", [/] split arrow" 
                 ++ ", [C]ut head of selected arrow" 
                 ++ ", [c]olor arrow" 
@@ -1381,6 +1386,8 @@ helpMsg model =
         NewArrow _ -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
                            ++  Modes.NewArrow.help |> msg
+        NewLine _ -> "Mode NewLine. "
+                           ++  Modes.NewLine.help |> msg
         PullshoutMode _ -> "Mode Pullback/Pullshout. "
                           -- ++ Debug.toString model 
                            ++  Modes.Pullshout.help |> msg
