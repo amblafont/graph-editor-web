@@ -3,7 +3,7 @@ module Drawing exposing (Drawing,
   line,
   Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
   svg,
-  class, empty, grid, htmlAnchor,
+  class, empty, grid, ruler, htmlAnchor,
   zindexAttr, emptyForeign, toString, shadowClass
   )
 
@@ -235,6 +235,17 @@ rect z { topLeft, bottomRight } =
        ]
        [] 
        |> ofSvg z
+
+ruler : Int -> Drawing a
+ruler offset =
+-- draw a vertical line at given offset 
+  let f = String.fromInt in
+  let z = defaultZ in
+  Svg.line 
+  ([Svg.x1 <| f offset, Svg.x2 <| f offset, Svg.y1 "0", Svg.y2 "100%"]
+  ++ attrsToSvgAttrs Svg.stroke [Color Color.black])
+  []
+  |> ofSvg z
 
 
 grid : Int -> Drawing a

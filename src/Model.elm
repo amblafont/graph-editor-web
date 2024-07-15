@@ -28,6 +28,8 @@ depthHistory = 20
 minSizeGrid = 2
 maxSizeGrid = 500
 
+minRulerMargin = 50
+maxRulerMargin = 2000
 
 
 type alias Model = {
@@ -58,6 +60,9 @@ type alias Model = {
     , latexPreamble : String
     , scenario : Scenario
     , defaultGridSize : Int
+    -- margin for the rule
+    , rulerMargin : Int
+    , rulerShow : Bool
     }
 
 
@@ -228,9 +233,12 @@ setSaveGraph m g =
 --       InputPosMouse p -> p
 --       InputPosKeyboard p -> Point.add source <| deltaKeyboardPos p)
 
+clearModel : Model -> Model
+clearModel m =
+   createModel m.defaultGridSize m.rulerMargin
 
-createModel : Int -> Model
-createModel sizeGrid =
+createModel : Int -> Int -> Model
+createModel sizeGrid rulerMargin =
     let g = Graph.empty in
     { tabs = [ { active = True, graph = g, sizeGrid = sizeGrid, title = "1" } ]
     , defaultGridSize = sizeGrid
@@ -245,11 +253,13 @@ createModel sizeGrid =
     , specialKeys = { ctrl = False, alt = False, shift = False }
     , hideGrid = False
     -- , bottomText = ""
-    , autoSave = False
+    , autoSave = True
     , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
     , scenario = Standard
     , showOverlayHelp = False
-    , squareModeProof = False    
+    , squareModeProof = False
+    , rulerMargin = rulerMargin
+    , rulerShow = False
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse

@@ -82,9 +82,11 @@ type Msg
   | MouseOn Graph.Id
   | Clear { scenario : Scenario, preamble : String}
   | SizeGrid Int
+  | RulerMargin Int
   | ToggleHideGrid
+  | ToggleHideRuler
   | ToggleAutosave
-  | SaveGridSize
+  | SaveRulerGridSize
   | OptimalGridSize
   | SwitchTab Int
   | NewTab

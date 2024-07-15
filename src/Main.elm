@@ -198,7 +198,7 @@ port promptTabTitle : String -> Cmd a
 port promptedTabTitle : (String -> a) -> Sub a
 
 
-port saveGridSize : Int -> Cmd a
+port saveRulerGridSize : {gridSize:Int, rulerMargin:Int} -> Cmd a
 
 
 -- number of ms between autosaves
@@ -433,7 +433,11 @@ update msg modeli =
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
      Save -> (model, saveGraph { info = toJsGraphInfo model 
                               , export = makeExports model })
-     SaveGridSize -> ({model | defaultGridSize = sizeGrid } , saveGridSize sizeGrid)
+     RulerMargin rulerMargin -> noCmd {model | rulerMargin = rulerMargin}
+     SaveRulerGridSize -> ({model | defaultGridSize = sizeGrid } , 
+                  saveRulerGridSize {gridSize = sizeGrid
+                                   , rulerMargin = model.rulerMargin}  )
+        
      OptimalGridSize ->
           let selGraph = GraphDefs.selectedGraph modelGraph in
           case Graph.nodes selGraph of
@@ -449,13 +453,14 @@ update msg modeli =
                          feedback = False }) 
                    else noCmd model
      Clear {scenario,preamble} -> 
-        let modelf = createModel model.defaultGridSize in
+        let modelf = clearModel model in
         let or s1 s2 = if s1 == "" then s2 else s1 in 
         noCmd { modelf | scenario = scenario,
             latexPreamble = or preamble modelf.latexPreamble
          }
          --  (iniModel, Task.attempt (always Msg.noyarn comOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
+     ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
                     exportQuiver <| 
@@ -474,7 +479,7 @@ update msg modeli =
                    updateActiveGraph model
                       (GraphDefs.updateNormalEdge e (\l -> {l | dims = Just dims }))
      Do cmd -> (model, cmd)
-     SimpleMsg s -> let modelf = createModel model.defaultGridSize in
+     SimpleMsg s -> let modelf = clearModel model in
                      noCmd { modelf | scenario = SimpleScenario, statusMsg = s }
      SetFirstTab g ->
          let tab = getActiveTabInTabs g.tabs in
@@ -1498,10 +1503,12 @@ viewGraph model =
     let missings = Graph.invalidEdges modelGraph in   
     let drawings = toDrawing model (graphDrawingFromModel model) in
     let grid = if model.hideGrid then Drawing.empty else Drawing.grid (Model.getCurrentSizeGrid model) in
+    let ruler = if not model.rulerShow then Drawing.empty else Drawing.ruler model.rulerMargin in
     let nmissings = List.length missings in
     let svg =   Drawing.group [grid,
                  drawings,
                  additionnalDrawing model,
+                 ruler,
                  -- This is to prevent unwanted scrolling
                  -- that happened in chrome when editing the graph
                  -- I don't know why this was happening, neither why
@@ -1570,14 +1577,21 @@ viewGraph model =
             ] [Html.text "Recompute labels"] -}
            --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
            , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)           
+           , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
-           , Html.button [Html.Events.onClick SaveGridSize] [Html.text "Save grid size preferences"] 
+           , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 
            , Html.button [Html.Events.onClick OptimalGridSize, 
               Html.Attributes.title "Select two nodes. The new grid size is the max of the coordinate differences."] 
               [Html.text "Calibrate grid size"] 
            ]
           ++ 
+          (if not model.rulerShow then [] else 
+            [ HtmlDefs.slider RulerMargin 
+           ("Ruler margin (" ++ String.fromInt model.rulerMargin ++ ")")
+                  minRulerMargin maxRulerMargin model.rulerMargin ]
+          )
+          ++
            (if isResizeMode model.mode then
                [ HtmlDefs.slider SizeGrid 
                 ("Grid size (" ++ String.fromInt (Model.getCurrentSizeGrid model) ++ ")")
@@ -1605,7 +1619,7 @@ viewGraph model =
 
 
 
-main : Program {defaultGridSize : Int} Model Msg
-main = Browser.element { init = \ {defaultGridSize} -> (createModel defaultGridSize, Cmd.none),
+main : Program {defaultGridSize : Int, rulerMargin : Int} Model Msg
+main = Browser.element { init = \ {defaultGridSize, rulerMargin} -> (createModel defaultGridSize rulerMargin, Cmd.none),
                          view = view, update = updateIntercept,
                          subscriptions = subscriptions}
