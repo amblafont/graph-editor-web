@@ -138,14 +138,16 @@ function escapeStringRegexp(s:string):string {
     return s.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
  }
 
-function parseMagic(magic:string, line:string) {
+function parseMagic(magic:string, line:string):{content:string|null,indent:string} {
     let magicRe = new RegExp(escapeStringRegexp(magic.trim()) + "(.*)$");
     let search = magicRe.exec(line.trim());
   
     if (search !== null) {
-      return search[1].trim();
+      let indent = line.search(/\S|$/);
+      return {content:search[1].trim(), 
+              indent:line.substring(0,indent)};
     } else {
-      return null;
+      return {content:null,indent:""};
     }
 }
 
@@ -197,6 +199,12 @@ function writeLine(fd:string[], line:string|false) {
        fd.push( line + "\n");
   }
 
+function writeLines(fd:string[], lines:string[], indent:string) {
+    for (let line of lines) {
+      writeLine(fd, indent + line);
+    }
+  }
+
 
 
 async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcontent:string, output:string, index:number) {
@@ -205,6 +213,7 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
     
     let line:false|string = false;
     let content = null;
+    let indent = "";
     for (let i=0; i < index; i++) {
       writeLine(fd, line);
       content = null;
@@ -214,7 +223,9 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
          line = readLine(file_lines);
          if (line === false)
            break;
-         content = parseMagic(config.magic, line)
+         let magic = parseMagic(config.magic, line);
+         content = magic.content;
+         indent = magic.indent;
       }
     }
     if (content === null) {
@@ -226,13 +237,13 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
     if (isFile)
        writeLine(fd, line)
     else
-       writeLine(fd, config.magic + " " + newcontent)
-    writeLine(fd, config.prefixes.join("\n"));
+       writeLine(fd, indent + config.magic + " " + newcontent)
+       writeLines(fd, config.prefixes, indent);
     if (! config.externalOutput || ! isFile)
-       writeLine(fd, output);
+       writeLines(fd, output.split("\n"), indent);
     else
-       writeLine(fd, config.includeCmd.replace("@", outputFileName(config, content)));
-    writeLine(fd, config.suffixes.join("\n"));
+       writeLine(fd, indent + config.includeCmd.replace("@", outputFileName(config, content)));
+    writeLines(fd, config.suffixes, indent);
     while (line !== false) {
       line = readLine(file_lines);
       if (line === false) {
@@ -326,7 +337,7 @@ async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Prom
         line = readLine(file_lines);
         if (line === false)
             break;
-        content = parseMagic(config.magic, line);
+        content = parseMagic(config.magic, line).content;
       }
       if (line === false)
         break;
