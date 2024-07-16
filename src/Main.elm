@@ -114,7 +114,7 @@ type alias JsGraphInfo = { graph : LastFormat.Graph, version : Int }
 type alias ExportFormats = {tex:String, svg:String, coq:String}
 
 -- feedback: do we want a confirmation alert box?
-port quicksaveGraph : { info : JsGraphInfo, export: ExportFormats, feedback : Bool} -> Cmd a
+port quicksaveGraph : { info : JsGraphInfo, export: ExportFormats, autosave : Bool} -> Cmd a
 -- we ask js to save the graph
 port saveGraph : {info: JsGraphInfo, export: ExportFormats} -> Cmd a
 port makeSave : (() -> a) -> Sub a
@@ -450,7 +450,7 @@ update msg modeli =
      MinuteTick -> if model.autoSave then 
                          (model, quicksaveGraph 
                          { info = toJsGraphInfo model, export = makeExports model,
-                         feedback = False }) 
+                         autosave = True }) 
                    else noCmd model
      Clear {scenario,preamble} -> 
         let modelf = clearModel model in
@@ -916,7 +916,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
             (model, quicksaveGraph 
             { info = toJsGraphInfo model, 
               export = makeExports model,             
-              feedback = True })
+              autosave = False })
         KeyChanged False _ (Character 'R') -> 
             noCmd <| initialise_Resize model
         KeyChanged False _ (Character 'r') -> rename model

@@ -438,6 +438,10 @@ function disableInAppInstallPrompt() {
                         return;
                     }
                     saveGraphFun = function(d){
+                        if (d.autosave) {
+                            defaultQuickSave(d, false);
+                            return;
+                        }
                         saveGraphFun = function (d) {};
                         quicksaveFun = function (d) {};
                         watchSaveDiagram(config, r, dirHandle, fromElmGraph(d.info), d.export)
@@ -587,14 +591,15 @@ function disableInAppInstallPrompt() {
              return {graph : a.graph, version : a.version };;
          }
 
-         function defaultQuickSave(arg) {
+         function defaultQuickSave(arg, feedback) {
             console.log("Quicksaving...");
-            var a = arg.info
+            var a = arg.info;
             var d = fromElmGraph(a);
+            // var feedback = ! arg.autosave;
             // d.fileName = getFileName();
              // Check browser support
             if (!supportStorage) {           
-               if (arg.feedback)
+               if (feedback)
                    alert("Sorry, your browser does not support Web Storage.");
                return;
             }
@@ -603,11 +608,11 @@ function disableInAppInstallPrompt() {
             // we put it also in a temporary session storage
             // in case multiple tabs are opened
             sessionStorage.setItem(storageKey, JSON.stringify(d));
-            if (arg.feedback)
+            if (feedback)
                 alert("Successful quicksave"); 
          }
          var quicksaveFun = function(a) {
-            defaultQuickSave(a);
+            defaultQuickSave(a, !a.autosave);
          };
           
          app.ports.quicksaveGraph.subscribe((e) => quicksaveFun(e));
@@ -627,18 +632,16 @@ function disableInAppInstallPrompt() {
          };
          if (isFileAPI) {
             quicksaveFun = function(arg) {
-                
+                var feedback = !arg.autosave;
                 if (!currentFileHandle) {
-                    defaultQuickSave(arg);
+                    defaultQuickSave(arg, feedback);
                     return;
                 }
-                var feedback = arg.feedback;
-                arg.feedback = false;
-                defaultQuickSave(arg);
-                arg.feedback = feedback;
+               
+                defaultQuickSave(arg, false);
                 saveFileApi(arg)
                 .then(() => {
-                    if (arg.feedback) {
+                    if (feedback) {
                         alert("Successful quicksave to " + currentFileHandle.name);
                     }
                 });
