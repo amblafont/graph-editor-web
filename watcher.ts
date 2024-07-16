@@ -348,11 +348,15 @@ async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Prom
         let diagFile = content;
         let outputFile = outputFileName(config,diagFile);
         let checkExist = await checkFileExistsFromPath(d,outputFile);
-        if (!checkExist) {
+        let rfile = contentToFileName(config, diagFile);
+        let checkExistRfile = await checkFileExistsFromPath(d,rfile);
+        if (checkExistRfile && !checkExist) {
           let data = await getContent(d, config, diagFile);
           return {diagFile:diagFile, index:index, content:data,
                      onlyExternalFile:true};
         }
+        if (!checkExistRfile) 
+          console.log("File " + rfile + " doesn't exist.");
       }
       remainder = config.prefixes;
       while (remainder !== null && remainder.length > 0) {
@@ -372,6 +376,7 @@ async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Prom
       let diagFile:null|string = null;
     
       if (contentIsFile(content)) {
+        diagFile = content;
         content = await getContent(d, config, content);
       }
     
