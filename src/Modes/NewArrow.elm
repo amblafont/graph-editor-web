@@ -104,9 +104,9 @@ update state msg model =
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next {finish = False, merge = False}
-        KeyChanged False _ (Control "Enter") -> next {finish = True, merge = False}
+        KeyChanged False _ (Control "Enter") -> next {finish = True, merge = not state.isAdjunction}
     --     TabInput -> Just <| ValidateNext
-        KeyChanged False _ (Control "Tab") -> next {finish = False, merge = False}
+        KeyChanged False _ (Control "Tab") -> next {finish = False, merge = not state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}                 
