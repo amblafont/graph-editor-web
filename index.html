@@ -343,6 +343,15 @@ function disableInAppInstallPrompt() {
          }
 
          
+         function sendGraphTxtToElm(txt, scenario = "standard", clipboard = false, setFirstTab = false) {
+            if (txt.trim() == "") {
+                console.log("Empty graph");
+                app.ports.clear.send({scenario:scenario, preamble:""});
+                return;
+            }
+            var json = JSON.parse(txt);
+            sendGraphToElm(json, scenario, clipboard, setFirstTab);
+         }
          
 
 
@@ -375,13 +384,12 @@ function disableInAppInstallPrompt() {
          var openFileFun = function() {
              var input = document.createElement('input');
              input.type = 'file';
-             input.accept = ".json";
+             input.accept = ".json,.yade";
              input.onchange = e => {
                  var file = e.target.files[0];
                  var fr=new FileReader();
                  fr.onload=function(){
-                     var json = JSON.parse (fr.result);
-                     sendGraphToElm(json);
+                     sendGraphTxtToElm(fr.result);
                  }
                  fr.readAsText(file);
                  setFileName(file.name);
@@ -398,25 +406,26 @@ function disableInAppInstallPrompt() {
          app.ports.openFile.subscribe(openFile);
 
          if(isFileAPI) {
-            // open the file picker with showFilePicker and sends the content to Elm
-            openFileFun = function() {
-                console.log("Opening file");
-                showOpenFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }] })
-                .then(function (fileHandles) {
-                    if (fileHandles.length != 1) {
-                        throw new Error("No file selected");
-                    }
-                    currentFileHandle = fileHandles[0];
-                    return currentFileHandle.getFile();
-                })
-                .then(function (file) {
+            function openFileAPI(fileHandle) {
+                currentFileHandle = fileHandle;
+                currentFileHandle.getFile().then(function (file) {
                     setFileName(file.name);
                     return file.text();
                 })
                 .then(function (text) {
-                    var json = JSON.parse(text);
-                    sendGraphToElm(json);                    
+                    sendGraphTxtToElm(text);                    
                 });
+            }
+            // open the file picker with showFilePicker and sends the content to Elm
+            openFileFun = function() {
+                console.log("Opening file");
+                showOpenFilePicker({ types: [{ accept: { 'application/json': ['.json','.yade'] } }] })
+                .then(function (fileHandles) {
+                    if (fileHandles.length != 1) {
+                        throw new Error("No file selected");
+                    }
+                    return openFileAPI(fileHandles[0]);
+                });            
             };
          }
          
@@ -468,8 +477,7 @@ function disableInAppInstallPrompt() {
                 app.ports.clear.send({scenario:"watch", preamble:defaultPreamble});
             } else {
                 console.log("Loading diagram ");
-                let json = JSON.parse (stripped_diag);
-                sendGraphToElm(json, "watch");
+                sendGraphTxtToElm(stripped_diag, "watch");
             }    
         }
 
@@ -546,11 +554,7 @@ function disableInAppInstallPrompt() {
                 alert('No quicksaved graph found');
                 return;
             }
-            
-            var json = JSON.parse(result);
-            var fileName = json.fileName;
-            setFileName(fileName);               
-            sendGraphToElm(json);     
+            sendGraphTxtToElm(result);
          };
 
 
@@ -945,6 +949,21 @@ function loadDataFromVscode(data, filename, scenario,  setFirstTab = false) {
        }
       }
   );
+
+  /*
+
+  Open file using FileHandling PWA api
+
+  */
+  if ('launchQueue' in window && 'files' in LaunchParams.prototype) {
+    launchQueue.setConsumer((launchParams) => {
+        // Nothing to do when the queue is empty.
+        if (!launchParams.files.length) {
+        return;
+        }
+        return openFileAPI(launchParams.files[0]);
+    });
+  }
         
         </script>
     </body>
