@@ -49,7 +49,7 @@ initialise m =
             
 nextStep : Model -> {finish:Bool, merge:Bool} -> NewArrowState -> ( Model, Cmd Msg )
 nextStep model {finish, merge} state =
-     let info = moveNodeInfo merge model state in
+     let info = moveNodeInfo merge True model state in
      
      -- let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
      let m2 = setSaveGraph model <| GraphDefs.weaklySelectMany info.selectable
@@ -104,9 +104,9 @@ update state msg model =
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next {finish = False, merge = False}
-        KeyChanged False _ (Control "Enter") -> next {finish = True, merge = not state.isAdjunction}
+        KeyChanged False _ (Control "Enter") -> next {finish = True, merge = state.isAdjunction}
     --     TabInput -> Just <| ValidateNext
-        KeyChanged False _ (Control "Tab") -> next {finish = False, merge = not state.isAdjunction}
+        KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}                 
@@ -149,6 +149,7 @@ nextPossibleMode s =
 
 moveNodeInfo :
     Bool
+    -> Bool
     -> Model
     -> NewArrowState
     ->
@@ -156,11 +157,12 @@ moveNodeInfo :
         , selectable : List Graph.Id
         , renamable : List Graph.Id
         }
-moveNodeInfo merge model state = 
+moveNodeInfo merge emptyLabel model state =
                 let modelGraph = getActiveGraph model in
                 let style = ArrowStyle.getStyle state in                       
                 let edgeLabel = GraphDefs.newEdgeLabelAdj 
-                              (if state.isAdjunction then "\\vdash" else "") 
+                              (if state.isAdjunction then "\\vdash" else 
+                                if emptyLabel then "" else "-") 
                               style state.isAdjunction
                 in
                 let nodePos = GraphDefs.centerOfNodes (Graph.nodes state.chosen) in
@@ -193,7 +195,7 @@ graphDrawing m s =
     -- let defaultView movedNode = modelGraph{ graph = modelGraph, movedNode = movedNode}  in
     -- graphMakeEditable (renamableFromState s) <|
     collageGraphFromGraph m <|
-            let info = moveNodeInfo (s.isAdjunction) m s in
+            let info = moveNodeInfo s.isAdjunction False m s in
              info.graph 
          
 help : String
