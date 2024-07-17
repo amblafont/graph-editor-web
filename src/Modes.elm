@@ -90,6 +90,7 @@ type alias EnlargeState =
    { orig : Point, -- mouse original point at the beginning of the move mode
      -- onlySubdiag : Bool,
      pos : InputPosition
+   , direction : MoveDirection
    }
 
 type alias SplitArrowState =

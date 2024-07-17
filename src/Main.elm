@@ -52,7 +52,7 @@ import Msg exposing (Msg(..), Scenario(..),
    LoadGraphInfo, mapLoadGraphInfo, scenarioOfString, 
    loadGraphInfoToMsg)
 
-import Tuple
+import Tuple exposing (first, second)
 import Maybe exposing (withDefault)
 
 import Modes.Square
@@ -598,6 +598,8 @@ update_RectSelect msg orig keep model =
 update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
 update_Enlarge msg state model =
    let fin = switch_Default <| setSaveGraph model <| enlargeGraph model state in
+   let updateState st = { model | mode = EnlargeMode st } in
+   let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
    case msg of
       KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
       KeyChanged False _ (Control "Escape") -> switch_Default model
@@ -605,6 +607,9 @@ update_Enlarge msg state model =
                           noCmd <| { model | mode =
                                   EnlargeMode { state | onlySubdiag = not state.onlySubdiag }} -}
       MouseUp -> fin
+      KeyChanged False _ (Character 'f') -> updateDirection Free
+      KeyChanged False _ (Character 'x') -> updateDirection Horizontal
+      KeyChanged False _ (Character 'y') -> updateDirection Vertical
       KeyChanged False _ (Control "Enter") -> fin
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
@@ -1071,7 +1076,8 @@ initialiseEnlarge model =
    { model | mode = EnlargeMode 
              {orig = model.mousePos,
              -- onlySubdiag = True,
-              pos = InputPosMouse
+              pos = InputPosMouse,
+              direction = Free
        }
    }
 
@@ -1133,7 +1139,12 @@ enlargeGraph m state =
    let sizeGrid = getActiveSizeGrid m in
    let (ox, oy) = case state.pos of      
           InputPosKeyboard p -> InputPosition.deltaKeyboardPos sizeGrid p
-          _ -> Point.subtract m.mousePos state.orig 
+          _ -> 
+            let (dx, dy) = Point.subtract m.mousePos state.orig in
+              case state.direction of
+                      Free -> (dx, dy)
+                      Vertical -> (0, dy)
+                      Horizontal -> (dx, 0)
    in   
    let diags = GraphDefs.getSurroundingDiagrams state.orig modelGraph in
    let edgesId = List.concatMap (GraphProof.edgesOfDiag >> IntDict.keys) diags
@@ -1414,6 +1425,7 @@ helpMsg model =
                             ++ overlayHelpMsgNewLine
                             ++ "Draw a rectangle to create space. "
                             ++ "Use mouse or h,j,k,l. [RET] or click to confirm."
+                            ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree." 
                          {-    ++ (if s.onlySubdiag then
                                     "Only extending surrounding subdiagram"
                                else
@@ -1437,19 +1449,30 @@ helpMsg model =
                 makeHelpDiv [ Html.text txt ]
 
 additionnalDrawing : Model -> Drawing Msg
-additionnalDrawing m = 
-   let drawSel pos orig = 
-   
-            Drawing.rect foregroundZ <| Geometry.makeRect orig
+additionnalDrawing m =
+   let drawSelPoint pointPos orig =
+         Drawing.rect foregroundZ <| Geometry.makeRect orig
             <| Point.add (1,1) -- to make the rectangle appear even if one dim is empty
-            <| case pos of
-              InputPosKeyboard p -> Point.add orig <| InputPosition.deltaKeyboardPos 
-                 (getActiveSizeGrid m) p
-              _ -> m.mousePos
+            <| pointPos
+   in
+   let drawSel pos orig = 
+            case pos of
+              InputPosKeyboard p ->
+                   drawSelPoint 
+                      (Point.add orig <| InputPosition.deltaKeyboardPos 
+                      (getActiveSizeGrid m) p) orig
+              _ -> drawSelPoint m.mousePos orig
    in
    case m.mode of
       RectSelect orig -> drawSel InputPosMouse orig
-      EnlargeMode state -> drawSel state.pos state.orig
+      EnlargeMode state -> 
+         case (state.pos, state.direction) of
+              (InputPosMouse, Vertical) -> 
+                  drawSelPoint (first state.orig, second m.mousePos) state.orig
+              (InputPosMouse, Horizontal) ->
+                  drawSelPoint (first m.mousePos, second state.orig) state.orig
+              _ -> drawSel state.pos state.orig
+        
       _ -> --GraphDrawing.make_input (100.0,100.0) "coucou" (always Msg.noOp)
           Drawing.empty
 
