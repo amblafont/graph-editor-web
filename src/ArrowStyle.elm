@@ -218,7 +218,7 @@ tikzStyle stl =
     "fore, " ++
     Color.toString stl.color ++ "," ++
       (case (stl.head, stl.kind) of
-            (NoHead, DoubleArrow) -> "identity"
+            (NoHead, DoubleArrow) -> "identity,"
             (hd, DoubleArrow) -> (headTikzStyle hd) ++ "cell=0.2, "
             (hd, NormalArrow) -> (headTikzStyle hd)
             (hd, NoneArrow) -> "draw=none, "
