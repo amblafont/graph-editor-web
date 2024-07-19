@@ -12,7 +12,7 @@ encodeNodeTikZ sizeGrid n =
     let (x, y) = GraphDefs.getNodePos n.label in
     let coord u = (u / 21) in -- 17.7667
     let label = (if n.label.label == "" then "\\bullet" else n.label.label ) in
-    "\\node ("
+    "\\node[inner sep=5pt] ("
         ++ String.fromInt n.id
         ++ ") at ("
         ++ String.fromFloat (coord x)
@@ -62,7 +62,7 @@ graphToTikz sizeGrid g =
     let tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
     in
-    "\\begin{tikzpicture}[every node/.style={inner sep=5pt,outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
+    "\\begin{tikzpicture}[every node/.style={outer sep=0pt,anchor=base,text height=1.2ex, text depth=0.25ex}] \n"
         ++ tikzNodes
         ++ tikzFakeEdges
         ++ tikzEdges
