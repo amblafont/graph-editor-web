@@ -1,9 +1,8 @@
 module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
-   tikzStyle, tailToString , tailFromString,
-   headToString, headFromString, 
-   alignmentToString, alignmentFromString, 
+   tikzStyle,
    isDouble, doubleSize,
-   controlChars, kindToString, kindFromString,
+   controlChars,
+   kindCodec, tailCodec, headCodec, alignmentCodec,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
     keyMaybeUpdateStyle,
@@ -19,7 +18,7 @@ import Json.Encode as JEncode
 import List.Extra as List
 import ListExtraExtra exposing (nextInList)
 import String.Svg as Svg exposing (Svg)
-
+import Codec exposing (Codec)
 
 doubleSize = 2.5
 
@@ -44,62 +43,40 @@ simpleLineStyle = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashe
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
 
-kindToString : ArrowKind -> String
-kindToString kind =
-   case kind of
-         NormalArrow -> "normal"
-         NoneArrow -> "none"
-         DoubleArrow -> "double"
-kindFromString : String -> ArrowKind
-kindFromString kind =
-   case kind of
-         "none" -> NoneArrow
-         "double" -> DoubleArrow
-         _ -> NormalArrow
-tailToString : TailStyle -> String
-tailToString tail =
-   case tail of
-         DefaultTail -> "none"
-         Hook -> "hook"
-         HookAlt -> "hookalt"
-         Mapsto -> "mapsto"
-tailFromString : String -> TailStyle
-tailFromString tail =
-   case tail of         
-         "hook" -> Hook
-         "hookalt" -> HookAlt
-         "mapsto" -> Mapsto
-         _ -> DefaultTail
+kindCodec : Codec ArrowKind String
+kindCodec = 
+  Codec.enum 
+  [(NoneArrow, "none"),
+   (DoubleArrow, "double")]
+  (NormalArrow, "normal")
 
-headToString : HeadStyle -> String
-headToString head =
-  case head of
-       DefaultHead -> "default" 
-       TwoHeads    -> "twoheads" 
-       NoHead      -> "none"
+tailCodec : Codec TailStyle String
+tailCodec = 
+  Codec.enum 
+  [(Hook, "hook"),
+   (HookAlt, "hookalt")
+    , (Mapsto, "mapsto")
+   ]
+  (DefaultTail, "none")
 
-headFromString : String -> HeadStyle
-headFromString head =
-  case head of        
-       "twoheads" -> TwoHeads    
-       "none" -> NoHead      
-       _ -> DefaultHead
+headCodec : Codec HeadStyle String
+headCodec =
+   Codec.enum
+   [          
+       (TwoHeads,  "twoheads")
+       , (NoHead, "none")
+   ]
+   (DefaultHead, "default")
 
-alignmentToString : LabelAlignment -> String
-alignmentToString tail =
-   case tail of
-         Centre -> "centre"
-         Over -> "over"
-         Left -> "left"
-         Right -> "right"
-alignmentFromString : String -> LabelAlignment
-alignmentFromString tail =
-   case tail of         
-         "centre" -> Centre
-         "right" -> Right
-         "over" -> Over
-         _ -> Left
-
+alignmentCodec : Codec LabelAlignment String
+alignmentCodec = 
+  Codec.enum 
+  [(Centre, "centre"),
+   (Over, "over"),
+   (Left, "left"),
+   (Right, "right")]
+  (Left, "left")
+ 
 empty : Style
 empty = { tail = DefaultTail, head = DefaultHead, dashed = False,
           bend = 0, labelAlignment = Left,

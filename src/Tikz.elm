@@ -114,8 +114,8 @@ encodeLabel e =
             ""
 
         NormalEdge l ->
-let style = ArrowStyle.getStyle l in
-                                   let lbl = "${\\scriptstyle " ++ 
+            let style = ArrowStyle.getStyle l in
+            let lbl = "${\\scriptstyle " ++ 
                     l.label 
                     ++ "}$"
             in

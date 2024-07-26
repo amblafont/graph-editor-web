@@ -9,13 +9,14 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds, nodeIds,
      Node, Edge, nextId,
      incomings, outgoings, drop, 
      normalise, 
-     disjointUnion, edgeMap, nodeMap,
+     disjointUnion, edgeMap, nodeMap, codec, mapCodec,
      {- findInitial, sourceNode, -} removeLoops,
      incidence, any, connectedClosure, minimal, maximal, complement, topmostObject)
 import IntDict exposing (IntDict)
 import IntDictExtra 
 import Maybe.Extra as Maybe
 import List.Extra
+import Codec exposing (Codec)
 
 
 type alias Id = Int
@@ -208,6 +209,20 @@ fromNodesAndEdges ln le =
    in
      
   Graph <| IntDict.union dn de 
+
+codec : Codec (Graph n e) { nodes : List (Node n), edges : List (Edge e) }
+codec =
+  Codec.build 
+  (\g -> 
+     { nodes = nodes g, edges = edges g }
+  )
+  (\ r -> fromNodesAndEdges r.nodes r.edges)
+
+mapCodec : Codec n1 n2 -> Codec e1 e2 -> Codec (Graph n1 e1) (Graph n2 e2) 
+mapCodec c1 c2 = 
+     Codec.build
+       (map (always (Codec.encoder c1)) (always (Codec.encoder c2)))
+       (map (always (Codec.decoder c1)) (always (Codec.decoder c2)))
 
 filterNodes : Graph n e -> (n -> Bool) -> List (Node n)
 filterNodes g f = nodes g |> List.filter (f << .label)

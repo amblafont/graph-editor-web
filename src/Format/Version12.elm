@@ -2,11 +2,12 @@ module Format.Version12 exposing (Graph, Node, normalKey, pullshoutKey, Tab, Arr
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
-import ArrowStyle
+import ArrowStyle exposing (tailCodec, headCodec, alignmentCodec, kindCodec)
 import GraphDefs exposing (EdgeLabel, NodeLabel)
 import Format.GraphInfo as GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
+import Codec exposing (Codec)
 
 version = 12
 pullshoutKey = "pullshout"
@@ -39,6 +40,32 @@ type alias Graph = {
       latexPreamble : String}
 
 
+arrowStyleCodec : Codec ArrowStyle.ArrowStyle ArrowStyle
+arrowStyleCodec =
+  Codec.object
+  (\tail head kind dashed bend alignment position color ->
+      { tail = tail, head = head, kind = kind
+   , dashed = dashed, bend = bend, labelAlignment = alignment, 
+   labelPosition = position, color = color }
+    
+  )
+  (\tail head kind dashed bend alignment position color ->
+    { tail = tail, head = head, kind = kind
+   , dashed = dashed, bend = bend, alignment = alignment, 
+   position = position, color = color }
+  )
+  |> Codec.bothFields .tail .tail tailCodec
+  |> Codec.bothFields .head .head headCodec
+  |> Codec.bothFields .kind .kind kindCodec
+  |> Codec.bothFields .dashed .dashed Codec.identity
+  |> Codec.bothFields .bend .bend Codec.identity
+  |> Codec.bothFields .labelAlignment .alignment alignmentCodec
+  |> Codec.bothFields .labelPosition (.position >> min 0.9 >> max 0.1) Codec.identity
+  |> Codec.bothFields .color .color Color.codec
+  |> Codec.buildObject
+  
+
+
 fromEdgeLabel : EdgeLabel -> Edge
 fromEdgeLabel e = 
    case e.details of
@@ -47,16 +74,8 @@ fromEdgeLabel e =
             let style = ArrowStyle.getStyle l in
             { label = label,
               kind = if isAdjunction then adjunctionKey else normalKey,       
-              style = { tail = ArrowStyle.tailToString style.tail
-               , head = ArrowStyle.headToString style.head
-               , alignment = ArrowStyle.alignmentToString style.labelAlignment
-               , kind = ArrowStyle.kindToString style.kind
-               , dashed = style.dashed
-               , bend = style.bend
-               , position = style.labelPosition
-               , color = Color.toString style.color
-               },
-               zindex = e.zindex               
+              style = Codec.encoder arrowStyleCodec style,
+              zindex = e.zindex               
             }
      
 toEdgeLabel : Edge -> EdgeLabel
@@ -67,60 +86,61 @@ toEdgeLabel { label, style, kind, zindex } =
        if kind == pullshoutKey then PullshoutEdge else
          NormalEdge { label = label
            , isAdjunction = kind == adjunctionKey      
-           , style = { tail = ArrowStyle.tailFromString style.tail
-                   , head = ArrowStyle.headFromString style.head
-                   , kind = ArrowStyle.kindFromString style.kind
-                   , dashed = style.dashed
-                   , bend = style.bend
-                   , color = Color.fromString style.color
-                   , labelAlignment = ArrowStyle.alignmentFromString style.alignment
-                   , labelPosition = style.position 
-                                     |> min 0.9
-                                     |> max 0.1                                 
-                   }
+           , style = Codec.decoder arrowStyleCodec style
          , dims = Nothing
          }
    }
 
+edgeCodec : Codec EdgeLabel Edge
+edgeCodec = 
+   Codec.build fromEdgeLabel toEdgeLabel
 
-
-
-fromNodeLabel : NodeLabel -> Node
-fromNodeLabel { pos, label, isMath, zindex } = 
-  { pos = pos, label = label, isMath = isMath, zindex = zindex}
-
-toNodeLabel : Node -> NodeLabel
-toNodeLabel { pos, label, isMath, zindex } = { pos = pos, label = label
+nodeCodec : Codec NodeLabel Node
+nodeCodec = 
+   Codec.object
+   (\ pos label isMath zindex ->
+   { pos = pos, label = label
    , dims = Nothing, selected = False, weaklySelected = False, isMath = isMath,
      zindex = zindex, isCoqValidated = False}
+    )
+    (\ pos label isMath zindex ->
+    { pos = pos, label = label, isMath = isMath, zindex = zindex})
+    |> Codec.bothFields .pos .pos Codec.identity
+    |> Codec.bothFields .label .label Codec.identity
+    |> Codec.bothFields .isMath .isMath Codec.identity
+    |> Codec.bothFields .zindex .zindex Codec.identity
+    |> Codec.buildObject
 
+
+tabCodec : Codec  GraphInfo.Tab Tab 
+tabCodec =
+  Codec.object
+  (\ graph title active sizeGrid ->
+    { graph = graph,
+      title = title, active = active, sizeGrid = sizeGrid
+    }
+  )
+  (\ graph title active sizeGrid ->
+    { nodes = graph.nodes,
+      edges = graph.edges,
+      title = title, active = active, sizeGrid = sizeGrid
+    }
+  )
+  |> Codec.bothFields .graph (\e -> { nodes = e.nodes, edges = e.edges}) 
+       (Codec.compose Graph.codec (Graph.mapCodec nodeCodec edgeCodec))
+  |> Codec.bothFields .title .title Codec.identity
+  |> Codec.bothFields .active .active Codec.identity
+  |> Codec.bothFields .sizeGrid .sizeGrid Codec.identity
+  |> Codec.buildObject
+
+-- TODO: normalisation
 
 toJSTab : GraphInfo.Tab -> Tab
-toJSTab tab =
-          let g = tab.graph in
-          let gjs = g
-                   |> Graph.map 
-                    (\_ -> fromNodeLabel)
-                    (\_ -> fromEdgeLabel) 
-                   |> Graph.normalise           
-          in
-          let nodes = Graph.nodes gjs
-              edges = Graph.edges gjs
-          in
-          { nodes = nodes,
-            edges = edges,
-            sizeGrid = tab.sizeGrid,
-            title = tab.title,
-            active = tab.active
-          }
+toJSTab = Codec.encoder tabCodec
+
 
 fromJSTab : Tab -> GraphInfo.Tab
-fromJSTab tab = 
-     { graph = Graph.fromNodesAndEdges tab.nodes tab.edges
-                  |> Graph.map (\_ -> toNodeLabel) (\_ -> toEdgeLabel),
-       sizeGrid = tab.sizeGrid,
-       title = tab.title,
-       active = tab.active}
+fromJSTab = Codec.decoder tabCodec
 
 
 toJSGraph : GraphInfo -> Graph

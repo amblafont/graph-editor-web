@@ -1,4 +1,4 @@
-module Format.GraphInfo exposing (GraphInfo, Tab)
+module Format.GraphInfo exposing (GraphInfo, Tab, normalise)
 -- the data that we want to copy/save
 import Polygraph as Graph
 import GraphDefs exposing (EdgeLabel, NodeLabel)
@@ -14,4 +14,8 @@ type alias Tab =
 
 type alias GraphInfo = { tabs : List Tab,
                          latexPreamble : String}
+
+normalise : GraphInfo -> GraphInfo
+normalise gi = 
+  { gi | tabs = List.map (\tab -> { tab | graph = Graph.normalise tab.graph }) gi.tabs }
 

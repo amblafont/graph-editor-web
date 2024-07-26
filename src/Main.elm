@@ -91,7 +91,7 @@ import Format.Version11
 import Format.Version12
 import Format.LastVersion as LastFormat
 
-import Format.GraphInfo exposing (Tab)
+import Format.GraphInfo as GraphInfo exposing (Tab)
 
 import List.Extra
 import GraphDefs exposing (exportQuiver)
@@ -351,7 +351,7 @@ switch_RenameMode model =
 
 toJsGraphInfo : Model -> JsGraphInfo
 toJsGraphInfo model= { graph = LastFormat.toJSGraph 
-                                    <| Model.toGraphInfo model,
+                               <| GraphInfo.normalise  <| Model.toGraphInfo model,
                               -- fileName = model.fileName,
                               version = LastFormat.version}
 

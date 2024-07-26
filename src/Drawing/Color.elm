@@ -1,7 +1,7 @@
-module Drawing.Color exposing (Color, helpMsg, merge,
-  black, red, blue, green, yellow, purple, orange, fromChar, fromString, toString)
+module Drawing.Color exposing (Color, helpMsg, merge, toString,
+  black, red, blue, green, yellow, purple, orange, fromChar, codec)
 
-
+import Codec exposing (Codec)
 type Color = Black | Red | Blue | White | Purple | Yellow | Green | Orange
 
 merge : Color -> Color -> Color
@@ -26,27 +26,20 @@ fromChar s = case s of
    'c' -> Just Black
    _ -> Nothing
 
-fromString : String -> Color
-fromString s = case s of
-   "red" -> Red
-   "blue" -> Blue
-  -- "white" -> White
-   "purple" -> Purple
-   "green" -> Green
-   "yellow" -> Yellow
-   "orange" -> Orange
-   _ -> Black
+codec : Codec Color String
+codec = 
+   Codec.enum
+   [(Red, "red")
+   , (Blue, "blue")
+   , (White, "white")
+   , (Purple, "purple")
+   , (Green, "green")
+   , (Yellow, "yellow")
+   , (Orange, "orange")]
+    (Black, "black")
 
 toString : Color -> String
-toString c = case c of
-  Black -> "black"
-  Red -> "red"
-  Blue -> "blue"
-  White -> "white"
-  Purple -> "purple"
-  Green -> "green"
-  Yellow -> "yellow"
-  Orange -> "orange"
+toString = Codec.encoder codec
 
 black : Color
 black = Black
