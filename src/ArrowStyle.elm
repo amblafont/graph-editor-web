@@ -99,7 +99,7 @@ alignmentCodec =
             Right -> right
 
    in
-   Codec.customEnum split 
+   Codec.customEnum split
    |> Codec.variant0 "centre" Centre
    |> Codec.variant0 "over" Over
    |> Codec.variant0 "left" Left
@@ -143,7 +143,7 @@ toggleMapsto s =  { s | tail = nextInList [Mapsto, DefaultTail] s.tail }
 
 toggleLabelAlignement : Style -> Style
 toggleLabelAlignement s =  
-        { s | labelAlignment = nextInList [Left, Right]
+        { s | labelAlignment = nextInList [Left, Right, Over]
         -- , Centre, Over] 
         -- the other ones do not seem to work properly
         s.labelAlignment }
