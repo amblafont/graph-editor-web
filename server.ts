@@ -1,7 +1,7 @@
 
 import * as WebSocket from 'ws';
 
-import {Data, ServerToClientDiffs, ClientToServerDiff, ServerToClientDiff, ServerToClientMsg} from "./interface.js";
+// import {Data, ServerToClientDiffs, ClientToServerDiff, ServerToClientDiff, ServerToClientMsg} from "./interface.js";
 
 const wss = new WebSocket.Server({ port: 8080 });
 

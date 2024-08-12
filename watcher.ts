@@ -1,4 +1,4 @@
-import {Data, ServerToClientDiffs, ClientToServerDiff, ServerToClientDiff, ServerToClientMsg} from "./interface.js";
+// import {Data, ServerToClientDiffs, ClientToServerDiff, ServerToClientDiff, ServerToClientMsg} from "./interface.js";
 
 // The config interface lists what fields can be found in yade-config.json
 // Some default values are available below

@@ -1,16 +1,16 @@
 
 
 // dummy interface for type-checking
-export interface Data {
+interface Data {
     dummy:any
 }
 
 
-// export interface ClientToServerSnapshot {
+// interface ClientToServerSnapshot {
 //     type : "snapshot"
 // }
 
-export interface ClientToServerDiff {
+interface ClientToServerDiff {
     // type: "diff"
     expectedId : number
     snapshot : boolean,
@@ -20,7 +20,7 @@ export interface ClientToServerDiff {
     msg:Data
 }
 
-export interface ServerToClientDiff {
+interface ServerToClientDiff {
     // type: "diff"
     id : number,
     snapshot:boolean,
@@ -29,11 +29,11 @@ export interface ServerToClientDiff {
     msg:Data
 }
 
-export type ServerToClientMsg =
+type ServerToClientMsg =
   | ServerToClientDiffs
   | ServerToClientSnapshot;
 
-export type ServerToClientDiffs = {
+type ServerToClientDiffs = {
   type : "diffs";
   // if the first diff is a snapshot
 //   snapshot:boolean;
@@ -44,6 +44,6 @@ export type ServerToClientDiffs = {
   data : ServerToClientDiff[]
 };
 
-export type ServerToClientSnapshot = {
+type ServerToClientSnapshot = {
     type : "snapshotRequest";
 };

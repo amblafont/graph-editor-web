@@ -11,7 +11,7 @@ By running a server, it is possible to collaborate on the same diagram (check th
 
 To compile the server:
 - `npm install`
-- `npx tsc server.ts`
+- `npx tsc server.ts interface.d.ts`
 
 To run the server (on port 8080, cf head of server.ts):
 - `node server.js`
@@ -24,7 +24,7 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 # Compiling the web app
 
 - `elm make src/Main.elm --output=elm.js`
-- `tsc watcher.ts`
+- `tsc watcher.ts interface.d.ts`
 
 (or download the latest elm.js and watcher.js from https://amblafont.github.io/graph-editor/elm.js and https://amblafont.github.io/graph-editor/watcher.js)
 
