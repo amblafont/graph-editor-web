@@ -688,7 +688,7 @@ function disableInAppInstallPrompt() {
         if (isFileAPI) {
             saveGraphFun = function (d) {
                 // open showsavefilepicker
-                showSaveFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }] })
+                showSaveFilePicker({ types: [{ accept: { 'application/json': ['.json', '.yade'] } }] })
                 .then(function (fileHandle) {
                     currentFileHandle = fileHandle;
                     setFileName(currentFileHandle.name);
