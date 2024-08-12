@@ -985,6 +985,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'l') -> move 0       
         PasteGraph gi ->
           if not model.mouseOnCanvas then noCmd model else
+          -- let modelGI = GraphInfo.getActiveTab model.graphInfo in
          -- we ignore the other tabs
           case GraphInfo.getActiveTabOption gi of
               Nothing -> noCmd model
@@ -995,15 +996,15 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                          tab.graph
                   in
                   let protocolMsg = {  id = modifId
-                             , selIds = IntDict.insert tab.id 
+                             , selIds = IntDict.insert model.graphInfo.activeTabId 
                                        (Graph.allIds info.subGraph)
                                        IntDict.empty
                              , command = MoveCommand FreeMove
                              , modif = info.extendedGraph |> Graph.finaliseModif
-                                      |> GraphInfo.makeGraphChange tab.id
+                                      |> GraphInfo.makeGraphChange model.graphInfo.activeTabId 
                             }
                   in
-                  (model, protocolSend protocolMsg)
+                  (nextModel, protocolSend protocolMsg)
                   --  noCmd <| Modes.Move.initialise False FreeMove
                   --  <|  setSaveGraph model <| .extendedGraph <|          
                   --   Graph.md_disjointUnion 
