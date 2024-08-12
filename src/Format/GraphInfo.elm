@@ -128,7 +128,7 @@ applyTabMove isRight id gi =
                           else ListExtra.moveLeftCycle
                          ) 
                          (.id >> (==) id) gi.tabs },
-             undo = TabMoveRight id }
+             undo = if isRight then TabMoveLeft id else TabMoveRight id }
 
 
 nextTabName : GraphInfo -> String

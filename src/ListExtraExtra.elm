@@ -39,16 +39,14 @@ move isRight f l =
             b :: move isRight f (c :: q)
 moveRightCycle : (a -> Bool) -> List a -> List a
 moveRightCycle f l =
-   case List.last l of
-      Just c -> 
-          move True f (c :: l) |> List.unconsLast |> Maybe.map Tuple.second 
-          |> Maybe.withDefault l
+   case List.unconsLast l of
+      Just (t,q) -> if f t then t :: q else
+          move True f l
       Nothing -> []
 
 moveLeftCycle : (a -> Bool) -> List a -> List a
 moveLeftCycle f l =
-   case List.head l of
-      Just c -> 
-          move False f (l ++ [c]) |> List.tail
-          |> Maybe.withDefault l
-      Nothing -> []
+   case l of     
+      t :: q -> if f t then q ++ [t] else
+                 move False f l
+      [] -> []
