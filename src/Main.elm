@@ -601,7 +601,7 @@ update_RectSelect msg orig keep model =
 
 update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
 update_Enlarge msg state model =
-   let fin () = updateModifHelper model <| enlargeModif model state in
+   let fin () = updateModifHelper { model | mode = DefaultMode } <| enlargeModif model state in
    let updateState st = { model | mode = EnlargeMode st } in
    let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
    case msg of
