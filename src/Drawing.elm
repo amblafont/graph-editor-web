@@ -23,15 +23,25 @@ import List.Extra
 import Msg exposing (Msg)
 import String.Html exposing (ghostAttribute)
 import Drawing.Color as Color exposing (Color)
+import Maybe.Extra
 
 shadowClass = "shadow-line"
 
 svgHelper : List (String.Html.Attribute a) -> Drawing a -> Svg a
 svgHelper l d =
-  d |> drawingToZSvgs
-  |> List.sortBy .zindex 
-  |> List.map .svg
-  |> Svg.svg l
+  let (unkeyedList, keyedList) = 
+            d |> drawingToZSvgs
+            -- |> List.sortBy .zindex 
+            |> List.partition (.key >> Maybe.Extra.isNothing)
+  in
+  let unkeyedGroup = Svg.g [] (List.map .svg unkeyedList) in
+  let keyedGroup = 
+        -- Svg.kg []  <|
+        List.map (\item -> (Maybe.withDefault "" item.key, item.svg))
+        keyedList
+  in
+  -- Svg.svg l <| (List.map .svg unkeyedList ++ [keyedGroup])
+  Svg.ksvg l <| ("unkeyed", unkeyedGroup):: keyedGroup
 
 svg : List (Html.Attribute a) -> Drawing a -> Html.Html a
 svg l d =
@@ -55,6 +65,7 @@ attrToSvgAttr col a =
      OnClick f -> MouseEvents.onClick f |> ghostAttribute |> Just
      OnDoubleClick f -> MouseEvents.onDoubleClick f |> ghostAttribute |> Just
      ZIndex _ -> Nothing          
+    --  Key _ -> Nothing
 
 attrsToSvgAttrs : (String -> Svg.Attribute a) -> List (Attribute a) -> List (Svg.Attribute a)
 attrsToSvgAttrs f = List.filterMap (attrToSvgAttr f)
@@ -67,7 +78,8 @@ type Attribute msg =
     | Style String
     | OnClick (MouseEvents.Event -> msg)
     | OnDoubleClick (MouseEvents.Event -> msg) 
-    | ZIndex Int     
+    | ZIndex Int    
+    -- | Key String 
 
 attributeToZIndex : Attribute msg -> Maybe Int
 attributeToZIndex a = case a of
@@ -115,7 +127,7 @@ zindexAttr : Int -> Attribute Msg
 zindexAttr = ZIndex
 
 type Drawing a
-    = Drawing (List { svg : Svg a, zindex : Int})
+    = Drawing (List { svg : Svg a, zindex : Int, key : Maybe String})
 
 
 
@@ -123,13 +135,16 @@ empty : Drawing a
 empty = Drawing []
 
 ofSvgs : Int -> List (Svg a) -> Drawing a
-ofSvgs z l = Drawing <| List.map (\s -> { svg = s, zindex = z }) l 
+ofSvgs z l = Drawing <| List.map (\s -> { svg = s, zindex = z, key = Nothing }) l 
 
 
 ofSvg : Int -> Svg a -> Drawing a
 ofSvg z s = ofSvgs z [ s ]
 
-drawingToZSvgs : Drawing a -> List { svg : Svg a, zindex : Int}
+ofSvgWithKey : Int -> Maybe String -> Svg a -> Drawing a
+ofSvgWithKey z k s = Drawing [{ svg = s, zindex = z, key = k }]
+
+drawingToZSvgs : Drawing a -> List { svg : Svg a, zindex : Int, key:Maybe String}
 drawingToZSvgs (Drawing c) = c
 
 
@@ -303,8 +318,8 @@ emptyForeign =
     |> ofSvg (2 * backgroundZ)
 
 
-htmlAnchor : Int -> Point -> Point -> Bool -> String -> Html.Html a -> Drawing a
-htmlAnchor z (x1, y1) (width, height) center str h = 
+htmlAnchor : Maybe String -> Int -> Point -> Point -> Bool -> String -> Html.Html a -> Drawing a
+htmlAnchor key z (x1, y1) (width, height) center str h = 
   let f = String.fromFloat in
   let (x, y) = if center then (x1 - width / 2, y1 - height / 2) else (x1, y1) in
    Svg.foreignObject 
@@ -315,7 +330,7 @@ htmlAnchor z (x1, y1) (width, height) center str h =
      -- , Svg.width <| f width, Svg.height <| f height
      ]
    [String.Html.customNode str h]
-    |> ofSvg z
+    |> ofSvgWithKey z key
 
 group : List (Drawing a) -> Drawing a
 group l =

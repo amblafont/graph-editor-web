@@ -7,12 +7,15 @@ import Geometry exposing (PosDims)
 type alias Svg a = Html a
 type alias Attribute a = String.Html.Attribute a
 node = String.Html.nodeNS "http://www.w3.org/2000/svg"
+keyedNode = String.Html.keyedNodeNS "http://www.w3.org/2000/svg"
 
 svg = node "svg"
+ksvg = keyedNode "svg"
 
 text = String.Html.text
 foreignObject = node "foreignObject"
 g = node "g"
+kg = keyedNode "g"
 image = node "image"
 circle = node "circle"
 line = node "line"

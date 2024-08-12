@@ -134,7 +134,7 @@ make_input pos label onChange =
                     ++
                     HtmlDefs.onRendered (always <| Do <| HtmlDefs.select HtmlDefs.idInput )
                     ) []                                        
-             |> Drawing.htmlAnchor foregroundZ pos (100,16) True ""
+             |> Drawing.htmlAnchor Nothing foregroundZ pos (100,16) True ""
 
 
 activityToClasses : Activity -> List String
@@ -166,7 +166,7 @@ nodeLabelDrawing cfg attrs node =
                      ++ (if n.label == "" then "\\bullet" else
                      if n.isMath then n.label else "\\text{" ++ n.label ++ "}" )
             in
-            makeLatex cfg n.pos n.dims label n.zindex
+            makeLatex cfg n.pos id n.dims label n.zindex
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
                  -- Html.Events.on "mousemove" (D.succeed (EltHover id))
@@ -252,7 +252,7 @@ segmentLabel cfg q edgeId activity label curve =
                    else
                        []
              in
-             makeLatex cfg labelpos label.dims finalLabel foregroundZ
+             makeLatex cfg labelpos edgeId label.dims finalLabel foregroundZ
              
              ([   MouseEvents.onClick (EdgeClick edgeId),
                   MouseEvents.onDoubleClick (EltDoubleClick edgeId),
@@ -266,8 +266,8 @@ segmentLabel cfg q edgeId activity label curve =
             
             {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
               labelpos label.label  -}
-makeLatex cfg pos dims label z attrs  =
-  Drawing.htmlAnchor z pos dims True
+makeLatex cfg pos id dims label z attrs  =
+  Drawing.htmlAnchor (Just <| String.fromInt id) z pos dims True
             (makeLatexString label)
             <| HtmlDefs.makeLatex
               attrs
