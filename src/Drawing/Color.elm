@@ -28,15 +28,27 @@ fromChar s = case s of
 
 codec : Codec Color String
 codec = 
-   Codec.enum
-   [(Red, "red")
-   , (Blue, "blue")
-   , (White, "white")
-   , (Purple, "purple")
-   , (Green, "green")
-   , (Yellow, "yellow")
-   , (Orange, "orange")]
-    (Black, "black")
+   let split cred cblue cwhite cpurple cgreen cyellow corange cblack v =
+            case v of 
+               Red -> cred
+               Blue -> cblue
+               White -> cwhite
+               Purple -> cpurple
+               Green -> cgreen
+               Yellow -> cyellow
+               Orange -> corange
+               Black -> cblack
+   in
+   Codec.customEnum split 
+   |> Codec.variant0 "red" Red
+   |> Codec.variant0 "blue" Blue
+   |> Codec.variant0 "white" White
+   |> Codec.variant0 "purple" Purple
+   |> Codec.variant0 "green" Green
+   |> Codec.variant0 "yellow" Yellow
+   |> Codec.variant0 "orange" Orange
+   |> Codec.variant0 "black" Black
+   |> Codec.buildVariant
 
 toString : Color -> String
 toString = Codec.encoder codec

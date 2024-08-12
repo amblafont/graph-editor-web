@@ -1,3 +1,5 @@
+import {Data, ServerToClientDiffs, ClientToServerDiff, ServerToClientDiff, ServerToClientMsg} from "./interface.js";
+
 // The config interface lists what fields can be found in yade-config.json
 // Some default values are available below
 // (check defaults, and defaultsExt for each extension)
@@ -393,3 +395,96 @@ async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Prom
     
     // return true;
   }
+
+  /* ****************
+
+
+
+maintenant on traite l'aspect websocket
+
+
+
+
+  ***************** */
+let expectedIdFromServer = 0;
+
+function logExpectedId() {
+  console.log("expectedId: ");
+  console.log(expectedIdFromServer);
+}
+
+
+function requestSnapshot(send:(_:String) => void):void {
+  let msg = null as unknown as Data;
+  sendDataOnSocket(send, {
+  snapshot : false,
+  break : false,
+  history:false,
+  broadcast:false,
+  msg:msg});
+}
+
+function handleServerToClientMsg(
+    send:(_:String) => void
+  , snapshotRequest:((_:null) => void)
+  , normalRequest:((_:ServerToClientDiff[]) => void)
+  , data:string) {
+  let msg = JSON.parse(data) as ServerToClientMsg;
+  switch (msg.type) {
+    case "diffs":
+      handleServerToClientDiffs(send, normalRequest, msg.data);
+      break;
+    case "snapshotRequest":
+      snapshotRequest(null);
+      break;
+  }
+}
+
+function handleServerToClientDiffs(
+    send:(_:String) => void
+  , normalRequest:((_:ServerToClientDiff[]) => void)
+  , data:ServerToClientDiff[]) {
+  let diffs = [];
+
+  for(let i = 0; i < data.length; i++) {
+    let diff = data[i];
+    // logExpectedId();
+    if (diff.id > expectedIdFromServer && !diff.snapshot) {
+      requestSnapshot(send);
+      return [];
+    }
+    // logExpectedId();
+    // console.log("avant");
+    expectedIdFromServer = diff.id + 1;
+    // console.log("apres");
+    // logExpectedId();
+    diffs.push(diff);
+ 
+  }
+  normalRequest(diffs);
+}
+
+function sendDiffOnSocket(send:(_:String) => void, d:ClientToServerDiff) {
+  console.log("sending " + JSON.stringify(d));
+  send(JSON.stringify(d));
+}
+
+function sendDataOnSocket(send:(_:String) => void,
+    data:{msg:Data, break:boolean, snapshot : boolean,
+      broadcast:boolean,
+    history:boolean }):void {
+      // console.log("avant2");
+      // logExpectedId();
+      let moreData:ClientToServerDiff =  Object.assign(data, {"expectedId" :expectedIdFromServer}); 
+      // {...data, "expectedId" :expectedId};
+      // logExpectedId();
+      // console.log("sending moredata: ");
+      // console.log(moreData);
+      sendDiffOnSocket(send, moreData);
+   
+}
+function broadcastDataOnSocket(send:(_:String) => void,
+data:{msg:Data, break:boolean, snapshot : boolean,
+history:boolean }):void {
+  sendDataOnSocket(send, {...data, broadcast:true});
+}

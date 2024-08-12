@@ -1,35 +1,115 @@
 module Msg exposing (Msg(..), noOp, focusId, unfocusId,
-  onTabPreventDefault, Scenario(..), scenarioOfString, LoadGraphInfo, mapLoadGraphInfo,
-  isSimpleScenario, loadGraphInfoToMsg)
+  onTabPreventDefault, Scenario(..), LoadGraphInfo, mapLoadGraphInfo,
+  isSimpleScenario, loadGraphInfoToMsg, Command(..), ModifId, defaultModifId,
+  trueModifId, modifIdsEq, idModifCodec
+  , ProtocolMsg(..), ProtocolModif,  MoveMode(..)
+  -- , RenameCommand, CreatePointCommand
+  )
 
 import Geometry.Point exposing (Point)
 -- import Graph exposing (Graph, NodeId)
 -- import GraphExtra exposing (EdgeId)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph)
-import Format.GraphInfo exposing (GraphInfo)
+import Format.GraphInfo as GraphInfo exposing (GraphInfo)
 
 import HtmlDefs exposing (Key)
 import Task
+import Codec exposing (Codec)
 
 import Browser.Dom as Dom
 import ArrowStyle exposing (ArrowStyle)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Html.Events.Extra.Mouse as MouseEvents
 import Html
+import Format.GraphInfoCodec
+import Format.GraphInfo exposing (Modif, TabId)
 import Json.Encode as JE
+import IntDict exposing (IntDict)
+
+type MoveMode = 
+    -- the move stops when we release the key
+      PressMove
+    -- the move stops when we click
+    | FreeMove
+    -- we don't know yet
+    | UndefinedMove
+
+
+
+-- type alias CreatePointCommand =  { isMath : Bool, tabId : TabId, pos: Point}
+
+{-
+
+modifs is the list of modifs done by the sender, but we stack them
+because we want to undo them all at once.
+
+When receiving a RenameCommand, the first thing to do is to apply the head of modifs.
+
+Pb of this approach: if sending the command fails (e.g., the network 
+is interrupted for some time), the modifs will never be incorporated in
+the undo list
+    -}
+    -- mais non ca marche pas! what if le point n'est pas encore cree?
+    {-
+type alias RenameCommand = { 
+              --  modifs : List GraphInfo.Modif
+               -- even if we cancel a rename, the initail modifs will remain
+            --  , initialModifs : List GraphInfo.Modif
+            -- if the label is Nothing, then it is the one saved in the 
+            -- graph
+              next : List { id : Graph.Id, label : Maybe String, tabId : GraphInfo.TabId } }
+              -}
+-- type alias SquareCommand = {}
+
+type ModifId =
+    TrueModifId Int
+  | DefaultModifId
+defaultModifId : ModifId
+defaultModifId = DefaultModifId
+
+trueModifId : Int -> ModifId
+trueModifId = TrueModifId
+
+
+modifIdsEq : ModifId -> ModifId -> Bool
+modifIdsEq x y =
+   case (x,y) of 
+     (TrueModifId a,TrueModifId b) -> a == b
+     _ -> False
+
+idModifCodec : Codec ModifId Int
+idModifCodec =
+   Codec.build (
+    \ id -> case id of
+               DefaultModifId -> -1
+               TrueModifId n ->  n
+   )
+   (\ n -> if n < 0 then DefaultModifId else TrueModifId n)
+
+type alias ProtocolModif = {id : ModifId, modif : Modif, 
+          selIds : IntDict (List Graph.Id),
+          command : Command  }
+
+type ProtocolMsg = 
+    ModifProtocol ProtocolModif
+  | LoadProtocol { graph : GraphInfo, scenario : Scenario}
+  | ClearProtocol {scenario : Scenario, preamble : String}
+  | Snapshot GraphInfo
+
+type Command = 
+     RenameCommand (List {id : Graph.Id, label : Maybe String, tabId : TabId})
+   | MoveCommand MoveMode -- (List Graph.Id)
+  --  | LoadCommand { graph : GraphInfo, scenario : Scenario}
+   | Noop
+
 
 -- SimpleScenario: just display the model status message
 type Scenario = Standard | Exercise1 | SimpleScenario | Watch | CoqLsp
 
 isSimpleScenario : Scenario -> Bool
 isSimpleScenario s = s == SimpleScenario
-scenarioOfString : String -> Scenario
-scenarioOfString s =
-  case s of
-      "exercise1" -> Exercise1
-      "watch" -> Watch
-      "coqlsp" -> CoqLsp
-      _ -> Standard
+
+
 
 type alias LoadGraphInfo a = 
    { graph : a, -- fileName : String, 
@@ -71,7 +151,7 @@ type Msg
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
   | CopyGraph
-  | Loaded (LoadGraphInfo GraphInfo)
+  | Loaded { graph : GraphInfo, scenario: String }
   | SetFirstTab GraphInfo  
   -- a graph is pasted
   | PasteGraph GraphInfo
@@ -103,6 +183,9 @@ type Msg
   | LatexPreambleEdit String
   | SimpleMsg String
   | AppliedProof { statement : String, script : String}
+  | ProtocolReceive (List {isSender : Bool, msg : ProtocolMsg})
+  | ProtocolRequestSnapshot
+  -- | ProtocolReceiveSnapshot GraphInfo
   -- | ComputeLayout
   -- | FindInitial
   -- | EditBottomText String
@@ -117,7 +200,7 @@ loadGraphInfoToMsg g =
   --  Debug.log "coucou" <|
       PasteGraph g.graph
    else
-      Loaded g
+      Loaded { graph = g.graph, scenario = g.scenario}
 
 noOp : Msg
 noOp = Do Cmd.none

@@ -13,7 +13,7 @@ import Model exposing (..)
 import Modes exposing (PullshoutKind(..))
 import Modes exposing (MoveDirection(..))
 import Zindex
-
+import CommandCodec exposing (updateModifHelper)
 
 
 
@@ -26,8 +26,9 @@ initialise m =
 
 update : NewLineState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
-    let finalise () = let newModel = setSaveGraph model <| makeGraph model state in
-                switch_Default newModel
+    let finalise () = let newModel = { model | mode = DefaultMode } in 
+              updateModifHelper model <| makeGraph model state
+
     in
     case msg of
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
@@ -39,9 +40,9 @@ update state msg model =
     
                   
                 
-makeGraph : Model -> NewLineState -> Graph NodeLabel EdgeLabel
+makeGraph : Model -> NewLineState -> Graph.ModifHelper NodeLabel EdgeLabel
 makeGraph m s =       
-    let graph = getActiveGraph m in
+    let graph = getActiveGraph m |> Graph.newModif in
     let style = ArrowStyle.simpleLineStyle in
     let edgeLabel = GraphDefs.newEdgeLabel 
                               "" 
@@ -49,14 +50,14 @@ makeGraph m s =
     in
     let nodeLabel = (GraphDefs.newNodeLabel s.initialPos " " True Zindex.defaultZ) in
     let newNodeLabel = {nodeLabel | pos = m.mousePos } in
-    let (ngraph,id) = Graph.newNode graph nodeLabel in
-    let finalGraph = Graph.makeCone ngraph [id] newNodeLabel edgeLabel False in
+    let (ngraph,id) = Graph.md_newNode graph nodeLabel in
+    let finalGraph = Graph.md_makeCone ngraph [id] newNodeLabel edgeLabel False in
     finalGraph.extendedGraph
 
 graphDrawing : Model -> NewLineState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s =
    
-    collageGraphFromGraph m <| makeGraph m s
+    collageGraphFromGraph m <| Graph.applyModifHelper <| makeGraph m s
          
 help : String
 help =

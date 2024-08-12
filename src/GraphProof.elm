@@ -157,10 +157,9 @@ adjacentEdges g =
      in
      let dump (id, stuff) =
                      -- let stuff = ed.label in
-                     let _ = Debug.log "incomings" id in
-                     let f = List.map (.label >> dumpEdge >> Debug.log "d") stuff.incomings in
-                     let _ = Debug.log "outgoings" id in
-                     List.map (.label >> dumpEdge >> Debug.log "d") stuff.outgoings
+                     let f = List.map (.label >> dumpEdge) stuff.incomings in
+                     -- let _ = Debug.log "outgoings" id in
+                     List.map (.label >> dumpEdge) stuff.outgoings
       in
    --   let _ = List.map (Debug.log "incidence") (IntDict.toList inc) in
    --   let _ = List.map dump (IntDict.toList inc) in

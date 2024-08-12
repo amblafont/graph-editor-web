@@ -1,4 +1,4 @@
-module Modes.NewArrow exposing (graphDrawing, initialise, update, help)
+module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update, help)
 
 
 import GraphDrawing exposing (..)
@@ -17,18 +17,57 @@ import Modes.Pullshout
 import Maybe.Extra
 import Drawing.Color as Color
 import Zindex
+import Format.GraphInfo exposing (activeGraphModifHelper)
+import Msg exposing (defaultModifId)
+import IntDict
+import CommandCodec exposing (protocolSend)
 
 
 
 
 updateState : Model -> NewArrowState  -> Model
 updateState m state = {m | mode = NewArrow state}
+{-
+fixModel : Model -> NewArrowState -> Model
+fixModel model state = 
+   let modelGraph = getActiveGraph model in
+   let intersectGraph = 
+        Graph.intersect state.chosen modelGraph 
+   in 
+   if Graph.isEmpty intersectGraph then 
+      { model| mode = DefaultMode }
+   else 
+   -}
+-- not <| GraphDefs.isEmptySelection <| getActiveGraph model 
+{-
+    { chosen : Graph.Graph NodeLabel EdgeLabel,
+      mode : ArrowMode, 
+      style : ArrowStyle, 
+      pos : InputPosition, inverted : Bool,
+      isAdjunction : Bool
+      -- merge : Bool
+       }
+       -}
 
-initialise : Model -> ( Model, Cmd Msg )
+fixModel = reinitialise
+
+reinitialise : Model -> NewArrowState -> Model
+reinitialise m state =
+    let modelGraph = getActiveGraph m in
+    -- noCmd <|
+    if GraphDefs.isEmptySelection modelGraph then { m | mode = DefaultMode } else
+     { m  | mode = NewArrow
+        { state | 
+            chosen = GraphDefs.selectedGraph modelGraph
+            -- mode = mode
+            -- merge = False 
+            }
+        }  
+
+initialise : Model -> Model
 initialise m =
     let modelGraph = getActiveGraph m in
-    noCmd <|
-    if GraphDefs.isEmptySelection modelGraph then m else
+    -- noCmd <|
     let mode = 
             case GraphDefs.selectedId modelGraph 
                 |> Maybe.Extra.filter (GraphDefs.isNormalId modelGraph)
@@ -36,50 +75,66 @@ initialise m =
             Just id -> CreateArrow id
             _ -> CreateCylinder
     in
-     { m  | mode = NewArrow
+    reinitialise m 
         { style = ArrowStyle.empty, 
             pos = InputPosMouse,                                 
-            chosen = GraphDefs.selectedGraph modelGraph,
+            chosen = Graph.empty, -- GraphDefs.selectedGraph modelGraph,
             mode = mode,
             inverted = False,
             isAdjunction = False
             -- merge = False 
             }
-        }  
+        
             
 nextStep : Model -> {finish:Bool, merge:Bool} -> NewArrowState -> ( Model, Cmd Msg )
 nextStep model {finish, merge} state =
      let info = moveNodeInfo merge True model state in
      
      -- let m2 = addOrSetSel False info.movedNode { model | graph = info.graph } in
-     let m2 = setSaveGraph model <| GraphDefs.weaklySelectMany info.selectable
-                                 <| GraphDefs.clearSelection info.graph
+    --  let m2 = setSaveGraphWithGraph model info.graph
+    --              (\ g -> GraphDefs.weaklySelectMany info.selectable
+    --                              <| GraphDefs.clearSelection g)
+    --  in
+     let modif = activeGraphModifHelper model.graphInfo info.graph in
+     let selIds = IntDict.insert model.graphInfo.activeTabId 
+                    info.selectable IntDict.empty 
      in
+    --  let m2 = updateActiveTab m (\ tab -> { tab | graph =
+    --                 GraphDefs.weaklySelectMany info.selectable
+    --                              <| GraphDefs.clearSelection tab.graph })
      
-     if finish then switch_Default m2 else
+     
+     if finish then 
+        ({model | mode = DefaultMode}, protocolSend { id = defaultModifId ,
+          modif = modif,
+          selIds = selIds,
+          command = Msg.Noop
+        })
+    --  switch_Default m2 
+     else
         let ids = info.renamable
         in
         let label = Graph.topmostObject state.chosen |> 
-                    Maybe.andThen (\ id -> GraphDefs.getLabelLabel id info.graph)
+                    Maybe.andThen (\ id -> GraphDefs.getLabelLabel id state.chosen)
+                    -- info.graph)
                     |> Maybe.withDefault ""                    
         in
-        let ids_labels = List.map (\ id -> (id, label)) ids in
-        noCmd <| 
-        initialise_RenameModeWithDefault False ids_labels m2
+        let ids_labels = List.map (\ id -> { id = id, label = Just label
+                        , tabId = model.graphInfo.activeTabId}) ids 
+        in
+        let (nextModel, idModif) = popIdModif model in
+        let finalModel = { nextModel | mode = DefaultMode} in
+        (finalModel, 
+        protocolSend 
+        { id = idModif ,
+          modif = modif,
+          selIds = selIds,
+          command = Msg.RenameCommand ids_labels
+        }
+        )
+        -- initialise_RenameModeWithDefault False ids_labels m2
        
 
-{- eyToAction : Msg -> NewArrowStep -> Maybe Action
-keyToAction k step =
-   case k of 
-       KeyChanged False _ (Control "Escape") -> Just Cancel
-       MouseClick ->
-           case step of
-              NewArrowMoveNode _ -> Just <| ValidateNext
-              _ -> Nothing
-       KeyChanged False _ (Control "Enter") -> Just <| ValidateFinish     
-    --     TabInput -> Just <| ValidateNext
-       KeyChanged False _ (Control "Tab") -> Just <| ValidateNext
-       _ -> Nothing -}
             
 
 update : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
@@ -153,9 +208,10 @@ moveNodeInfo :
     -> Model
     -> NewArrowState
     ->
-        { graph : Graph NodeLabel EdgeLabel
+        { graph : Graph.ModifHelper NodeLabel EdgeLabel
         , selectable : List Graph.Id
         , renamable : List Graph.Id
+        , weaklySelection : Maybe Graph.Id
         }
 moveNodeInfo merge emptyLabel model state =
                 let modelGraph = getActiveGraph model in
@@ -167,22 +223,26 @@ moveNodeInfo merge emptyLabel model state =
                 in
                 let nodePos = GraphDefs.centerOfNodes (Graph.nodes state.chosen) in
                 let nodeLabel = GraphDefs.newNodeLabel nodePos "" True Zindex.defaultZ  in
+                let modifGraph = Graph.newModif modelGraph in
                 let extendedGraph = 
                      case state.mode of
                         CreateCylinder ->                        
-                            Graph.makeCylinder modelGraph state.chosen edgeLabel state.inverted
+                            Graph.md_makeCylinder modifGraph state.chosen edgeLabel state.inverted
                         CreateCone ->                            
-                            Graph.makeCone modelGraph (Graph.nodeIds state.chosen) nodeLabel edgeLabel state.inverted
+                            Graph.md_makeCone modifGraph (Graph.nodeIds state.chosen) nodeLabel edgeLabel state.inverted
                         CreateArrow id ->
-                            Graph.makeCone modelGraph [id] nodeLabel edgeLabel state.inverted        
+                            Graph.md_makeCone modifGraph [id] nodeLabel edgeLabel state.inverted        
                 in            
                 let moveInfo =
                         Modes.Move.mkGraph model state.pos
                         Free merge
-                         extendedGraph.extendedGraph extendedGraph.newSubGraph 
+                         extendedGraph.extendedGraph
+                         modelGraph
+                         extendedGraph.newSubGraph 
                 in
                 let selectable = Graph.allIds extendedGraph.newSubGraph in
                 { graph = moveInfo.graph,
+                weaklySelection = moveInfo.weaklySelection,
                 selectable = selectable,
                 renamable = (if moveInfo.merged then [] else selectable) ++ 
                             (if state.isAdjunction then [] else extendedGraph.edgeIds)
@@ -192,11 +252,14 @@ moveNodeInfo merge emptyLabel model state =
 
 graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s =
+     let info = moveNodeInfo s.isAdjunction False m s in
+     
     -- let defaultView movedNode = modelGraph{ graph = modelGraph, movedNode = movedNode}  in
     -- graphMakeEditable (renamableFromState s) <|
-    collageGraphFromGraph m <|
-            let info = moveNodeInfo s.isAdjunction False m s in
-             info.graph 
+    collageGraphFromGraph m <| 
+    Modes.Move.computeGraph info
+   
+            --  Graph.applyModifHelper info.graph 
          
 help : String
 help =

@@ -1,14 +1,26 @@
-module Modes.CutHead exposing (update, graphDrawing, help, initialise)
+module Modes.CutHead exposing (update, graphDrawing, help, initialise, fixModel)
 import Modes exposing (CutHeadState, Mode(..), MoveDirection(..))
 import Modes.Move
-import Model exposing (Model, setActiveGraph, noCmd, toggleHelpOverlay, getActiveGraph)
-import Msg exposing (Msg(..))
+import Model exposing (Model, {- setActiveGraph, setSaveGraph, -} noCmd, toggleHelpOverlay, getActiveGraph)
+import Msg exposing (Msg(..), Command(..))
 import Polygraph as Graph exposing (Graph)
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, edgeToNodeLabel)
 import InputPosition exposing (InputPosition(..))
 import Zindex
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
+import Format.GraphInfo exposing (Modif(..))
+import CommandCodec exposing (protocolSendGraphModif)
+import Format.GraphInfo exposing (activeGraphModif)
+import CommandCodec exposing (updateModifHelper)
+
+fixModel : Model -> CutHeadState -> Model
+fixModel model state =
+   let modelGraph = getActiveGraph model in
+   case Graph.getEdge state.edge.id modelGraph of 
+     Nothing -> {model | mode = DefaultMode }
+     Just edge -> {model | mode = CutHead {state | edge = edge}}
+
 
 initialise : Model -> Model
 initialise model =
@@ -27,7 +39,9 @@ help =          HtmlDefs.overlayHelpMsg
 update : CutHeadState -> Msg -> Model -> (Model, Cmd Msg)
 update state msg m =
   let finalise merge = 
-         (setActiveGraph {m | mode = DefaultMode} (makeGraph merge state m), Cmd.none)
+         let info = makeGraph merge state m in
+         updateModifHelper {m | mode = DefaultMode} info.graph
+         -- (setSaveGraph {m | mode = DefaultMode} info.graph, Cmd.none)
          -- computeLayout())
   in
   let changeState s = { m | mode = CutHead s } in
@@ -43,12 +57,16 @@ update state msg m =
 
 graphDrawing : Model -> CutHeadState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m state = 
-  makeGraph False state m |> GraphDrawing.toDrawingGraph
+  makeGraph False state m |> Modes.Move.computeGraph 
+  |> GraphDrawing.toDrawingGraph
 
 -- TODO: factor with newArrow.moveNodeInfo
-makeGraph  : Bool -> CutHeadState -> Model -> Graph NodeLabel EdgeLabel
+makeGraph  : Bool -> CutHeadState -> Model -> 
+   { graph : Graph.ModifHelper NodeLabel EdgeLabel, 
+   weaklySelection : Maybe Graph.Id }
 makeGraph merge {edge, head, duplicate} model =
    let modelGraph = getActiveGraph model in
+   let modifGraph = Graph.newModif modelGraph in
    let pos = model.mousePos in
    let (id1, id2) = if head then (edge.from, edge.to) else (edge.to, edge.from) in
    let nodeLabel = Graph.get id2
@@ -56,15 +74,18 @@ makeGraph merge {edge, head, duplicate} model =
          modelGraph |> 
          Maybe.withDefault (GraphDefs.newNodeLabel pos "" True Zindex.defaultZ )
    in
-   let extGraph =  Graph.makeCone modelGraph [id1] nodeLabel edge.label (not head) in
+   let extGraph =  Graph.md_makeCone modifGraph [id1] nodeLabel edge.label (not head) in
     let g4 = 
          if duplicate then 
-            GraphDefs.unselect edge.id extGraph.extendedGraph 
+            extGraph.extendedGraph
+            -- GraphDefs.unselect edge.id extGraph.extendedGraph 
          else
-            List.foldl (\ id -> Graph.merge id edge.id) extGraph.extendedGraph
+            List.foldl (\ id -> Graph.md_merge id edge.id) extGraph.extendedGraph
             extGraph.edgeIds
     in
    let moveInfo =
-         Modes.Move.mkGraph model InputPosMouse Free merge g4 extGraph.newSubGraph 
+         Modes.Move.mkGraph model InputPosMouse Free merge g4 
+          modelGraph
+          extGraph.newSubGraph 
    in
-    moveInfo.graph
+    {graph = moveInfo.graph, weaklySelection = moveInfo.weaklySelection} -- .graph

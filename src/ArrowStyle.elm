@@ -45,37 +45,66 @@ type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
 
 kindCodec : Codec ArrowKind String
 kindCodec = 
-  Codec.enum 
-  [(NoneArrow, "none"),
-   (DoubleArrow, "double")]
-  (NormalArrow, "normal")
+  let split none double normal v =
+        case v of 
+            NoneArrow -> none
+            DoubleArrow -> double
+            NormalArrow -> normal
+  in
+  Codec.customEnum split
+  |> Codec.variant0 "none" NoneArrow
+  |> Codec.variant0 "double" DoubleArrow
+  |> Codec.variant0 "normal" NormalArrow
+  |> Codec.buildVariant
+
 
 tailCodec : Codec TailStyle String
 tailCodec = 
-  Codec.enum 
-  [(Hook, "hook"),
-   (HookAlt, "hookalt")
-    , (Mapsto, "mapsto")
-   ]
-  (DefaultTail, "none")
+  let split hook hookalt mapsto default v =
+          case v of 
+            Hook -> hook 
+            HookAlt -> hookalt 
+            Mapsto -> mapsto
+            DefaultTail -> default 
+  in
+  Codec.customEnum split
+  |> Codec.variant0 "hook" Hook
+  |> Codec.variant0 "hookalt" HookAlt
+  |> Codec.variant0 "mapsto" Mapsto
+  |> Codec.variant0 "none" DefaultTail
+  |> Codec.buildVariant
+
 
 headCodec : Codec HeadStyle String
 headCodec =
-   Codec.enum
-   [          
-       (TwoHeads,  "twoheads")
-       , (NoHead, "none")
-   ]
-   (DefaultHead, "default")
+   let split twoheads none default v =
+          case v of 
+            TwoHeads -> twoheads
+            NoHead -> none
+            DefaultHead -> default 
+   in
+   Codec.customEnum split 
+   |> Codec.variant0 "twoheads" TwoHeads
+   |> Codec.variant0 "none" NoHead
+   |> Codec.variant0 "default" DefaultHead
+   |> Codec.buildVariant
 
 alignmentCodec : Codec LabelAlignment String
 alignmentCodec = 
-  Codec.enum 
-  [(Centre, "centre"),
-   (Over, "over"),
-   (Left, "left"),
-   (Right, "right")]
-  (Left, "left")
+   let split centre over left right v =
+          case v of 
+            Centre -> centre
+            Over -> over
+            Left -> left
+            Right -> right
+
+   in
+   Codec.customEnum split 
+   |> Codec.variant0 "centre" Centre
+   |> Codec.variant0 "over" Over
+   |> Codec.variant0 "left" Left
+   |> Codec.variant0 "right" Right
+   |> Codec.buildVariant
  
 empty : Style
 empty = { tail = DefaultTail, head = DefaultHead, dashed = False,

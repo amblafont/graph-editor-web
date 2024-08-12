@@ -3,7 +3,7 @@ import List.Extra
 import QuickInput
 import GraphProof exposing (Diagram)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import Polygraph exposing (Graph)
+import Polygraph as Graph exposing (Graph)
 type alias Config a = {
     isMetavariable : a -> Bool
     -- eq : a -> b -> Bool 
@@ -34,7 +34,8 @@ unifyAux cfg length l1 l2 =
          else
             unifyAux cfg length q1 (List.drop 1 l2)
 
-unifyDiagram : (QuickInput.HandSide, QuickInput.HandSide) -> Diagram -> Graph NodeLabel EdgeLabel -> Result String (Graph NodeLabel EdgeLabel)
+unifyDiagram : (QuickInput.HandSide, QuickInput.HandSide) -> Diagram -> Graph NodeLabel EdgeLabel 
+          -> Result String (Graph.ModifHelper NodeLabel EdgeLabel)
 unifyDiagram (eq1, eq2) d graph = 
     let mayUnify l e = unify 
                       {isMetavariable = .label >> .label >> String.isEmpty} 
@@ -48,14 +49,15 @@ unifyDiagram (eq1, eq2) d graph =
        (Ok l1, Ok l2) ->
           let f (a, edges) g =
                   
-                 QuickInput.splitWithChain g 
+                 QuickInput.splitWithChain graph g 
                    edges
                     a.id
           in
-          let ltot = Debug.log "total unified" (l1 ++ l2) in
+          let ltot = -- Debug.log "total unified"
+                     (l1 ++ l2) in
           let finalg = 
                List.foldl f
-               graph
+               (Graph.newModif graph)
                ltot
           in
           Ok finalg

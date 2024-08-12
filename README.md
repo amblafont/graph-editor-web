@@ -1,9 +1,20 @@
-A diagram editor in your browser. Try it out: https://amblafont.github.io/graph-editor/index.html.
+A diagram editor in your browser (with collaborating features). Try it out: https://amblafont.github.io/graph-editor/index.html.
 See https://www.youtube.com/watch?v=iWSw4RK8wEk and https://amblafont.github.io/articles/yade.pdf for a short presentation. 
 
 To test offline: open index.html in your browser. The button "open directory" might not work because of the file system API security restrictions, unless you open the page on a local web server. Alternatively you can install the web application (an install button will show up at the top of the html file if your browser allows it).
 
 There is also a vscode extension which embeds the web app to provide Coq mechanisation features (see https://github.com/amblafont/vscode-yade-example).
+
+# Collaborating
+
+By running a server, it is possible to collaborate on the same diagram (check the "Connect" button at the top of the diagram editor).
+
+To compile the server:
+- `npm install`
+- `npx tsc server.ts`
+
+To run the server (on port 8080, cf head of server.ts):
+- `node server.js`
 
 # Easy editing of latex documents
 
@@ -16,6 +27,8 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 - `tsc watcher.ts`
 
 (or download the latest elm.js and watcher.js from https://amblafont.github.io/graph-editor/elm.js and https://amblafont.github.io/graph-editor/watcher.js)
+
+
 
 
 # Ipc capabilities

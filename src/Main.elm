@@ -1,4 +1,5 @@
 port module Main exposing (main)
+
 -- TODO: avoir mode dans Model, et separer le fichier state de Square
 -- move: with keyboard
 -- copier ?
@@ -24,6 +25,7 @@ import Browser.Events as E
 
 import Task
 import Time
+import Codec
 import Browser.Dom as Dom
 import Process
 
@@ -48,9 +50,13 @@ import Set
 import QuickInput exposing (equalityParser)
 
 import GraphDrawing exposing (..)
-import Msg exposing (Msg(..), Scenario(..),
-   LoadGraphInfo, mapLoadGraphInfo, scenarioOfString, 
-   loadGraphInfoToMsg)
+import Msg exposing (Msg(..), Scenario(..), MoveMode(..),
+   LoadGraphInfo, mapLoadGraphInfo,  
+   loadGraphInfoToMsg,
+   Command(..), ProtocolMsg(..))
+import CommandCodec exposing (protocolReceive, protocolSend, protocolSendMsg, protocolSendModif
+          , updateModif, updateModifHelper, scenarioOfString
+          , protocolRequestSnapshot)
 
 import Tuple exposing (first, second)
 import Maybe exposing (withDefault)
@@ -62,8 +68,10 @@ import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.CutHead
 import Modes.Move
+import Modes.Rename
+import Modes.Color
 import Drawing.Color as Color
-import Modes exposing (Mode(..), MoveMode(..), MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
+import Modes exposing (Mode(..), MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
 import ArrowStyle
 
@@ -89,6 +97,7 @@ import Format.Version9
 import Format.Version10
 import Format.Version11
 import Format.Version12
+import Format.Version13
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo as GraphInfo exposing (Tab)
@@ -99,10 +108,17 @@ import GraphProof
 import GraphDrawing
 import String.Svg
 import Zindex exposing (defaultZ, foregroundZ)
+import Modes.CreatePoint
 import Geometry.Point as Point
 import GraphDefs exposing (isProofLabel)
+import Format.GraphInfoCodec as GraphInfoCodec
+import Format.GraphInfo exposing (activeGraphModif)
+import Command
+import Platform.Sub as Sub
+import Msg exposing (defaultModifId)
 
 
+port test : Maybe () -> Cmd a
 port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
@@ -144,6 +160,7 @@ port loadedGraph9 : (LoadGraphInfo Format.Version9.Graph -> a) -> Sub a
 port loadedGraph10 : (LoadGraphInfo Format.Version10.Graph -> a) -> Sub a
 port loadedGraph11 : (LoadGraphInfo Format.Version11.Graph -> a) -> Sub a
 port loadedGraph12 : (LoadGraphInfo Format.Version12.Graph -> a) -> Sub a
+port loadedGraph13 : (LoadGraphInfo Format.Version13.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -211,6 +228,9 @@ subscriptions m =
     Sub.batch 
      <|
     [
+      protocolReceive ProtocolReceive,
+      protocolRequestSnapshot (always ProtocolRequestSnapshot),
+      -- protocolReceiveSnapshot ProtocolReceiveSnapshot,
       makeSave (always Save),
       findReplace FindReplace,
       simpleMsg SimpleMsg,
@@ -233,6 +253,7 @@ subscriptions m =
       loadedGraph10 (mapLoadGraphInfo Format.Version10.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph11 (mapLoadGraphInfo Format.Version11.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph12 (mapLoadGraphInfo Format.Version12.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph13 (mapLoadGraphInfo Format.Version13.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
@@ -316,18 +337,8 @@ subscriptions m =
 -- The graphs are updated according to the current mode
 
 
+-- modif_RenameMode : List (Graph.Id, String) -> Model -> Graph.ModifHelper NodeLabel EdgeLabel
 
-
-
-graph_RenameMode : List (Graph.Id, String) -> Model -> Graph NodeLabel EdgeLabel
-graph_RenameMode l m =
-   let g = getActiveGraph m in
-   case l of
-      [] -> g
-      (id, s) :: _ ->   Graph.update id 
-                        (\ n -> {n | label = s, isCoqValidated = False })  
-                         (GraphDefs.mapNormalEdge (\e -> {e | label = s }))
-                               g
 
 
 
@@ -389,22 +400,55 @@ setFirstTabEquationPerform m s =
      Ok chain -> 
         let mUpdated =
               updateFirstTab m <|
-              \ t -> { t | graph = graphDrawingChain t.sizeGrid Graph.empty chain}
+              \ t -> 
+              { t | graph = 
+                 Graph.applyModifHelper <| 
+                 graphDrawingChain t.sizeGrid Graph.empty chain
+              }
         in 
         ({ mUpdated | mode = DefaultMode}, computeLayout())
 
-  
+{-
+handleCommand : {isSender : Bool, msg : ProtocolMsg} -> Model -> (Model, Cmd Msg)
+handleCommand r model =
+  let currentMode = model.mode in
+  let (suite, idModif) =
+          case r.command of
+            Noop -> (Nothing, Nothing)
+            Modif modifWithId -> 
+              let result = GraphInfo.applyModif model.graphInfo modifWithId.modif in
+              (result, modifWithId.id)
+  in
+  case suite of 
+    Nothing -> noCmd model
+    Just modifResult ->
+      let nextModel = applyModifResult model idModif (Just modifResult) in 
+      if currentMode /= DefaultMode then noCmd nextModel else
+      -- let selModel = nextModel in
+      let selModel = 
+            updateTabs nextModel
+                  (List.map  (\ tab -> 
+                    case IntDict.get tab.id modifResult.next.selIds of
+                      Nothing -> tab
+                      Just ids -> {tab | graph = GraphDefs.selectIds ids tab.graph}
+                    )
+                  ) 
+      in
+      if modifResult.next.renIds == [] then noCmd selModel else
+      noCmd <| Modes.Rename.initialise selModel
+      (Modes.Rename.newState model.graphInfo idModif modifResult.next.renIds)
+   -}
+    
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg modeli =
     let model = case msg of               
-                SwitchTab i -> activateNthTab { modeli | mode = DefaultMode} i
-                RenameTab s -> renameActiveTab { modeli | mode = DefaultMode} s
-                RemoveTab -> removeActiveTabs { modeli | mode = DefaultMode}
-                NewTab -> createNewTab { modeli | mode = DefaultMode} <| nextTabName modeli
-                DuplicateTab -> duplicateTab { modeli | mode = DefaultMode} <| nextTabName modeli
-                TabMoveLeft  -> moveTabLeft { modeli | mode = DefaultMode }
-                TabMoveRight -> moveTabRight { modeli | mode = DefaultMode }
+    -- switchtab non c'est pas bon, il faut d'abord finaliser le mode
+                SwitchTab i -> 
+                    Maybe.withDefault modeli
+                    <| activateTab { modeli | mode = DefaultMode} i
+                
+                
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
                 MouseMoveRaw _ keys -> { modeli | specialKeys = keys, mouseOnCanvas = True} 
                 MouseMove p -> { modeli | mousePos = p} -- , mouseOnCanvas = True}
@@ -412,7 +456,9 @@ update msg modeli =
                 MouseLeaveCanvas -> 
                     { modeli | mouseOnCanvas = False }
                 {- FindInitial -> selectInitial model -}
-                LatexPreambleEdit s -> { modeli | latexPreamble = s }
+              
+             
+                    -- applyModifsMaySave modeli isSender [GraphInfo.GraphChange command]
                 -- EditBottomText s -> 
                 --     let _ = Debug.log "bottomText" model.bottomText in
                 --     { model | bottomText = {- Debug.log "bottomText" -} s}
@@ -428,8 +474,41 @@ update msg modeli =
                 _ -> modeli            
     in
     let modelGraph = getActiveGraph model in
+    let activeTabId = model.graphInfo.activeTabId in
     let sizeGrid = getActiveSizeGrid model in
+    let returnModif modif = updateModif model modif  in
     case msg of
+     ProtocolReceive arg -> 
+          -- let _ = Debug.log "receive msg" arg in
+         (List.foldl Command.applyCommand model arg, computeLayout ())
+     ProtocolRequestSnapshot -> 
+        (model, protocolSendMsg <| Msg.Snapshot model.graphInfo)
+    --  ProtocolReceiveSnapshot g -> 
+    --     noCmd <| { model | graphInfo = g}
+     RenameTab s -> returnModif <| GraphInfo.TabRename activeTabId s
+       --irenameActiveTab { modeli | mode = DefaultMode} s
+     RemoveTab -> returnModif <| GraphInfo.TabRemove activeTabId
+     NewTab -> returnModif <| GraphInfo.TabNew
+     DuplicateTab -> returnModif <| GraphInfo.TabDuplicate activeTabId
+                                       --<| nextTabName modeli
+     TabMoveLeft  -> returnModif <| GraphInfo.TabMoveLeft activeTabId
+     TabMoveRight -> returnModif <| GraphInfo.TabMoveRight activeTabId
+     LatexPreambleEdit s -> returnModif <| GraphInfo.LatexPreamble s
+     FindReplace req -> returnModif <| -- setSaveGraph model 
+                         GraphInfo.activeGraphModifHelper model.graphInfo
+                         <| GraphDefs.findReplaceInSelected modelGraph req
+     OptimalGridSize ->
+          let selGraph = GraphDefs.selectedGraph modelGraph in
+          case Graph.nodes selGraph of
+            [n1, n2] ->
+                let (x, y) = Point.subtract n1.label.pos n2.label.pos in         
+                let newGridSize = round <| max (abs x) (abs y) in
+                -- let m2 = pushHistory model in
+                    returnModif
+                    <| GraphInfo.TabSizeGrid activeTabId newGridSize
+                    -- setActiveSizeGrid m2 newGridSize
+            _ -> noCmd model
+
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
      Save -> (model, saveGraph { info = toJsGraphInfo model 
                               , export = makeExports model })
@@ -438,26 +517,14 @@ update msg modeli =
                   saveRulerGridSize {gridSize = sizeGrid
                                    , rulerMargin = model.rulerMargin}  )
         
-     OptimalGridSize ->
-          let selGraph = GraphDefs.selectedGraph modelGraph in
-          case Graph.nodes selGraph of
-            [n1, n2] ->
-                let (x, y) = Point.subtract n1.label.pos n2.label.pos in         
-                let newGridSize = round <| max (abs x) (abs y) in
-                let m2 = pushHistory model in
-                    noCmd <| setActiveSizeGrid m2 newGridSize
-            _ -> noCmd model
-     MinuteTick -> if model.autoSave then 
+    
+     MinuteTick -> 
+                   if model.autoSave then 
                          (model, quicksaveGraph 
                          { info = toJsGraphInfo model, export = makeExports model,
                          autosave = True }) 
-                   else noCmd model
-     Clear {scenario,preamble} -> 
-        let modelf = clearModel model in
-        let or s1 s2 = if s1 == "" then s2 else s1 in 
-        noCmd { modelf | scenario = scenario,
-            latexPreamble = or preamble modelf.latexPreamble
-         }
+                   else noCmd model 
+     
          --  (iniModel, Task.attempt (always Msg.noyarn comOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
@@ -482,32 +549,18 @@ update msg modeli =
      SimpleMsg s -> let modelf = clearModel model in
                      noCmd { modelf | scenario = SimpleScenario, statusMsg = s }
      SetFirstTab g ->
-         let tab = getActiveTabInTabs g.tabs in
+         let tab = GraphInfo.getActiveTab g in
         (updateFirstTab model <| \t ->
-                  { tab | title = t.title , active = t.active},
+                  { tab | title = t.title },
                  computeLayout ())
-     Loaded g ->        
-        let scenario = scenarioOfString g.scenario in
-        let m =  clearHistory <| updateWithGraphInfo { model | 
-                                              mode = DefaultMode, 
-                                              scenario = scenario
-                                            } g.graph 
-        in
-        let m2 =
-                if scenario /= Exercise1 then m else
-                { m | tabs = List.map (\t -> 
-                  { t | graph = 
-                      Graph.map 
-                        (\ _ n -> { n | selected = String.contains "\\bullet" n.label})
-                        (always identity) t.graph}
-                    ) m.tabs
-                }                
-        in
-        (m2,
-                     -- we need drawn elements to resend their size
-                                             computeLayout() )
-     FindReplace req -> noCmd <| setSaveGraph model 
-                          <| GraphDefs.findReplaceInSelected modelGraph req
+     Loaded {scenario, graph} ->
+        (model, protocolSendMsg 
+            <| LoadProtocol {graph = graph, scenario = 
+                               CommandCodec.scenarioOfString scenario })
+        
+     Clear arg -> 
+        (model, protocolSendMsg 
+          <| ClearProtocol arg)
      _ ->
       case model.mode of
         NewLine state -> Modes.NewLine.update state msg model
@@ -517,7 +570,7 @@ update msg modeli =
         NewArrow astate -> Modes.NewArrow.update astate msg model
         PullshoutMode astate -> Modes.Pullshout.update astate msg model
             -- update_Modes.NewArrow astate msg m
-        RenameMode b l -> update_RenameMode b l msg model
+        RenameMode b -> Modes.Rename.update b msg model
         Move s -> Modes.Move.update msg s model
         DebugMode -> update_DebugMode msg model
        -- NewNode -> update_NewNode msg model
@@ -525,58 +578,9 @@ update msg modeli =
         SplitArrow state -> Modes.SplitArrow.update state msg model
         CutHead state -> Modes.CutHead.update state msg model
         ResizeMode s -> update_Resize s msg model
-        ColorMode ids -> update_Color ids msg model
-
-update_Color : List Graph.EdgeId -> Msg -> Model -> (Model, Cmd Msg)
-update_Color ids msg model =
-    case msg of
-        KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
-        KeyChanged False _ (Control "Escape") ->
-            switch_Default model
-        KeyChanged False _ k ->
-               let modelGraph = getActiveGraph model in
-               case GraphDefs.updateStyleEdges 
-                  (ArrowStyle.keyMaybeUpdateColor k)
-                  (Graph.getEdges ids modelGraph)
-                  modelGraph of 
-                 Nothing -> noCmd model
-                 Just g -> switch_Default <| setSaveGraph model g
-        _ -> noCmd model
+        ColorMode ids -> Modes.Color.update ids msg model -- update_Color ids msg model
 
 
-        
-update_RenameMode : Bool -> List (Graph.Id, String) -> Msg -> Model -> (Model, Cmd Msg)
-update_RenameMode save labels msg model =
-   let edit_label s = 
-         noCmd {model | mode = RenameMode save <| 
-         case labels of
-           (id, _) :: q -> (id, s) :: q
-           _ -> labels -- should not happen
-         }
-   in 
-    case msg of
-      KeyChanged False _ (Control "Escape") -> switch_Default model
-      KeyChanged False _ (Control "Enter") -> noCmd <| next_RenameMode True save labels model
-      KeyChanged False _ (Control "Tab") -> noCmd <| next_RenameMode False save labels  model
-    --   MouseClick -> finalise_RenameMode label model
-      NodeLabelEdit _ s -> edit_label s
-      EdgeLabelEdit _ s -> edit_label s
-      _ -> noCmd model
-
-
-
-next_RenameMode : Bool -> Bool -> List (Graph.Id, String) -> Model -> Model
-next_RenameMode finish save labels model =
-    let g = graph_RenameMode labels model in
-    let m2 = if save then setSaveGraph model g else setActiveGraph model g in
-    if finish then
-      { m2 | mode = DefaultMode }
-    else
-      case labels of
-        [] -> { m2 | mode = DefaultMode }
-        [_] -> { m2 | mode = DefaultMode }
-        _ :: q -> { m2 | mode = RenameMode save q }
-        
 
 update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
 update_RectSelect msg orig keep model =
@@ -597,7 +601,7 @@ update_RectSelect msg orig keep model =
 
 update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
 update_Enlarge msg state model =
-   let fin = switch_Default <| setSaveGraph model <| enlargeGraph model state in
+   let fin () = updateModifHelper model <| enlargeModif model state in
    let updateState st = { model | mode = EnlargeMode st } in
    let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
    case msg of
@@ -606,11 +610,11 @@ update_Enlarge msg state model =
       {- KeyChanged False _ (Character 's') -> 
                           noCmd <| { model | mode =
                                   EnlargeMode { state | onlySubdiag = not state.onlySubdiag }} -}
-      MouseUp -> fin
+      MouseUp -> fin ()
       KeyChanged False _ (Character 'f') -> updateDirection Free
       KeyChanged False _ (Character 'x') -> updateDirection Horizontal
       KeyChanged False _ (Character 'y') -> updateDirection Vertical
-      KeyChanged False _ (Control "Enter") -> fin
+      KeyChanged False _ (Control "Enter") -> fin ()
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
       --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
@@ -635,14 +639,7 @@ selectLoop direction model =
               |> List.foldl (\ e -> Graph.updateEdge e (\n -> {n | selected = True})) 
                   (GraphDefs.clearSelection modelGraph) )
 
-rename : Model -> (Model, Cmd Msg)
-rename model =
-    let modelGraph = getActiveGraph model in
-    let ids = GraphDefs.selectedId modelGraph 
-            |> Maybe.map List.singleton 
-            |> Maybe.withDefault []
-    in
-        noCmd <| initialise_RenameMode True ids model
+
 
 latexToClipboard : String -> Cmd a
 latexToClipboard tex =
@@ -663,16 +660,15 @@ generateProofString debug g =
       s
 
 
-graphQuickInput : Model -> QuickInput.Equation -> Graph NodeLabel EdgeLabel
+graphQuickInput : Model -> QuickInput.Equation -> Graph.ModifHelper NodeLabel EdgeLabel
 graphQuickInput model (eq1, eq2) = 
   let modelGraph = getActiveGraph model in
   let sizeGrid = getActiveSizeGrid model in
-
   -- if an incomplete subdiagram is selected, we use it
   let od = GraphDefs.selectedIncompleteDiagram modelGraph in
   let default = graphDrawingChain sizeGrid modelGraph (eq1, eq2) in 
   let split l edges = GraphProof.isEmptyBranch l |> 
-          Maybe.map (QuickInput.splitWithChain modelGraph edges) 
+          Maybe.map (QuickInput.splitWithChain modelGraph (Graph.newModif modelGraph) edges) 
   in
   case od of
     Nothing -> default
@@ -732,23 +728,30 @@ update_DefaultMode msg model =
     let clearSel = noCmd <| setActiveGraph model 
                      <| GraphDefs.clearSelection modelGraph
     in
-    let createPoint isMath label =
-            let (newGraph, newId) = Graph.newNode modelGraph 
-                    (newNodeLabel model.mousePos label isMath defaultZ)
-                newModel = addOrSetSel False newId
-                   <| setSaveGraph model newGraph                    
+    let createPoint isMath = Modes.CreatePoint.initialise isMath model
+      --  (model, protocolSend 
+                                  -- <| Modes.CreatePoint.initialise isMath model) 
+    in
+           {-  let {modif, newId} = 
+                           Modes.CreatePoint.createPoint 
+                                 isMath label model.mousePos
+                                 model.graphInfo
+            in
+            let newModel = addOrSetSel False newId
+                   <| setSaveGraph model modif                    
             in
             noCmd <| initialise_RenameMode False [ newId ] newModel
-    in
+            -}
+    -- in
     let increaseZBy offset =
            case GraphDefs.selectedId modelGraph of
               Nothing -> noCmd model
               Just id -> 
-                    noCmd <| setSaveGraph model <|
-                   Graph.update id 
+                    updateModifHelper model <|
+                     Graph.md_update id 
                     (\ e -> { e | zindex = e.zindex + offset})
                     (\ e -> { e | zindex = e.zindex + offset})
-                    modelGraph
+                    <| Graph.newModif modelGraph
     in
       
     
@@ -765,9 +768,9 @@ update_DefaultMode msg model =
               case Parser.run equalityParser s of
                   Err e -> noCmd <| {model | statusMsg = Parser.deadEndsToString e}
                   Ok chain ->
-                    (Model.setSaveGraph model
-                     <| graphQuickInput model chain, 
-                     computeLayout ()                    
+                    (updateModifHelper model
+                     <| graphQuickInput model chain
+                    --  computeLayout ()                    
                      )
                            
           
@@ -784,7 +787,7 @@ update_DefaultMode msg model =
            (model, promptEquation ())
         KeyChanged False k (Character 'a') -> 
             if not k.ctrl then
-              Modes.NewArrow.initialise model 
+              noCmd <| Modes.NewArrow.initialise model 
             else
               noCmd <| setActiveGraph model <| GraphDefs.selectAll modelGraph
         CopyGraph ->
@@ -804,13 +807,16 @@ update_DefaultMode msg model =
             noCmd <| { model | mode = DebugMode }
         KeyChanged True _ (Character 'g') -> 
             let pressTimeoutMs = 100 in
-            (Modes.Move.initialise True UndefinedMove model,
+            (Modes.Move.initialise defaultModifId UndefinedMove model,
              Task.attempt (always PressTimeout) 
                <| Process.sleep pressTimeoutMs)
         KeyChanged False _ (Character 'i') -> 
-           noCmd <| case GraphDefs.selectedEdgeId modelGraph of
-                      Just id -> setSaveGraph model <| Graph.invertEdge id modelGraph
-                      _ -> model
+          --  noCmd <|
+                  case GraphDefs.selectedEdgeId modelGraph of
+                      Just id -> updateModifHelper model 
+                          <| Graph.md_invertEdge id 
+                          <| Graph.newModif modelGraph
+                      _ -> noCmd model
         {- KeyChanged False _ (Character 'I') -> noCmd <| selectInitial model -}
         {- KeyChanged False _ (Character 'E') -> 
            noCmd <| { model | graph = 
@@ -838,11 +844,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False k (Character 'c') -> 
             if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
             else
-            let ids = GraphDefs.selectedEdges modelGraph |> List.filter (.label >> GraphDefs.isNormal) 
-                       |> List.map .id
-            in
-              noCmd <| if ids == [] then model else 
-                {  model | mode = ColorMode ids} 
+            noCmd <| Modes.Color.initialise model
                 -- , 
                 --   graph = GraphDefs.clearSelection 
                 --   <| GraphDefs.clearWeakSelection modelGraph }              
@@ -885,7 +887,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                     case Unification.unifyDiagram eqs diagram graph of
                       Err s -> failWith s
                       Ok finalg ->                
-                          noCmd <| setSaveGraph model finalg
+                          updateModifHelper model finalg
           in
           let registerAndCreateProof newGraph diagram =
                     let nodes =  Graph.nodes 
@@ -918,17 +920,18 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
         KeyChanged False _ (Character 'Q') -> 
+            -- (model, Cmd.batch [ test Nothing, test (Just ())])
             (model, quicksaveGraph 
             { info = toJsGraphInfo model, 
               export = makeExports model,             
               autosave = False })
         KeyChanged False _ (Character 'R') -> 
             noCmd <| initialise_Resize model
-        KeyChanged False _ (Character 'r') -> rename model
+        KeyChanged False _ (Character 'r') -> Modes.Rename.renameSelectedId model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise model 
-        KeyChanged False _ (Character 't') -> createPoint False ""
-        KeyChanged False _ (Character 'p') -> createPoint True ""
+        KeyChanged False _ (Character 't') -> createPoint False
+        KeyChanged False _ (Character 'p') -> createPoint True
         -- KeyChanged False _ (Character 'P') -> createPoint True <| "\\" ++ coqProofTexCommand ++ "{}" 
            --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
@@ -937,7 +940,9 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         
         KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise model
         KeyChanged False _ (Character 'x') ->
-            noCmd <| setSaveGraph model <| GraphDefs.removeSelected modelGraph
+            updateModifHelper model <| GraphDefs.removeSelected modelGraph
+        KeyChanged False _ (Control "Delete") ->
+            updateModifHelper model <| GraphDefs.removeSelected modelGraph            
         KeyChanged False _ (Character 'X') ->
             let latex = graphToTikz (getActiveSizeGrid model)
                             (GraphDefs.selectedGraph modelGraph)
@@ -952,26 +957,27 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'V') ->
             let s = GraphDefs.selectedGraph modelGraph |> svgExport model in
             (model, generateSvg s)          
-        KeyChanged False _ (Control "Delete") ->
-            noCmd <| setSaveGraph model <| GraphDefs.removeSelected modelGraph            
+        
         {- NodeClick n e ->
             
             let _ = Debug.log "nodeclick" () in
             noCmd <| addOrSetSel e.keys.shift n model -}
         EltDoubleClick n e ->
-            noCmd <| initialise_RenameMode True [n] model
+            Modes.Rename.renameId model n
         {- EdgeClick n e ->
             let _ = Debug.log "edgeclick" () in
              noCmd <| addOrSetSel e.keys.shift n model  -}
-        KeyChanged False _ (Character 'f') -> noCmd
-            <| let isSel = GraphDefs.fieldSelect modelGraph  in
+        KeyChanged False _ (Character 'f') -> -- noCmd
+                let isSel = GraphDefs.fieldSelect modelGraph  in
                 case GraphDefs.selectedNodes modelGraph of
-                 [] -> model
-                 _ -> setSaveGraph model 
+                 [] -> noCmd model
+                 _ -> updateModifHelper model 
                        <| 
-                        Graph.map 
-                         (\ _ n -> if isSel n then GraphDefs.snapNodeToGrid sizeGrid n else n )
-                        (always identity) modelGraph 
+                        Graph.md_map 
+                         (\ _ n -> if isSel n then Just <| GraphDefs.snapNodeToGrid sizeGrid n 
+                             else Nothing )
+                        (\ _ _ -> Nothing) 
+                        <| Graph.newModif modelGraph 
               
         KeyChanged False _ (Character 'h') -> move pi
         KeyChanged False _ (Character 'j') -> move (pi/2)
@@ -980,14 +986,29 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         PasteGraph gi ->
           if not model.mouseOnCanvas then noCmd model else
          -- we ignore the other tabs
-          case List.Extra.find .active gi.tabs of
+          case GraphInfo.getActiveTabOption gi of
               Nothing -> noCmd model
               Just tab ->
-                   noCmd <| Modes.Move.initialise False FreeMove
-                   <|  setSaveGraph model <| .extendedGraph <|          
-                    Graph.disjointUnion 
-                      (GraphDefs.clearSelection modelGraph)
-                      (GraphDefs.selectAll tab.graph)
+                  let (nextModel, modifId) = popIdModif model in
+                  let info =  Graph.md_disjointUnion 
+                         (Graph.newModif <| GraphDefs.clearSelection modelGraph)
+                         tab.graph
+                  in
+                  let protocolMsg = {  id = modifId
+                             , selIds = IntDict.insert tab.id 
+                                       (Graph.allIds info.subGraph)
+                                       IntDict.empty
+                             , command = MoveCommand FreeMove
+                             , modif = info.extendedGraph |> Graph.finaliseModif
+                                      |> GraphInfo.makeGraphChange tab.id
+                            }
+                  in
+                  (model, protocolSend protocolMsg)
+                  --  noCmd <| Modes.Move.initialise False FreeMove
+                  --  <|  setSaveGraph model <| .extendedGraph <|          
+                  --   Graph.md_disjointUnion 
+                  --     (Graph.newModif <| GraphDefs.clearSelection modelGraph)
+                  --     (GraphDefs.selectAll tab.graph)
         KeyChanged False _ (Character 'u') ->
              let f = GraphDefs.fieldSelect modelGraph in
              let connectedGraph =  Graph.connectedClosure f f modelGraph in
@@ -1019,13 +1040,17 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise modelGraph
         KeyChanged False k (Character '+') -> increaseZBy 1
         KeyChanged False k (Character '<') -> increaseZBy (-1)
-        KeyChanged False _ k -> noCmd <|
-           case GraphDefs.updateStyleEdges 
-                  (ArrowStyle.keyMaybeUpdateStyle k)
-                  (GraphDefs.selectedEdges modelGraph)
-                  modelGraph of 
-                 Nothing -> model
-                 Just g -> setSaveGraph model g
+        KeyChanged False _ k -> 
+           updateModifHelper { model | mode = DefaultMode } <|
+             returnUpdateStyle 
+             (ArrowStyle.keyMaybeUpdateStyle k)
+             model 
+             (GraphDefs.selectedEdges modelGraph)
+             
+          --  case
+            
+                --  Nothing -> model
+                --  Just g -> setSaveGraph model g
         _ -> noCmd model              
 
 svgExport : Model -> Graph NodeLabel EdgeLabel -> String
@@ -1094,10 +1119,22 @@ update_DebugMode msg model =
 update_Resize : ResizeState -> Msg -> Model -> (Model, Cmd Msg)
 update_Resize st msg m =
   let finalise () = 
-        let m2 = pushHistory m in
-         noCmd <|
-          setActiveGraph (setActiveSizeGrid { m2 | mode = DefaultMode } st.sizeGrid)
-          <| graphResize st m
+          let modifications = 
+                  [   GraphInfo.TabSizeGrid m.graphInfo.activeTabId st.sizeGrid
+                    , GraphInfo.activeGraphModifHelper m.graphInfo 
+                        <| graphResize st m
+                  ]  
+                  |>
+                  List.map (protocolSendModif Msg.defaultModifId)
+          in 
+          ({ m | mode = DefaultMode}, Cmd.batch
+             modifications)
+          -- noCmd <| applyModifs { m | mode = DefaultMode}  modifications
+    --  pushHistory [] m
+    --     let m2 = pushHistory m in
+    --      noCmd <|
+    --       setActiveGraph (setActiveSizeGrid { m2 | mode = DefaultMode } st.sizeGrid)
+    --       <| graphResize st m
          -- computeLayout())
   in
   -- let _ = Debug.log "msg resize" msg in
@@ -1132,9 +1169,9 @@ selectGraph m orig keep =
    let g = if keep then modelGraph else GraphDefs.clearSelection modelGraph in
    let isSel n = Geometry.isInRect selRect n.pos in
    GraphDefs.addNodesSelection g isSel
-   
-enlargeGraph : Model -> EnlargeState -> Graph NodeLabel EdgeLabel
-enlargeGraph m state =
+
+enlargeModif : Model -> EnlargeState -> Graph.ModifHelper NodeLabel EdgeLabel
+enlargeModif m state =
    let modelGraph = getActiveGraph m in
    let sizeGrid = getActiveSizeGrid m in
    let (ox, oy) = case state.pos of      
@@ -1157,25 +1194,33 @@ enlargeGraph m state =
    let noSurround = not (Graph.any .isIn .isIn gcon) in
 
    let (xi, yi) = state.orig in
+   -- TODO: make it more efficient
    let mkp id n i o = 
         if n >= i && 
             (noSurround || (Graph.get id .isIn .isIn gcon
             |> Maybe.withDefault False))
-                  then n + o else n 
+                  then Just (n + o) else Nothing
    in
     
    let mapNode id n =
-        let (nx, ny) = n.pos in        
-          { n | pos = (mkp id nx xi ox, mkp id ny yi oy)}
+        let (nx, ny) = n.pos in  
+        case (mkp id nx xi ox, mkp id ny yi oy) of 
+          (Just xx, Just yy) -> Just { n | pos = (xx, yy)}
+          _ -> Nothing
          
    in
-       
-   let g = Graph.map 
+   let g = Graph.md_map 
             mapNode
-            (always identity)
-            modelGraph
+            (always Just)
+            <| Graph.newModif modelGraph
    in
    g
+   
+enlargeGraph : Model -> EnlargeState -> Graph NodeLabel EdgeLabel
+enlargeGraph m state =
+   let modelGraph = getActiveGraph m in
+   Graph.applyModifHelper (enlargeModif m state) 
+   
 
 {- enlargeGraph : Model -> Maybe Point -> Graph NodeLabel EdgeLabel
 enlargeGraph m orig = 
@@ -1193,30 +1238,21 @@ graphDrawingFromModel m =
              |> collageGraphFromGraph m
 --        NewNode -> collageGraphFromGraph m modelGraph
         Move s -> Modes.Move.graphDrawing m s          
-        RenameMode _ l ->
-            let g = graph_RenameMode l m in
-            let g2 = collageGraphFromGraph m g in
-            case l of
-                (id, _) :: _ ->
-                    Graph.update id 
-                    (\n -> {n | editable = True })
-                    (GraphDrawing.mapNormalEdge
-                     <| \e ->  {e | editable = True })
-                    g2
-                _ -> g2
-              
+        RenameMode state -> Modes.Rename.graphDrawing m state              
         DebugMode ->
             modelGraph |> collageGraphFromGraph m 
                 |> Graph.map
                    (\id n ->  {n | label = String.fromInt id}) 
-                   (\_ -> identity)
+                   (\id -> GraphDrawing.mapNormalEdge (\ e -> {e | label = String.fromInt id}) )
         NewLine astate -> Modes.NewLine.graphDrawing m astate  
         NewArrow astate -> Modes.NewArrow.graphDrawing m astate
         SquareMode state -> Modes.Square.graphDrawing m state
         SplitArrow state -> Modes.SplitArrow.graphDrawing m state
         PullshoutMode state -> Modes.Pullshout.graphDrawing m state
         CutHead state -> Modes.CutHead.graphDrawing m state
-        ResizeMode sizeGrid -> graphResize sizeGrid m |> GraphDrawing.toDrawingGraph
+        ResizeMode sizeGrid -> graphResize sizeGrid m |>
+                              Graph.applyModifHelper
+                              |>  GraphDrawing.toDrawingGraph
         
 
 
@@ -1230,19 +1266,19 @@ graphDrawingFromModel m =
 --       (\_ -> identity)
 --     tab.graph
 
-graphResize : ResizeState -> Model -> Graph NodeLabel EdgeLabel
+graphResize : ResizeState -> Model -> Graph.ModifHelper NodeLabel EdgeLabel
 graphResize st m =   
-   let modelGraph = getActiveGraph m in
+   let modelGraph = Graph.newModif <| getActiveGraph m in
    let sizeGrid = getActiveSizeGrid m in
    if st.onlyGrid then modelGraph else
    let ratio = toFloat st.sizeGrid / toFloat sizeGrid in
-   Graph.map (\_ n -> { n | pos = Point.resize ratio n.pos}) 
-      (\_ -> identity)
-    modelGraph
+   Graph.md_map (\_ n -> Just { n | pos = Point.resize ratio n.pos}) 
+      (\_ _ -> Nothing)
+    <| modelGraph
    
 
 
-graphDrawingChain : Int -> Graph NodeLabel EdgeLabel -> QuickInput.Equation -> Graph NodeLabel EdgeLabel
+graphDrawingChain : Int -> Graph NodeLabel EdgeLabel -> QuickInput.Equation -> Graph.ModifHelper NodeLabel EdgeLabel
 graphDrawingChain offset g eq =         
             let mid = toFloat offset / 2 in
             let iniP = (mid, mid) in
@@ -1420,7 +1456,7 @@ helpMsg model =
         CutHead _ -> "Mode cut arrow. "
                  ++ Modes.CutHead.help
                   |> msg
-        RenameMode _ _ -> msg "Rename mode: [RET] to confirm, [TAB] to next label, [ESC] to cancel"
+        RenameMode _ -> msg Modes.Rename.help
         EnlargeMode s -> msg <| "Enlarge mode. "
                             ++ overlayHelpMsgNewLine
                             ++ "Draw a rectangle to create space. "
@@ -1489,24 +1525,26 @@ toDrawing model graph =
                                        "\\newcommand{\\depthHistory}{"
                                        ++ String.fromInt (List.length model.history)
                                        ++ "}"                                       
-                                   _ -> model.latexPreamble 
+                                   _ -> model.graphInfo.latexPreamble 
               } 
     in
     graphDrawing cfg graph
 
-renderTabs : List Tab -> List (Html Msg)
-renderTabs tabs =
-  let activeTab = getActiveTabInTabs tabs in
+renderTabs : Model -> List (Html Msg)
+renderTabs model =
+  let activeTab = getActiveTab model in
   let leftButton = Html.button [Html.Events.onClick TabMoveLeft, Html.Attributes.title "Swap tab order"] [Html.text "<"] in
   let rightButton = Html.button [Html.Events.onClick TabMoveRight, Html.Attributes.title "Swap tab order"] [Html.text ">"] in
-  let renderTab i tab =
+  let renderTab tab =
         
          let classes = 
                 Html.Attributes.class "tab-button" :: 
-                if tab.active then [Html.Attributes.class "active-tab"] else []
+                if GraphInfo.isActiveTab model.graphInfo tab then 
+                   [Html.Attributes.class "active-tab"] 
+                else []
          in
          let mainButton = 
-                Html.button ([(Html.Events.onClick <| SwitchTab i)
+                Html.button ([(Html.Events.onClick <| SwitchTab tab.id)
                     ] ++ classes) 
                 [Html.text tab.title]
          in
@@ -1517,7 +1555,8 @@ renderTabs tabs =
   let removeButton = Html.button [Html.Events.onClick RemoveTab] [Html.text "Remove tab"] in
   
   let renameButton = Html.button [Html.Events.onClick (Do (promptTabTitle activeTab.title))] [Html.text "Rename tab"] in
-     [newButton, dupButton, removeButton, renameButton ] ++ List.indexedMap renderTab tabs
+     [newButton, dupButton, removeButton, renameButton ] 
+     ++ List.map renderTab model.graphInfo.tabs
      ++ [leftButton, rightButton]
 
 viewGraph : Model -> Html Msg
@@ -1622,7 +1661,7 @@ viewGraph model =
             else
                [])
           ++ 
-          [ Html.p [Html.Attributes.class "tabs"] (renderTabs model.tabs),          
+          [ Html.p [Html.Attributes.class "tabs"] (renderTabs model),          
             Html.p [] [ Html.text <| if nmissings > 0 then 
                String.fromInt nmissings ++ " nodes or edges could not be rendered."
                else "" ]
@@ -1631,7 +1670,7 @@ viewGraph model =
             Html.text "LaTeX preamble",
             Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
               Html.Attributes.placeholder "latex Preamble",
-              Html.Attributes.value model.latexPreamble, 
+              Html.Attributes.value model.graphInfo.latexPreamble, 
               Html.Attributes.id HtmlDefs.latexPreambleId,
               Html.Events.onInput LatexPreambleEdit
             ] [ ]

@@ -4,14 +4,26 @@ module Codec exposing
     , identity 
     , decoder 
     , encoder
-    , enum
+    -- , enum
+    , customEnum
+    , customStringTag
     , list
     , ObjectCodec, object, compose, composite
-    , bothFields, buildObject 
+    , fields, buildObject 
+    , custom,  variant1, buildVariant
+    , variant2,variant0
+    , maybeCustom, maybeBuildVariant, maybeVariant0, maybeVariant1
+   -- , maybe
+    -- , variant0, variant2
     )
 
+{-
+two ways of encoding custom types: custom and maybeCustom
+-}
 
 import List.Extra as List
+import Dict exposing (Dict)
+import Drawing.SvgStringExtra exposing (r)
 
 
 
@@ -26,8 +38,6 @@ type Codec a b
         , decoder : b -> a
         }
 
--- swap : Codec a b -> Codec b a
--- swap (Codec {encoder, decoder}) = Codec {encoder = decoder, decoder = encoder}
 
 identity : Codec a a 
 identity = Codec {encoder = Basics.identity, decoder = Basics.identity}
@@ -55,22 +65,6 @@ encoder (Codec m) =
     m.encoder
 
 
-{-
-{-| Convert a value into a prettified JSON string. The first argument specifies
-the amount of indentation in the result string.
--}
-encodeToString : Int -> Codec a -> a -> String
-encodeToString indentation codec =
-    encoder codec >> JE.encode indentation
-
-
-{-| Convert a value into a Javascript `Value`.
--}
-encodeToValue : Codec a -> a -> Value
-encodeToValue codec =
-    encoder codec
-
--}
 
 -- BASE
 
@@ -87,54 +81,7 @@ build encoder_ decoder_ =
 
 
 
-{-| `Codec` for a fixed list of Elm values.
-
-This can be used for custom types, if they are really simple:
-
-    type Semaphore = Red | Yellow | Green
-
-    semaphoreCodec : Codec Semaphore
-    semaphoreCodec =
-        enum Codec.string
-            [ ("Red", Red)
-            , ("Yellow", Yellow)
-            , ("Green", Green)
-            ]
-
-    encodeToString 0 semaphoreCodec Red
-    --> "\"Red\""
-    decodeString semaphoreCodec "\"Red\""
-    --> Ok Red
-
-    type Count = One | Two | Three
-
-    countCodec : Codec Count
-    countCodec =
-        enum Codec.int
-            [ (1, One)
-            , (2, Two)
-            , (3, Three)
-            ]
-
-    encodeToString 0 countCodec Two
-    --> "2"
-    decodeString countCodec "2"
-    --> Ok Two
-
-    incompleteCodec : Codec Count
-    incompleteCodec =
-        enum Codec.int
-            [ (1, One)
-            , (2, Two)
-            ]
-
-    encodeToString 0 incompleteCodec Three
-    --> "null"
-
-    decodeString incompleteCodec "3" |> Result.mapError (\_ -> "...")
-    --> Err "..."
-
--}
+{-
 enum : List ( a, b ) -> (a, b) -> Codec a b
 enum l (defaultA, defaultB) =
     let enc defaultVal proj1 proj2  val =
@@ -146,7 +93,7 @@ enum l (defaultA, defaultB) =
     Codec { encoder = enc defaultB Tuple.first Tuple.second ,
             decoder = enc defaultA Tuple.second Tuple.first
           }
-
+-}
 
 
 
@@ -169,173 +116,10 @@ compose dec enc =
         }
 
 
-{-| Represents an optional value.
-
-This is encoded as `null` when the input is `Nothing`, and the same as `x` when `Just x`.
-
-If the decoding using the inner `Codec` fails, it will _succeed_ with `Nothing`. If you want it to fail use `nullable` instead.
-
-    encodeToString 0 (maybe int) (Just 3)
-    --> "3"
-    encodeToString 0 (maybe int) Nothing
-    --> "null"
-
-    decodeString (maybe int) "3"
-    --> Ok (Just 3)
-    decodeString (maybe int) "null"
-    --> Ok Nothing
-    decodeString (maybe int) "\"hello\""
-    --> Ok Nothing
-
--}
-{-
-maybe : Codec a -> Codec (Maybe a)
-maybe codec =
-    Codec
-        { decoder = JD.maybe <| decoder codec
-        , encoder =
-            \v ->
-                case v of
-                    Nothing ->
-                        JE.null
-
-                    Just x ->
-                        encoder codec x
-        }
-        -}
-
-
-{- | Represents an optional value.
-
-This is encoded as `null` when the input is `Nothing`, and the same as `x` when `Just x`.
-
-When decoding, it decodes `null` to `Nothing`. Otherwise, if the decoding using the inner `Codec` fails, it will fail. If you want it to succeed with `Nothing` use `maybe` instead.
-
-    encodeToString 0 (nullable int) (Just 3)
-    --> "3"
-    encodeToString 0 (nullable int) Nothing
-    --> "null"
-
-    decodeString (nullable int) "3"
-    --> Ok (Just 3)
-    decodeString (nullable int) "null"
-    --> Ok Nothing
-    decodeString (nullable int) "\"hello\"" |> Result.mapError (\_ -> "...")
-    --> Err "..."
-
--}
-{-
-nullable : Codec a -> Codec (Maybe a)
-nullable codec =
-    Codec
-        { decoder = JD.nullable <| decoder codec
-        , encoder =
-            \v ->
-                case v of
-                    Nothing ->
-                        JE.null
-
-                    Just x ->
-                        encoder codec x
-        }
--}
-
-{- | `Codec` between a JSON array and an Elm `List`.
--}
 list : Codec a b -> Codec (List a) (List b)
 list =
     composite List.map List.map
 
-
-{-| `Codec` between a JSON array and an Elm `Array`.
--}
-{-
-array : Codec a -> Codec (Array a)
-array =
-    composite JE.array JD.array
-    -}
-
-
-{- | `Codec` between a JSON object and an Elm `Dict`.
--}
-{-
-dict : Codec a -> Codec (Dict String a)
-dict =
-    composite
-        (\e -> JE.object << Dict.toList << Dict.map (\_ -> e))
-        JD.dict
--}
-
-
-{-
-
-{-| `Codec` between a JSON array and an Elm `Set`.
--}
-set : Codec comparable -> Codec (Set comparable)
-set =
-    composite
-        (\e -> JE.list e << Set.toList)
-        (JD.map Set.fromList << JD.list)
-
-
-{-| `Codec` between a JSON array of length 2 and an Elm `Tuple`.
--}
-tuple : Codec a -> Codec b -> Codec ( a, b )
-tuple m1 m2 =
-    Codec
-        { encoder =
-            \( v1, v2 ) ->
-                JE.list identity
-                    [ encoder m1 v1
-                    , encoder m2 v2
-                    ]
-        , decoder =
-            JD.map2
-                (\a b -> ( a, b ))
-                (JD.index 0 <| decoder m1)
-                (JD.index 1 <| decoder m2)
-        }
-
-
-{-| `Codec` between a JSON array of length 3 and an Elm triple.
--}
-triple : Codec a -> Codec b -> Codec c -> Codec ( a, b, c )
-triple m1 m2 m3 =
-    Codec
-        { encoder =
-            \( v1, v2, v3 ) ->
-                JE.list identity
-                    [ encoder m1 v1
-                    , encoder m2 v2
-                    , encoder m3 v3
-                    ]
-        , decoder =
-            JD.map3
-                (\a b c -> ( a, b, c ))
-                (JD.index 0 <| decoder m1)
-                (JD.index 1 <| decoder m2)
-                (JD.index 2 <| decoder m3)
-        }
-
-
-{-| `Codec` for `Result` values.
--}
-result : Codec error -> Codec value -> Codec (Result error value)
-result errorCodec valueCodec =
-    custom
-        (\ferr fok v ->
-            case v of
-                Err err ->
-                    ferr err
-
-                Ok ok ->
-                    fok ok
-        )
-        |> variant1 "Err" Err errorCodec
-        |> variant1 "Ok" Ok valueCodec
-        |> buildCustom
-
--}
 
 -- OBJECTS
 
@@ -362,17 +146,7 @@ Example with constructor:
         , y : Float
         }
 
-    pointCodec : Codec Point
-    pointCodec =
-        Codec.object Point
-            |> Codec.field "x" .x Codec.float
-            |> Codec.field "y" .y Codec.float
-            |> Codec.buildObject
-
-    type alias Polar =
-        { r : Float
-        , theta : Float
-        }
+  
 
      type alias Point2 =
         { x2 : Float
@@ -382,26 +156,13 @@ Example with constructor:
     pointCodec : Codec Point Point2
     pointCodec =
         Codec.object Point Point2
-            |> Codec.bothFields .x .x2
-            |> Codec.bothFields .y .y2
+            |> Codec.fields .x .x2 Codec.identity
+            |> Codec.fields .y .y2 Codec.identity
             |> Codec.buildObject
 
 
-    pointCodec : Codec Point Polar
-    pointCodec =
-        Codec.object Point Polar
-            |> Codec.field1 rThetaToX
-            |> Codec.field1 rThetaToY
-            |> Codec.buildObject
 
-Example without constructor:
 
-    pointCodec : Codec { x : Int, y : Bool }
-    pointCodec =
-        Codec.object (\x y -> { x = x, y = y })
-            |> Codec.field "x" .x Codec.int
-            |> Codec.field "y" .y Codec.bool
-            |> Codec.buildObject
 
 -}
 object : b1 -> b2 -> ObjectCodec a1 a2 b1 b2
@@ -411,21 +172,12 @@ object b1 b2 =
           encoder = always b2
         , decoder = always b1
         }
-{-
-bothFields : (a1 -> f2) -> (a2 -> f1)
-    ->  ObjectCodec a1 a2 (f1 -> b1) (f2 -> b2) 
-    ->  ObjectCodec a1 a2 b1 b2
-bothFields getter1 getter2 (ObjectCodec ocodec) =
-    ObjectCodec {
-        encoder = \ a1 -> ocodec.encoder a1 (getter1 a1)
-      , decoder = \ a2 -> ocodec.decoder a2 (getter2 a2)
-    }
--}
-bothFields : (a1 -> f1) -> (a2 -> f2)
+
+fields : (a1 -> f1) -> (a2 -> f2)
     -> Codec f1 f2
     ->  ObjectCodec a1 a2 (f1 -> b1) (f2 -> b2) 
     ->  ObjectCodec a1 a2 b1 b2
-bothFields getter1 getter2 cod (ObjectCodec ocodec) =
+fields getter1 getter2 cod (ObjectCodec ocodec) =
     ObjectCodec {
         encoder = \ a1 -> ocodec.encoder a1 <| encoder cod <| getter1 a1
       , decoder = \ a2 -> ocodec.decoder a2 <| decoder cod <| getter2 a2
@@ -440,3 +192,217 @@ buildObject (ObjectCodec om) =
         , decoder = om.decoder
         }
 
+{-
+Codec with {tag, snapshot, clear, load, modif}
+  let splitMsg snapshot clear load modif v = 
+           case v of 
+               Snapshot arg -> snapshot arg
+               ModifProtocol arg -> modif arg
+               LoadProtocol arg -> load arg
+               ClearProtocol arg -> clear arg
+    in
+    Codec.customStringTag splitMsg defaultProtocolMsgJS
+    |> Codec.variant1 "snapshot" Snapshot (\ n r -> {r | snapshot = n}) .snapshot Format.LastVersion.graphInfoCodec
+    |> Codec.variant1 "clear" ClearProtocol (\ n r -> {r | clear = n}) .clear clearCodec
+    |> Codec.variant1 "load" LoadProtocol (\ n r -> {r | load = n}) .load loadCodec
+    |> Codec.variant1 "modif" ModifProtocol (\ m r -> { r | modif = m}) .modif protocolModifCodec
+    |> Codec.buildVariant
+-}
+type CustomCodec v tag r a x = CustomCodec
+    { encoder : a
+    -- , make : tag -> common -> r
+    , getTag : r -> tag
+    , setTag : tag -> r -> r
+    -- , getCommon : r -> common
+
+    , decoder : Dict tag (r -> v) 
+    , defaultDecoder : r -> x
+    , defaultCommon : r
+    }
+
+-- type alias CustomType tag content = {tag : tag, content:content}
+
+custom : a -> r -> (r -> tag) -> (tag -> r -> r) 
+             -> CustomCodec v tag r a r
+custom a common getTag setTag = 
+   CustomCodec { encoder = a
+    , decoder = Dict.empty
+    , getTag = getTag
+    , setTag = setTag
+    , defaultCommon = common
+    , defaultDecoder = Basics.identity
+    }
+
+customStringTag : a -> { b | tag : String} -> 
+                 CustomCodec v String {b | tag : String} a {b | tag : String}
+customStringTag a common =
+    custom a common .tag (\ tag r -> {r | tag = tag})
+
+customEnum : a 
+             -> CustomCodec v String String a String
+customEnum a  = custom a "" (\x -> x) (\ x _ -> x)
+
+-- variant1 "A" A .A defautA codec
+variant1 : comparable -> (arg -> v)
+             -> (arg2 -> (common -> common))
+             -> (common -> arg2)
+             -> Codec arg arg2
+             -> CustomCodec v comparable common 
+                          ((arg -> common) -> a) x
+             -> CustomCodec v comparable common a v
+variant1 tag constr enc deco codec (CustomCodec c) =
+    let dec = (\r -> r |> deco |> decoder codec |> constr) in
+    CustomCodec {
+        -- builder a pour type ((arg2 -> c2) -> r)
+        encoder = c.encoder 
+             (\ arg -> c.defaultCommon 
+                |> c.setTag tag 
+                |> enc (encoder codec arg)
+                )
+              
+        
+      , decoder = Dict.insert tag 
+                  dec
+                  c.decoder
+      , defaultDecoder = dec
+      , defaultCommon = c.defaultCommon
+      , getTag = c.getTag
+      , setTag = c.setTag
+    }
+
+variant2 : comparable -> (arg1 -> arg2 -> v)
+             -> (arg1 -> arg2 -> (common -> common))
+             -> (common -> arg1)
+             -> (common -> arg2)
+             -> CustomCodec v comparable common 
+                          ((arg1 -> arg2 -> common) -> a) x
+             -> CustomCodec v comparable common a v
+variant2 tag constr enc dec1 dec2 (CustomCodec c) =
+   let cc2 = {
+              encoder = (\ f -> c.encoder (\ a b -> f (a,b)))
+            , decoder = c.decoder
+            , defaultDecoder = c.defaultDecoder
+            , defaultCommon = c.defaultCommon
+            , getTag = c.getTag
+            , setTag = c.setTag
+             }
+   in
+   variant1 tag (\ (a,b) -> constr a b)(\ (a,b) -> enc a b)
+                (\ r -> (dec1 r, dec2 r))
+                identity
+                (CustomCodec cc2)
+                
+
+variant0 : comparable -> v
+             -> CustomCodec v comparable common 
+                          (common -> a) x
+             -> CustomCodec v comparable common a v
+variant0 tag constr (CustomCodec c) =
+   let cc2 = {
+              encoder = (\ f -> c.encoder (f ()))
+            , decoder = c.decoder
+            , defaultDecoder = c.defaultDecoder
+            , defaultCommon = c.defaultCommon
+            , getTag = c.getTag
+            , setTag = c.setTag
+             }
+   in
+   variant1 tag (\ _ -> constr)(\ _ -> Basics.identity)
+                (\_ -> ())
+                identity
+                (CustomCodec cc2)
+                
+
+
+
+buildVariant : CustomCodec v comparable common 
+                (v -> common) v -> 
+                Codec v common
+buildVariant (CustomCodec c) =
+    Codec {
+        encoder = c.encoder
+      , decoder = \ r ->
+           case Dict.get (c.getTag r) c.decoder of 
+              Nothing -> c.defaultDecoder r
+              Just f -> f r
+    }
+   
+
+{-
+
+Another way to encode custom types:
+{ consA : Mayb argA, consB : Maybe argB, consC : Bool , ..}
+consC is aconstructor with 0 argument
+
+example:
+
+  let splitMsg snapshot clear load modif v = 
+           case v of 
+               Snapshot arg -> snapshot arg
+               ModifProtocol arg -> modif arg
+               LoadProtocol arg -> load arg
+               ClearProtocol arg -> clear arg
+    in
+    Codec.maybeCustom splitMsg 
+    (
+   \ snapshot clear load modif -> {snapshot = snapshot,
+      clear = clear, load = load, modif = modif }
+    )
+    |> Codec.maybeVariant1 Snapshot .snapshot Format.LastVersion.graphInfoCodec
+    |> Codec.maybeVariant1 ClearProtocol .clear clearCodec
+    |> Codec.maybeVariant1 LoadProtocol .load loadCodec
+    |> Codec.maybeVariant1 ModifProtocol .modif protocolModifCodec
+    |> Codec.maybeBuildVariant defaultProtocolMsg
+
+-}
+type MaybeCustomCodec v r a b = MaybeCustomCodec
+    { 
+      encoder : (b -> r) ->  a
+    , make : b
+    , decoder : (r -> v) -> r -> v
+    }
+
+maybeCustom : a -> b -> MaybeCustomCodec v r a b
+maybeCustom a make = 
+   MaybeCustomCodec { encoder = always a
+    , make = make
+    , decoder = Basics.identity -- \ _ _ -> v
+    }
+
+maybeBuildVariant : v -> MaybeCustomCodec v r (v -> r) r -> Codec v r
+maybeBuildVariant defaultV (MaybeCustomCodec c) =
+    build 
+    (c.encoder Basics.identity)
+    (c.decoder (always defaultV))
+
+maybeVariant0 : v -> (r -> Bool) -> MaybeCustomCodec v r (r -> a) (Bool -> b) 
+         -> MaybeCustomCodec v r a b 
+maybeVariant0 constr proj (MaybeCustomCodec c) =
+  MaybeCustomCodec {
+     decoder = \ f -> c.decoder (\ r -> if proj r then constr else f r)
+   , make = c.make False
+               -- f de type b -> r
+   , encoder = \ f -> c.encoder 
+                      -- g de type (Bool -> b)
+                   (\g -> f (g False))
+                   (f <| c.make True)
+  }
+
+maybeVariant1 : (x -> v) -> (r -> Maybe y) -> Codec x y ->
+          MaybeCustomCodec v r ((x -> r) -> a) (Maybe y -> b) 
+         -> MaybeCustomCodec v r a b 
+maybeVariant1 constr proj cxy (MaybeCustomCodec c) =
+  MaybeCustomCodec {
+     decoder = \ f -> c.decoder 
+        (\ r -> 
+           case proj r of 
+             Nothing -> f r
+             Just y -> constr <| decoder cxy y
+        )
+   , make = c.make Nothing
+               -- f de type b -> r
+   , encoder = \ f -> c.encoder 
+                      -- g de type (Maybe y -> b)
+                   (\g -> f (g Nothing))
+                   (f << c.make << Just << encoder cxy)
+  }

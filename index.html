@@ -168,6 +168,7 @@ if ('serviceWorker' in navigator) {
     <body>       
         <h1>Diagram editor</h1>
         <button id="install" hidden>Install for offline use</button>
+        <button id="connect" onclick="tryConnect()">Connect to server</button>
    
      
         <!-- <p>
@@ -869,6 +870,74 @@ function disableInAppInstallPrompt() {
          document.addEventListener("keydown", function(event)  {
                     app.ports.onKeyDownActive.send(event);
          });
+
+         /*
+
+         Interaction with server with websocket
+
+         */
+         var online = false;
+         var ws = null;
+
+
+        //  const connectButton = document.querySelector("#connect");
+         function tryConnect() {
+            var rep = prompt("connect to what?","ws://localhost:8080");
+            if (rep === null) {
+                return;
+            }
+
+            ws = new WebSocket(rep);
+            ws.onclose = function(event) {
+                if (event.wasClean) {
+                    alert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+                } else {
+                    // par exemple : processus serveur arrêté ou réseau en panne
+                    // event.code est généralement 1006 dans ce cas
+                    alert('[close] Connection died');
+                }
+                online = false;
+            };
+            // La connexion est ouverte
+            ws.addEventListener("open", function (event) {
+            // socket.send("Coucou le serveur !");
+                online = true;
+                // je ne comrpends pas pourquoi il faut faire ca.
+                // (normalement, la declaration de expectedIfFromServer dans
+                // watcher.js devrait suffire)
+                expectedIdFromServer = 0;
+                alert("connected");
+                requestSnapshot((s) => ws.send(s));
+                
+            });
+
+            // Écouter les messages
+            ws.addEventListener("message", function (event) {
+                console.log("Voici un message du serveur", event.data);
+                handleServerToClientMsg((s) => ws.send(s),
+                      app.ports.protocolRequestSnapshot.send
+                    , (s) => {
+                        console.log("websocket received: ");
+                        console.log(s);
+                        app.ports.protocolReceiveJS.send(s);
+                    }
+                    , event.data) ;
+            });
+
+
+         };
+
+
+         app.ports.protocolSendJS.subscribe((arg) => {
+            if (!online)  {
+                app.ports.protocolReceiveJS.send([{isSender : true, msg:arg.msg}]);
+                return;
+            }
+            broadcastDataOnSocket((s) => ws.send(s), arg);
+         });
+
+
+        app.ports.test.subscribe((arg) => { console.log("test"); console.log(arg); });
         
         /*
 

@@ -1,4 +1,4 @@
-module Modes.SplitArrow exposing (graphDrawing, initialise, update, help)
+module Modes.SplitArrow exposing (fixModel, graphDrawing, initialise, update, help)
 
 
 
@@ -6,6 +6,7 @@ module Modes.SplitArrow exposing (graphDrawing, initialise, update, help)
 
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe
+import IntDict
 import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..), computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..))
@@ -16,10 +17,21 @@ import InputPosition exposing (InputPosition(..))
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import Geometry.Point exposing (Point)
+import CommandCodec exposing (protocolSendGraphModif)
+import CommandCodec exposing (protocolSendModif, protocolSend)
+import Format.GraphInfo as GraphInfo
 
 
 
-
+isValid : Model -> SplitArrowState -> Bool
+isValid model {chosenEdge, source, target} =
+   Graph.existsAll (getActiveGraph model)
+      [chosenEdge, source,target]
+  
+fixModel : Model -> SplitArrowState -> Model
+fixModel model state =
+  if isValid model state then model else {model | mode = DefaultMode }
+   
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
@@ -56,20 +68,41 @@ nextStep model finish state =
         info =
             stateInfo finish model state
     in
-    let m2 = addOrSetSel False info.movedNode <| setSaveGraph model info.graph in
-     if finish then ({ m2 | mode = DefaultMode }, computeLayout())  else
+    -- let finalGraph = setSelModif info.movedNode info.graph in
+    let finalGraph = info.graph in
+     if finish then ({ model | mode = DefaultMode }, 
+        protocolSendGraphModif model.graphInfo Msg.defaultModifId finalGraph)
+     --computeLayout())  
+    else
         let ne1 = (info.ne1, info.le1)
             ne2 = (info.ne2, info.le2)
         in
+        let tabId = model.graphInfo.activeTabId in
         let ids = 
-              if info.created then 
-                [ (info.movedNode, GraphDefs.getLabelLabel info.movedNode info.graph
-                   |> Maybe.withDefault ""),
+              (if info.created then 
+                [ (info.movedNode, info.movedLabel
+                   --GraphDefs.getLabelLabel info.movedNode info.graph
+                   --|> Maybe.withDefault ""
+                   ),
                   ne1, ne2 ]
               else
-                 [ ne1, ne2 ]
+                 [ ne1, ne2 ])
+              |>
+              List.map (\ (id, label) -> 
+                {id = id, label = Just label, tabId = tabId}
+              )
         in
-        (initialise_RenameModeWithDefault False ids m2, computeLayout ())
+        let (nextModel, idModif) = popIdModif model in
+        ({nextModel | mode = DefaultMode}, 
+        protocolSend
+        { id =  idModif 
+        , modif = GraphInfo.activeGraphModifHelper nextModel.graphInfo finalGraph
+        , selIds = IntDict.empty
+        , command = Msg.RenameCommand ids
+         })
+        -- Modes.Rename.newState finalGraph ids model.graphInfo
+        
+        -- (initialise_RenameModeWithDefault False ids m2, computeLayout ())
                           
 
 
@@ -84,8 +117,9 @@ nextStep model finish state =
 
 -- movedNode
 
-type alias Info = { graph : Graph NodeLabel EdgeLabel,
-                    movedNode : NodeId ,                    
+type alias Info = { graph : Graph.ModifHelper NodeLabel EdgeLabel,
+                    movedNode : NodeId ,  
+                    movedLabel : String,                  
                     created : Bool,
                     ne1 : EdgeId,
                     ne2 : EdgeId,
@@ -119,7 +153,7 @@ stateInfo finish m state =
              makeInfo (guessPosition m state)
            else
             case state.pos of
-              InputPosGraph id -> ((modelGraph, id), False)
+              InputPosGraph id -> ((Graph.newModif modelGraph, id), False)
               _ -> makeInfo m.mousePos                              
            
     in
@@ -131,12 +165,13 @@ stateInfo finish m state =
            else
              (newLabel, existingLabels)
     in
-    let (g1, ne1) = (Graph.newEdge g state.source n l1) in
-    let (g2, ne2) = (Graph.newEdge g1 n state.target l2) in
+    let (g1, ne1) = (Graph.md_newEdge g state.source n l1) in
+    let (g2, ne2) = (Graph.md_newEdge g1 n state.target l2) in
     -- TODO: it would be more efficient to just move the source/target of the chosenEdge
-    { graph = Graph.merge (if state.labelOnSource then ne1 else ne2) state.chosenEdge g2,
+    { graph = Graph.md_merge (if state.labelOnSource then ne1 else ne2) state.chosenEdge g2,
       created = created,
       movedNode = n,
+      movedLabel = otherLabel,
       ne1 = ne1,
       le1 = d1,
       ne2 = ne2,
@@ -153,7 +188,7 @@ graphDrawing m state =
         info =
             stateInfo False m state
     in
-    collageGraphFromGraph m info.graph        
+    collageGraphFromGraph m <| Graph.applyModifHelper info.graph        
 
 
 update : SplitArrowState -> Msg -> Model -> ( Model, Cmd Msg )

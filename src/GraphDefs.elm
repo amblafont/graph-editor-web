@@ -1,15 +1,15 @@
 module GraphDefs exposing (EdgeLabel, NodeLabel,
    NormalEdgeLabel, EdgeType(..), GenericEdge, edgeToNodeLabel,
-   newEdgeLabelAdj,
+   newEdgeLabelAdj, selectIds,
    filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
    filterNormalEdges, coqProofTexCommand,
    newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
    selectedEdges, mapNormalEdge,  mapDetails, 
-   createNodeLabel, createProofNode,
+   createNodeLabel, md_createNodeLabel, createProofNode, createProofNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getNodePos, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, 
    clearWeakSelection,
-   selectedGraph,
+   selectedGraph, mergeFunctions,
    fieldSelect,
    selectedNodes,
    isEmptySelection,
@@ -19,7 +19,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram,
-   centerOfNodes, mergeWithSameLoc,
+   centerOfNodes, --mergeWithSameLoc,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect, weaklySelectMany,
    getSurroundingDiagrams, updateNormalEdge,
@@ -64,6 +64,16 @@ type alias NormalEdgeLabel =
   , isAdjunction : Bool}
 
 coqProofTexCommand = "coqproof"
+
+mergeFunctions : Graph.MergeFunctions NodeLabel EdgeLabel
+mergeFunctions = 
+  {  mergeNode = \ n1 {pos, label, dims, isMath, zindex} -> 
+         {n1 | 
+            pos = pos, label = label, dims = dims 
+            , isMath = isMath, zindex = zindex
+         }
+    , mergeEdge = \ e1 {details, zindex} -> {e1 | details = details, zindex = zindex}
+  }
 
 edgeToNodeLabel : Point -> EdgeLabel -> NodeLabel
 edgeToNodeLabel pos l = 
@@ -122,6 +132,14 @@ isNormalId g id = Graph.get id (always True)
 
 mapNormalEdge : (NormalEdgeLabel -> NormalEdgeLabel) -> EdgeLabel -> EdgeLabel
 mapNormalEdge = mapEdgeType >> mapDetails
+
+mapMaybeNormalEdge : (NormalEdgeLabel -> Maybe NormalEdgeLabel) -> EdgeLabel -> Maybe EdgeLabel
+mapMaybeNormalEdge f e = 
+  case e.details of
+    PullshoutEdge -> Nothing
+    NormalEdge l -> case (f l) of 
+                      Nothing -> Nothing
+                      Just x -> Just { e | details = NormalEdge x}
 
 flattenDetails : GenericEdge (Maybe a) -> Maybe (GenericEdge a)
 flattenDetails e = 
@@ -234,26 +252,35 @@ updateNormalEdge id f =
     Graph.updateEdge id 
      (mapNormalEdge f)
 
+md_updateNormalEdge : EdgeId -> (NormalEdgeLabel -> NormalEdgeLabel) 
+   -> Graph.ModifHelper NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
+md_updateNormalEdge id f =
+    Graph.md_updateEdge id 
+     (mapNormalEdge f)
+
 updateStyleEdges : (ArrowStyle -> Maybe ArrowStyle) 
-        -> List (Edge EdgeLabel) -> Graph NodeLabel EdgeLabel -> Maybe (Graph NodeLabel EdgeLabel)
+        -> List (Edge EdgeLabel) -> Graph NodeLabel EdgeLabel -> 
+           Graph.ModifHelper NodeLabel EdgeLabel -- Maybe (Graph NodeLabel EdgeLabel)
 updateStyleEdges update edges g =
      let updateStyle e = update e.label.details.style 
                            |> Maybe.map (\newStyle ->
                               { id = e.id , style = newStyle }
                            )                    
      in
-     let newEdges =  edges
+     let newEdges =   edges
                  |> List.filterMap filterEdgeNormal
                  |> List.filterMap updateStyle
      in
      let updateEdge edge graph =            
-              updateNormalEdge edge.id 
+              md_updateNormalEdge edge.id 
               (\ e -> { e | style = edge.style})
               graph
      in
-     if newEdges == [] then Nothing else
-     let newGraph = List.foldl updateEdge g newEdges in
-     Just newGraph
+     let modif = Graph.newModif g in
+     if newEdges == [] then modif else
+     let newGraph = List.foldl updateEdge modif newEdges in
+   --   Just
+      newGraph
 
 
 exportQuiver : Int -> Graph NodeLabel EdgeLabel -> JEncode.Value
@@ -284,6 +311,7 @@ newNodeLabel : Point -> String -> Bool -> Int -> NodeLabel
 newNodeLabel p s isMath zindex = 
     { pos = p , label = s, dims = Nothing, selected = False, weaklySelected = False,
                          isMath = isMath, zindex = zindex, isCoqValidated = False}
+                     
 
 makeProofString : String -> String
 makeProofString s = "\\" ++ coqProofTexCommand ++ "{" ++ s ++ "}"
@@ -321,15 +349,26 @@ createNodeLabel g s p =
     let (g2, id) = Graph.newNode g label in
      (g2, id, p)
 
+md_createNodeLabel : Graph.ModifHelper NodeLabel EdgeLabel -> String -> Point -> (Graph.ModifHelper NodeLabel EdgeLabel,
+                                                                       NodeId, Point)
+md_createNodeLabel g s p =
+    let label = newNodeLabel p s True defaultZ in
+    let (g2, id) = Graph.md_newNode g label in
+     (g2, id, p)
+
+createProofNodeLabel : String -> Bool -> Point -> NodeLabel
+createProofNodeLabel s coqValidated p =
+    let label = newProofLabel p s in
+    { label | isCoqValidated = coqValidated } 
+
 createProofNode : Graph NodeLabel EdgeLabel -> String -> Bool -> Point -> Graph NodeLabel EdgeLabel
 createProofNode g s coqValidated p =
-    let label = newProofLabel p s in
-    let (g2, id) = Graph.newNode g { label | isCoqValidated = coqValidated } in
+    let (g2, id) = Graph.newNode g <| createProofNodeLabel s coqValidated p in
      g2
 
 createValidProofAtBarycenter : Graph NodeLabel EdgeLabel -> List (Node NodeLabel) -> String -> Graph NodeLabel EdgeLabel
 createValidProofAtBarycenter g nodes proof =
-   let nodePositions = Debug.log "Node positions" <| List.map (.label >> .pos) <| nodes in
+   let nodePositions = List.map (.label >> .pos) <| nodes in
    createProofNode g proof True
           <| Geometry.Point.barycenter nodePositions
 
@@ -427,10 +466,10 @@ selectedId g =
       _ -> Nothing
 
 
-removeSelected : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+removeSelected : Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
 removeSelected g = 
    let f = fieldSelect g in
-   Graph.drop f f g
+   Graph.md_drop f f <| Graph.newModif g
 
 clearSelection : Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 clearSelection g =
@@ -464,6 +503,12 @@ getLabelLabel id g = g |> Graph.get id (Just << .label)
             Maybe.andThen 
                (\ l -> if l.isAdjunction then Nothing else Just l.label))
           |> Maybe.join
+
+selectIds : List Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+selectIds ids graph =
+   clearSelection graph 
+   |> Graph.updateList
+   ids (\n -> {n | selected = True})  (\n -> {n | selected = True})
 
 addOrSetSel : Bool -> Graph.Id -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
 addOrSetSel keep o gi =
@@ -514,29 +559,26 @@ selectSurroundingDiagram pos gi =
 
 centerOfNodes : List (Node NodeLabel) -> Point
 centerOfNodes nodes = ((Geometry.rectEnveloppe <| List.map (.pos << .label) nodes) |> Geometry.centerRect)
-
+{-
 mergeWithSameLoc : Node NodeLabel -> Graph NodeLabel EdgeLabel -> Maybe (Graph NodeLabel EdgeLabel)
 mergeWithSameLoc n g =
     case getNodesAt g n.label.pos |> List.filterNot ((==) n.id) of
          [ i ] -> Just (Graph.removeLoops <| Graph.recursiveMerge i n.id g)
          _ -> Nothing
-
-findReplaceInSelected : Graph NodeLabel EdgeLabel -> {search : String, replace: String} ->  Graph NodeLabel EdgeLabel
+-}
+findReplaceInSelected : Graph NodeLabel EdgeLabel -> {search : String, replace: String} ->  Graph.ModifHelper NodeLabel EdgeLabel
 findReplaceInSelected g r =
-  let repl sel s = 
-       if sel then
-          String.replace r.search r.replace s
+  
+  let sel = fieldSelect g in
+  let repl b x = 
+       if b && String.contains r.search x.label then
+          Just { x | label = String.replace r.search r.replace x.label}
        else
-          s
+          Nothing
   in
-  let f = fieldSelect g in
-  Graph.map (\ _ n -> { n | label = repl (f n) n.label })
-     (\_  e -> mapNormalEdge 
-           (\ l -> { l |  label = repl (f e) l.label })
-           e
-           ) 
-           
-      g
+  Graph.md_map (\ _ n -> repl (sel n) n)
+     (\_  e -> mapMaybeNormalEdge (repl (sel e)) e ) 
+           <| Graph.newModif  g
 
 distanceToNode : Point -> NodeLabel -> Float
 distanceToNode p n = 

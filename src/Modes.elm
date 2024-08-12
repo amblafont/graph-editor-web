@@ -3,9 +3,11 @@ module Modes exposing (..)
 import ArrowStyle exposing (ArrowStyle)
 import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
-import QuickInput
 import InputPosition exposing (InputPosition)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
+import Format.GraphInfo as GraphInfo exposing (TabId)
+import Msg exposing (ModifId, MoveMode)
+
 
 
 type Mode
@@ -17,7 +19,7 @@ type Mode
       -- (which may differ from the labels of the objects in the model)
       -- the boolean specifies whether we need to save the state at the
       -- end
-    | RenameMode Bool (List (Graph.Id, String))
+    | RenameMode RenameState
     | DebugMode
     | SquareMode SquareState
     | RectSelect Point
@@ -40,7 +42,7 @@ toString m = case m of
     NewArrow _ -> "New arrow"
     NewLine _ -> "New line"
     Move _ -> "Move"
-    RenameMode _ _ -> "Rename"
+    RenameMode _ -> "Rename"
     DebugMode -> "Debug"
     SquareMode _ -> "Square"
     RectSelect _ -> "Rect select"
@@ -66,24 +68,25 @@ type alias ResizeState =
    { sizeGrid : Int,
      onlyGrid : Bool
    }
+type alias RenameState = 
+   { next:List { id : Graph.Id, tabId : TabId, label : String},
+     idModif : ModifId }
+        {- { next : List { id : Graph.Id, label : Maybe String, tabId : GraphInfo.TabId } 
+        , idModif : ModifId
+        } -}
+
 
 type alias MoveState = 
    {   pos : InputPosition
       -- should we save at the end
-     , save : Bool
+     , idModif : ModifId
      , mode : MoveMode
      , direction : MoveDirection
     --  , merge : Bool
   }
 type MoveDirection =
   Free | Vertical | Horizontal
-type MoveMode = 
-    -- the move stops when we release the key
-      PressMove
-    -- the move stops when we click
-    | FreeMove
-    -- we don't know yet
-    | UndefinedMove
+
     
 
 type alias EnlargeState = 
@@ -106,8 +109,8 @@ type alias SplitArrowState =
 
 type alias PullshoutState =
     { chosenEdge : EdgeId
-    , source : Graph.Id
-    , target : Graph.Id
+    -- , source : Graph.Id
+    -- , target : Graph.Id
     , kind : PullshoutKind
     , currentDest : EdgeId
     , possibilities : List EdgeId

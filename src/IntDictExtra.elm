@@ -1,6 +1,7 @@
-module IntDictExtra exposing (filterMap, removeList, getList, any)
+module IntDictExtra exposing (filterMap, removeList, getList, any, codec)
 
 import IntDict exposing (IntDict)
+import Codec exposing (Codec)
 
 filterMap : (Int -> a -> Maybe b) -> IntDict a -> IntDict b
 filterMap f d =
@@ -18,3 +19,7 @@ getList l d =
 
 any : (a -> Bool) -> IntDict a -> Bool
 any f d = IntDict.filter (always f) d |> IntDict.isEmpty |> not
+
+codec : Codec (IntDict a) (List (Int, a))
+codec = 
+   Codec.build IntDict.toList IntDict.fromList

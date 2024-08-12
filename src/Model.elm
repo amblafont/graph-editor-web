@@ -1,22 +1,26 @@
 module Model exposing (..)
 
-
 import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
 import Geometry.Point as Point exposing (Point)
 import InputPosition
+import Format.GraphInfoCodec
 import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel, coqProofTexCommand)
 import HtmlDefs
 import List.Extra
+import ArrowStyle
 
 import Modes exposing (Mode(..))
 
-import Format.GraphInfo exposing (GraphInfo, Tab)
-import ParseLatex
+import Format.GraphInfo exposing (GraphInfo, Tab, TabId, Modif)
+-- import ParseLatex
 import Polygraph exposing (empty)
 import Html exposing (q)
 import Zindex exposing (backgroundZ, defaultZ)
+import Html exposing (a)
+import Format.GraphInfo as GraphInfo
+import Modif
 
 
 
@@ -32,10 +36,20 @@ minRulerMargin = 50
 maxRulerMargin = 2000
 
 
+-- type alias ModifId = Maybe Int
 type alias Model = {
   -- only one tab should be active
-      tabs : List Tab
-    , history : List GraphInfo
+      graphInfo : GraphInfo
+      -- tabs : List Tab
+    -- , nextTabId : TabId
+    -- , activeTabId : TabId
+    , history : List (List Modif)
+    {-
+    when receiving a modif, it is added to the head 
+    of the history if its id is the sme as nextModifId
+    -}
+    , topModifId : ModifId
+    , nextModifId : Int
     -- , selectedObjs : List Obj
     , mousePos : Point
     , specialKeys : HtmlDefs.Keys
@@ -57,134 +71,114 @@ type alias Model = {
     -- blitzFlag : Bool
     -- , bottomText : String
     , autoSave : Bool
-    , latexPreamble : String
+    -- , latexPreamble : String
     , scenario : Scenario
     , defaultGridSize : Int
     -- margin for the rule
     , rulerMargin : Int
     , rulerShow : Bool
+    
     }
 
 
 undo : Model -> Model
-undo m = popHistory <| updateWithGraphInfo m <| peekHistory m
+undo m =
+   case m.history of
+      [] -> m
+      t :: q ->
+        let m2 = { m | history = q, topModifId = defaultModifId} in
+        case  Modif.fold GraphInfo.applyModifSimple m2.graphInfo t of 
+          Nothing ->
+            --  let _ = Debug.log "" "failed to undo" in
+             m2
+          Just {next} -> {m2 | graphInfo = next}
 
 toGraphInfo : Model -> GraphInfo
-toGraphInfo m = { tabs = m.tabs, latexPreamble = m.latexPreamble }
+toGraphInfo m = m.graphInfo
+  --  { tabs = m.tabs, latexPreamble = m.latexPreamble, 
+    --  nextTabId = m.nextTabId, activeTabId = m.activeTabId }
 
-updateWithGraphInfo : Model -> GraphInfo -> Model
-updateWithGraphInfo m {tabs, latexPreamble} = 
-   { m | tabs = tabs, latexPreamble = latexPreamble}
+setGraphInfo : Model -> GraphInfo -> Model
+setGraphInfo m gi = { m | graphInfo = gi }
+  --  { m | tabs = tabs, latexPreamble = latexPreamble}
+
+updateGraphInfo : Model -> (GraphInfo -> GraphInfo) -> Model 
+updateGraphInfo m f = setGraphInfo m <| f <| toGraphInfo m
 
 clearHistory : Model -> Model
-clearHistory m = { m | history = [] }
+clearHistory m = { m | history = [], topModifId = defaultModifId, nextModifId = 0 }
 
-peekHistory : Model -> GraphInfo
-peekHistory m = List.head m.history |> Maybe.withDefault (toGraphInfo m)
+-- pushHistoryMaybe : List Modif -> Model -> Model 
 
-pushHistory : Model -> Model
-pushHistory m = { m | history = List.take depthHistory (toGraphInfo m :: m.history)}
+pushHistory : ModifId -> List Modif -> Model -> Model
+pushHistory id modif m = if modif == [] then m else 
+         case (modifIdsEq m.topModifId id, m.history) of
+            (True, t  :: q) ->
+               { m | history = (modif ++ t) :: q}
+            _ ->
+               { m | history = List.take depthHistory 
+                               (modif :: m.history)
+                    , topModifId = id}
+pushHistorySingle : ModifId -> Modif -> Model -> Model
+pushHistorySingle id modif m = pushHistory id [modif] m
 
-popHistory : Model -> Model
-popHistory m = { m | history = List.tail m.history |> Maybe.withDefault []}
 
 
 
-emptyTab : Tab
-emptyTab = { active = True, title = "1", sizeGrid = 200, graph = Graph.empty}
-
-getActiveTabInTabs : List Tab -> Tab
-getActiveTabInTabs tabs =
-   List.Extra.find .active tabs |> Maybe.withDefault emptyTab
+-- getActiveTabInTabs : Int -> List Tab -> Tab
+-- getActiveTabInTabs activeId tabs =
+--    List.Extra.find (.id >> (==) activeId) tabs |> 
+--    Maybe.withDefault (emptyTab 0)
 
 getActiveTab : Model -> Tab
 getActiveTab m = 
-  getActiveTabInTabs m.tabs
+   GraphInfo.getActiveTab m.graphInfo -- |> Maybe.withDefault (emptyTab 0)
 
-
+-- keep the id
 updateFirstTab : Model -> (Tab -> Tab) -> Model
 updateFirstTab m f =
-   case m.tabs of
+   let gi = m.graphInfo in
+   case gi.tabs of
      [] -> m
-     t :: q -> {m | tabs = f t :: q}
-
+     t :: q ->
+         let newTab = f t in         
+         {m | graphInfo = { gi | tabs = { newTab | id = t.id} :: q}}
+{-
 clearActiveTabs : List Tab -> List Tab
 clearActiveTabs tabs =
   List.map (\t -> {t | active = False}) tabs
+  -}
 
-activateNthTab : Model -> Int -> Model
-activateNthTab m i =
-  let tabs = 
-         clearActiveTabs m.tabs
-         |> List.Extra.updateAt i (\t -> {t | active = True})
-  in 
-    { m | tabs = tabs }
+
+
+activateTab : Model -> TabId -> Maybe Model
+activateTab m id = 
+  let gi = m.graphInfo in
+  if GraphInfo.getTabById gi id == Nothing then Nothing else
+  Just { m | graphInfo = { gi | activeTabId = id } }
+  -- { m | activeTabId = id }
+  -- let tabs = 
+  --        clearActiveTabs m.tabs
+  --        |> List.Extra.updateAt i (\t -> {t | active = True})
+  -- in 
+  --   { m | tabs = tabs }
 
 activateFirstTab : Model -> Model
 activateFirstTab m =
-  activateNthTab m 0
+  List.head m.graphInfo.tabs |> Maybe.map .id
+  |> Maybe.withDefault 0
+  |> activateTab m
+  |> Maybe.withDefault m
 
-removeActiveTabs : Model -> Model
-removeActiveTabs m =
-   let tabs = List.filter (not << .active) m.tabs in 
-   case tabs of 
-     [] -> m
-     _ -> 
-       let m2 = pushHistory m in
-       activateFirstTab { m2 | tabs = tabs }
-
-nextTabName : Model -> String
-nextTabName m =
-   let n = Maybe.withDefault 0 <| List.maximum <| List.filterMap (.title >> String.toInt) m.tabs in
-   String.fromInt (1 + n)
-
-
-createNewTab : Model -> String -> Model
-createNewTab m title =
-  let sizeGrid = getActiveSizeGrid m in
-  { m | tabs = clearActiveTabs m.tabs ++ 
-    [ 
-      { graph = Graph.empty ,
-        sizeGrid = sizeGrid ,
-        title = title ,
-        active = True
-      }
-    ]
-  }
-
-duplicateTab : Model -> String -> Model
-duplicateTab m title =
-  let tab = getActiveTab m in 
-  { m | tabs = clearActiveTabs m.tabs ++ 
-    [ 
-      { tab |
-        title = title ,
-        active = True
-      }
-    ]
-  }
-
-swapActiveTab : List Tab -> Bool -> List Tab
-swapActiveTab l forward =
-  case l of 
-     t1 :: t2 :: q -> 
-          if (forward && t1.active) || (not forward && t2.active) then 
-            t2 :: t1 :: q 
-          else 
-            t1 :: swapActiveTab (t2 :: q) forward
-     _ -> l
-      
-            
-
-moveTabRight : Model -> Model
-moveTabRight m = {m | tabs = swapActiveTab m.tabs True}
-
-
-moveTabLeft : Model -> Model
-moveTabLeft m = {m | tabs = swapActiveTab m.tabs False}
 
 updateActiveTab : Model -> (Tab -> Tab) -> Model
-updateActiveTab m f = { m | tabs = List.Extra.updateIf .active f m.tabs }
+updateActiveTab m f = 
+    let gi = m.graphInfo in
+    { m | graphInfo = { gi | tabs = List.Extra.updateIf 
+                        (GraphInfo.isActiveTab m.graphInfo) f gi.tabs } }
+  
+-- { m | tabs = List.Extra.updateIf 
+--                        (GraphInfo.isActiveTab m) f m.tabs }
 
 renameActiveTab : Model -> String -> Model
 renameActiveTab m s =
@@ -198,6 +192,12 @@ getActiveGraph m =
 getActiveTitle m =
   getActiveTab m |> .title
 
+updateTabs m f =
+   let gi = m.graphInfo in
+   { m | graphInfo = { gi | tabs = f gi.tabs } }
+
+getActiveSizeGrid m = m.graphInfo |> GraphInfo.getActiveSizeGrid
+
 updateActiveGraph : Model -> (Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel)
    -> Model
 updateActiveGraph m f =
@@ -207,24 +207,59 @@ setActiveGraph : Model -> Graph NodeLabel EdgeLabel -> Model
 setActiveGraph m g = 
   updateActiveGraph m <| always g
 
-getActiveSizeGrid : Model -> Int
-getActiveSizeGrid m = getActiveTab m |> .sizeGrid
-
 getCurrentSizeGrid : Model -> Int
 getCurrentSizeGrid m = 
   case m.mode of
       ResizeMode s -> s.sizeGrid
-      _ -> getActiveSizeGrid m
+      _ -> GraphInfo.getActiveSizeGrid m.graphInfo
 
 setActiveSizeGrid : Model -> Int -> Model
 setActiveSizeGrid m s =
     updateActiveTab m <| \t -> { t | sizeGrid = s}
 
+{-
+setSaveGraphWithGraph : Model -> Graph.ModifHelper NodeLabel EdgeLabel 
+          -> (Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel) -> Model 
+setSaveGraphWithGraph model modif f = 
+   updateActiveGraph (setSaveGraph model modif) f
+-}
+{-
+applyModifsMaySave : Model -> Bool -> List GraphInfo.Modif -> Model
+applyModifsMaySave m save g =
+    case Modif.fold GraphInfo.applyModif m.graphInfo g of 
+      Nothing -> m
+      Just r -> let m2 = {m | graphInfo = r.next  } in
+                if save then
+                   pushHistory Nothing r.undo m2
+                else
+                   m2
 
-setSaveGraph : Model -> Graph NodeLabel EdgeLabel -> Model
+applyModifs : Model -> List GraphInfo.Modif -> Model
+applyModifs m g = applyModifsMaySave m True g
+
+applyModif : Model -> GraphInfo.Modif -> Model
+applyModif m g = applyModifs m [g]
+  --  case GraphInfo.applyModif m g of 
+  --     Nothing -> m
+  --     Just r -> pushHistory [r.undo] r.next
+  -}
+applyModifResult : Bool -> Model -> ModifId
+             -> GraphInfo.ModifResult
+             -> Model
+applyModifResult save m idModif result =
+     case result of 
+      Nothing -> m
+      Just r -> let m2 = {m | graphInfo = r.next.graphInfo  } in
+                if save then
+                pushHistory idModif [r.undo] m2
+                else m2
+{-
+setSaveGraph : Model -> Graph.ModifHelper NodeLabel EdgeLabel -> Model
 setSaveGraph m g = 
-   let m2 = pushHistory m in
-   setActiveGraph m2 g
+    applyModif m <| GraphInfo.activeGraphModifHelper m.graphInfo g 
+    -}
+  --  let m2 = pushHistory m [] in
+  --  setActiveGraph m2 g
 
 
 -- inputPositionPoint : Point -> InputPosition -> Point
@@ -240,9 +275,16 @@ clearModel m =
 createModel : Int -> Int -> Model
 createModel sizeGrid rulerMargin =
     let g = Graph.empty in
-    { tabs = [ { active = True, graph = g, sizeGrid = sizeGrid, title = "1" } ]
+    { 
+      graphInfo = {tabs = [ { graph = g, sizeGrid = sizeGrid, title = "1", id = 0 } ]
+    , nextTabId = 1
+    , activeTabId = 0
+    , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
+      }
     , defaultGridSize = sizeGrid
     , history = []
+    , nextModifId = 0
+    , topModifId = defaultModifId
     , mode = DefaultMode
     , statusMsg = ""
     , mouseOnCanvas = False
@@ -254,7 +296,7 @@ createModel sizeGrid rulerMargin =
     , hideGrid = False
     -- , bottomText = ""
     , autoSave = True
-    , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
+    
     , scenario = Standard
     , showOverlayHelp = False
     , squareModeProof = False
@@ -330,33 +372,21 @@ createModel sizeGrid rulerMargin =
         --  { pos = (sizeGrid / 2, sizeGrid / 2), label = "", dims = Nothing,
         --    selected = True } -}
 
-initialise_RenameModeWithDefault : Bool -> List (Graph.Id, String) -> Model -> Model
-initialise_RenameModeWithDefault save l m =
-  case l of
-     [] -> { m | mode = DefaultMode }
-     _ -> { m | mode = RenameMode save l }
-
-
-
-initialise_RenameMode : Bool -> List Graph.Id -> Model -> Model
-initialise_RenameMode save l m =
-    let ls =  List.filterMap 
-              (\id -> 
-                getActiveGraph m |>
-                GraphDefs.getLabelLabel id 
-                |> Maybe.map (\s -> (id, s))
-              
-              ) l
-    in
-        initialise_RenameModeWithDefault save ls m
-        
+popIdModif : Model -> (Model, ModifId)
+popIdModif m = ({m | nextModifId = m.nextModifId + 1}, trueModifId m.nextModifId)
 
 
 addOrSetSel : Bool -> Graph.Id -> Model -> Model
 addOrSetSel keep o m =
    updateActiveGraph m (GraphDefs.addOrSetSel keep o)
-        
-      
+
+
+        {-
+setSelModif : Graph.Id -> Graph.ModifHelper NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
+setSelModif id g = 
+    Graph.md_update id (\n -> {n | selected = True}) (\n -> {n | selected = True})
+    g
+      -}
 
 
   
@@ -384,18 +414,20 @@ addOrSetSel keep o m =
 
 
 -- TODO: check if it is still used
-mayCreateTargetNodeAt : Model -> Point -> String -> Bool -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNodeAt : Model -> Point -> String -> Bool -> ( ( Graph.ModifHelper NodeLabel EdgeLabel, NodeId ), Bool )
 mayCreateTargetNodeAt m pos s isDefaultZ =
    let g = getActiveGraph m in
+   let modifGraph = Graph.newModif g in
    case GraphDefs.getNodesAt g pos of
-      [ n ] -> ((g, n), False)
+      [ n ] -> ((modifGraph, n), False)
       _ ->
-            ( Graph.newNode g 
-              <| newNodeLabel pos s True (if isDefaultZ then defaultZ else backgroundZ)
+          let label = newNodeLabel pos s True (if isDefaultZ then defaultZ else backgroundZ) in
+              ( Graph.md_newNode modifGraph 
+              <| label
             , True )
 
 -- only Nodes ?
-mayCreateTargetNode : Model -> String -> Bool -> ( ( Graph NodeLabel EdgeLabel, NodeId ), Bool )
+mayCreateTargetNode : Model -> String -> Bool -> ( ( Graph.ModifHelper NodeLabel EdgeLabel, NodeId ), Bool )
 mayCreateTargetNode m =
   mayCreateTargetNodeAt m m.mousePos
     
@@ -427,7 +459,9 @@ keyboardPosToPoint m chosenNode p =
    case Graph.getNode chosenNode <| getActiveGraph m of
       Nothing -> m.mousePos
       Just { pos } -> 
-         let delta = InputPosition.deltaKeyboardPos (getActiveSizeGrid m) p in
+         let delta = InputPosition.deltaKeyboardPos 
+                 (GraphInfo.getActiveSizeGrid m.graphInfo) p 
+         in
          Point.add pos delta
 
 toggleHelpOverlay : Model -> Model
@@ -436,10 +470,33 @@ toggleHelpOverlay model = {model | showOverlayHelp = not model.showOverlayHelp }
 restrictSelection : Model -> Model
 restrictSelection model = 
     let modelGraph = getActiveGraph model in
-    let sizeGrid = getActiveSizeGrid model in
-       { model |
+    let sizeGrid = GraphInfo.getActiveSizeGrid model.graphInfo in
+    let gi = model.graphInfo in
+       { model | graphInfo = {gi |
                            tabs = [ {graph = GraphDefs.selectedGraph modelGraph
                                , sizeGrid = sizeGrid, title = getActiveTitle model, 
-                               active = True }]
+                               id = 0 }]
+                               , activeTabId = 0
+                               , nextTabId = 1 }
       }
               
+returnUpdateStyle : (ArrowStyle.ArrowStyle -> Maybe ArrowStyle.ArrowStyle) 
+                  -> Model -> List (Graph.Edge EdgeLabel) 
+                  -> Graph.ModifHelper NodeLabel EdgeLabel -- (Model, Cmd Msg)
+returnUpdateStyle updateStyle model edges =
+    let modifHelper = GraphDefs.updateStyleEdges 
+                  updateStyle
+                  edges
+                  (getActiveGraph model)
+    in
+    modifHelper
+    {-
+    let _ = Debug.log "applied modif helper" 
+             <| Codec.encoder Graph.codec
+             <| Graph.debugModifHelperGraph
+             <| modifHelper in
+             -}
+    -- let modif = {-  Debug.log "mdoif" <| -} Graph.finaliseModif modifHelper in
+    -- updateModifHelper { model | mode = DefaultMode } modifHelper
+
+        

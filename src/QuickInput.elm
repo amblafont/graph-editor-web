@@ -93,14 +93,16 @@ equalityParser =
 
 -- TODO
 -- replaces the given edge with a composition of edges
-splitWithChain : Graph NodeLabel EdgeLabel -> HandSide -> EdgeId -> Graph NodeLabel EdgeLabel
-splitWithChain g ch id =
+splitWithChain : Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel -> HandSide -> EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
+splitWithChain g modifiedGraph ch id =
    -- to get the position
    -- let gd = GraphDrawing.toDrawingGraph g in
+--    let modifiedGraph = Graph.newModif g in
    Graph.getEdge id g |> Maybe.map (\ edge ->
     let on1 = Graph.getNode edge.from g
         on2 = Graph.getNode edge.to g
     in
+    
     case (on1, on2) of
         (Just n1, Just n2) ->
             buildGraphSegment 
@@ -109,15 +111,15 @@ splitWithChain g ch id =
               edges = ch,
               alignLeft = True           
             }
-            <| (Graph.removeEdge id g)            
-        _ -> g
+            <| (Graph.md_removeEdge edge.id modifiedGraph)            
+        _ -> modifiedGraph
     )
-    |> Maybe.withDefault g
+    |> Maybe.withDefault modifiedGraph
    -- let g2 = Graph.s
 
 buildGraphSegment : Segment 
-     -> Graph NodeLabel EdgeLabel 
-     -> Graph NodeLabel EdgeLabel 
+     -> Graph.ModifHelper NodeLabel EdgeLabel 
+     -> Graph.ModifHelper NodeLabel EdgeLabel 
 buildGraphSegment s g =
     let offset = Point.subtract s.to s.from
              |> Point.resize (1 / (List.length s.edges |> toFloat))
@@ -127,8 +129,8 @@ buildGraphSegment s g =
         s.from s.fromId s.toId s.edges
 
 
-buildGraphEdges : Graph NodeLabel EdgeLabel -> Point -> Geometry.LabelAlignment 
-           -> Point -> NodeId -> NodeId -> List Edge -> Graph NodeLabel EdgeLabel
+buildGraphEdges : Graph.ModifHelper NodeLabel EdgeLabel -> Point -> Geometry.LabelAlignment 
+           -> Point -> NodeId -> NodeId -> List Edge -> Graph.ModifHelper NodeLabel EdgeLabel
 buildGraphEdges g offset alignment pos from to ch =
    let style =
           let st= ArrowStyle.empty in
@@ -137,12 +139,12 @@ buildGraphEdges g offset alignment pos from to ch =
    case ch of
        [] -> g
        [ e ] -> 
-          Tuple.first <| Graph.newEdge g from to
+          Tuple.first <| Graph.md_newEdge g from to
                         <| GraphDefs.newEdgeLabel e.edge style
        e :: tail -> 
           let posf = Point.add offset pos in          
-          let (g2, idto, _ ) = GraphDefs.createNodeLabel g e.to posf in          
-          let (g3, _) = Graph.newEdge g2 from idto
+          let (g2, idto, _ ) = GraphDefs.md_createNodeLabel g e.to posf in          
+          let (g3, _) = Graph.md_newEdge g2 from idto
                         <| GraphDefs.newEdgeLabel e.edge
                         <| style
           in
@@ -154,9 +156,10 @@ type alias Segment = { edges : List Edge, from : Point, fromId : NodeId, to : Po
 
 -- it implicitly assumes that source and targets are not empty
 orientEquation : Point -> Equation -> Float -> Graph NodeLabel EdgeLabel ->
-                   (Graph NodeLabel EdgeLabel, 
+                   (Graph.ModifHelper NodeLabel EdgeLabel, 
                    List Segment)
-orientEquation iniP (source, but) offset g =
+orientEquation iniP (source, but) offset origG =
+   let g = Graph.newModif origG in
    
    let nsource = List.length source
        nbut    = List.length but
@@ -191,18 +194,18 @@ orientEquation iniP (source, but) offset g =
        bottomLeftLabel = lastLabel but1
    in
    
-   let (g2, topLeftId, _)    = GraphDefs.createNodeLabel g  startLabel topLeftPos in
-   let (g3, bottomRightId, _) = GraphDefs.createNodeLabel g2 endLabel   bottomRightPos   in
+   let (g2, topLeftId, _)    = GraphDefs.md_createNodeLabel g  startLabel topLeftPos in
+   let (g3, bottomRightId, _) = GraphDefs.md_createNodeLabel g2 endLabel   bottomRightPos   in
    let (g4, topRightId, _) = 
         if source2 == [] then
           (g3, bottomRightId, iniP)
         else
-           GraphDefs.createNodeLabel g3 topRightLabel topRightPos   in
+           GraphDefs.md_createNodeLabel g3 topRightLabel topRightPos   in
    let (g5, bottomLeftId, _) = 
         if but2 == [] then
           (g4, bottomRightId, iniP)
         else   
-           GraphDefs.createNodeLabel g4 bottomLeftLabel bottomLeftPos in
+           GraphDefs.md_createNodeLabel g4 bottomLeftLabel bottomLeftPos in
    (g5, 
    [
       { edges = source1, from = topLeftPos, fromId = topLeftId, to = topRightPos, toId = topRightId, alignLeft = True }
@@ -213,7 +216,7 @@ orientEquation iniP (source, but) offset g =
    
 
 
-graphEquation : Point -> Float -> Equation -> Graph NodeLabel EdgeLabel -> Graph NodeLabel EdgeLabel
+graphEquation : Point -> Float -> Equation -> Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
 graphEquation pos offset eq gi =
     let (gf, l) = orientEquation pos eq offset gi in
     List.foldl 

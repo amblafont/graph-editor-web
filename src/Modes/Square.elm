@@ -1,4 +1,4 @@
-module Modes.Square exposing (help, graphDrawing, initialise, update)
+module Modes.Square exposing (help, graphDrawing, initialise, update, fixModel)
 
 
 
@@ -6,7 +6,7 @@ module Modes.Square exposing (help, graphDrawing, initialise, update)
 
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe exposing (withDefault)
-import Msg exposing (Msg(..))
+import Msg exposing (Msg(..), Command(..))
 import HtmlDefs exposing (Key(..), computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import List.Extra exposing (uniquePairs, getAt)
@@ -14,13 +14,24 @@ import Modes exposing (SquareState, Mode(..))
 import Model exposing (..)
 import InputPosition exposing (InputPosition(..))
 import ArrowStyle
+import IntDict
 
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import MyDiff
 import Geometry.Point as Point exposing (Point)
+import CommandCodec exposing (protocolSendGraphModif, protocolSendModif, protocolSend, updateModifHelperWithId)
+import Modes.Rename
+import Format.GraphInfo as GraphInfo
 
 
 
+fixModel : Model -> SquareState -> Model
+fixModel model state =
+   if Graph.existsAll (getActiveGraph model)
+       [state.n1, state.e1.id, state.n2, state.e2.id]
+   then 
+     model else {model | mode = DefaultMode}
+ 
 possibleSquareStates : Graph GraphDefs.NodeLabel GraphDefs.EdgeLabel -> Graph.NodeId {- NodeContext a b -} -> List SquareState
 possibleSquareStates g id =
  case GraphDefs.getLabelLabel id g of
@@ -124,18 +135,47 @@ initialise m =
 
 nextStep : Model -> Bool -> SquareState -> ( Model, Cmd Msg )
 nextStep model finish state =
+    let tabId = model.graphInfo.activeTabId in
          
     let
         ( info, movedNode, created ) =
             moveNodeViewInfo finish model state
     in
-    let m2 = addOrSetSel False movedNode <| setSaveGraph model info.graph in
-     if finish then ({ m2 | mode = DefaultMode }, computeLayout ()) else
+    let modif = info.graph |> Graph.finaliseModif in
+    let  selIds = IntDict.insert tabId [movedNode] IntDict.empty in
+    -- let finalGraph = setSelModif movedNode info.graph in
+     if finish then        
+        ({ model | mode = DefaultMode }, -- computeLayout ()
+          protocolSend
+         {id =  Msg.defaultModifId,
+          modif = GraphInfo.activeGraphModif model.graphInfo modif,
+         selIds = selIds,
+         command = Msg.Noop
+         })
+        
+     else
         let ids = 
-                         if created then [ movedNode , info.edges.ne1, info.edges.ne2 ]
-                                    else [ info.edges.ne1, info.edges.ne2 ]
+                (if created then [ movedNode , info.edges.ne1, info.edges.ne2 ]
+                        else [ info.edges.ne1, info.edges.ne2 ])
+                |>
+                List.map (\id -> {id = id, label = Nothing, tabId = tabId})
         in
-        (initialise_RenameMode False ids m2, computeLayout ())
+        let (nextModel, idModif) = popIdModif model in
+        let finalModel = {nextModel | mode = DefaultMode } in
+        (finalModel, 
+            protocolSend -- finalModel idModif
+          <| 
+          
+         {id = idModif,
+         modif = GraphInfo.activeGraphModif model.graphInfo modif,
+         selIds = selIds,
+         command = RenameCommand ids
+         })
+        -- Modes.Rename.newState finalGraph ids model.graphInfo
+        -- |> Msg.Rename
+        -- |> protocolSend
+        -- )
+         -- computeLayout ())
                           
 
 
@@ -153,7 +193,7 @@ type alias Edges =
 
 type alias ViewInfo =
     { edges : Edges
-    , graph : Graph NodeLabel EdgeLabel
+    , graph : Graph.ModifHelper NodeLabel EdgeLabel
     }
 
 
@@ -263,11 +303,14 @@ moveNodeViewInfo finish m data =
     let (e1n1, e1n2) = make_EdgeId data.n1 n <| nToMoved data.n1ToChosen data.n2ToChosen in
     let (e2n1, e2n2) = make_EdgeId data.n2 n <| nToMoved data.n2ToChosen data.n1ToChosen in
     
-    let (g1, ne1) = Graph.newEdge g e1n1 e1n2 <| GraphDefs.newEdgeLabel labelEdge1 ArrowStyle.empty in
-    let (g2, ne2) = Graph.newEdge g1 e2n1 e2n2 <| GraphDefs.newEdgeLabel labelEdge2 ArrowStyle.empty in
+    let (g1, ne1) = Graph.md_newEdge g e1n1 e1n2 <| GraphDefs.newEdgeLabel labelEdge1 ArrowStyle.empty in
+    let (g2, ne2) = Graph.md_newEdge g1 e2n1 e2n2 <| GraphDefs.newEdgeLabel labelEdge2 ArrowStyle.empty in
     let g3 = if not m.squareModeProof then g2 else 
          let proofPos = guessProofPosition m data newPos in
-         GraphDefs.createProofNode g2 "naturality." False proofPos
+         let (gg, _) = Graph.md_newNode g2 <| 
+                    GraphDefs.createProofNodeLabel  "naturality." False proofPos
+         in
+           gg
     in
     
         
@@ -335,7 +378,7 @@ graphDrawing m state =
         info =
             stateInfo False m state
     in
-    collageGraphFromGraph m info.graph
+    collageGraphFromGraph m (Graph.applyModifHelper info.graph)
         |> graphDrawingFromInfo info.edges
 
 
