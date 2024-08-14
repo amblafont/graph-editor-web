@@ -569,7 +569,8 @@ function disableInAppInstallPrompt() {
 
          app.ports.select.subscribe(function(id) {
             var elmnt = document.getElementById(id);
-            elmnt.select();
+            if (elmnt != null)
+                elmnt.select();
          });
 
          app.ports.computeLayout.subscribe(function(s) {                         
