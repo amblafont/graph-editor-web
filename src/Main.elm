@@ -1208,7 +1208,9 @@ enlargeModif m state =
         let (nx, ny) = n.pos in  
         case (mkp id nx xi ox, mkp id ny yi oy) of 
           (Just xx, Just yy) -> Just { n | pos = (xx, yy)}
-          _ -> Nothing
+          (Just xx, Nothing) -> Just { n | pos = (xx, ny)}
+          (Nothing, Just yy) -> Just { n | pos = (nx, yy)}
+          (Nothing, Nothing) -> Nothing
          
    in
    let g = Graph.md_map 
