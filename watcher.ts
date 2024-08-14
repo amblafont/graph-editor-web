@@ -86,9 +86,9 @@ function joinPath(...parts:string[]):string {
 
 
 function pathBasename(p:string):string {
-    let lastSlash = p.lastIndexOf('/');
+    // let lastSlash = p.lastIndexOf('/');
     let lastDot = p.lastIndexOf('.');
-    let startIdx = lastSlash + 1;
+    let startIdx = 0; // lastSlash + 1;
     let endIdx = lastDot === -1 ? p.length : lastDot;
     return p.substring(startIdx, endIdx);
 }
