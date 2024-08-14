@@ -1,4 +1,4 @@
-module Command exposing (applyCommand)
+module Command exposing (applyCommands,undo)
 
 import Format.GraphInfo as GraphInfo exposing (GraphInfo, Modif)
 import Geometry.Point exposing (Point)
@@ -8,7 +8,7 @@ import Format.GraphInfoCodec as GraphInfoCodec exposing (codecModif, defaultModi
 import Format.GraphInfoCodec exposing (defaultModifJS)
 import Polygraph exposing (modifCodec)
 import Modif
-import Msg exposing (Command(..), ProtocolMsg(..), ProtocolModif, Scenario(..))
+import Msg exposing (Command(..), ProtocolMsg(..), ProtocolModif, Scenario(..), Msg)
 import Model exposing (..)
 import Modes exposing (Mode(..))
 import GraphDefs
@@ -22,6 +22,9 @@ import Modes.CutHead
 import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.Square
+import CommandCodec exposing (protocolSendMsg)
+import HtmlDefs exposing (computeLayout)
+import Modes exposing (ArrowMode)
 
 
 
@@ -69,19 +72,86 @@ fixModel modeli =
       PullshoutMode state -> ifTabChanged <| \ _ -> Modes.Pullshout.fixModel model state
       SquareMode state ->  ifTabChanged <| \ _ -> Modes.Square.fixModel model state
       
-      
-      
 
+undo : Model -> (Model, Cmd Msg.Msg)
+undo m =
+  --  case Debug.log "undo" m.history of
+   case m.history of
+      [] -> noCmd m
+      t :: q ->
+        let m2 = { m | history= q, 
+                     topModifId = Msg.defaultModifId
+                     }
+        in
+        -- case  Modif.fold GraphInfo.applyModifSimple m2.graphInfo t of 
+        --   Nothing -> 
+        --     --  let _ = Debug.log "" "failed to undo" in
+        --      noCmd m2
+        --   Just _ ->
+            (m2, protocolSendMsg (Undo t))
+      
+{-
 
-applyCommand : {isSender : Bool, msg : ProtocolMsg} -> Model -> Model
+Dealing with Undo is a bit tricky: we want to undo the previous action if
+reversing the top action is a noop. But the top action is a sequence of modifs,
+so in principle we would need to check if a sequence of modifs is a noop, which
+is tricky. So only detect the case where it is a sequence of noops.
+-}
+applyCommands :  List {isSender : Bool, msg : ProtocolMsg} -> Model -> (Model, Cmd Msg)
+applyCommands arg model = 
+   let aux msg status =
+            let ret = applyCommand msg status.model in
+            {
+               model = ret.model,
+               computeLayout = ret.computeLayout || status.computeLayout,
+               undo = mergeUndoStatus ret.undo status.undo
+            }
+   in
+   let ret = List.foldl aux 
+                   {model = model, computeLayout = False, undo = NoUndo }
+                      arg
+   in
+   let (finalModel, cmd) = if ret.undo == FailedUndo then 
+                               undo ret.model 
+                           else noCmd ret.model 
+   in
+  (finalModel, Cmd.batch <| 
+     cmd :: (if ret.computeLayout then [computeLayout ()] else [])
+     )
+
+type UndoStatus =
+    FailedUndo
+  | AtLeastOneUndo
+  | NoUndo
+
+mergeUndoStatus : UndoStatus -> UndoStatus -> UndoStatus
+mergeUndoStatus s1 s2 =
+   case (s1,s2) of
+      (FailedUndo, _) -> FailedUndo
+      (_, FailedUndo) -> FailedUndo
+      (AtLeastOneUndo, _) -> AtLeastOneUndo
+      (_, AtLeastOneUndo) -> AtLeastOneUndo
+      (NoUndo, NoUndo) -> NoUndo
+
+applyCommand : {isSender : Bool, msg : ProtocolMsg} -> Model ->
+               { model : Model, computeLayout : Bool, undo : UndoStatus }
 applyCommand {isSender, msg} model =
+   let returnComputeLayout m = { model = m, computeLayout = True, undo = NoUndo } in
    case msg of
-     Snapshot g -> fixModel <| setGraphInfo model g
-     ModifProtocol m -> fixModel <| applyModifProtocol isSender m model
+     Snapshot g -> returnComputeLayout <| fixModel <| setGraphInfo model g
+     ModifProtocol m -> returnComputeLayout <| fixModel <| applyModifProtocol isSender m model
+     Undo modifs ->
+          case  Modif.fold GraphInfo.applyModifSimple model.graphInfo modifs of
+           Just r -> { model = { model | graphInfo = r.next},
+                           computeLayout = True, 
+                           undo = if isSender then AtLeastOneUndo else NoUndo }
+           Nothing -> { model = model, computeLayout = False, 
+                      undo = if isSender then FailedUndo else NoUndo }
      ClearProtocol {scenario, preamble} -> 
         let modelf = clearModel model in
         let or s1 s2 = if s1 == "" then s2 else s1 in 
         let gi = modelf.graphInfo in
+        returnComputeLayout 
         { modelf | scenario = scenario,
             graphInfo = { gi | 
               latexPreamble = or preamble gi.latexPreamble }
@@ -101,7 +171,7 @@ applyCommand {isSender, msg} model =
                         (always identity) t.graph}
                     ) )
         in 
-        m2
+        returnComputeLayout m2
        
 
 applyModifProtocol : Bool -> ProtocolModif -> Model -> Model

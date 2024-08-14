@@ -479,8 +479,9 @@ update msg modeli =
     let returnModif modif = updateModif model modif  in
     case msg of
      ProtocolReceive arg -> 
+         Command.applyCommands arg model
           -- let _ = Debug.log "receive msg" arg in
-         (List.foldl Command.applyCommand model arg, computeLayout ())
+        --  (List.foldl Command.applyCommand model arg, computeLayout ())
      ProtocolRequestSnapshot -> 
         (model, protocolSendMsg <| Msg.Snapshot model.graphInfo)
     --  ProtocolReceiveSnapshot g -> 
@@ -1037,12 +1038,12 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
              
                
         KeyChanged False k (Character 'z') -> 
-             if k.ctrl then noCmd <| undo model else noCmd model
+             if k.ctrl then Command.undo model else noCmd model
         -- KeyChanged False _ (Character 'n') -> noCmd <| createModel defaultGridSize <| Graph.normalise modelGraph
         KeyChanged False k (Character '+') -> increaseZBy 1
         KeyChanged False k (Character '<') -> increaseZBy (-1)
         KeyChanged False _ k -> 
-           updateModifHelper { model | mode = DefaultMode } <|
+                       updateModifHelper { model | mode = DefaultMode } <|
              returnUpdateStyle 
              (ArrowStyle.keyMaybeUpdateStyle k)
              model 

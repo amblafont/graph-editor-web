@@ -92,6 +92,7 @@ type alias ProtocolModif = {id : ModifId, modif : Modif,
 
 type ProtocolMsg = 
     ModifProtocol ProtocolModif
+  | Undo (List Modif)
   | LoadProtocol { graph : GraphInfo, scenario : Scenario}
   | ClearProtocol {scenario : Scenario, preamble : String}
   | Snapshot GraphInfo

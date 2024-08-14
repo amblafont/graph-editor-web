@@ -214,7 +214,7 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
     const file_lines = await getLinesFromFilepath(d, config.watchedFile);
     
     let line:false|string = false;
-    let content = null;
+    let content:string|null = null;
     let indent = "";
     for (let i=0; i < index; i++) {
       writeLine(fd, line);
@@ -414,9 +414,9 @@ function logExpectedId() {
 }
 
 
-function requestSnapshot(send:(_:String) => void):void {
+function requestSnapshot(ws:WebSocket):void {
   let msg = null as unknown as Data;
-  sendDataOnSocket(send, {
+  sendDataOnSocket(ws, {
   snapshot : false,
   break : false,
   history:false,
@@ -425,14 +425,14 @@ function requestSnapshot(send:(_:String) => void):void {
 }
 
 function handleServerToClientMsg(
-    send:(_:String) => void
+    ws:WebSocket
   , snapshotRequest:((_:null) => void)
   , normalRequest:((_:ServerToClientDiff[]) => void)
   , data:string) {
   let msg = JSON.parse(data) as ServerToClientMsg;
   switch (msg.type) {
     case "diffs":
-      handleServerToClientDiffs(send, normalRequest, msg.data);
+      handleServerToClientDiffs(ws, normalRequest, msg.data);
       break;
     case "snapshotRequest":
       snapshotRequest(null);
@@ -441,7 +441,7 @@ function handleServerToClientMsg(
 }
 
 function handleServerToClientDiffs(
-    send:(_:String) => void
+    ws:WebSocket
   , normalRequest:((_:ServerToClientDiff[]) => void)
   , data:ServerToClientDiff[]) {
   let diffs = [];
@@ -450,7 +450,7 @@ function handleServerToClientDiffs(
     let diff = data[i];
     // logExpectedId();
     if (diff.id > expectedIdFromServer && !diff.snapshot) {
-      requestSnapshot(send);
+      requestSnapshot(ws);
       return [];
     }
     // logExpectedId();
@@ -464,12 +464,13 @@ function handleServerToClientDiffs(
   normalRequest(diffs);
 }
 
-function sendDiffOnSocket(send:(_:String) => void, d:ClientToServerDiff) {
-  console.log("sending " + JSON.stringify(d));
-  send(JSON.stringify(d));
+function sendDiffOnSocket(ws:WebSocket, d:ClientToServerDiff) {
+  console.log("sending data on websocket");
+  console.log(d);
+  ws.send(JSON.stringify(d));
 }
 
-function sendDataOnSocket(send:(_:String) => void,
+function sendDataOnSocket(ws:WebSocket,
     data:{msg:Data, break:boolean, snapshot : boolean,
       broadcast:boolean,
     history:boolean }):void {
@@ -480,11 +481,11 @@ function sendDataOnSocket(send:(_:String) => void,
       // logExpectedId();
       // console.log("sending moredata: ");
       // console.log(moreData);
-      sendDiffOnSocket(send, moreData);
+      sendDiffOnSocket(ws, moreData);
    
 }
-function broadcastDataOnSocket(send:(_:String) => void,
+function broadcastDataOnSocket(ws:WebSocket,
 data:{msg:Data, break:boolean, snapshot : boolean,
 history:boolean }):void {
-  sendDataOnSocket(send, {...data, broadcast:true});
+  sendDataOnSocket(ws, {...data, broadcast:true});
 }

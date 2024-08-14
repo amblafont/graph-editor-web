@@ -879,14 +879,8 @@ function disableInAppInstallPrompt() {
          var online = false;
          var ws = null;
 
-
-        //  const connectButton = document.querySelector("#connect");
-         function tryConnect() {
-            var rep = prompt("connect to what?","ws://localhost:8080");
-            if (rep === null) {
-                return;
-            }
-
+         function connectToServer(rep) {
+            console.log("connecting to " + rep);
             ws = new WebSocket(rep);
             ws.onclose = function(event) {
                 if (event.wasClean) {
@@ -907,14 +901,14 @@ function disableInAppInstallPrompt() {
                 // watcher.js devrait suffire)
                 expectedIdFromServer = 0;
                 alert("connected");
-                requestSnapshot((s) => ws.send(s));
+                requestSnapshot(ws);
                 
             });
 
             // Écouter les messages
             ws.addEventListener("message", function (event) {
-                console.log("Voici un message du serveur", event.data);
-                handleServerToClientMsg((s) => ws.send(s),
+                // console.log("Voici un message du serveur", event.data);
+                handleServerToClientMsg(ws,
                       app.ports.protocolRequestSnapshot.send
                     , (s) => {
                         console.log("websocket received: ");
@@ -923,6 +917,19 @@ function disableInAppInstallPrompt() {
                     }
                     , event.data) ;
             });
+            // alert("go");
+         };
+        //  const connectButton = document.querySelector("#connect");
+         function tryConnect() {
+            customPrompt("connect to what?","ws://localhost:8080",
+                function (rep) {
+                    if (rep === null) {
+                        return;
+                    }
+                    // alert("c'est parti");
+                    connectToServer(rep);
+                });
+           
 
 
          };
@@ -933,7 +940,7 @@ function disableInAppInstallPrompt() {
                 app.ports.protocolReceiveJS.send([{isSender : true, msg:arg.msg}]);
                 return;
             }
-            broadcastDataOnSocket((s) => ws.send(s), arg);
+            broadcastDataOnSocket(ws, arg);
          });
 
 

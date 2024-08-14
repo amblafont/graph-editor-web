@@ -7,7 +7,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds, nodeIds,
      map, mapRecAll, invalidEdges,
      nodes, edges, fromNodesAndEdges,
      filterNodes, keepBelow, filterMap,
-     Node, Edge, nextId,
+     Node, Edge, nextId, isEmptyModif,
      incomings, outgoings, drop, md_drop,
      normalise, 
      disjointUnion, md_disjointUnion, edgeMap, nodeMap, codec,  mapCodec,
@@ -219,6 +219,9 @@ exists g id =
 
 existsAll : Graph n e -> List Id -> Bool
 existsAll g ids = List.all (exists g) ids
+
+existsAny : Graph n e -> List Id -> Bool
+existsAny g ids = List.any (exists g) ids
    
 getEdge : EdgeId -> Graph n e -> Maybe (Edge e)
 getEdge id g = graphRep g |> IntDict.get id |> Maybe.andThen (objEdge id)
@@ -238,34 +241,53 @@ getNodes l g =
       |> List.filterMap (\(id, e) -> objNode e 
       |> Maybe.map (Node id))
 
+nodesRep : GraphRep n e -> List (Node n)
+nodesRep g =
+   IntDict.toList g |> List.filterMap 
+      (\(id, n) -> objNode n |> Maybe.map (Node id))
+
 nodes : Graph n e -> List (Node n)
 nodes g =
-   graphRep g |>  
-   IntDict.toList |> List.filterMap 
-      (\(id, n) -> objNode n |> Maybe.map (Node id))
+   graphRep g |> nodesRep 
+
+edgesRep : GraphRep n e -> List (Edge e)
+edgesRep g =
+   IntDict.toList g |> List.filterMap 
+      (\(id, e) -> objEdge id e)
 
 edges : Graph n e -> List (Edge e)
 edges g = 
-   let mkEdge id (i1, i2, e) = Edge id i1 i2 e in
-   graphRep g |>  IntDict.toList |> List.filterMap 
-      (\(id, e) -> objEdge id e)
+   graphRep g |> edgesRep
 
-fromNodesAndEdges : Int -> List (Node n) -> List (Edge e) -> Graph n e 
-fromNodesAndEdges nId ln le =
-  let dn = IntDict.fromList 
+repFromNodesAndEdges : List (Node n) -> List (Edge e) -> GraphRep n e
+repFromNodesAndEdges ln le =
+   let dn = IntDict.fromList 
           <| List.map (\{ id, label} -> (id, NodeObj label)) ln
-      de = IntDict.fromList 
+       de = IntDict.fromList 
           <| List.map (\{ id, from, to, label} -> 
           (id, EdgeObj from to label)) le
    in
+   IntDict.union dn de
+
+
+fromNodesAndEdges : Int -> List (Node n) -> List (Edge e) -> Graph n e 
+fromNodesAndEdges nId ln le =
+   Graph { graph = repFromNodesAndEdges ln le, nextId = nId }  
      
-  Graph { graph = IntDict.union dn de, nextId = nId }
+
+codecRep : Codec (GraphRep n e) {nodes : List (Node n), edges : List (Edge e) }
+codecRep =
+  Codec.build 
+  (\g -> 
+     { nodes = nodesRep g, edges = edgesRep g }
+  )
+  (\ r -> repFromNodesAndEdges r.nodes r.edges)
 
 codec : Codec (Graph n e) 
     { nextId : Id, nodes : List (Node n), edges : List (Edge e) }
 codec =
   Codec.build 
-  (\g -> 
+  (\ g -> 
      { nodes = nodes g, edges = edges g, nextId = nextId g }
   )
   (\ r -> fromNodesAndEdges r.nextId r.nodes r.edges)
@@ -290,6 +312,12 @@ mapCodec c1 c2 =
      Codec.build
        (map (always (Codec.encoder c1)) (always (Codec.encoder c2)))
        (map (always (Codec.decoder c1)) (always (Codec.decoder c2)))
+
+mapRepCodec : Codec n1 n2 -> Codec e1 e2 -> Codec (GraphRep n1 e1) (GraphRep n2 e2) 
+mapRepCodec c1 c2 = 
+     Codec.build
+       (mapGraphRep (always (Codec.encoder c1)) (always (Codec.encoder c2)))
+       (mapGraphRep (always (Codec.decoder c1)) (always (Codec.decoder c2)))
 
 filterNodes : Graph n e -> (n -> Bool) -> List (Node n)
 filterNodes g f = nodes g |> List.filter (f << .label)
@@ -592,10 +620,16 @@ md_invertEdge id (ModifHelper m) =
       graph = mapRep
   (IntDict.update id 
      (\ e -> case e of
-              Just (EdgeObj i1 i2 l) -> Just (EdgeObj i2 i1 {l|edit = True})
+              Just (EdgeObj i1 i2 l) -> Just (EdgeObj i2 i1 {l|edit = updateStatus l.edit})
               _ -> e
       )) m.graph
    }
+
+updateStatus : EditStatus -> EditStatus
+updateStatus s = case s of
+   New -> New
+   Edit -> Edit
+   Keep -> Edit
 
 -- merge two objects: the first one is kept, and all the
 -- objects above the second one refers then to the first one.
@@ -667,7 +701,7 @@ md_disjointUnion : ModifHelper n e -> Graph n e ->
 md_disjointUnion (ModifHelper m) ext = 
    let base = m.graph in
    let result = disjointUnion base
-          <| map (\_ x -> {label = x,  edit = True}) (\_ x -> {label = x , edit = True}) ext
+          <| map (\_ x -> {label = x,  edit = New}) (\_ x -> {label = x , edit = New}) ext
    in
    {extendedGraph = 
       ModifHelper { m | graph = result.extendedGraph},
@@ -844,8 +878,8 @@ md_extGraph_converter (ModifHelper m) extGraph =
 md_makeCone : ModifHelper n e -> List Id -> n -> e -> Bool ->
     { extendedGraph : ModifHelper n e, newSubGraph : Graph n e, edgeIds : List EdgeId}
 md_makeCone (ModifHelper m) ids labelNode labelEdge inverted =
-    makeCone m.graph ids {label = labelNode, edit = True}
-                                       {label = labelEdge, edit = True}
+    makeCone m.graph ids {label = labelNode, edit = New}
+                                       {label = labelEdge, edit = New}
                                        inverted
       |> md_extGraph_converter (ModifHelper m)
 
@@ -853,8 +887,8 @@ md_makeCylinder : ModifHelper n e -> Graph n e -> e -> Bool ->
    { extendedGraph : ModifHelper n e, newSubGraph : Graph n e, edgeIds : List EdgeId}
 md_makeCylinder (ModifHelper m) subGraph label inverted = 
      makeCylinder m.graph 
-         (map (\ _ x -> {label = x, edit = True})(\ _ x -> {label = x, edit = True})subGraph)
-         {label = label, edit = True} inverted
+         (map (\ _ x -> {label = x, edit = New})(\ _ x -> {label = x, edit = New})subGraph)
+         {label = label, edit = New} inverted
       |> md_extGraph_converter (ModifHelper m)
    
 
@@ -904,19 +938,26 @@ The graph of a transaction may be invalid: the source of an edge may not exist
 (because it is in the graph).
 If a label is "none", then the object is removed.
 Any id greater than the baseId is the id of a new object.
+But an id smaller could also be the id of a new object (if it was previously existing)
 The graph may contain objects that are smaller than the baseId: it either 
 means that it is modifying an existing object, or that it is cancelling 
 a previous "remove" transaction.
 
 -}
 type Modif n e = Modif
--- Edit or New
-           { graph : Graph n e
+-- Edit or New 
+           { editGraph : PartialGraphRep n e
+           , newGraph : PartialGraphRep n e
+           , nextId : Id
            , baseId : Id
            , removeIds : List Id
            }
 
-type alias ModifJS n e = { baseId : Id, nextId : Id, nodes : List (Node n), edges : List (Edge e),
+type alias ModifJS n e = { baseId : Id, nextId : Id, 
+    editNodes : List (Node n), 
+    editEdges : List (Edge e),
+    newNodes : List (Node n),
+    newEdges : List (Edge e),
     removeIds : List Id }
 
 modifCodec : Codec (Modif n e) (ModifJS n e)
@@ -924,19 +965,26 @@ modifCodec =
   Codec.compose
   (
   Codec.object 
-  (\graph baseId removeIds -> 
-     { graph = graph, baseId = baseId, removeIds = removeIds })
+  (\editGraph newGraph nId baseId removeIds -> 
+     { editGraph = editGraph, newGraph = newGraph,
+        nextId = nId,
+        baseId = baseId, removeIds = removeIds })
   
-  (\ graph baseId removeIds -> 
-     { baseId = baseId, removeIds = removeIds, 
-       nodes = graph.nodes,
-         edges = graph.edges,
-         nextId = graph.nextId
+  (\ editGraph newGraph nId baseId removeIds -> 
+     { baseId = baseId, nextId = nId, removeIds = removeIds, 
+       editNodes = editGraph.nodes,
+       editEdges = editGraph.edges,
+       newNodes = newGraph.nodes,
+       newEdges = newGraph.edges
      })
    |>
-   Codec.fields .graph 
-     (\ r -> { nodes = r.nodes, edges = r.edges, nextId = r.nextId })
-     codec
+   Codec.fields .editGraph 
+     (\ r -> { nodes = r.editNodes, edges = r.editEdges })
+     codecRep
+   |> Codec.fields .newGraph
+     (\ r -> { nodes = r.newNodes, edges = r.newEdges })
+     codecRep
+   |> Codec.fields .nextId .nextId Codec.identity
    |> Codec.fields .baseId .baseId Codec.identity
    |> Codec.fields .removeIds .removeIds Codec.identity
    |> Codec.buildObject)
@@ -945,20 +993,28 @@ modifCodec =
 
 mapModifCodec : Codec n1 n2 -> Codec e1 e2 -> Codec (Modif n1 e1) (Modif n2 e2) 
 mapModifCodec c1 c2 = 
-     let cc = mapCodec c1 c2 in
-     Codec.build
-       (\ (Modif m) -> 
-          Modif { baseId = m.baseId, removeIds = m.removeIds,
-                        graph = Codec.encoder cc  m.graph
-                      })
-       (\ (Modif m) -> 
-          Modif { baseId = m.baseId, removeIds = m.removeIds,
-                        graph = Codec.decoder cc  m.graph
-                      })
+     let cc = mapRepCodec c1 c2 in
+     let getter f (Modif m) = f m in
+     Codec.object 
+       (\ editGraph newGraph  nId baseId removeIds -> 
+          Modif { editGraph = editGraph, 
+                  newGraph = newGraph,
+                  nextId = nId, baseId = baseId, removeIds = removeIds })
+      (\ editGraph newGraph  nId baseId removeIds -> 
+          Modif { editGraph = editGraph, 
+                  newGraph = newGraph,
+                  nextId = nId, baseId = baseId, removeIds = removeIds })
+     |>  Codec.fields (getter .editGraph) (getter .editGraph) cc
+     |>  Codec.fields (getter .newGraph) (getter .newGraph) cc
+     |>  Codec.fields (getter .nextId) (getter .nextId) Codec.identity
+     |>  Codec.fields (getter .baseId) (getter .baseId) Codec.identity
+     |>  Codec.fields (getter .removeIds) (getter .removeIds) Codec.identity
+     |> Codec.buildObject
           
 
 -- type ModifHelper n e = ModifHelper { modif : Modif n e, base : Graph n e}
-type alias GraphHelper n e = Graph { label : n, edit : Bool} { label : e, edit : Bool}
+type EditStatus = Edit | New | Keep
+type alias GraphHelper n e = Graph { label : n, edit : EditStatus} { label : e, edit : EditStatus}
 type ModifHelper n e = ModifHelper 
          { graph : GraphHelper n e -- {label : n, edit : Bool} {label : e, edit : Bool}
          , baseId : Id
@@ -978,24 +1034,26 @@ emptyModifHelper : ModifHelper n e
 emptyModifHelper = newModif empty
 newModif : Graph n e -> ModifHelper n e
 newModif g = ModifHelper { 
-   graph = map (\ _ n -> { label = n, edit = False}) (\ _ e -> { label = e, edit = False}) g
+   graph = map (\ _ n -> { label = n, edit = Keep}) (\ _ e -> { label = e, edit = Keep}) g
    , baseId = nextId g
    , removeIds = []
    -- , baseGraph = g
   }
 
+filterHelperByStatus : EditStatus -> GraphHelper n e -> PartialGraphRep n e
+filterHelperByStatus status graph =
+   rawFilterMap
+   (\ { label, edit } -> if edit == status then Just label else Nothing)
+   (\ { label, edit } -> if edit == status then Just label else Nothing) 
+   <| graphRep graph
+
 finaliseModif : ModifHelper n e -> Modif n e
 finaliseModif (ModifHelper { graph, baseId, removeIds }) =
-   let g = rawFilterMap
-               (\ { label, edit } -> if edit then Just label else Nothing)
-               (\ { label, edit } -> if edit then Just label else Nothing) 
-               <| graphRep graph
-   in
+   let editGraph = filterHelperByStatus Edit graph in
+   let newGraph = filterHelperByStatus New graph in
    -- let removeDict = IntDict.fromList <| List.map (\ id -> (id, Nothing)) removeIds in
-   let finalGraph = Graph { graph = g -- IntDict.union removeDict g
-                          , nextId = nextId graph } 
-   in
-   Modif { graph = finalGraph, baseId = baseId, removeIds = removeIds }
+   Modif { editGraph = editGraph, newGraph = newGraph,
+           baseId = baseId, nextId = nextId graph, removeIds = removeIds }
 
 -- TODO: version + efficace
 applyModifHelper : ModifHelper n e ->  Graph n e
@@ -1027,12 +1085,12 @@ md_setGraph (ModifHelper t) g =
 
 md_newNode : ModifHelper n e -> n -> (ModifHelper n e, NodeId)
 md_newNode m n =
-     let (g, id) = newNode (md_graph m) { label = n, edit = True} in
+     let (g, id) = newNode (md_graph m) { label = n, edit = New} in
        (md_setGraph m g, id)
 
 md_newEdge : ModifHelper n e -> Id -> Id -> e -> (ModifHelper n e, NodeId)
 md_newEdge m id1 id2 n =
-     let (g, id) = newEdge (md_graph m) id1 id2 { label = n, edit = True} in
+     let (g, id) = newEdge (md_graph m) id1 id2 { label = n, edit = New} in
        (md_setGraph m g, id)
 
 type TranslationId = Translation {baseId : Id, delta : Int}
@@ -1052,7 +1110,8 @@ doModif merge (Modif t) g =
    let baseId = t.baseId in
    let deltaId = nextId g - baseId in
    let trans = makeTranslationId baseId deltaId in
-   let shiftedTransactionGraph = addId trans <| graphRep t.graph in
+
+   let shiftedTransactionGraph = addId trans t.newGraph in
    let newGraph = 
                let mapObject _ o1 o2 =
                     case (o1, o2) of
@@ -1063,8 +1122,8 @@ doModif merge (Modif t) g =
                in
                   IntDict.uniteWith 
                   mapObject
-                  (graphRep g)
-                 shiftedTransactionGraph 
+                  (IntDict.union (graphRep g) shiftedTransactionGraph )
+                  t.editGraph
                -- <| mapGraphRep (always Just) (always Just) 
                -- <| graphRep g
    in
@@ -1072,7 +1131,7 @@ doModif merge (Modif t) g =
    let noneIds = t.removeIds in -- filterIds Maybe.isNothing Maybe.isNothing newGraph in
    let depsIds = upwardDependenciesIds noneIds newGraph |> IntDict.keys in
    let prunedGraph = rawRemoveList depsIds newGraph in
-   let newNextId = nextId g + nextId t.graph - baseId in
+   let newNextId = nextId g + t.nextId - baseId in
    let finalGraph =  Graph { graph = prunedGraph, nextId = newNextId } 
    in
    (finalGraph, trans) -- |> removeLoops |> sanitise
@@ -1094,22 +1153,49 @@ reverseModif g (Modif t) =
    let dep = -- mapGraphRep (always Just) (always Just) 
                upwardDependenciesIds noneIds <| graphRep g
    in
-   let modifiedGraph = IntDict.intersect (graphRep g) (graphRep t.graph) in
-   let createdIds = IntDict.keys <| IntDict.diff (graphRep t.graph)(graphRep g) in
+   let modifiedGraph = IntDict.intersect (graphRep g) t.editGraph in
+   let createdIds = IntDict.keys <| IntDict.diff t.newGraph (graphRep g) in
    -- what about sanitise removeLoops
    
    -- let graph = IntDict.union dep allNone in
-   Modif { graph = Graph { graph = IntDict.union modifiedGraph dep, nextId = nextId t.graph}
+   Modif {  editGraph = modifiedGraph , 
+                  newGraph = dep
                --   |> sanitise |> removeLoops
-                , baseId = nextId t.graph
+                , nextId = t.nextId
+                , baseId = t.nextId
                 , removeIds = createdIds }
                  
+
+-- isVacuousModif : Graph n e -> Modif n e -> Bool
+-- isVacuousModif g (Modif m) = 
+   
+--    isEmpty m.graph &&
+--    (if Debug.log "removeIds" m.removeIds == [] then True else 
+--    let _ = Debug.log "graph" <| Codec.encoder codec g in
+--     not <| Debug.log "exists any?" <| existsAny g m.removeIds)
+   -- m.removeIds == [] &&  -- (graphRep m.graph |> IntDict.isEmpty)
+
 isEmptyModif : Modif n e -> Bool
-isEmptyModif (Modif m) = 
-   m.removeIds == [] && isEmpty m.graph -- (graphRep m.graph |> IntDict.isEmpty)
+isEmptyModif (Modif m) =
+   IntDict.isEmpty m.editGraph && IntDict.isEmpty m.newGraph && m.removeIds == []
+
+normaliseModif : Graph n e -> Modif n e -> Modif n e
+normaliseModif g (Modif m) =
+   let grep = graphRep g in
+   Modif {
+      editGraph = IntDict.intersect m.editGraph grep ,
+      newGraph = IntDict.diff m.newGraph grep,
+      nextId = m.nextId,
+      baseId = m.baseId,
+      removeIds = List.filter (\ i -> IntDict.member i grep)
+                m.removeIds
+   }
+   
+
 
 applyModifTrans : MergeFunctions n e -> Graph n e -> Modif n e -> Modif.Result {translationId : TranslationId, graph : Graph n e} (Modif n e)
-applyModifTrans merge g t = 
+applyModifTrans merge g modif = 
+   let t = normaliseModif g modif in
    if isEmptyModif t then Nothing else
    let (g2, trans) = doModif merge t g in
    Just { next = {graph = g2, translationId = trans }, undo = reverseModif g t }
@@ -1128,18 +1214,18 @@ type alias MergeFunctions n e = {
 
 md_update : Id -> (n -> n) -> (e -> e) -> ModifHelper n e -> ModifHelper n e
 md_update i fn fe =
-  md_graphMap <| update i (\ { label } -> { label = fn label, edit = True})
-                          (\ { label } -> { label = fe label, edit = True})
+  md_graphMap <| update i (\ { label, edit } -> { label = fn label, edit = updateStatus edit })
+                          (\ { label, edit } -> { label = fe label, edit = updateStatus edit })
   -- md_updateNode i fn m |> md_updateEdge i fe
 
 md_updateNode : NodeId -> (n -> n) -> ModifHelper n e -> ModifHelper n e
 md_updateNode i fn =
-  md_graphMap <| update i (\ { label } -> { label = fn label, edit = True})
+  md_graphMap <| update i (\ { label, edit } -> { label = fn label, edit = updateStatus edit })
                           identity
 
 md_updateEdge : NodeId -> (e -> e) -> ModifHelper n e -> ModifHelper n e
 md_updateEdge i fe =
-  md_graphMap <| update i identity (\ { label } -> { label = fe label, edit = True})
+  md_graphMap <| update i identity (\ { label, edit } -> { label = fe label, edit = updateStatus edit })
 
 
    {-
@@ -1158,8 +1244,8 @@ md_updateEdge i fn m =
 -}
 md_map : (Id -> n -> Maybe n) -> (Id -> e -> Maybe e) -> ModifHelper n e -> ModifHelper n e
 md_map fn fe (ModifHelper m) = 
-   let makeFun f = \ i x -> Maybe.map (\ r -> { label = r, edit = True})
-                           (f i x.label) |> Maybe.withDefault { label = x.label, edit = False}
+   let makeFun f = \ i x -> Maybe.map (\ r -> { label = r, edit = updateStatus x.edit})
+                  (f i x.label) |> Maybe.withDefault x
    in
    let mappedGraph = map (makeFun fn) (makeFun fe) m.graph in
    -- let noneIds = filterIds (Maybe.isNothing >> not) 
@@ -1198,7 +1284,7 @@ md_rawMerge i1 i2 (ModifHelper m) =
          mapRep (IntDict.map (\_ o -> case o of
                    EdgeObj j1 j2 e ->
                         if j1 == i2 || j2 == i2 then
-                           EdgeObj (repl j1) (repl j2) {e | edit = True}
+                           EdgeObj (repl j1) (repl j2) {e | edit = updateStatus e.edit}
                         else o                            
                    NodeObj _ -> o
          )

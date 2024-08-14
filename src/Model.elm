@@ -81,17 +81,7 @@ type alias Model = {
     }
 
 
-undo : Model -> Model
-undo m =
-   case m.history of
-      [] -> m
-      t :: q ->
-        let m2 = { m | history = q, topModifId = defaultModifId} in
-        case  Modif.fold GraphInfo.applyModifSimple m2.graphInfo t of 
-          Nothing ->
-            --  let _ = Debug.log "" "failed to undo" in
-             m2
-          Just {next} -> {m2 | graphInfo = next}
+
 
 toGraphInfo : Model -> GraphInfo
 toGraphInfo m = m.graphInfo

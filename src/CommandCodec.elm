@@ -55,7 +55,9 @@ updateModif model modif = (model, protocolSendModif defaultModifId modif)
 
 updateModifHelperWithId : Model -> ModifId -> Graph.ModifHelper NodeLabel EdgeLabel -> (Model, Cmd a)
 updateModifHelperWithId model id modif =
-    (model, protocolSendModif id <| activeGraphModifHelper model.graphInfo modif)
+    (model, 
+    protocolSendGraphModif model.graphInfo id modif)
+    
 
 updateModifHelper : Model -> Graph.ModifHelper NodeLabel EdgeLabel -> (Model, Cmd a)
 updateModifHelper model modif = 
@@ -66,11 +68,13 @@ protocolReceive f =
     protocolReceiveJS <| f <<
        List.map (\{isSender, msg} -> {isSender = isSender
                      , msg = Codec.decoder protocolMsgCodec 
-                     <| Debug.log "protocol receive" msg})
+                    --  <| Debug.log "protocol receive" msg
+                    msg
+                     })
 
 protocolSendMsg : ProtocolMsg -> Cmd a
 protocolSendMsg c =
-    let msg = Codec.encoder protocolMsgCodec c in
+    let msg = Codec.encoder protocolMsgCodec <| Debug.log "sending msg" c in
     protocolSendJS 
     <| case c of
         Snapshot _ -> {msg = msg, break = False, history = False, 
@@ -81,21 +85,28 @@ protocolSendMsg c =
                      snapshot = True}
         ModifProtocol _ -> {msg = msg, break = False, history = True, 
                      snapshot = False}
+        Undo _ ->  {msg = msg, break = False, history = True, 
+                     snapshot = False}
       -- :: 
       -- if breakable then [[]
 protocolSend : Msg.ProtocolModif -> Cmd a
 protocolSend c =
+--  if Graph.isEmptyModif c.modif then Cmd.none else
  protocolSendMsg <| Msg.ModifProtocol c
 
 protocolSendModif : ModifId -> GraphInfo.Modif -> Cmd a
-protocolSendModif id modif = {id = id, modif = modif, selIds = IntDict.empty,
+protocolSendModif id modif =   
+     {id = id, modif = modif, selIds = IntDict.empty,
                               command = Msg.Noop} 
                                |> protocolSend 
 
 protocolSendGraphModif : GraphInfo -> ModifId -> Graph.ModifHelper NodeLabel EdgeLabel -> Cmd a
 protocolSendGraphModif g id m =
-     GraphInfo.activeGraphModifHelper g m
-     |> protocolSendModif id
+   let modif = Graph.finaliseModif m in 
+   if Graph.isEmptyModif modif then Cmd.none else
+   let giModif = GraphInfo.activeGraphModif g modif in
+   
+      protocolSendModif id giModif
  
 type alias ProtocolModifJS = 
     {id : Int, modif : Format.GraphInfoCodec.ModifJS, 
@@ -128,20 +139,22 @@ protocolMsgCodec =
                     |> Codec.fields .preamble .preamble Codec.identity
                     |> Codec.buildObject
     in
-    let splitMsg snapshot clear load modif v = 
+    let splitMsg snapshot clear undo load modif v = 
            case v of 
                Snapshot arg -> snapshot arg
                ModifProtocol arg -> modif arg
                LoadProtocol arg -> load arg
                ClearProtocol arg -> clear arg
+               Undo arg -> undo arg
     in
     Codec.maybeCustom splitMsg 
     (
-   \ snapshot clear load modif -> {snapshot = snapshot,
-      clear = clear, load = load, modif = modif }
+   \ snapshot clear undo load modif -> {snapshot = snapshot,
+      clear = clear, undo = undo, load = load, modif = modif }
     )
     |> Codec.maybeVariant1 Snapshot .snapshot Format.LastVersion.graphInfoCodec
     |> Codec.maybeVariant1 ClearProtocol .clear clearCodec
+    |> Codec.maybeVariant1 Undo .undo (Codec.list codecModif)
     |> Codec.maybeVariant1 LoadProtocol .load loadCodec
     |> Codec.maybeVariant1 ModifProtocol .modif protocolModifCodec
     |> Codec.maybeBuildVariant defaultProtocolMsg
@@ -150,6 +163,7 @@ protocolMsgCodec =
    
 type alias ProtocolMsgJS = {
   modif : Maybe ProtocolModifJS,
+  undo : Maybe (List Format.GraphInfoCodec.ModifJS),
   load : Maybe { graph : Format.LastVersion.Graph, scenario : String },
   clear : Maybe { preamble : String, scenario : String },
   snapshot : Maybe Format.LastVersion.Graph
