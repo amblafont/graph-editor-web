@@ -14,12 +14,16 @@ import CommandCodec exposing (protocolSendModif, protocolSend)
 import IntDict
 import Format.GraphInfo exposing (activeGraphModifHelper)
 
-initialise : Bool -> Model -> (Model, Cmd Msg)
-initialise isMath model =
+initialise : Bool -> Bool -> Model -> (Model, Cmd Msg)
+initialise isMath snapToGrid model =
   let modelGraph = getActiveGraph model in
   let tabId = model.graphInfo.activeTabId in
   
-  let pos = model.mousePos in
+  let pos = if not snapToGrid then model.mousePos 
+           else Point.snapToGrid 
+                  (toFloat <| getActiveSizeGrid model) 
+                  model.mousePos
+  in
   let (modif, newId) =
                     Graph.md_newNode 
                     (Graph.newModif modelGraph )

@@ -729,7 +729,7 @@ update_DefaultMode msg model =
     let clearSel = noCmd <| setActiveGraph model 
                      <| GraphDefs.clearSelection modelGraph
     in
-    let createPoint isMath = Modes.CreatePoint.initialise isMath model
+    let createPoint isMath snapToGrid = Modes.CreatePoint.initialise isMath snapToGrid model
       --  (model, protocolSend 
                                   -- <| Modes.CreatePoint.initialise isMath model) 
     in
@@ -931,8 +931,10 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'r') -> Modes.Rename.renameSelectedId model
         KeyChanged False _ (Character 's') -> 
             Modes.Square.initialise model 
-        KeyChanged False _ (Character 't') -> createPoint False
-        KeyChanged False _ (Character 'p') -> createPoint True
+        KeyChanged False _ (Character 't') -> createPoint False False
+        KeyChanged False _ (Character 'm') -> createPoint True True
+        KeyChanged False _ (Character 'p') -> createPoint True False
+        
         -- KeyChanged False _ (Character 'P') -> createPoint True <| "\\" ++ coqProofTexCommand ++ "{}" 
            --noCmd <| { model | mode = NewNode }
         --   KeyChanged False _ (Character 'q') -> ({ model | mode = QuickInputMode Nothing },
@@ -1376,7 +1378,7 @@ helpMsg model =
                 ++ ", [C-v] paste"                
 
                 ++ "\n Basic editing: "
-                ++ "new [p]oint"
+                ++ "new [p]oint ([m] to create a point snapped to grid)"
                 -- ++ ", new [P]roof node"
                 ++ ", new [t]ext"               
                 ++ ", [del]ete selected object (also [x])"               
