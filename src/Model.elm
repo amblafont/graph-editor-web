@@ -489,4 +489,10 @@ returnUpdateStyle updateStyle model edges =
     -- let modif = {-  Debug.log "mdoif" <| -} Graph.finaliseModif modifHelper in
     -- updateModifHelper { model | mode = DefaultMode } modifHelper
 
-        
+  
+truncateInputPosition : Model -> Graph NodeLabel EdgeLabel -> InputPosition.InputPosition
+truncateInputPosition model graph = 
+  InputPosition.computeKeyboardPos
+                (GraphDefs.centerOfNodes
+                   (Graph.nodes graph)) 
+                (getActiveSizeGrid model) model.mousePos 

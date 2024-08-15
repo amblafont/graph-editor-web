@@ -164,6 +164,8 @@ update state msg model =
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
+        KeyChanged False _ (Character 'f') -> 
+              noCmd <| updateState model { state | pos = truncateInputPosition model state.chosen }
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}                 
         KeyChanged False _ (Character 'p') -> pullshoutMode Pullback 
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
@@ -268,7 +270,8 @@ help =
             -- Debug.toString st ++
             HtmlDefs.overlayHelpMsg ++
             ", [ESC] cancel, [click, TAB] name the point (if new) and arrow, "
-            ++ "[hjkl] position the new point with the keyboard, "
+            ++ "[hjkl] position the new point with the keyboard "
+            ++ "([f] to move by a multiple of the grid size), "
             ++ "[ctrl] merge, [a] merge without renaming, "
              ++ "[RET] terminate the arrow creation, "
              ++ "[\""

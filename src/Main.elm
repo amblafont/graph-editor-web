@@ -612,7 +612,7 @@ update_Enlarge msg state model =
                           noCmd <| { model | mode =
                                   EnlargeMode { state | onlySubdiag = not state.onlySubdiag }} -}
       MouseUp -> fin ()
-      KeyChanged False _ (Character 'f') -> updateDirection Free
+      KeyChanged False _ (Character 'z') -> updateDirection Free
       KeyChanged False _ (Character 'x') -> updateDirection Horizontal
       KeyChanged False _ (Character 'y') -> updateDirection Vertical
       KeyChanged False _ (Control "Enter") -> fin ()
@@ -1465,7 +1465,7 @@ helpMsg model =
                             ++ overlayHelpMsgNewLine
                             ++ "Draw a rectangle to create space. "
                             ++ "Use mouse or h,j,k,l. [RET] or click to confirm."
-                            ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree." 
+                            ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it free with [z]." 
                          {-    ++ (if s.onlySubdiag then
                                     "Only extending surrounding subdiagram"
                                else

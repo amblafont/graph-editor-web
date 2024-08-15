@@ -71,10 +71,12 @@ update msg state model =
                 noCmd <| updateState { state | mode = FreeMove }
              PressMove -> movedRet False
              FreeMove -> noCmd model
-        KeyChanged False _ (Character 'f') -> updateDirection Free
+        KeyChanged False _ (Character 'z') -> updateDirection Free
         KeyChanged False _ (Character 'x') -> updateDirection Horizontal
         KeyChanged False _ (Character 'y') -> updateDirection Vertical
-       
+        KeyChanged False _ (Character 'f') -> 
+            noCmd <| updateState { state | pos = Model.truncateInputPosition model <| GraphDefs.selectedGraph <| getActiveGraph model }
+                
         MouseClick -> terminedRet False
         KeyChanged False _ (Control "Enter") -> terminedRet False
         _ ->  noCmd <| updateState { state | pos = InputPosition.update state.pos msg }
@@ -191,9 +193,9 @@ help : MoveState -> String
 help s =
          "Mode Move. " ++
                 HtmlDefs.overlayHelpMsg        
-                ++ ". Use mouse or h,j,k,l."
+                ++ ". Use mouse or h,j,k,l. [f] to move by a multiple of the grid size"
                 ++ " [ctrl] to merge,"
-                ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it [f]ree " 
+                ++ " Press [x] or [y] to restrict to horizontal / vertical directions, or let it free with [z]" 
                 ++ "(currently, "
                 ++ (case s.direction of
                       Vertical -> "vertical"

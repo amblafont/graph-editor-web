@@ -1,5 +1,5 @@
 module InputPosition exposing (InputPosition(..), 
- deltaKeyboardPos, update, updateNoKeyboard)
+ deltaKeyboardPos, update, updateNoKeyboard, computeKeyboardPos)
 
 import Msg exposing (Msg(..))
 import Geometry.Point exposing (Point)
@@ -40,6 +40,13 @@ getKeyboardPos pos =
     case pos of       
        InputPosKeyboard p -> p
        _  -> (0, 0)
+
+computeKeyboardPos : Point -> Int -> Point -> InputPosition
+computeKeyboardPos (originx, originy) offsetKeyboardPos (posx, posy) =
+    let size = toFloat offsetKeyboardPos in
+    let diff z1 z2 = floor (z2 / size) - floor (z1 / size) in
+    let (x, y) = (diff originx posx, diff originy posy) in
+    InputPosKeyboard (x, y)
 
 
 
