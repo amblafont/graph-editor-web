@@ -17,6 +17,7 @@ import IntDictExtra
 import Format.LastVersion
 import Msg exposing (defaultModifId)
 import IntDict
+import Geometry.Point exposing (Point)
 
 
 port protocolReceiveJS : (List {isSender : Bool, msg : ProtocolMsgJS} -> a) -> Sub a
@@ -87,6 +88,9 @@ protocolSendMsg c =
                      snapshot = False}
         Undo _ ->  {msg = msg, break = False, history = True, 
                      snapshot = False}
+        FocusPosition _ ->
+                    {msg = msg, break = False, history = False, 
+                     snapshot = False}
       -- :: 
       -- if breakable then [[]
 protocolSend : Msg.ProtocolModif -> Cmd a
@@ -139,24 +143,27 @@ protocolMsgCodec =
                     |> Codec.fields .preamble .preamble Codec.identity
                     |> Codec.buildObject
     in
-    let splitMsg snapshot clear undo load modif v = 
+    let splitMsg snapshot clear undo load modif focus v = 
            case v of 
                Snapshot arg -> snapshot arg
                ModifProtocol arg -> modif arg
                LoadProtocol arg -> load arg
                ClearProtocol arg -> clear arg
                Undo arg -> undo arg
+               FocusPosition arg -> focus arg
+               
     in
     Codec.maybeCustom splitMsg 
     (
-   \ snapshot clear undo load modif -> {snapshot = snapshot,
-      clear = clear, undo = undo, load = load, modif = modif }
+   \ snapshot clear undo load modif focus -> {snapshot = snapshot,
+      clear = clear, undo = undo, load = load, modif = modif, focus = focus }
     )
     |> Codec.maybeVariant1 Snapshot .snapshot Format.LastVersion.graphInfoCodec
     |> Codec.maybeVariant1 ClearProtocol .clear clearCodec
     |> Codec.maybeVariant1 Undo .undo (Codec.list codecModif)
     |> Codec.maybeVariant1 LoadProtocol .load loadCodec
     |> Codec.maybeVariant1 ModifProtocol .modif protocolModifCodec
+    |> Codec.maybeVariant1 FocusPosition .focus Codec.identity
     |> Codec.maybeBuildVariant defaultProtocolMsg
 
 
@@ -166,7 +173,8 @@ type alias ProtocolMsgJS = {
   undo : Maybe (List Format.GraphInfoCodec.ModifJS),
   load : Maybe { graph : Format.LastVersion.Graph, scenario : String },
   clear : Maybe { preamble : String, scenario : String },
-  snapshot : Maybe Format.LastVersion.Graph
+  snapshot : Maybe Format.LastVersion.Graph,
+  focus : Maybe {tabId : TabId, pos : Point}
   }
 
       
