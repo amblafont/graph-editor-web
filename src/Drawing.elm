@@ -31,7 +31,7 @@ svgHelper : List (String.Html.Attribute a) -> Drawing a -> Svg a
 svgHelper l d =
   let (unkeyedList, keyedList) = 
             d |> drawingToZSvgs
-            -- |> List.sortBy .zindex 
+            |> List.sortBy .zindex 
             |> List.partition (.key >> Maybe.Extra.isNothing)
   in
   let unkeyedGroup = Svg.g [] (List.map .svg unkeyedList) in
