@@ -6,7 +6,8 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
     keyMaybeUpdateStyle,
-    keyMaybeUpdateColor, makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle)
+    keyMaybeUpdateColor, makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle
+    , invert)
 
 import HtmlDefs exposing (Key(..))
 
@@ -230,6 +231,15 @@ quiverStyle st =
   | Left 
   | Right
   -}
+
+invert : ArrowStyle -> ArrowStyle
+invert st = { st | labelAlignment = case st.labelAlignment of
+                                Left -> Right
+                                Right -> Left
+                                _ -> st.labelAlignment
+                  , bend = 0 - st.bend
+                  , labelPosition = 1 - st.labelPosition
+             }
 
 headTikzStyle : HeadStyle -> String
 headTikzStyle hd =

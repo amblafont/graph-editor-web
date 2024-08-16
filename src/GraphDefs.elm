@@ -26,6 +26,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    rectEnveloppe, updateStyleEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
+   ,invertEdge
    )
 
 import IntDict
@@ -730,3 +731,9 @@ rectEnveloppe : Graph NodeLabel EdgeLabel -> Geometry.Rect
 rectEnveloppe g =
    let points = Graph.nodes g |> List.map (.label >> .pos) in
    Geometry.rectEnveloppe points
+
+invertEdge : Graph NodeLabel EdgeLabel -> EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
+invertEdge g id = Graph.md_updateEdge id
+                  (mapNormalEdge (\ l -> { l | style = ArrowStyle.invert l.style}))
+                          <| Graph.md_invertEdge id 
+                          <| Graph.newModif g

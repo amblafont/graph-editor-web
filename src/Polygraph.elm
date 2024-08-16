@@ -1223,7 +1223,7 @@ md_updateNode i fn =
   md_graphMap <| update i (\ { label, edit } -> { label = fn label, edit = updateStatus edit })
                           identity
 
-md_updateEdge : NodeId -> (e -> e) -> ModifHelper n e -> ModifHelper n e
+md_updateEdge : EdgeId -> (e -> e) -> ModifHelper n e -> ModifHelper n e
 md_updateEdge i fe =
   md_graphMap <| update i identity (\ { label, edit } -> { label = fe label, edit = updateStatus edit })
 

@@ -815,8 +815,7 @@ update_DefaultMode msg model =
           --  noCmd <|
                   case GraphDefs.selectedEdgeId modelGraph of
                       Just id -> updateModifHelper model 
-                          <| Graph.md_invertEdge id 
-                          <| Graph.newModif modelGraph
+                          <| GraphDefs.invertEdge modelGraph id
                       _ -> noCmd model
         {- KeyChanged False _ (Character 'I') -> noCmd <| selectInitial model -}
         {- KeyChanged False _ (Character 'E') -> 
