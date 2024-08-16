@@ -23,7 +23,6 @@ two ways of encoding custom types: custom and maybeCustom
 
 import List.Extra as List
 import Dict exposing (Dict)
-import Drawing.SvgStringExtra exposing (r)
 
 
 
