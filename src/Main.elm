@@ -851,6 +851,8 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Character 'n') -> 
            Modes.NewLine.initialise model
         KeyChanged False _ (Character 'v') -> 
+               -- do not interfere with the paste event
+               if model.specialKeys.ctrl then noCmd model else
                let cmd = case GraphDefs.selectedIncompleteDiagram modelGraph of 
                       Nothing -> 
                         case GraphDefs.selectedChain modelGraph of
