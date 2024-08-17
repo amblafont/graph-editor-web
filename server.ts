@@ -122,6 +122,10 @@ wss.on('connection', function connection(ws:WebSocket.WebSocket) {
     }
     sendRequestSnapshot(snapshotClients);
   }
+  // probably the first client to connect
+  if (lastSnapshot == null) {
+    sendRequestSnapshot([ws]);
+  }
   
   ws.on('error', console.error);
   ws.on('message', function message(data, isBinary) {
