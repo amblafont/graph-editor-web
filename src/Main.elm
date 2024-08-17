@@ -1046,9 +1046,12 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False k (Character '+') -> increaseZBy 1
         KeyChanged False k (Character '<') -> increaseZBy (-1)
         KeyChanged False _ (Character '#') ->
+           let selIds = GraphDefs.selectedIds modelGraph in
            (model, protocolSendMsg <| 
               Msg.FocusPosition {tabId = model.graphInfo.activeTabId
-                                , pos = model.mousePos})
+                                , pos = model.mousePos
+                                , selIds = selIds
+                                })
         KeyChanged False _ k -> 
                        updateModifHelper { model | mode = DefaultMode } <|
              returnUpdateStyle 
@@ -1428,7 +1431,7 @@ helpMsg model =
                 ++ " (only works with the coreact-yade vscode extension)"
                 ++ ", [E] enter an equation (prompt)"
                 ++ ", export selection to LaTe[X]/s[V]g"
-                ++ ", [#] make the other user focus on the mouse position"
+                ++ ", [#] make the other user focus on the mouse position and share selection"
                 
                    --  ++ ", [q]ickInput mode" 
                 

@@ -97,7 +97,7 @@ type ProtocolMsg =
   | ClearProtocol {scenario : Scenario, preamble : String}
   | Snapshot GraphInfo
   -- to notify the position of the mouse
-  | FocusPosition {tabId : TabId, pos : Point}
+  | FocusPosition {tabId : TabId, pos : Point, selIds : List Graph.Id}
 
 type Command = 
      RenameCommand (List {id : Graph.Id, label : Maybe String, tabId : TabId})

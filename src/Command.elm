@@ -120,11 +120,15 @@ applyCommands arg model =
    let (finalModel2, cmd2) =
          (case ret.focus of
            Nothing -> noCmd finalModel
-           Just {tabId, pos} -> 
+           Just {tabId, pos, selIds} -> 
             case activateTab finalModel tabId of 
               Nothing -> noCmd finalModel
               Just newModel -> 
-                (newModel, HtmlDefs.focusPosition pos)
+                let model2 = 
+                        updateActiveGraph  { newModel | mode = DefaultMode }
+                      (GraphDefs.selectIds selIds)
+                in
+                (model2, HtmlDefs.focusPosition pos)
          )
       
    in 
@@ -150,7 +154,7 @@ mergeUndoStatus s1 s2 =
 
 applyCommand : {isSender : Bool, msg : ProtocolMsg} -> Model ->
                { model : Model, computeLayout : Bool, undo : UndoStatus,
-                 focus : Maybe {tabId : GraphInfo.TabId, pos : Point} }
+                 focus : Maybe {tabId : GraphInfo.TabId, pos : Point, selIds : List Graph.Id} }
 applyCommand {isSender, msg} model =
    let returnComputeLayout m = { model = m, computeLayout = True, 
                        focus = Nothing, undo = NoUndo } 

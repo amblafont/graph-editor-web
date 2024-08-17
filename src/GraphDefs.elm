@@ -14,7 +14,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel,
    selectedNodes,
    isEmptySelection,
    selectedEdge,
-   selectedEdgeId, selectedNode, selectedId,
+   selectedEdgeId, selectedNode, selectedId,selectedIds,
    removeSelected, getLabelLabel, getProofNodes,
    getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
@@ -459,10 +459,13 @@ selectedEdge g =
 selectedEdgeId : Graph NodeLabel EdgeLabel -> Maybe EdgeId
 selectedEdgeId = selectedEdge >> Maybe.map .id
     
+selectedIds : Graph NodeLabel EdgeLabel -> List Graph.Id 
+selectedIds g = (List.map .id <| selectedNodes g)
+          ++ (List.map .id <| selectedEdges g) 
+
 selectedId : Graph NodeLabel EdgeLabel -> Maybe Graph.Id
 selectedId g = 
-   case (List.map .id <| selectedNodes g)
-          ++ (List.map .id <| selectedEdges g) of
+   case selectedIds g of
       [ x ] -> Just x
       _ -> Nothing
 

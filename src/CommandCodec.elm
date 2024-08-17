@@ -174,7 +174,7 @@ type alias ProtocolMsgJS = {
   load : Maybe { graph : Format.LastVersion.Graph, scenario : String },
   clear : Maybe { preamble : String, scenario : String },
   snapshot : Maybe Format.LastVersion.Graph,
-  focus : Maybe {tabId : TabId, pos : Point}
+  focus : Maybe {tabId : TabId, pos : Point, selIds : List Graph.Id}
   }
 
       
