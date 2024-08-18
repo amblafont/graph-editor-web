@@ -1,26 +1,22 @@
 module Drawing exposing (Drawing,   
-  fromString, circle, group, arrow, rect,
+  group, arrow, rect,
   line,
-  Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} color,
+  -- Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} -- color,
   svg,
-  class, empty, grid, ruler, htmlAnchor,
-  zindexAttr, emptyForeign, toString, shadowClass
+  -- class, 
+  empty, grid, ruler, htmlAnchor,
+   emptyForeign, toString, shadowClass
   )
 
 import Zindex exposing (defaultZ, backgroundZ)
 import String.Svg as Svg exposing (Svg)
 import Geometry.Point exposing (Point)
 import Geometry
-import Json.Decode as D
 import Html 
 import ArrowStyle exposing (ArrowStyle)
 import Drawing.ArrowStyle
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
-import Svg.Events
-import Html.Events.Extra.Mouse as MouseEvents
-import List.Extra
-import Msg exposing (Msg)
 import String.Html exposing (ghostAttribute)
 import Drawing.Color as Color exposing (Color)
 import Maybe.Extra
@@ -54,65 +50,10 @@ toString l d =
   |> String.Html.toString
 
 
-attrToSvgAttr : (String -> Svg.Attribute a) -> Attribute a -> Maybe (Svg.Attribute a)
-attrToSvgAttr col a =
-  case a of
-     Color c -> c |> Color.toString |> col |> Just     
-     Class s -> Svg.class s |> Just
-     Style s -> Svg.style s |> Just
-     StrokeWidth s -> Svg.strokeWidth s |> Just
-     On e d -> Svg.Events.on e d |> ghostAttribute |> Just
-     OnClick f -> MouseEvents.onClick f |> ghostAttribute |> Just
-     OnDoubleClick f -> MouseEvents.onDoubleClick f |> ghostAttribute |> Just
-     ZIndex _ -> Nothing          
-    --  Key _ -> Nothing
-
-attrsToSvgAttrs : (String -> Svg.Attribute a) -> List (Attribute a) -> List (Svg.Attribute a)
-attrsToSvgAttrs f = List.filterMap (attrToSvgAttr f)
-
-type Attribute msg =
-    On String (D.Decoder msg)
-    | Color Color
-    | Class String
-    | StrokeWidth String
-    | Style String
-    | OnClick (MouseEvents.Event -> msg)
-    | OnDoubleClick (MouseEvents.Event -> msg) 
-    | ZIndex Int    
-    -- | Key String 
-
-attributeToZIndex : Attribute msg -> Maybe Int
-attributeToZIndex a = case a of
-      ZIndex n -> Just n
-      _ -> Nothing
-
-attributesToZIndex : List (Attribute msg) -> Int
-attributesToZIndex =
-  List.Extra.findMap attributeToZIndex
-  >> Maybe.withDefault defaultZ
-
-class : String -> Attribute msg
-class = Class
-
-style : String -> Attribute msg
-style = Style
-
-strokeWidth : String -> Attribute msg
-strokeWidth = StrokeWidth
 
 
 
-on : String -> D.Decoder msg -> Attribute msg
-on = On
 
-simpleOn : String -> msg -> Attribute msg
-simpleOn s m = on s (D.succeed m)
-
-onClick : (MouseEvents.Event -> msg) -> Attribute msg
-onClick = OnClick 
-
-onDoubleClick : (MouseEvents.Event -> msg) -> Attribute msg
-onDoubleClick = OnDoubleClick 
 
 {- onMouseEnter : msg -> Attribute msg
 onMouseEnter = simpleOn "mouseenter" 
@@ -120,11 +61,7 @@ onMouseEnter = simpleOn "mouseenter"
 onMouseLeave : msg -> Attribute msg
 onMouseLeave = simpleOn "mouseleave"  -}
 
-color : Color -> Attribute msg
-color = Color
 
-zindexAttr : Int -> Attribute Msg
-zindexAttr = ZIndex
 
 type Drawing a
     = Drawing (List { svg : Svg a, zindex : Int, key : Maybe String})
@@ -156,18 +93,6 @@ dashedToAttrs dashed =
               []
 
 
-{- mkLine : Bool -> List (Attribute a) -> Point -> Point -> Svg a
-mkLine dashed attrs (x1, y1) (x2, y2) =
-  
-  let f = String.fromFloat in
-    
-    Svg.line ([Svg.x1 <| f x1, Svg.x2 <| f x2, Svg.y1 <| f y1, Svg.y2 <| f y2] 
-                ++ 
-                attrsToSvgAttrs Svg.stroke attrs
-                ++
-                dashedToAttrs dashed
-              ) []
- -}
 quadraticBezierToAttr : QuadraticBezier -> Svg.Attribute a 
 quadraticBezierToAttr  {from, to, controlPoint } =
   let f = String.fromFloat in
@@ -177,29 +102,33 @@ quadraticBezierToAttr  {from, to, controlPoint } =
     ++ " Q " ++ p controlPoint
     ++ ", " ++ p to
 
-mkPath : Bool -> List (Attribute a) -> QuadraticBezier -> Svg a
-mkPath dashed attrs q =
+mkPath : {dashed:Bool, color:Color} -> List (Svg.Attribute a) -> QuadraticBezier -> Svg a
+mkPath arg attrs q =
   Svg.path 
   ( quadraticBezierToAttr q ::
-    Svg.fill "none" ::   
-      attrsToSvgAttrs Svg.stroke attrs
+    Svg.fill "none" :: 
+      Svg.strokeFromColor arg.color
+      ::
+      attrs
       ++
-      dashedToAttrs dashed
+      dashedToAttrs arg.dashed
   )
   []        
 
 
-arrow : List (Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
-arrow attrs0 arrowStyle q =
+arrow : {zindex : Int} -> List (Svg.Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
+arrow args attrs arrowStyle q =
+    let zindex = args.zindex in
     if ArrowStyle.isNone arrowStyle then
         empty
     else
-    let attrs = Color arrowStyle.color :: attrs0 in
-    let zindex = attributesToZIndex attrs in
+    -- let zindex = attributesToZIndex attrs in
     let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    
-    let mkgen d l = mkPath d (l ++ attrs) in
+    let mkgen d l = mkPath {dashed = d, color = arrowStyle.color }
+                      (l ++ attrs) 
+    in
     let mkl = mkgen arrowStyle.dashed [] in
-    let mkshadow = mkgen False [class shadowClass] in
+    let mkshadow = mkgen False [Svg.class shadowClass] in
     
     -- let mkshadow = mkgen False [style "stroke-width : 4;  stroke: white;"] in
     -- overriding the black color with style attribute 
@@ -220,16 +149,17 @@ arrow attrs0 arrowStyle q =
                     mkall [ q ]
     in lines ++ imgs |> ofSvgs zindex
 
-line : List (Attribute a) -> Point -> Point -> Drawing a
-line l (fromx, fromy) (tox, toy) = 
-   let z = attributesToZIndex l in
+line : {zindex:Int, color: Color} -> List (Svg.Attribute a) -> Point -> Point -> Drawing a
+line arg l (fromx, fromy) (tox, toy) = 
+   let z = arg.zindex in
    let f = String.fromFloat in
             Svg.line 
             ([Svg.x1 <| f fromx
             , Svg.y1 <| f fromy
             , Svg.x2 <| f tox
             , Svg.y2 <| f toy
-      ] ++ attrsToSvgAttrs Svg.stroke l)
+            , Svg.strokeFromColor arg.color
+      ] ++ l)
             []
       |> ofSvg z
 
@@ -258,7 +188,7 @@ ruler offset =
   let z = defaultZ in
   Svg.line 
   ([Svg.x1 <| f offset, Svg.x2 <| f offset, Svg.y1 "0", Svg.y2 "100%"]
-  ++ attrsToSvgAttrs Svg.stroke [Color Color.black])
+  ++ [ Svg.strokeFromColor Color.black])
   []
   |> ofSvg z
 
@@ -286,24 +216,6 @@ grid n =
 
 
 
-fromString : List (Attribute msg) -> Point -> String-> Drawing msg
-fromString attrs (x,y) str = 
-  let z = attributesToZIndex attrs in
-  let f = String.fromFloat in
-   Svg.text_ 
-     ([Svg.x <| f x, Svg.y <| f y, Svg.textAnchor "middle",
-      Svg.dominantBaseline "middle"
-     ] ++ attrsToSvgAttrs Svg.fill attrs)
-     [Svg.text str]      
-       |> ofSvg z
-
-circle : List (Attribute msg) ->  Point -> Float -> Drawing msg
-circle attrs (cx, cy) n = 
-  let z = attributesToZIndex attrs in
-  let f = String.fromFloat in
-  Svg.circle ([Svg.cx <| f cx, Svg.cy <| f cy, Svg.r <| f n ] ++ attrsToSvgAttrs Svg.fill attrs) 
-  []
-     |> ofSvg z
 
 -- This is a trick to prevent unwanted scrolling on google chrome
 -- when editing stuff

@@ -17,6 +17,9 @@ import HtmlDefs
 import Html.Events.Extra.Mouse as MouseEvents
 import Zindex exposing (foregroundZ)
 import EdgeShape exposing (EdgeShape(..), Hat)
+import String.Html exposing (ghostAttribute)
+import String.Svg as Svg
+import Json.Decode
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias NormalEdgeDrawingLabel = 
@@ -151,8 +154,8 @@ activityToEdgeClasses a =
      WeakActive -> ["weak-active-edge"]
      _ -> []
 
-nodeLabelDrawing : Config -> List (Drawing.Attribute Msg) -> Node NodeDrawingLabel -> Drawing Msg
-nodeLabelDrawing cfg attrs node =
+nodeDrawing : Config -> Node NodeDrawingLabel -> Drawing Msg
+nodeDrawing cfg node =
     let n = node.label in    
     let id = node.id in
     (
@@ -189,17 +192,6 @@ nodeLabelDrawing cfg attrs node =
              
         ) 
 
-nodeDrawing : Config -> Node NodeDrawingLabel -> Drawing Msg
-nodeDrawing cfg n =
-  {-  let watch = if n.label.watchEnterLeave then
-        [Drawing.onMouseEnter (NodeEnter n.id),
-         Drawing.onMouseLeave (NodeLeave n.id) ]
-         else []
-   in  -}
-    nodeLabelDrawing cfg
-    [Drawing.onClick (NodeClick n.id)]
-    
-    n
         
 
 
@@ -308,12 +300,12 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     -- let q = Geometry.segmentRectBent from to 
     --          label.style.bend
     -- in
-    let attrs = (List.map Drawing.class classes ++
-            [Drawing.zindexAttr z, -- Drawing.color c,
-           Drawing.onClick (EdgeClick edgeId),
-           Drawing.onDoubleClick (EltDoubleClick edgeId),
+    let attrs = (List.map Svg.class classes ++
+            [
+          onClick (EdgeClick edgeId),
+          onDoubleClick (EltDoubleClick edgeId),
           -- Drawing.onHover (EltHover edgeId),
-           Drawing.simpleOn "mousemove" (MouseOn edgeId)
+           simpleOn "mousemove" (MouseOn edgeId)
           ] 
           )
     in
@@ -324,7 +316,7 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     --     -- Drawing.adjunctionArrow attrs style q
     -- else
         Drawing.group [
-         Drawing.arrow 
+         Drawing.arrow {zindex = z}
           attrs
           style
          q, 
@@ -342,22 +334,35 @@ type alias Extrem =
    fromPos : Point,
    toPos : Point}
 
+
+onClick : (MouseEvents.Event -> a) -> String.Html.Attribute a
+onClick = MouseEvents.onClick >> ghostAttribute
+
+simpleOn : String -> a -> String.Html.Attribute a
+simpleOn event = Json.Decode.succeed >> Html.Events.on event >> ghostAttribute
+
+
+onDoubleClick : (MouseEvents.Event -> a) -> String.Html.Attribute a
+onDoubleClick = MouseEvents.onDoubleClick >> ghostAttribute
+
+
+
+
 drawHat : Graph.EdgeId -> Activity -> Int -> Hat -> Drawing Msg
 drawHat edgeId a z hat =
     let blackline classes = Drawing.line 
+                {zindex = z, color = Color.black}
                (classes ++ 
-               [ Drawing.zindexAttr z,
-                 Drawing.onClick (EdgeClick edgeId),
-                 Drawing.color Color.black
+               [ onClick (EdgeClick edgeId) 
                  ])
      in
      let mk_pbk classes = 
            Drawing.group 
            [blackline classes hat.p1 hat.summit, blackline classes hat.summit hat.p2] 
      in
-     let classes = List.map Drawing.class <| activityToEdgeClasses a in
+     let classes = List.map Svg.class <| activityToEdgeClasses a in
      Drawing.group 
-     [mk_pbk (Drawing.class Drawing.shadowClass :: classes), mk_pbk classes] 
+     [mk_pbk (Svg.class Drawing.shadowClass :: classes), mk_pbk classes] 
 
 {-
 

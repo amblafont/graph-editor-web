@@ -3,6 +3,7 @@ module String.Svg  exposing (..)
 import String.Html exposing (Html, attribute, attributeNS)
 import Geometry
 import Geometry exposing (PosDims)
+import Drawing.Color as Color
 
 type alias Svg a = Html a
 type alias Attribute a = String.Html.Attribute a
@@ -43,6 +44,7 @@ style = attribute "style"
 defs = node "defs"
 fill = attribute "fill"
 stroke = attribute "stroke"
+strokeFromColor = stroke << Color.toString
 
 strokeDasharray = attribute "stroke-dasharray"
 strokeLinecap = attribute "stroke-linecap"
