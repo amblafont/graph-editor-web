@@ -5,7 +5,7 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
    kindCodec, tailCodec, headCodec, alignmentCodec,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
-    keyMaybeUpdateStyle,
+    keyMaybeUpdateStyle, shadow,
     keyMaybeUpdateColor, makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle
     , invert)
 
@@ -196,6 +196,8 @@ keyMaybeUpdateColor k style =
 --keyUpdateStyle : Key -> Style -> Style
 --keyUpdateStyle k style = keyMaybeUpdateStyle k style |> Maybe.withDefault style
 
+shadow : ArrowStyle -> ArrowStyle
+shadow st = { st | color = Color.white, dashed = False, head = NoHead, tail = DefaultTail }
 
 quiverStyle : ArrowStyle -> List (String, JEncode.Value)
 quiverStyle st =

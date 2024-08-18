@@ -2,7 +2,7 @@ port module HtmlDefs exposing (onRendered, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown,
    computeLayout, latexPreambleId, select, introHtml, overlayHelpMsg
-   , focusPosition)
+   , focusPosition, renderedClass)
 import Html
 import Html.Attributes
 import Html.Events
@@ -73,11 +73,10 @@ renderedDecoder =
         (D.field "width" D.float)
         (D.field "height" D.float)
 
-onRendered : (Point -> msg) -> List (Html.Attribute msg)
+onRendered : (Point -> msg) -> Html.Attribute msg
 onRendered onRender =
-    [ Html.Events.on renderedEvent (D.map onRender renderedDecoder),
-      Html.Attributes.class renderedClass ]
-
+     Html.Events.on renderedEvent (D.map onRender renderedDecoder)
+    
       
 
 

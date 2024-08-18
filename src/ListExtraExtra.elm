@@ -1,4 +1,4 @@
-module ListExtraExtra exposing (succCyclePairs, nextInList, moveLeftCycle, moveRightCycle, prevInList, move)
+module ListExtraExtra exposing (succPairs, succCyclePairs, nextInList, moveLeftCycle, moveRightCycle, prevInList, move)
 import List.Extra as List
 
 permute : List a -> List a
@@ -6,6 +6,12 @@ permute l =
   case l of 
    [] -> []
    t :: q -> q ++ [t]
+
+succPairs : List a -> List (a, a)
+succPairs l =
+   case l of
+       t1 :: t2 :: q -> (t1, t2) :: succPairs (t2 :: q)
+       _ -> []
 
 
 succCyclePairs : List a -> List (a, a)

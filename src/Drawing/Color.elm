@@ -1,5 +1,5 @@
 module Drawing.Color exposing (Color, helpMsg, merge, toString,
-  black, red, blue, green, yellow, purple, orange, fromChar, codec)
+  black, red, blue, green, yellow, purple, orange, white, fromChar, codec)
 
 import Codec exposing (Codec)
 type Color = Black | Red | Blue | White | Purple | Yellow | Green | Orange
@@ -58,6 +58,9 @@ black = Black
 
 red : Color
 red = Red
+
+white : Color
+white = White
 
 blue : Color
 blue = Blue

@@ -68,6 +68,8 @@ width = attribute "width"
 height = attribute "height"
 patternUnits = attribute "patternUnits"
 strokeWidth = attribute "stroke-width"
+strokeWidthPx w = attribute "stroke-width" 
+                  <| String.fromInt w ++ "px"
 transform = attribute "transform"
 
 xlinkHref = attributeNS "http://www.w3.org/1999/xlink" "xlink:href"

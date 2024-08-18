@@ -1,11 +1,12 @@
 module Drawing exposing (Drawing,   
   group, arrow, rect,
-  line,
+  polyLine,
   -- Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} -- color,
   svg,
   -- class, 
   empty, grid, ruler, htmlAnchor,
-   emptyForeign, toString, shadowClass
+  makeLatex,
+   emptyForeign, toString --, shadowClass
   )
 
 import Zindex exposing (defaultZ, backgroundZ)
@@ -20,8 +21,10 @@ import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import String.Html exposing (ghostAttribute)
 import Drawing.Color as Color exposing (Color)
 import Maybe.Extra
-
-shadowClass = "shadow-line"
+import Svg.Attributes exposing (to)
+import HtmlDefs
+import ArrowStyle exposing (shadow)
+import ListExtraExtra as ListExtra
 
 svgHelper : List (String.Html.Attribute a) -> Drawing a -> Svg a
 svgHelper l d =
@@ -64,25 +67,136 @@ onMouseLeave = simpleOn "mouseleave"  -}
 
 
 type Drawing a
-    = Drawing (List { svg : Svg a, zindex : Int, key : Maybe String})
+    = Drawing (List { shape : Shape a, zindex : Int, key : Maybe String})
 
+type alias LineArg = {from : Point, to : Point, color: Color, strokeWidth : Int}
+type alias NodeArg = {label : String, angle : Float, preamble : String, pos : Point, dims : Point}
+type alias ArrowArg = {style : ArrowStyle, bezier : QuadraticBezier, strokeWidth : Int}
 
+lineToSvg : LineArg -> List (Html.Attribute a) -> Svg a
+lineToSvg arg attrs = 
+    let (fromx, fromy) = arg.from in
+    let (tox, toy) = arg.to in
+    let f = String.fromFloat in
+    Svg.line 
+            ([Svg.x1 <| f fromx
+            , Svg.y1 <| f fromy
+            , Svg.x2 <| f tox
+            , Svg.y2 <| f toy
+            , Svg.strokeFromColor arg.color
+            , Svg.strokeWidthPx arg.strokeWidth
+      ] ++ List.map ghostAttribute attrs
+      ) []
+
+makeLatexString s = "\\(" ++ s ++ "\\)"
+withPreamble preamble s = preamble ++ "\n" ++ s
+
+nodeToSvg : NodeArg -> List (Html.Attribute a) -> Svg a
+nodeToSvg arg attrs =
+   let style = 
+        if arg.angle /= 0 then 
+          let (x,y) = arg.pos in
+          let f = String.fromFloat in
+          let angle = f <| arg.angle * 180 / pi in
+          [Svg.transform ("rotate(" ++ angle ++ 
+               " " ++ f x ++ " " ++ f y ++ ")")]
+          -- " " ++ String.fromFloat (fst arg.pos) ++ " " ++ String.fromFloat (snd arg.pos) ++ ")")]
+          -- [Svg.style 
+          --        <| "transform: "
+          --           ++  ("rotate(" ++ String.fromFloat arg.angle ++ "rad)")]
+        else
+          []
+   in
+   Svg.g  style [
+    htmlAnchorSvg arg.pos arg.dims True
+            (makeLatexString arg.label)
+            <| HtmlDefs.makeLatex
+              attrs
+              (withPreamble arg.preamble arg.label)
+   ]
+
+arrowToSvg : ArrowArg -> List (Html.Attribute a) -> Svg a
+arrowToSvg args attrs0 =
+    let arrowStyle = args.style in
+    let q = args.bezier in
+    let attrs = List.map ghostAttribute attrs0 in
+    if ArrowStyle.isNone arrowStyle then
+        Svg.g [] []
+    else
+    -- let zindex = attributesToZIndex attrs in
+    let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    
+    let mkgen d l = mkPath {dashed = d, color = arrowStyle.color,
+                            strokeWidth = args.strokeWidth }
+                      (l ++ attrs) 
+    in
+    let mkl = mkgen arrowStyle.dashed [] in
+    -- let mkshadow = mkgen False [Svg.class shadowClass] in
+    
+    -- let mkshadow = mkgen False [style "stroke-width : 4;  stroke: white;"] in
+    -- overriding the black color with style attribute 
+    -- TODO: do it more properly
+    -- let mkshadow = mkgen False [style "stroke: white;", strokeWidth "4"] in
+    let mkall l = -- List.map mkshadow l ++ 
+                  List.map mkl l in
+    let lines = if ArrowStyle.isDouble arrowStyle then
+                -- let delta = Point.subtract q.to q.controlPoint 
+                --             |> Point.orthogonal
+                --             |> Point.normalise ArrowStyle.doubleSize
+                -- in
+              
+                mkall [ (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
+                    (Bez.orthoVectPx ArrowStyle.doubleSize q)
+                ]
+        
+                else
+                    mkall [ q ]
+    in lines ++ imgs |> Svg.g []
+
+tikzShapeToSvg : TikzShape -> List (Html.Attribute a) -> Svg a
+tikzShapeToSvg shape attrs  =
+    case shape of
+        Node arg -> nodeToSvg arg attrs
+        Line arg -> lineToSvg arg attrs
+        Arrow arg -> arrowToSvg arg attrs
+
+type TikzShape =
+     Node NodeArg
+   | Line LineArg
+   | Arrow ArrowArg
+
+type Shape a =
+      TikzShape (List (Html.Attribute a)) TikzShape
+    | SvgShape (Svg a)
+
+shapeToSvg : Shape a -> Svg a
+shapeToSvg shape = 
+   case shape of
+    SvgShape s -> s
+    TikzShape attrs s -> tikzShapeToSvg s attrs
 
 empty : Drawing a
 empty = Drawing []
 
 ofSvgs : Int -> List (Svg a) -> Drawing a
-ofSvgs z l = Drawing <| List.map (\s -> { svg = s, zindex = z, key = Nothing }) l 
+ofSvgs z l = Drawing <| List.map (\s -> { shape = SvgShape s, zindex = z, key = Nothing }) l 
 
 
 ofSvg : Int -> Svg a -> Drawing a
 ofSvg z s = ofSvgs z [ s ]
 
+ofShapeWithKey : Int -> Maybe String -> Shape a -> Drawing a
+ofShapeWithKey z k s = Drawing [{ shape = s, zindex = z, key = k }]
+
+
+ofShape : Int -> Shape a -> Drawing a
+ofShape z s = ofShapeWithKey z Nothing s
+
 ofSvgWithKey : Int -> Maybe String -> Svg a -> Drawing a
-ofSvgWithKey z k s = Drawing [{ svg = s, zindex = z, key = k }]
+ofSvgWithKey z k s = Drawing [{ shape = SvgShape s, zindex = z, key = k }]
 
 drawingToZSvgs : Drawing a -> List { svg : Svg a, zindex : Int, key:Maybe String}
-drawingToZSvgs (Drawing c) = c
+drawingToZSvgs (Drawing c) = 
+   List.map (\{shape, zindex, key} -> { svg = shapeToSvg shape, zindex = zindex, key = key }) c
 
 
 dashedToAttrs : Bool -> List (Svg.Attribute a)
@@ -102,7 +216,7 @@ quadraticBezierToAttr  {from, to, controlPoint } =
     ++ " Q " ++ p controlPoint
     ++ ", " ++ p to
 
-mkPath : {dashed:Bool, color:Color} -> List (Svg.Attribute a) -> QuadraticBezier -> Svg a
+mkPath : {dashed:Bool, color:Color, strokeWidth : Int} -> List (Svg.Attribute a) -> QuadraticBezier -> Svg a
 mkPath arg attrs q =
   Svg.path 
   ( quadraticBezierToAttr q ::
@@ -112,12 +226,53 @@ mkPath arg attrs q =
       attrs
       ++
       dashedToAttrs arg.dashed
+      ++
+      (if arg.strokeWidth /= 1 then [Svg.strokeWidthPx arg.strokeWidth] else [])
   )
-  []        
+  []
+
+makeLatex : { zindex:Int,
+              label : String, preamble : String, pos : Point, dims : Point
+              , angle : Float} 
+              -> List (Html.Attribute a) -> Drawing a
+makeLatex arg attrs = 
+  Node {angle = arg.angle, label = arg.label, preamble = arg.preamble, pos = arg.pos, dims = arg.dims}
+  |> TikzShape attrs
+  |> ofShape arg.zindex 
+
+shadowWidth = 4
+
+polyLine : {zindex:Int, color: Color, points : List Point} -> List (Html.Attribute a) -> Drawing a
+polyLine args attrs =
+   let pairs = ListExtra.succPairs args.points in
+   let normalArg (from, to) = {from = from, to = to, color = args.color, strokeWidth = 1} in
+   let shadowArg (from, to) = {from = from, to = to, color = Color.white, strokeWidth = shadowWidth} in
+   let makeShape arg = Line arg |> TikzShape attrs |> ofShape args.zindex in
+   let shadow = List.map shadowArg pairs |> List.map makeShape in
+   let normal = List.map normalArg pairs |> List.map makeShape in
+   group <| shadow ++ normal
 
 
-arrow : {zindex : Int} -> List (Svg.Attribute a) -> ArrowStyle -> QuadraticBezier -> Drawing a
-arrow args attrs arrowStyle q =
+
+
+{-line : {zindex:Int, color: Color} -> List (Html.Attribute a) -> Point -> Point -> Drawing a
+line args attrs from to = 
+  let normalArg = {from = from, to = to, color = args.color, strokeWidth = 1} in
+  let shadowArg = {from = from, to = to, color = Color.white, strokeWidth = shadowWidth} in
+  let makeShape arg = Line arg |> TikzShape attrs |> ofShape args.zindex in
+  group [makeShape shadowArg, makeShape normalArg]
+-}
+
+arrow : {zindex : Int, style : ArrowStyle, bezier : QuadraticBezier} -> List (Html.Attribute a) -> Drawing a
+arrow args attrs0 =
+    let normalArg = { bezier = args.bezier, style = args.style,  strokeWidth = 1} in
+    let shadowArg = { bezier = args.bezier, style = ArrowStyle.shadow args.style, strokeWidth = shadowWidth} in
+    let makeShape arg = Arrow arg |> TikzShape attrs0 |> ofShape args.zindex in
+    group [makeShape shadowArg, makeShape normalArg]
+{-
+    let arrowStyle = args.style in
+    let q = args.bezier in
+    let attrs = List.map ghostAttribute attrs0 in
     let zindex = args.zindex in
     if ArrowStyle.isNone arrowStyle then
         empty
@@ -147,21 +302,9 @@ arrow args attrs arrowStyle q =
         
                 else
                     mkall [ q ]
-    in lines ++ imgs |> ofSvgs zindex
+    in lines ++ imgs |> ofSvgs zindex -}
 
-line : {zindex:Int, color: Color} -> List (Svg.Attribute a) -> Point -> Point -> Drawing a
-line arg l (fromx, fromy) (tox, toy) = 
-   let z = arg.zindex in
-   let f = String.fromFloat in
-            Svg.line 
-            ([Svg.x1 <| f fromx
-            , Svg.y1 <| f fromy
-            , Svg.x2 <| f tox
-            , Svg.y2 <| f toy
-            , Svg.strokeFromColor arg.color
-      ] ++ l)
-            []
-      |> ofSvg z
+
 
 
 
@@ -202,7 +345,7 @@ grid n =
         Svg.patternUnits "userSpaceOnUse"] 
         [ -- Svg.rect [Svg.width sn, Svg.height sn] []
          Svg.path [Svg.d ("M " ++ sn ++ " 0 L 0 0 0 " ++ sn),
-          Svg.fill "none", Svg.stroke "gray", Svg.strokeWidth "1px"
+          Svg.fill "none", Svg.stroke "gray", Svg.strokeWidthPx 1
           ] []
         ]
         ],
@@ -229,9 +372,8 @@ emptyForeign =
    -- put it in the very background
     |> ofSvg (2 * backgroundZ)
 
-
-htmlAnchor : Maybe String -> Int -> Point -> Point -> Bool -> String -> Html.Html a -> Drawing a
-htmlAnchor key z (x1, y1) (width, height) center str h = 
+htmlAnchorSvg : Point -> Point -> Bool -> String -> Html.Html a -> Svg a
+htmlAnchorSvg (x1, y1) (width, height) center str h = 
   let f = String.fromFloat in
   let (x, y) = if center then (x1 - width / 2, y1 - height / 2) else (x1, y1) in
    Svg.foreignObject 
@@ -242,8 +384,11 @@ htmlAnchor key z (x1, y1) (width, height) center str h =
      -- , Svg.width <| f width, Svg.height <| f height
      ]
    [String.Html.customNode str h]
+htmlAnchor : Maybe String -> Int -> Point -> Point -> Bool -> String -> Html.Html a -> Drawing a
+htmlAnchor key z (x1, y1) (width, height) center str h = 
+  htmlAnchorSvg (x1, y1) (width, height) center str h
     |> ofSvgWithKey z key
 
 group : List (Drawing a) -> Drawing a
 group l =
-  (List.map drawingToZSvgs l) |> List.concat |> Drawing
+  (List.map (\(Drawing d) -> d) l) |> List.concat |> Drawing
