@@ -77,6 +77,7 @@ type alias Model = {
     -- margin for the rule
     , rulerMargin : Int
     , rulerShow : Bool
+    , alternativeLatex : Bool
     
     }
 
@@ -277,6 +278,7 @@ createModel sizeGrid rulerMargin =
     , topModifId = defaultModifId
     , mode = DefaultMode
     , statusMsg = ""
+    , alternativeLatex = False
     , mouseOnCanvas = False
      -- Debug.toString ([pointToAngle (0,1), pointToAngle (0.001,1),
       --                    pointToAngle (1,0), pointToAngle(0,-1),
@@ -369,6 +371,7 @@ popIdModif m = ({m | nextModifId = m.nextModifId + 1}, trueModifId m.nextModifId
 addOrSetSel : Bool -> Graph.Id -> Model -> Model
 addOrSetSel keep o m =
    updateActiveGraph m (GraphDefs.addOrSetSel keep o)
+
 
 
         {-

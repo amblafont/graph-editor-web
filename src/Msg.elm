@@ -134,6 +134,7 @@ type Msg
   = -- call some js function
     Do (Cmd Msg)
   | Save
+  | MakeSave
   | ExportQuiver
     -- on reception of this message, the js function onMouseMove is called
     -- which sends back a MouseMove message with the relative position to 
@@ -168,6 +169,7 @@ type Msg
   | RulerMargin Int
   | ToggleHideGrid
   | ToggleHideRuler
+  | ToggleAlternativeLatex
   | ToggleAutosave
   | SaveRulerGridSize
   | OptimalGridSize

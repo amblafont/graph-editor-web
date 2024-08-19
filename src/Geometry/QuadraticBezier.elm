@@ -1,6 +1,6 @@
 -- deprecated: we now use Bezier (from Quiver)
 -- TODO: delete this file
-module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx, dummy)
+module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx, dummy, toCubic)
 import Geometry.Point as Point exposing (Point)
 
 type alias QuadraticBezier = 
@@ -8,6 +8,23 @@ type alias QuadraticBezier =
 
 dummy : QuadraticBezier
 dummy = { from = (0,0), to = (0,0), controlPoint = (0,0) }
+
+{-
+https://latex.org/forum/viewtopic.php?t=4424
+Formula to turn a quadratic into a cubic bezier
+Q0 = P0
+Q1 = 1/3 P0 + 2/3 P1
+Q2 = 2/3 P1 + 1/3 P2
+Q3 = P2
+-}
+toCubic : QuadraticBezier -> {from : Point, to : Point, controlPoint1 : Point, controlPoint2 : Point}
+toCubic {from, to, controlPoint} =
+  let rescale n = Point.scale (n / 3) (n / 3) in
+  let q1 = Point.add (rescale 1 from) (rescale 2 controlPoint) in
+  let q2 = Point.add (rescale 2 controlPoint) (rescale 1 to)
+  in
+  {from = from, to = to, controlPoint1 = q1, controlPoint2 = q2}
+
 
 middle : QuadraticBezier -> Point
 middle {from, to, controlPoint } =

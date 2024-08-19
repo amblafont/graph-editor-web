@@ -260,7 +260,7 @@ tikzStyle stl =
     Color.toString stl.color ++ "," ++
       (case (stl.head, stl.kind) of
             (NoHead, DoubleArrow) -> "identity,"
-            (hd, DoubleArrow) -> (headTikzStyle hd) ++ "cell=0.2, "
+            (hd, DoubleArrow) -> (headTikzStyle hd) ++ "cell=0, "
             (hd, NormalArrow) -> (headTikzStyle hd)
             (hd, NoneArrow) -> "draw=none, "
        )

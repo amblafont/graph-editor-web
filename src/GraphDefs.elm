@@ -1,4 +1,4 @@
-module GraphDefs exposing (EdgeLabel, NodeLabel,
+module GraphDefs exposing (EdgeLabel, NodeLabel, allDimsReady,clearDims,
    NormalEdgeLabel, EdgeType(..), GenericEdge, edgeToNodeLabel,
    newEdgeLabelAdj, selectIds,
    filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
@@ -63,6 +63,29 @@ type alias NormalEdgeLabel =
   -- ArrowStyle.getStyle should be systematically applied to the style
   -- (TODO: remove this restriction)
   , isAdjunction : Bool}
+
+
+allDimsReady : Graph.Graph NodeLabel EdgeLabel -> Bool
+allDimsReady g = 
+  let checkDim e = 
+            if e.label == "" then True else 
+            case e.dims of 
+            Nothing -> False
+            Just (x, _) -> x > 0
+  in
+  
+  List.all (\n -> checkDim n.label) (Graph.nodes g)
+  && 
+   (Graph.edges g 
+   |> List.filterMap (.label >> filterLabelNormal)   
+   |> List.all (\e -> checkDim e.details)
+   )
+
+clearDims : Graph.Graph NodeLabel EdgeLabel -> Graph.Graph NodeLabel EdgeLabel
+clearDims g = 
+  Graph.map (\_ n -> { n | dims = Nothing}) 
+    (\_ ->  mapNormalEdge (\ e -> { e | dims = Nothing})) g
+
 
 coqProofTexCommand = "coqproof"
 

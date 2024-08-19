@@ -44,6 +44,7 @@ import Html.Events
 import Maybe.Extra as Maybe
 import IntDict
 import Unification
+import Tikz
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
@@ -78,7 +79,7 @@ import ArrowStyle
 import HtmlDefs exposing (Key(..), computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..), coqProofTexCommand, MaybeChain(..))
-import Tikz exposing (graphToTikz)
+-- import Tikz exposing (graphToTikz)
 import Html
 import Html.Events
 import InputPosition exposing (InputPosition(..))
@@ -231,7 +232,7 @@ subscriptions m =
       protocolReceive ProtocolReceive,
       protocolRequestSnapshot (always ProtocolRequestSnapshot),
       -- protocolReceiveSnapshot ProtocolReceiveSnapshot,
-      makeSave (always Save),
+      makeSave (always MakeSave),
       findReplace FindReplace,
       simpleMsg SimpleMsg,
       promptedTabTitle RenameTab,
@@ -383,11 +384,21 @@ updateIntercept msg modeli =
            
      _ -> update msg modeli
 
+graphToTikz : Model -> Graph NodeLabel EdgeLabel -> String
+graphToTikz model graph =
+    if model.alternativeLatex then 
+      let d = toDrawing model 
+            <| GraphDrawing.toDrawingGraph graph
+      in
+      Drawing.tikz d
+    else 
+      Tikz.graphToTikz model.defaultGridSize graph
+
 makeExports : Model -> ExportFormats
 makeExports model = 
     let modelGraph = getActiveGraph model in
-    let sizeGrid = getActiveSizeGrid model in
-     {tex = Tikz.graphToTikz sizeGrid modelGraph
+    -- let sizeGrid = getActiveSizeGrid model in
+     {tex = graphToTikz model modelGraph -- sizeGrid modelGraph
     , svg = svgExport model modelGraph
     , coq = coqExport model modelGraph }
 
@@ -511,8 +522,13 @@ update msg modeli =
             _ -> noCmd model
 
      SetFirstTabEquation s -> setFirstTabEquationPerform modeli s
-     Save -> (model, saveGraph { info = toJsGraphInfo model 
-                              , export = makeExports model })
+     MakeSave -> 
+        let newModel =
+                updateActiveGraph model 
+                GraphDefs.clearDims
+        in
+        ({newModel | mode = MakeSaveMode}, computeLayout())
+     Save -> save model
      RulerMargin rulerMargin -> noCmd {model | rulerMargin = rulerMargin}
      SaveRulerGridSize -> ({model | defaultGridSize = sizeGrid } , 
                   saveRulerGridSize {gridSize = sizeGrid
@@ -529,6 +545,7 @@ update msg modeli =
          --  (iniModel, Task.attempt (always Msg.noyarn comOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
+     ToggleAlternativeLatex -> noCmd {model | alternativeLatex = not model.alternativeLatex}
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      ExportQuiver -> (model,  
                     exportQuiver <| 
@@ -537,15 +554,17 @@ update msg modeli =
      NodeRendered n (x,y) ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
                 let dims = (x, if y == 0 then 12 else y) in
-                noCmd <|
+                checkMakeSave <|
                   updateActiveGraph model (Graph.updateNode n (\l -> {l | dims = Just dims }))
                 
      EdgeRendered e (x, y) ->
                 -- let _ = Debug.log "nouvelle dims !" (e, dims) in
                 let dims = (x, if y == 0 then 12 else y) in
-                noCmd <|
-                   updateActiveGraph model
+                let newModel =
+                     updateActiveGraph model
                       (GraphDefs.updateNormalEdge e (\l -> {l | dims = Just dims }))
+                in 
+                checkMakeSave newModel
      Do cmd -> (model, cmd)
      SimpleMsg s -> let modelf = clearModel model in
                      noCmd { modelf | scenario = SimpleScenario, statusMsg = s }
@@ -564,6 +583,7 @@ update msg modeli =
           <| ClearProtocol arg)
      _ ->
       case model.mode of
+        MakeSaveMode -> noCmd model
         NewLine state -> Modes.NewLine.update state msg model
         DefaultMode -> update_DefaultMode msg model
         RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
@@ -581,7 +601,25 @@ update msg modeli =
         ResizeMode s -> update_Resize s msg model
         ColorMode ids -> Modes.Color.update ids msg model -- update_Color ids msg model
 
+checkMakeSave : Model -> (Model, Cmd Msg)
+checkMakeSave model =
+  if model.mode == MakeSaveMode
+     && (getActiveGraph model |> GraphDefs.allDimsReady )
+  then 
+    let edges =
+           getActiveGraph model |>
+          Graph.edges |> List.filterMap GraphDefs.filterEdgeNormal
+         |> List.map (\e -> (e.id, e.label.details.dims))
+    in
+    -- let _ = Debug.log "les dimensions:" edges in
+    save { model | mode = DefaultMode }
+  else
+    noCmd model
 
+save : Model -> (Model, Cmd Msg)
+save model =
+   (model, saveGraph { info = toJsGraphInfo model 
+                              , export = makeExports model })
 
 update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
 update_RectSelect msg orig keep model =
@@ -948,7 +986,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Control "Delete") ->
             updateModifHelper model <| GraphDefs.removeSelected modelGraph            
         KeyChanged False _ (Character 'X') ->
-            let latex = graphToTikz (getActiveSizeGrid model)
+            let latex = graphToTikz model -- (getActiveSizeGrid model)
                             (GraphDefs.selectedGraph modelGraph)
             in
             let cmd = if latex == "" then
@@ -1244,6 +1282,7 @@ graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
     let modelGraph = getActiveGraph m in
     case m.mode of
+        MakeSaveMode -> collageGraphFromGraph m modelGraph 
         ColorMode _ -> collageGraphFromGraph m modelGraph
         DefaultMode -> collageGraphFromGraph m modelGraph
         RectSelect p -> GraphDrawing.toDrawingGraph  <| selectGraph m p m.specialKeys.shift
@@ -1655,6 +1694,7 @@ viewGraph model =
            --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
            , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)           
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
+           , HtmlDefs.checkbox ToggleAlternativeLatex "Alternative latex generation" "The alternative generated code should render something closer to what you see here, but is more verbose" model.alternativeLatex           
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
            , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 

@@ -52,6 +52,7 @@ fixModel modeli =
    let ifTabChanged m = if changedTab then defaultModel else m () in
    let defaultIfTabChanged = ifTabChanged (always model) in
    case model.mode of
+      MakeSaveMode -> model
       DefaultMode -> model
       DebugMode -> model
       RectSelect _ -> defaultIfTabChanged

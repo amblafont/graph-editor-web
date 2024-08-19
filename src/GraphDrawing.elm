@@ -183,7 +183,7 @@ nodeDrawing cfg node =
                  MouseEvents.onDoubleClick (EltDoubleClick id)
                  -- Html.Events.on "mousemove" (D.succeed (EltHover id))
             ] 
-            ++ [HtmlDefs.renderedClass :: activityToClasses n.isActive |> Debug.log "class" |> class]
+            ++ [HtmlDefs.renderedClass :: activityToClasses n.isActive |> class]
 
             ++
             [HtmlDefs.onRendered (Msg.NodeRendered id)]

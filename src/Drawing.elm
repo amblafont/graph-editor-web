@@ -2,7 +2,7 @@ module Drawing exposing (Drawing,
   group, arrow, rect,
   polyLine,
   -- Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} -- color,
-  svg,
+  svg, tikz,
   -- class, 
   empty, grid, ruler, htmlAnchor,
   makeLatex,
@@ -26,12 +26,31 @@ import HtmlDefs
 import ArrowStyle exposing (shadow)
 import ListExtraExtra as ListExtra
 
+keyPartition (Drawing l) =
+    let (unkeyedList, keyedList) =
+            List.sortBy .zindex l
+            |>  List.partition (.key >> Maybe.Extra.isNothing)
+    in
+    (unkeyedList, keyedList)
+
+drawingToSvgs : Drawing a -> List { svg : Svg a, key:Maybe String}
+drawingToSvgs (Drawing c) = 
+   List.map (\{shape, key} -> { svg = shapeToSvg shape, key = key }) c
+
+tikz : Drawing a -> String 
+tikz d =
+  let (unkeyedList, keyedList) = keyPartition d in
+  let data = List.map (.shape >> shapeToTikz) (unkeyedList ++ keyedList)
+           |> String.join "\n"
+  in
+  "\\begin{tikzpicture}\n" ++ data ++ "\n\\end{tikzpicture}"
+
 svgHelper : List (String.Html.Attribute a) -> Drawing a -> Svg a
 svgHelper l d =
   let (unkeyedList, keyedList) = 
-            d |> drawingToZSvgs
-            |> List.sortBy .zindex 
-            |> List.partition (.key >> Maybe.Extra.isNothing)
+          let (unkeyed, keyed) = keyPartition d in 
+          (drawingToSvgs (Drawing unkeyed), 
+           drawingToSvgs (Drawing keyed))
   in
   let unkeyedGroup = Svg.g [] (List.map .svg unkeyedList) in
   let keyedGroup = 
@@ -91,6 +110,32 @@ lineToSvg arg attrs =
 makeLatexString s = "\\(" ++ s ++ "\\)"
 withPreamble preamble s = preamble ++ "\n" ++ s
 
+nodeToTikz : NodeArg -> String
+nodeToTikz arg =
+    let (x, y) = arg.pos in
+    -- TODO: faire la normalisation
+    let rotate = 
+          if arg.angle == 0 then "" else
+          "[rotate=" ++ String.fromFloat (0 - arg.angle * 180 / pi) ++ "]"
+    in
+    "\\node" ++ rotate ++ " at "
+    ++ pointToTikz (x,y)
+        ++ " {$"
+        ++ arg.label
+        ++ "$} ;"
+
+dimToTikz : Float -> String
+-- d / 21
+-- 17.7667
+-- tikz uses 1.2 em size
+dimToTikz d = String.fromFloat (d / (16 * 1.2)) ++ "em"
+
+pointToTikz : Point -> String
+pointToTikz (x,y) = 
+  "(" ++ dimToTikz x ++ "," 
+    ++ dimToTikz (0 - y) ++ ")"
+    
+
 nodeToSvg : NodeArg -> List (Html.Attribute a) -> Svg a
 nodeToSvg arg attrs =
    let style = 
@@ -114,6 +159,38 @@ nodeToSvg arg attrs =
               attrs
               (withPreamble arg.preamble arg.label)
    ]
+
+
+
+
+arrowToTikz : ArrowArg -> String
+arrowToTikz args =
+    let width =  
+          if args.strokeWidth == 1 then "" else
+          "line width=" ++ dimToTikz (toFloat args.strokeWidth)
+    in
+    let bez = Bez.toCubic args.bezier in
+    "\\draw[" ++ ArrowStyle.tikzStyle args.style ++ width ++ "] "
+    ++ pointToTikz bez.from
+    ++ " .. controls "
+    -- ++ "to[quadratic="
+    ++ pointToTikz bez.controlPoint1
+    -- ++ "] "
+    ++ " and "
+    ++ pointToTikz bez.controlPoint2
+    ++ " .. "
+    ++ pointToTikz bez.to
+    ++ ";"
+
+
+lineToTikz : LineArg -> String
+lineToTikz arg =
+    "\\draw[" ++ Color.toString arg.color ++ "] "
+    ++ pointToTikz arg.from
+    ++ " -- "
+    ++ pointToTikz arg.to
+    ++ ";"
+
 
 arrowToSvg : ArrowArg -> List (Html.Attribute a) -> Svg a
 arrowToSvg args attrs0 =
@@ -159,6 +236,13 @@ tikzShapeToSvg shape attrs  =
         Line arg -> lineToSvg arg attrs
         Arrow arg -> arrowToSvg arg attrs
 
+tikzShapeToTikz : TikzShape -> String
+tikzShapeToTikz shape =
+    case shape of
+        Node arg -> nodeToTikz arg
+        Line arg -> lineToTikz arg
+        Arrow arg -> arrowToTikz arg
+
 type TikzShape =
      Node NodeArg
    | Line LineArg
@@ -173,6 +257,12 @@ shapeToSvg shape =
    case shape of
     SvgShape s -> s
     TikzShape attrs s -> tikzShapeToSvg s attrs
+
+shapeToTikz : Shape a -> String
+shapeToTikz shape = 
+   case shape of
+    SvgShape s -> ""
+    TikzShape _ s -> tikzShapeToTikz s
 
 empty : Drawing a
 empty = Drawing []
@@ -194,9 +284,6 @@ ofShape z s = ofShapeWithKey z Nothing s
 ofSvgWithKey : Int -> Maybe String -> Svg a -> Drawing a
 ofSvgWithKey z k s = Drawing [{ shape = SvgShape s, zindex = z, key = k }]
 
-drawingToZSvgs : Drawing a -> List { svg : Svg a, zindex : Int, key:Maybe String}
-drawingToZSvgs (Drawing c) = 
-   List.map (\{shape, zindex, key} -> { svg = shapeToSvg shape, zindex = zindex, key = key }) c
 
 
 dashedToAttrs : Bool -> List (Svg.Attribute a)

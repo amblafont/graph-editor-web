@@ -35,6 +35,7 @@ type Mode
     | ResizeMode ResizeState -- current sizegrid
     | PullshoutMode PullshoutState
     | ColorMode (List EdgeId)
+    | MakeSaveMode
 
 toString : Mode -> String
 toString m = case m of
@@ -52,6 +53,7 @@ toString m = case m of
     ResizeMode _ -> "Resize"
     PullshoutMode _ -> "Pullshout"
     ColorMode _ -> "Color"
+    MakeSaveMode -> "MakeSave"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
     , head : Bool -- the head or the tail?
