@@ -27,6 +27,7 @@ module GraphDefs exposing (EdgeLabel, NodeLabel, allDimsReady,clearDims,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
    ,invertEdge
+   , edgeScaleFactor
    )
 
 import IntDict
@@ -64,6 +65,9 @@ type alias NormalEdgeLabel =
   -- (TODO: remove this restriction)
   , isAdjunction : Bool}
 
+
+edgeScaleFactor : Float
+edgeScaleFactor = 0.7
 
 allDimsReady : Graph.Graph NodeLabel EdgeLabel -> Bool
 allDimsReady g = 

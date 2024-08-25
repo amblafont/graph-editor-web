@@ -557,8 +557,9 @@ update msg modeli =
                 checkMakeSave <|
                   updateActiveGraph model (Graph.updateNode n (\l -> {l | dims = Just dims }))
                 
-     EdgeRendered e (x, y) ->
-                -- let _ = Debug.log "nouvelle dims !" (e, dims) in
+     EdgeRendered e rawDims ->
+                -- let _ = Debug.log "nouvelle dims !" (e, (x,y)) in
+                let (x, y) = Point.resize GraphDefs.edgeScaleFactor rawDims in
                 let dims = (x, if y == 0 then 12 else y) in
                 let newModel =
                      updateActiveGraph model

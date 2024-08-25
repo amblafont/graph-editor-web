@@ -9,6 +9,7 @@ module Drawing exposing (Drawing,
    emptyForeign, toString --, shadowClass
   )
 
+import Tikz
 import Zindex exposing (defaultZ, backgroundZ)
 import String.Svg as Svg exposing (Svg)
 import Geometry.Point exposing (Point)
@@ -89,7 +90,7 @@ type Drawing a
     = Drawing (List { shape : Shape a, zindex : Int, key : Maybe String})
 
 type alias LineArg = {from : Point, to : Point, color: Color, strokeWidth : Int}
-type alias NodeArg = {label : String, angle : Float, preamble : String, pos : Point, dims : Point}
+type alias NodeArg = {label : String, angle : Float, preamble : String, pos : Point, scale: Float, dims : Point}
 type alias ArrowArg = {style : ArrowStyle, bezier : QuadraticBezier, strokeWidth : Int}
 
 lineToSvg : LineArg -> List (Html.Attribute a) -> Svg a
@@ -115,10 +116,19 @@ nodeToTikz arg =
     let (x, y) = arg.pos in
     -- TODO: faire la normalisation
     let rotate = 
-          if arg.angle == 0 then "" else
-          "[rotate=" ++ String.fromFloat (0 - arg.angle * 180 / pi) ++ "]"
+          if arg.angle == 0 then [] else
+          ["rotate=" ++ String.fromFloat (0 - arg.angle * 180 / pi)]
     in
-    "\\node" ++ rotate ++ " at "
+    let scale =
+          if arg.scale == 1 then [] else
+          ["scale=" ++ String.fromFloat arg.scale]
+    in
+    let options = 
+          let loptions = rotate ++ scale in
+          if loptions == [] then "" else
+          "[" ++ String.join "," loptions ++ "]"
+    in
+    "\\node" ++ options ++ " at "
     ++ pointToTikz (x,y)
         ++ " {$"
         ++ arg.label
@@ -128,7 +138,7 @@ dimToTikz : Float -> String
 -- d / 21
 -- 17.7667
 -- tikz uses 1.2 em size
-dimToTikz d = String.fromFloat (d / (16 * 1.2)) ++ "em"
+dimToTikz d = String.fromFloat (Tikz.dimToTikz d) ++ "em"
 
 pointToTikz : Point -> String
 pointToTikz (x,y) = 
@@ -138,22 +148,37 @@ pointToTikz (x,y) =
 
 nodeToSvg : NodeArg -> List (Html.Attribute a) -> Svg a
 nodeToSvg arg attrs =
-   let style = 
-        if arg.angle /= 0 then 
-          let (x,y) = arg.pos in
-          let f = String.fromFloat in
-          let angle = f <| arg.angle * 180 / pi in
-          [Svg.transform ("rotate(" ++ angle ++ 
-               " " ++ f x ++ " " ++ f y ++ ")")]
-          -- " " ++ String.fromFloat (fst arg.pos) ++ " " ++ String.fromFloat (snd arg.pos) ++ ")")]
-          -- [Svg.style 
-          --        <| "transform: "
-          --           ++  ("rotate(" ++ String.fromFloat arg.angle ++ "rad)")]
-        else
-          []
+   let f = String.fromFloat in
+   let (x, y) = arg.pos in
+   let (width, height) = arg.dims in
+   let angleOption = 
+        if arg.angle == 0 then [] else        
+        let angle = f <| arg.angle * 180 / pi in          
+        ["rotate(" ++ angle 
+                  ++ " " ++ f (width / 2) ++ " " ++ f (height / 2) ++ ")"]
    in
+   let rescaleOption = 
+        if arg.scale == 1 then [] else
+        -- []
+        let scale = f arg.scale in
+        ["scale(" ++ scale ++ 
+                  ")"]
+   in 
+   let translateOption = -- []
+          ["translate(" ++ f (x - width / 2) ++ "," 
+                        ++ f (y - height / 2) ++ ")" ]
+   in
+         
+   let style = 
+          let list = translateOption ++ angleOption ++ rescaleOption 
+          in
+          if list == [] then [] else
+          [Svg.transform <| String.join " " list]
+   in
+
    Svg.g  style [
-    htmlAnchorSvg arg.pos arg.dims True
+    htmlAnchorSvg (0,0) -- arg.pos
+           arg.dims False
             (makeLatexString arg.label)
             <| HtmlDefs.makeLatex
               attrs
@@ -320,10 +345,12 @@ mkPath arg attrs q =
 
 makeLatex : { zindex:Int,
               label : String, preamble : String, pos : Point, dims : Point
-              , angle : Float} 
+              , angle : Float
+              , scale : Float} 
               -> List (Html.Attribute a) -> Drawing a
 makeLatex arg attrs = 
-  Node {angle = arg.angle, label = arg.label, preamble = arg.preamble, pos = arg.pos, dims = arg.dims}
+  Node {angle = arg.angle, label = arg.label, preamble = arg.preamble, pos = arg.pos, dims = arg.dims
+    , scale = arg.scale}
   |> TikzShape attrs
   |> ofShape arg.zindex 
 

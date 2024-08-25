@@ -17,8 +17,6 @@ import HtmlDefs
 import Html.Events.Extra.Mouse as MouseEvents
 import Zindex exposing (foregroundZ)
 import EdgeShape exposing (EdgeShape(..), Hat)
-import String.Html exposing (ghostAttribute)
-import String.Svg as Svg
 import Json.Decode
 
 -- these are extended node and edge labels used for drawing (discarded for saving)
@@ -177,7 +175,8 @@ nodeDrawing cfg node =
                 preamble = cfg.latexPreamble,
                 pos = n.pos,
                 dims = n.dims,
-                angle = 0
+                angle = 0,
+                scale = 1
             }
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
@@ -244,7 +243,7 @@ segmentLabel cfg q edgeId activity label curve =
          if  label.label == "" then
              Drawing.empty
          else 
-             let finalLabel = " \\scriptstyle " ++ label.label in
+             let finalLabel = label.label in --  " \\scriptstyle " ++ label.label in
              let angle =
                   if label.style.labelAlignment == Geometry.Over then
                    Point.pointToAngle <| Point.subtract q.to q.from 
@@ -259,7 +258,8 @@ segmentLabel cfg q edgeId activity label curve =
                 preamble = cfg.latexPreamble,
                 pos = labelpos,
                 dims = label.dims,
-                angle = angle
+                angle = angle,
+                scale = GraphDefs.edgeScaleFactor
              }  -- -}          
              ([   MouseEvents.onClick (EdgeClick edgeId),
                   MouseEvents.onDoubleClick (EltDoubleClick edgeId),

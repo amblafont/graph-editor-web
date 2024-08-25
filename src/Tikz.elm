@@ -1,16 +1,19 @@
-module Tikz exposing (graphToTikz)
+module Tikz exposing (graphToTikz, dimToTikz)
 
-import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..), GenericEdge)
+import GraphDefs exposing (edgeScaleFactor,NodeLabel, EdgeLabel, EdgeType(..), GenericEdge)
 import Polygraph as Graph exposing (Graph, Node, Edge)
 import Maybe.Extra
 import Geometry exposing (LabelAlignment(..))
 import ArrowStyle
 
+dimToTikz : Float -> Float
+dimToTikz d = d / (16 * 1.2)
+
 encodeNodeTikZ : Int -> Node NodeLabel -> String
 encodeNodeTikZ sizeGrid n =
     -- TODO: faire la normalisation
     let (x, y) = GraphDefs.getNodePos n.label in
-    let coord u = (u / 21) in -- 17.7667
+    let coord u = dimToTikz u in -- 17.7667 -- 21
     let label = (if n.label.label == "" then "\\bullet" else n.label.label ) in
     "\\node[inner sep=5pt] ("
         ++ String.fromInt n.id
@@ -57,7 +60,9 @@ graphToTikz sizeGrid g =
             "\\path \n" ++ (edges |> List.map encodeFakeEdgeTikZ |> String.concat) ++ "; \n"
     in
     let tikzEdges =
-            "\\path[->] \n" ++ (List.sortBy (.label >> .zindex) edges |> List.map encodeEdgeTikZ |> String.concat) ++ "; \n"
+            "\\path[->, transform shape, every edge quotes/.style={}, "
+            ++ "scale=" ++ String.fromFloat edgeScaleFactor
+            ++ "] \n" ++ (List.sortBy (.label >> .zindex) edges |> List.map encodeEdgeTikZ |> String.concat) ++ "; \n"
     in
     let tikzPullshouts =
             pullshouts |> List.map (encodePullshoutTikZ gnorm) |> String.concat
@@ -115,15 +120,17 @@ encodeLabel e =
 
         NormalEdge l ->
             let style = ArrowStyle.getStyle l in
-            let lbl = "${\\scriptstyle " ++ 
+            let lbl = "${ " ++ 
                     l.label 
                     ++ "}$"
             in
             (case style.labelAlignment of
-                 Over -> "labelonatsloped={" ++ lbl ++ "}{" ++ String.fromFloat style.labelPosition ++ "}, "
+                 Over -> 
+                    -- "labelonatsloped={" ++ lbl ++ "}{" ++ String.fromFloat style.labelPosition ++ "}, "
+                    "sloped, allow upside down, \"" ++ lbl ++ "\" centered, "
                  Centre -> "labelonat={" ++ l.label ++ "}{" ++ String.fromFloat style.labelPosition ++ "}, "                 
-                 Left -> "\"" ++ lbl ++ "\", "
-                 Right -> "\"" ++ lbl ++ "\"', ")
+                 Left -> "\"" ++ lbl ++ "\" auto=left, "
+                 Right -> "\"" ++ lbl ++ "\" auto=right, ")
             ++ "pos=" ++ String.fromFloat style.labelPosition ++ ", "
             ++ ArrowStyle.tikzStyle style
 
