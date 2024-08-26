@@ -27,7 +27,7 @@ initialise m =
 update : NewLineState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let finalise () = let newModel = { model | mode = DefaultMode } in 
-              updateModifHelper model <| makeGraph model state
+              updateModifHelper newModel <| makeGraph newModel state
 
     in
     case msg of
