@@ -144,6 +144,11 @@ wss.on('connection', function connection(ws:WebSocket.WebSocket) {
     
     if (msg.break) 
       lastBreakId = nextId;
+
+    if (lastSnapshot === null && !msg.snapshot) {
+      sendRequestSnapshot([ws]);
+      return;
+    }
     
     if (msg.snapshot && (lastSnapshot === null || lastSnapshot.id > msg.expectedId)) {
       lastSnapshot = { id : msg.expectedId - 1, data : msg};
