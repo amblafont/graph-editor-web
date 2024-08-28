@@ -2,7 +2,7 @@
 const CACHE_NAME = 'my-cache-v2';
 const urlsToCache = [
   './',
-  './grapheditor.html',
+  './index.html',
   './elm.js',
   './watcher.js',
   './js/katex-custom-element.js',
