@@ -911,9 +911,6 @@ function disableInAppInstallPrompt() {
             ws.addEventListener("open", function (event) {
             // socket.send("Coucou le serveur !");
                 online = true;
-                // je ne comrpends pas pourquoi il faut faire ca.
-                // (normalement, la declaration de expectedIfFromServer dans
-                // watcher.js devrait suffire)
                 expectedIdFromServer = 0;
                 alert("connected");
                 requestSnapshot(ws);
