@@ -1,6 +1,6 @@
 module Format.LastVersion exposing (Graph, NodeLabel, EdgeLabel, defaultGraph, nodeCodec, edgeCodec, toJSGraph, fromJSGraph, version, Tab, tabCodec, graphInfoCodec)
 
-import Format.Version13 as LastFormat
+import Format.Version14 as LastFormat
 type alias Graph = LastFormat.Graph
 type alias Tab = LastFormat.Tab
 type alias NodeLabel = LastFormat.Node

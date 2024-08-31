@@ -10,7 +10,7 @@ There is also a vscode extension which embeds the web app to provide Coq mechani
 By running a server, it is possible to collaborate on the same diagram (check the "Connect" button at the top of the diagram editor).
 
 To compile the server:
-- `npm install`
+- `npm install` (the first time)
 - `make server.ts`
 
 To run the server (on port 8080, cf head of server.ts):

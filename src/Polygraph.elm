@@ -14,7 +14,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds, nodeIds,
      modifCodec, mapModifCodec,
      Modif, ModifJS, ModifHelper, finaliseModif, newModif, MergeFunctions
      , md_newNode, md_newEdge, md_update, md_map, 
-     md_updateEdge, md_updateNodes, applyModifHelper,
+     md_updateEdge, md_updateNode, md_updateNodes, applyModifHelper,
      md_makeCylinder, md_makeCone, debugModifHelperGraph,
      translateId,TranslationId,applyModifTrans, defaultTranslation
      , {- findInitial, sourceNode, -} removeLoops,

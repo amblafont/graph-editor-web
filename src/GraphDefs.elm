@@ -95,10 +95,11 @@ coqProofTexCommand = "coqproof"
 
 mergeFunctions : Graph.MergeFunctions NodeLabel EdgeLabel
 mergeFunctions = 
-  {  mergeNode = \ n1 {pos, label, dims, isMath, zindex} -> 
+  {  mergeNode = \ n1 {pos, label, dims, isMath, zindex, isCoqValidated} -> 
          {n1 | 
             pos = pos, label = label, dims = dims 
             , isMath = isMath, zindex = zindex
+            , isCoqValidated = isCoqValidated
          }
     , mergeEdge = \ e1 {details, zindex} -> {e1 | details = details, zindex = zindex}
   }
@@ -255,7 +256,7 @@ selectedIncompleteDiagram g =
      <| Graph.getEdges (selectedEdges g |> List.map .id) gc
 
 type MaybeChain =
-     JustChain (Graph NodeLabel EdgeLabel, Diagram)
+     JustChain (Graph.ModifHelper NodeLabel EdgeLabel, Diagram)
    | NoClearOrientation
    | NoChain
 {-
@@ -269,8 +270,8 @@ selectedChain g =
         if minId == maxId then NoChain else
         let (weakSel, trueSel) = if isTrueSelection gs then (False, True) else (True, False) in
         let label = { emptyEdge | weaklySelected = weakSel, selected = trueSel } in
-        let (newGraph, _) = Graph.newEdge g minId maxId label in
-        case selectedIncompleteDiagram newGraph of
+        let (newGraph, _) = Graph.md_newEdge (Graph.newModif g) minId maxId label in
+        case selectedIncompleteDiagram <| Graph.applyModifHelper newGraph of
           Nothing -> NoClearOrientation
           Just d -> JustChain (newGraph, d)
      (_, _) -> NoChain
@@ -394,11 +395,13 @@ createProofNode g s coqValidated p =
     let (g2, id) = Graph.newNode g <| createProofNodeLabel s coqValidated p in
      g2
 
-createValidProofAtBarycenter : Graph NodeLabel EdgeLabel -> List (Node NodeLabel) -> String -> Graph NodeLabel EdgeLabel
+createValidProofAtBarycenter : Graph.ModifHelper NodeLabel EdgeLabel -> List (Node NodeLabel) -> String -> Graph.ModifHelper NodeLabel EdgeLabel
 createValidProofAtBarycenter g nodes proof =
    let nodePositions = List.map (.label >> .pos) <| nodes in
-   createProofNode g proof True
-          <| Geometry.Point.barycenter nodePositions
+   let (g2, id) = Graph.md_newNode g <| createProofNodeLabel proof True
+        <| Geometry.Point.barycenter nodePositions   
+   in
+     g2
 
 getNodeLabelOrCreate : Graph NodeLabel EdgeLabel -> String -> Point -> (Graph NodeLabel EdgeLabel,
                                                                        NodeId, Point)

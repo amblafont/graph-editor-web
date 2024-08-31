@@ -99,6 +99,7 @@ import Format.Version10
 import Format.Version11
 import Format.Version12
 import Format.Version13
+import Format.Version14
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo as GraphInfo exposing (Tab)
@@ -162,6 +163,7 @@ port loadedGraph10 : (LoadGraphInfo Format.Version10.Graph -> a) -> Sub a
 port loadedGraph11 : (LoadGraphInfo Format.Version11.Graph -> a) -> Sub a
 port loadedGraph12 : (LoadGraphInfo Format.Version12.Graph -> a) -> Sub a
 port loadedGraph13 : (LoadGraphInfo Format.Version13.Graph -> a) -> Sub a
+port loadedGraph14 : (LoadGraphInfo Format.Version14.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -255,6 +257,7 @@ subscriptions m =
       loadedGraph11 (mapLoadGraphInfo Format.Version11.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph12 (mapLoadGraphInfo Format.Version12.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph13 (mapLoadGraphInfo Format.Version13.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph14 (mapLoadGraphInfo Format.Version14.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
@@ -948,16 +951,18 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                   NoDiagram -> failWith "no diagram around selected proof node."
                   JustDiagram { diagram } -> 
                     let validGraph = 
+                          let initialModif = Graph.newModif modelGraph in
                           case GraphDefs.selectedNode modelGraph of
-                            Nothing -> modelGraph
-                            Just n -> 
+                            Nothing -> initialModif
+                            Just n ->                               
                               if isProofLabel n.label then 
-                                Graph.updateNode n.id (\ l -> { l | isCoqValidated = True, 
-                                                     label = GraphDefs.makeProofString script}) modelGraph
-                              else modelGraph
+                                Graph.md_updateNode n.id (\ l -> { l | isCoqValidated = True, 
+                                                    label = GraphDefs.makeProofString script}) initialModif
+                              else 
+                                  initialModif
                     in
-                    registerProof validGraph diagram
-            Just d -> registerAndCreateProof modelGraph d
+                              registerProof validGraph diagram
+            Just d -> registerAndCreateProof (Graph.newModif modelGraph) d
         KeyChanged False _ (Character 'q') -> 
             (model, promptFindReplace ())
         KeyChanged False _ (Character 'Q') -> 

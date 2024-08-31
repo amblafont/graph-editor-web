@@ -118,7 +118,7 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
-        
+        const defaultServer = "ws://localhost:8080";
             // LocalStorage key used for quicksave
             const storageKey = "yadegraph";
             const gridStorageKey = "yadegridsize"
@@ -798,6 +798,7 @@ function disableInAppInstallPrompt() {
 
        
          if (vscode) {
+            
             app.ports.applyProof.subscribe(function(data){ 
                 sendExternalMsg("apply-proof", data)
                 });
@@ -922,7 +923,7 @@ function disableInAppInstallPrompt() {
             // socket.send("Coucou le serveur !");
                 online = true;
                 expectedIdFromServer = 0;
-                customAlert("connected");
+                customAlert("YADE is connected to server");
                 requestSnapshot(ws);
                 
             });
@@ -943,7 +944,7 @@ function disableInAppInstallPrompt() {
          };
         //  const connectButton = document.querySelector("#connect");
          function tryConnect() {
-            customPrompt("connect to what?","ws://localhost:8080",
+            customPrompt("connect to what?",defaultServer,
                 function (rep) {
                     if (rep === null) {
                         return;
@@ -986,6 +987,7 @@ function disableInAppInstallPrompt() {
             app.ports.generateProofJs.subscribe(function(script){
                 sendExternalMsg("generate-proof",processProof(script));
             });
+            connectToServer(defaultServer);
        }
 
          // copied from index.ts
@@ -1046,7 +1048,10 @@ function loadDataFromVscode(data, filename, scenario,  setFirstTab = false) {
             app.ports.appliedProof.send(msg.content);
             // mainWindow.webContents.send(msg.key, msg.content);
             break;
-             
+          case "mayConnect":
+            if (!online)
+                connectToServer(msg.content);
+            break;
        }
       }
   );

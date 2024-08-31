@@ -34,7 +34,7 @@ unifyAux cfg length l1 l2 =
          else
             unifyAux cfg length q1 (List.drop 1 l2)
 
-unifyDiagram : (QuickInput.HandSide, QuickInput.HandSide) -> Diagram -> Graph NodeLabel EdgeLabel 
+unifyDiagram : (QuickInput.HandSide, QuickInput.HandSide) -> Diagram -> Graph.ModifHelper NodeLabel EdgeLabel 
           -> Result String (Graph.ModifHelper NodeLabel EdgeLabel)
 unifyDiagram (eq1, eq2) d graph = 
     let mayUnify l e = unify 
@@ -49,7 +49,7 @@ unifyDiagram (eq1, eq2) d graph =
        (Ok l1, Ok l2) ->
           let f (a, edges) g =
                   
-                 QuickInput.splitWithChain graph g 
+                 QuickInput.splitWithChain (Graph.applyModifHelper graph) g 
                    edges
                     a.id
           in
@@ -57,7 +57,7 @@ unifyDiagram (eq1, eq2) d graph =
                      (l1 ++ l2) in
           let finalg = 
                List.foldl f
-               (Graph.newModif graph)
+               graph
                ltot
           in
           Ok finalg

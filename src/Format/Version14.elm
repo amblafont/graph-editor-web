@@ -1,4 +1,4 @@
-module Format.Version13 exposing (Graph, Node, nodeCodec, edgeCodec, normalKey, pullshoutKey, Tab, ArrowStyle, Edge, toJSGraph, fromJSGraph, version, tabCodec, graphInfoCodec, defaultGraph)
+module Format.Version14 exposing (Graph, Node, nodeCodec, edgeCodec, normalKey, pullshoutKey, Tab, ArrowStyle, Edge, toJSGraph, fromJSGraph, version, tabCodec, graphInfoCodec, defaultGraph)
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
@@ -9,7 +9,7 @@ import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
 import Codec exposing (Codec)
 
-version = 13
+version = 14
 pullshoutKey = "pullshout"
 normalKey = "normal"
 adjunctionKey = "adjunction"
@@ -30,6 +30,7 @@ pullshoutEdge : Int -> Edge
 pullshoutEdge z = Edge "" emptyArrowStyle pullshoutKey z -- False
 
 type alias Node = { pos : Point , label : String, isMath : Bool, zindex: Int
+  , isCoqValidated : Bool
   -- , selected : Bool
   }
 type alias Tab = { 
@@ -109,20 +110,22 @@ edgeCodec =
 nodeCodec : Codec NodeLabel Node
 nodeCodec = 
    Codec.object
-   (\ pos label isMath zindex ->
+   (\ pos label isMath zindex isCoqValidated ->
    { pos = pos, label = label
    , dims = Nothing,  weaklySelected = False, isMath = isMath,
-     zindex = zindex, isCoqValidated = False, selected = False
+     zindex = zindex, isCoqValidated = isCoqValidated , selected = False
      }
     )
-    (\ pos label isMath zindex ->
+    (\ pos label isMath zindex isCoqValidated ->
     { pos = pos, label = label, isMath = isMath, zindex = zindex
+    , isCoqValidated = isCoqValidated
       --, selected = selected
       })
     |> Codec.fields .pos .pos Codec.identity
     |> Codec.fields .label .label Codec.identity
     |> Codec.fields .isMath .isMath Codec.identity
     |> Codec.fields .zindex .zindex Codec.identity
+    |> Codec.fields .isCoqValidated .isCoqValidated Codec.identity
     -- |> Codec.fields .selected .selected Codec.identity
     |> Codec.buildObject
 
