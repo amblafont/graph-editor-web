@@ -134,6 +134,9 @@ if ('serviceWorker' in navigator) {
                 if (ret !== null)                   
                    callback(ret);
             }
+            var customAlert = function(message) {
+                window.alert(message);
+            }
 
             var gridSize = 200;
             var rulerMargin = 550;
@@ -490,20 +493,20 @@ function disableInAppInstallPrompt() {
         app.ports.openDirectory.subscribe(
             function() {
                 if (!isFileAPI) {
-                    alert("Your browser does not support the File System Access API");
+                    customAlert("Your browser does not support the File System Access API");
                     return;
                 }
 
             showDirectoryPicker().then(function (dirHandle) { 
                 dirHandle.getFileHandle(configFilename)
                 .then((f) => f.getFile(),(e) => { 
-                      alert("Cannot access " + configFilename + ": " + e.toString());
+                      customAlert("Cannot access " + configFilename + ": " + e.toString());
                      throw (e); })
                .then((file) => file.text())
                .then((text) => {
                 var json = JSON.parse(text);
                 if (!json.watchedFile) {
-                    alert("watchedFile unspecified in the json");
+                    customAlert("watchedFile unspecified in the json");
                     return;
                 }
                 var extension = extractExtensionFromPath(json.watchedFile);
@@ -527,7 +530,7 @@ function disableInAppInstallPrompt() {
                 });
                });
             })
-            .catch((e) => { console.log(e); alert("Cannot access the directory"); });
+            .catch((e) => { console.log(e); customAlert("Cannot access the directory"); });
             
              
             }
@@ -535,7 +538,7 @@ function disableInAppInstallPrompt() {
         // load a json graph file, from local storage
         function quickloadGraph() {
             if (!supportStorage) {           
-               alert("Sorry, your browser does not support Web Storage.");
+               customAlert("Sorry, your browser does not support Web Storage.");
                return;
             }    
             // we first try loading from the current
@@ -549,7 +552,7 @@ function disableInAppInstallPrompt() {
                     sessionStorage.setItem(storageKey, result);                    
             }
             if (!result) {
-                alert('No quicksaved graph found');
+                customAlert('No quicksaved graph found');
                 return;
             }
             sendGraphTxtToElm(result);
@@ -560,7 +563,7 @@ function disableInAppInstallPrompt() {
          app.ports.quickLoad.subscribe(quickloadGraph);
 
          app.ports.alert.subscribe(function(s) {
-             alert(s);
+             customAlert(s);
          });
 
 
@@ -603,7 +606,7 @@ function disableInAppInstallPrompt() {
              // Check browser support
             if (!supportStorage) {           
                if (feedback)
-                   alert("Sorry, your browser does not support Web Storage.");
+                   customAlert("Sorry, your browser does not support Web Storage.");
                return;
             }
             // Store even if the browser is closed
@@ -612,7 +615,7 @@ function disableInAppInstallPrompt() {
             // in case multiple tabs are opened
             sessionStorage.setItem(storageKey, JSON.stringify(d));
             if (feedback)
-                alert("Successful quicksave"); 
+                customAlert("Successful quicksave"); 
          }
          var quicksaveFun = function(a) {
             defaultQuickSave(a, !a.autosave);
@@ -645,7 +648,7 @@ function disableInAppInstallPrompt() {
                 saveFileApi(arg)
                 .then(() => {
                     if (feedback) {
-                        alert("Successful quicksave to " + currentFileHandle.name);
+                        customAlert("Successful quicksave to " + currentFileHandle.name);
                     }
                 });
             };
@@ -655,7 +658,7 @@ function disableInAppInstallPrompt() {
             console.log("Saving grid size preferences.");
             // Check browser support
             if (!supportStorage) {           
-               alert("Sorry, your browser does not support Web Storage.");
+               customAlert("Sorry, your browser does not support Web Storage.");
                return;
             }
             // Store even if the browser is closed
@@ -783,10 +786,10 @@ function disableInAppInstallPrompt() {
          function toClipboard({content, success, failure}) {
             navigator.clipboard.writeText(content).then(
             () => {
-                success && alert(success);
+                success && customAlert(success);
             },
             () => {
-                failure && alert(failure);
+                failure && customAlert(failure);
             });
          };
 
@@ -814,18 +817,18 @@ function disableInAppInstallPrompt() {
             // 0.7em c'est bien
             //utiliser \relscale{0.7} pour changer la taille de la police
             // bah non ca ne marche pas..
-            // app.ports.incompleteEquation.subscribe((data) =>  alert(err));
-            app.ports.applyProof.subscribe((data) =>  alert(err));
+            // app.ports.incompleteEquation.subscribe((data) =>  customAlert(err));
+            app.ports.applyProof.subscribe((data) =>  customAlert(err));
             app.ports.requestProof.subscribe((data) => {
                 navigator.clipboard.writeText(data.statement)
-                .then(() => alert("Statement copied to clipboard"));
+                .then(() => customAlert("Statement copied to clipboard"));
             }
             );
          }
 
          function copyErr(s, emptyErr, success, failure) {
             if (s == "") {
-                alert("No selected subdiagram found!");
+                customAlert("No selected subdiagram found!");
                 return;
             }
             toClipboard(
@@ -906,11 +909,11 @@ function disableInAppInstallPrompt() {
             ws = new WebSocket(rep);
             ws.onclose = function(event) {
                 if (event.wasClean) {
-                    alert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+                    customAlert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
                 } else {
                     // par exemple : processus serveur arrêté ou réseau en panne
                     // event.code est généralement 1006 dans ce cas
-                    alert('[close] Connection died');
+                    customAlert('[close] Connection died');
                 }
                 online = false;
             };
@@ -919,7 +922,7 @@ function disableInAppInstallPrompt() {
             // socket.send("Coucou le serveur !");
                 online = true;
                 expectedIdFromServer = 0;
-                alert("connected");
+                customAlert("connected");
                 requestSnapshot(ws);
                 
             });
@@ -936,7 +939,7 @@ function disableInAppInstallPrompt() {
                     }
                     , event.data) ;
             });
-            // alert("go");
+            // customAlert("go");
          };
         //  const connectButton = document.querySelector("#connect");
          function tryConnect() {
@@ -945,7 +948,7 @@ function disableInAppInstallPrompt() {
                     if (rep === null) {
                         return;
                     }
-                    // alert("c'est parti");
+                    // customAlert("c'est parti");
                     connectToServer(rep);
                 });
            
@@ -976,6 +979,9 @@ function disableInAppInstallPrompt() {
             customPrompt = function (question, defaut, callback) {
                 promptCallback = (ret) => callback(ret);
                 vscode.postMessage({key:"prompt", content: {question: question, default: defaut}});
+            };
+            customAlert = function (message) {
+                vscode.postMessage({key:"alert", content: message});
             };
             app.ports.generateProofJs.subscribe(function(script){
                 sendExternalMsg("generate-proof",processProof(script));
