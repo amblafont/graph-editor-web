@@ -791,7 +791,7 @@ function disableInAppInstallPrompt() {
          };
 
          app.ports.toClipboard.subscribe(toClipboard);
-         const err = "This features is only enabled with the webview version embedded in the appropriate vscode extension";
+         const err = "This feature is only enabled with the webview version embedded in the appropriate vscode extension";
 
        
          if (vscode) {
@@ -811,9 +811,16 @@ function disableInAppInstallPrompt() {
             });
          }
          else {
+            // 0.7em c'est bien
+            //utiliser \relscale{0.7} pour changer la taille de la police
+            // bah non ca ne marche pas..
             // app.ports.incompleteEquation.subscribe((data) =>  alert(err));
             app.ports.applyProof.subscribe((data) =>  alert(err));
-            app.ports.requestProof.subscribe((data) =>  alert(err));
+            app.ports.requestProof.subscribe((data) => {
+                navigator.clipboard.writeText(data.statement)
+                .then(() => alert("Statement copied to clipboard"));
+            }
+            );
          }
 
          function copyErr(s, emptyErr, success, failure) {
