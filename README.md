@@ -5,27 +5,27 @@ To test offline: open index.html in your browser. The button "open directory" mi
 
 There is also a vscode extension which embeds the web app to provide Coq mechanisation features (see https://github.com/amblafont/vscode-yade-example).
 
-# Collaborating
+# Collaborating on the same diagram
 
 By running a server, it is possible to collaborate on the same diagram (check the "Connect" button at the top of the diagram editor).
 
-To compile the server:
-- `npm install` (the first time)
-- `make server.ts`
+The easiest way to use this feature is to install vscode with the [appropriate extension](https://marketplace.visualstudio.com/items?itemName=amblafont.coreact-yade).
 
-To run the server (on port 8080, cf head of server.ts):
+If you prefer to run the server manually (on port 8080, cf head of server.ts):
+- `npm install` (the first time)
 - `make server`
+
 
 # Easy editing of latex documents
 
 The button "open directory" offers easy editing of diagrams in latex documents (see the directory tools/ for an example). It relies on the files system API, so it does not work (yet?) with Firefox or Safari.
-You must pick a directory which includes a file "yade-config.json". This file must contain a field "watchedFile" which indicates the file to be watched. Other fields may be specified: check the top of the file [watcher.ts](watcher.ts).
+You must pick a directory which includes a file "yade-config.json". This file must contain a field "watchedFile" which indicates the file to be watched. Other fields may be specified: check the top of the file [watcher.ts](ts/watcher.ts).
 
 # Compiling the web app
 
 - `make`
 
-(or download the latest elm.js and watcher.js from https://amblafont.github.io/graph-editor/elm.js and https://amblafont.github.io/graph-editor/watcher.js)
+(or download the latest elm.js and bundle.js from https://amblafont.github.io/graph-editor/js/elm.js and https://amblafont.github.io/graph-editor/js/bundle.js)
 
 
 

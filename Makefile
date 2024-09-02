@@ -1,17 +1,25 @@
 
 
-.PHONY: server all
+.PHONY: server all elm js site vscode http
 
-all: watcher.js
-	elm make src/Main.elm --output=elm.js
+all: js elm
+	
+elm:
+	elm make src/Main.elm --output=js/elm.js
+
+js:
+	npx esbuild --outfile=js/bundle.js ts/bundle.ts --bundle --global-name=Bundle --format=iife
+
+# run http server
+http:
+	npx esbuild --servedir=.
 
 server: server.js
 	node server.js
 
-server.js: server.ts
-	npx tsc interface.d.ts $<
+server.js: ts/interface.d.ts server.ts
+	npx tsc $^
 
-watcher.js: watcher.ts
-	npx tsc interface.d.ts $<
+
 
 
