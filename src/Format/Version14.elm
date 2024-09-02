@@ -18,16 +18,19 @@ type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 
    position : Float, color : String }
 
-emptyArrowStyle : ArrowStyle
-emptyArrowStyle = ArrowStyle "" "" "normal" False 0 "" 0 "black"
+emptyArrowStyle : Color.Color -> ArrowStyle
+emptyArrowStyle color =
+  { tail = "", head = "", kind = "normal", 
+    dashed = False, bend = 0, alignment = "", position = 0,
+    color = Codec.encoder Color.codec color }
 
 type alias Edge = { label : String, style : ArrowStyle, kind : String,
        zindex : Int
       --  , selected : Bool 
        }
 
-pullshoutEdge : Int -> Edge
-pullshoutEdge z = Edge "" emptyArrowStyle pullshoutKey z -- False
+pullshoutEdge : Int -> Color.Color -> Edge
+pullshoutEdge z color = Edge "" (emptyArrowStyle color) pullshoutKey z -- False
 
 type alias Node = { pos : Point , label : String, isMath : Bool, zindex: Int
   , isCoqValidated : Bool
@@ -79,7 +82,7 @@ arrowStyleCodec =
 fromEdgeLabel : EdgeLabel -> Edge
 fromEdgeLabel e = 
    case e.details of
-       PullshoutEdge -> pullshoutEdge e.zindex
+       PullshoutEdge {color} -> pullshoutEdge e.zindex color
        NormalEdge ({label, isAdjunction} as l)->
             let style = ArrowStyle.getStyle l in
             { label = label,
@@ -95,7 +98,9 @@ toEdgeLabel { label, style, kind, zindex } =
      , weaklySelected = False,
      zindex = zindex,
      details = 
-       if kind == pullshoutKey then PullshoutEdge else
+       if kind == pullshoutKey then 
+          PullshoutEdge {color = Codec.decoder Color.codec style.color}
+       else
          NormalEdge { label = label
            , isAdjunction = kind == adjunctionKey      
            , style = Codec.decoder arrowStyleCodec style

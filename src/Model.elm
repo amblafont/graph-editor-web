@@ -10,6 +10,7 @@ import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel, coqProofTexComman
 import HtmlDefs
 import List.Extra
 import ArrowStyle
+import Drawing.Color as Color
 
 import Modes exposing (Mode(..))
 
@@ -472,6 +473,20 @@ restrictSelection model =
                                , activeTabId = 0
                                , nextTabId = 1 }
       }
+
+returnSetColor : Maybe (Color.Color)
+                  -> Model -> List EdgeId
+                  -> Graph.ModifHelper NodeLabel EdgeLabel -- (Model, Cmd Msg)
+returnSetColor colorOption model ids =
+    case colorOption of
+      Nothing -> Graph.newModif <| getActiveGraph model
+      Just color ->
+        let modifHelper = GraphDefs.setColorEdgesId 
+                      color
+                      ids
+                      (getActiveGraph model)
+        in
+        modifHelper
               
 returnUpdateStyle : (ArrowStyle.ArrowStyle -> Maybe ArrowStyle.ArrowStyle) 
                   -> Model -> List (Graph.Edge EdgeLabel) 

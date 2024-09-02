@@ -10,6 +10,7 @@ import GraphDefs exposing (NodeLabel, EdgeLabel)
 import List.Extra
 import Model exposing ({- setSaveGraph, -} toggleHelpOverlay)
 import CommandCodec exposing (updateModifHelper)
+import Drawing.Color as Color
 
 initialise : Graph NodeLabel EdgeLabel -> EdgeId -> PullshoutKind -> Maybe PullshoutState
 initialise g id k =
@@ -17,6 +18,7 @@ initialise g id k =
      t :: q ->
           Just { chosenEdge = id,
             kind = k,
+            color = Color.black,
             currentDest = t, 
             possibilities = q}
      [] -> Nothing
@@ -55,7 +57,7 @@ graph : Model -> PullshoutState -> Graph.ModifHelper NodeLabel EdgeLabel
 graph m s =
    Graph.md_newEdge (Graph.newModif <| getActiveGraph m) 
       s.chosenEdge s.currentDest
-   GraphDefs.newPullshout
+   (GraphDefs.newPullshout s.color)
    |> Tuple.first
 
 graphDrawing : Model -> PullshoutState -> Graph NodeDrawingLabel EdgeDrawingLabel
@@ -90,6 +92,10 @@ update state msg model =
         KeyChanged False _ (Character 'P') -> noCmd <| updateState <| nextPullshout model Pushout state 
         KeyChanged False _ (Control "Enter") -> 
             updateModifHelper { model | mode = DefaultMode } <| graph model state
+        KeyChanged False _ (Character c) ->
+           case Color.fromChar c of
+            Nothing -> noCmd model
+            Just col -> noCmd <| updateState { state | color = col }
         _ -> noCmd model
 
 
@@ -98,5 +104,6 @@ help =
             "[ESC] cancel, " ++
             HtmlDefs.overlayHelpMsg 
             ++ ", cycle between [p]ullback/[P]ushout possibilities, "
-            ++ "[RET] confirm"             
+            ++ Color.helpMsg
+            ++ ", [RET] confirm"             
              

@@ -25,7 +25,7 @@ type alias NormalEdgeDrawingLabel =
      style : ArrowStyle, dims : Point, isAdjunction : Bool }
 
 type EdgeType = 
-    PullshoutEdge
+    PullshoutEdge {color : Color.Color}
   | NormalEdge NormalEdgeDrawingLabel
 
 type alias EdgeDrawingLabel = { details : EdgeType, shape : EdgeShape, isActive : Activity, zindex : Int}
@@ -36,7 +36,7 @@ mapNormalEdge f e =
    zindex = e.zindex,
    shape = e.shape,
    details = case e.details of
-               PullshoutEdge -> PullshoutEdge
+               PullshoutEdge x -> PullshoutEdge x
                NormalEdge l -> NormalEdge <| f l
   }
 
@@ -95,7 +95,7 @@ make_edgeDrawingLabel : {editable : Bool, isActive : Activity, shape : EdgeShape
 make_edgeDrawingLabel {editable, isActive, shape} e =
    { isActive = isActive, zindex = e.zindex, shape = shape,
      details = case e.details of 
-        GraphDefs.PullshoutEdge -> PullshoutEdge
+        GraphDefs.PullshoutEdge x -> PullshoutEdge x
         GraphDefs.NormalEdge ({label, style, isAdjunction} as l) ->
            NormalEdge { label = label, editable = editable, 
               isAdjunction = isAdjunction,
@@ -359,11 +359,11 @@ class = Html.Attributes.attribute "class" << String.join " "
 
 
 
-drawHat : Graph.EdgeId -> Activity -> Int -> Hat -> Drawing Msg
-drawHat edgeId a z hat =
+drawHat : Graph.EdgeId -> Activity -> Int -> {color: Color.Color} -> Hat -> Drawing Msg
+drawHat edgeId a z {color} hat =
     let classes = class <| activityToEdgeClasses a in
     Drawing.polyLine 
-                {zindex = z, color = Color.black
+                {zindex = z, color = color
                 , points = [hat.p1, hat.summit, hat.p2] }
                [classes, onClick (EdgeClick edgeId) 
                  ]
@@ -382,8 +382,8 @@ graphDrawing cfg g0 =
      
       let drawEdge id e = 
              case (e.details, e.shape) of
-               (PullshoutEdge, HatShape hat) -> 
-                                drawHat id e.isActive e.zindex hat
+               (PullshoutEdge pullshoutStyle, HatShape hat) -> 
+                                drawHat id e.isActive e.zindex pullshoutStyle hat
                               
                (NormalEdge l, Bezier q) ->
                   

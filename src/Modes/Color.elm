@@ -8,11 +8,12 @@ import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
 import CommandCodec exposing (updateModifHelper)
 import ArrowStyle
+import Drawing.Color as Color
 
 initialise : Model -> Model
 initialise model =
      let modelGraph = getActiveGraph model in
-     let ids = GraphDefs.selectedEdges modelGraph |> List.filter (.label >> GraphDefs.isNormal) 
+     let ids = GraphDefs.selectedEdges modelGraph -- |> List.filter (.label >> GraphDefs.isNormal) 
                  |> List.map .id
      in
      if ids == [] then { model | mode = DefaultMode } else 
@@ -28,13 +29,14 @@ update ids msg model =
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") ->
             switch_Default model
-        KeyChanged False _ k ->
+        KeyChanged False _ (Character c) ->
                let modelGraph = getActiveGraph model in
                let modifHelper = 
-                        Model.returnUpdateStyle 
-                        (ArrowStyle.keyMaybeUpdateColor k)
+                        Model.returnSetColor 
+                        (Color.fromChar c)
                             model 
-                            (Graph.getEdges ids modelGraph) 
+                            ids
+                            -- (Graph.getEdges ids modelGraph) 
                in
                updateModifHelper { model | mode = DefaultMode } modifHelper
                  

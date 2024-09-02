@@ -5,6 +5,7 @@ import Polygraph as Graph exposing (Graph, Node, Edge)
 import Maybe.Extra
 import Geometry exposing (LabelAlignment(..))
 import ArrowStyle
+import Drawing.Color as Color
 
 dimToTikz : Float -> Float
 dimToTikz d = d / (16 * 1.2)
@@ -41,7 +42,7 @@ encodeFakeEdgeTikZ e =
 encodeFakeLabel : Edge EdgeLabel -> String
 encodeFakeLabel e =
     case e.label.details of
-        PullshoutEdge -> ""
+        PullshoutEdge _ -> "" -- fake
         NormalEdge l -> ArrowStyle.tikzStyle l.style
 
 graphToTikz : Int -> Graph NodeLabel EdgeLabel -> String
@@ -76,6 +77,7 @@ graphToTikz sizeGrid g =
 
 encodePullshoutTikZ : Graph NodeLabel EdgeLabel -> Edge EdgeLabel -> String
 encodePullshoutTikZ g e =
+    let color = GraphDefs.getEdgeColor e.label in
     case ( Graph.getEdge e.from g, Graph.getEdge e.to g ) of
         ( Just s, Just t ) ->
             let
@@ -92,7 +94,9 @@ encodePullshoutTikZ g e =
                 ++ b
                 ++ "}{"
                 ++ c
-                ++ "}{draw} % \n"
+                ++ "}{draw,"
+                ++ Color.toString color
+                ++ "} % \n"
 
         ( _, _ ) ->
             "raté!"
@@ -115,9 +119,7 @@ encodeAdjunction e = "edge[draw=none] node[midway, anchor=center, sloped]{$\\das
 encodeLabel : Edge EdgeLabel -> String
 encodeLabel e =
     case e.label.details of
-        PullshoutEdge ->
-            ""
-
+        PullshoutEdge _ -> ""
         NormalEdge l ->
             let style = ArrowStyle.getStyle l in
             let lbl = "${ " ++ 
