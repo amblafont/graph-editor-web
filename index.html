@@ -168,6 +168,7 @@ if ('serviceWorker' in navigator) {
         <h1>Diagram editor</h1>
         <button id="install" hidden>Install for offline use</button>
         <button id="connect" onclick="tryConnect()">Connect to server</button>
+        <span id="connect-status"></span>
    
      
         <!-- <p>
@@ -908,19 +909,21 @@ function disableInAppInstallPrompt() {
             console.log("connecting to " + rep);
             ws = new WebSocket(rep);
             ws.onclose = function(event) {
+                online = false;
+                document.getElementById("connect-status").textContent = "";
                 if (event.wasClean) {
                     customAlert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
                 } else {
                     // par exemple : processus serveur arrêté ou réseau en panne
                     // event.code est généralement 1006 dans ce cas
                     customAlert('[close] Connection died');
-                }
-                online = false;
+                }                
             };
             // La connexion est ouverte
             ws.addEventListener("open", function (event) {
             // socket.send("Coucou le serveur !");
                 online = true;
+                document.getElementById("connect-status").textContent = "(connected)";
                 Bundle.expectedIdFromServer = 0;
                 customAlert("YADE is connected to server");
                 Bundle.requestSnapshot(ws);
