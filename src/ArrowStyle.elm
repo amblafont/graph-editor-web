@@ -6,6 +6,7 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
     keyMaybeUpdateStyle, shadow,
+    increaseBend, decreaseBend,
     keyMaybeUpdateColor, makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle
     , invert)
 
@@ -37,9 +38,9 @@ type alias Style = { tail : TailStyle,
                      color : Color
                     } 
 
-simpleLineStyle : Style
-simpleLineStyle = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashed = False,
-          bend = 0, labelAlignment = Left,
+simpleLineStyle : Float -> Style
+simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashed = False,
+          bend = bend, labelAlignment = Left,
           labelPosition = 0.5, color = Color.black }
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
@@ -163,6 +164,12 @@ controlChars = "|>(=-bBA]["
 maxLabelPosition = 0.9
 minLabelPosition = 0.1
 
+increaseBend : Float -> Float
+increaseBend b = b + 0.1
+
+decreaseBend : Float -> Float
+decreaseBend b = b - 0.1
+
 -- doesn't update the color
 keyMaybeUpdateStyle : Key -> Style -> Maybe Style
 keyMaybeUpdateStyle k style = 
@@ -172,8 +179,8 @@ keyMaybeUpdateStyle k style =
         Character '(' -> Just <| toggleHook style
         Character '=' -> Just <| toggleDouble style
         Character '-' -> Just <| toggleDashed style
-        Character 'b' -> Just <| {style | bend = style.bend + 0.1 |> norm0}
-        Character 'B' -> Just <| {style | bend = style.bend - 0.1 |> norm0}
+        Character 'b' -> Just <| {style | bend = decreaseBend style.bend |> norm0}
+        Character 'B' -> Just <| {style | bend = increaseBend style.bend |> norm0}
         Character 'A' -> Just <| toggleLabelAlignement style
         Character ']' -> if style.labelPosition + epsilon >= maxLabelPosition then Nothing else
                Just {style | labelPosition = style.labelPosition + 0.1 |> min maxLabelPosition}

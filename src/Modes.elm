@@ -127,7 +127,8 @@ type ArrowMode =
 
 
 type alias NewLineState = {
-    initialPos : Point
+    initialPos : Point,
+    bend : Float
     }
 
 type alias NewArrowState =

@@ -21,7 +21,7 @@ import CommandCodec exposing (updateModifHelper)
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
      noCmd { m  | mode = NewLine
-        { initialPos = m.mousePos }  }
+        { initialPos = m.mousePos, bend = 0 }  }
             
 
 update : NewLineState -> Msg -> Model -> ( Model, Cmd Msg )
@@ -30,11 +30,14 @@ update state msg model =
               updateModifHelper newModel <| makeGraph newModel state
 
     in
+    let updState s = noCmd { model | mode = NewLine s } in
     case msg of
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> finalise ()
         KeyChanged False _ (Character 'n') -> finalise ()
+        KeyChanged False _ (Character 'b') -> updState {state | bend = ArrowStyle.decreaseBend state.bend}
+        KeyChanged False _ (Character 'B') -> updState {state | bend = ArrowStyle.increaseBend state.bend}
         _ -> noCmd model
            
     
@@ -43,10 +46,10 @@ update state msg model =
 makeGraph : Model -> NewLineState -> Graph.ModifHelper NodeLabel EdgeLabel
 makeGraph m s =       
     let graph = getActiveGraph m |> Graph.newModif in
-    let style = ArrowStyle.simpleLineStyle in
+    let style = ArrowStyle.simpleLineStyle s.bend in
     let edgeLabel = GraphDefs.newEdgeLabel 
                               "" 
-                              style 
+                              style
     in
     let nodeLabel = (GraphDefs.newNodeLabel s.initialPos " " True Zindex.defaultZ) in
     let newNodeLabel = {nodeLabel | pos = m.mousePos } in
@@ -65,5 +68,5 @@ help =
 --         NewLineMoveNode _ ->
             -- Debug.toString st ++
             HtmlDefs.overlayHelpMsg ++
-            ", [ESC] cancel, [click, n] to finalise, "
+            ", [ESC] cancel, [click, n] to finalise, [bB] change bend"
             
