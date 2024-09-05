@@ -121,8 +121,8 @@ make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
 
 
 -- create an input with id curIdInput
-make_input : Point -> String -> (String -> Msg) -> Drawing Msg
-make_input pos label onChange =
+make_input : Maybe String -> Point -> String -> (String -> Msg) -> Drawing Msg
+make_input key pos label onChange =
          Html.input ([ Html.Attributes.value label ,
                        Html.Events.onInput onChange,
                        Msg.onTabPreventDefault,
@@ -135,7 +135,7 @@ make_input pos label onChange =
                     ++
                     [HtmlDefs.onRendered (always <| Do <| HtmlDefs.select HtmlDefs.idInput )]
                     ) []                                        
-             |> Drawing.htmlAnchor Nothing foregroundZ pos (100,16) True ""
+             |> Drawing.htmlAnchor key foregroundZ pos (100,16) True ""
 
 
 activityToClasses : Activity -> List String
@@ -158,7 +158,7 @@ nodeDrawing cfg node =
     let id = node.id in
     (
      if n.editable then
-         make_input n.inputPos n.label (NodeLabelEdit id)
+         make_input (idToKey id) n.inputPos n.label (NodeLabelEdit id)
      else
         --  if n.label == "" then
             --  (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
@@ -176,7 +176,8 @@ nodeDrawing cfg node =
                 pos = n.pos,
                 dims = n.dims,
                 angle = 0,
-                scale = 1
+                scale = 1,
+                key = idToKey id
             }
             ([   MouseEvents.onClick (NodeClick id),
                  MouseEvents.onDoubleClick (EltDoubleClick id)
@@ -237,7 +238,7 @@ segmentLabel cfg q edgeId activity label curve =
       
     in
         if label.editable then
-             make_input labelpos label.label
+             make_input (idToKey edgeId) labelpos label.label
              (EdgeLabelEdit edgeId)
         else
          if  label.label == "" then
@@ -259,7 +260,8 @@ segmentLabel cfg q edgeId activity label curve =
                 pos = labelpos,
                 dims = label.dims,
                 angle = angle,
-                scale = GraphDefs.edgeScaleFactor
+                scale = GraphDefs.edgeScaleFactor,
+                key = idToKey edgeId
              }  -- -}          
              ([   MouseEvents.onClick (EdgeClick edgeId),
                   MouseEvents.onDoubleClick (EltDoubleClick edgeId),
@@ -290,6 +292,9 @@ adjunctionArrow id classes z label q =
    makeLatex {latexPreamble = ""} 
         p (12,24) "⊢" z attrs
 -}
+
+idToKey : Graph.Id -> Maybe String
+idToKey = String.fromInt >> Just
 
 normalEdgeDrawing : Config -> Graph.EdgeId 
 -- -> Geometry.PosDims -> Geometry.PosDims

@@ -225,10 +225,11 @@ function disableInAppInstallPrompt() {
         const isFileAPI = typeof showDirectoryPicker != 'undefined';
         const configFilename = "yade-config.json";
         var vscode = undefined;
-        var currentFileHandle = undefined;
         if (typeof acquireVsCodeApi != 'undefined') {
             vscode = acquireVsCodeApi();
         }
+        var currentFileHandle = undefined;
+
 
         // copied from index.ts
         function sendExternalMsg(key, content) {
@@ -308,7 +309,9 @@ function disableInAppInstallPrompt() {
 
          var app = Elm.Main.init({
              node: appDiv,
-             flags: { defaultGridSize : gridSize, rulerMargin : rulerMargin }
+             flags: { defaultGridSize : gridSize, rulerMargin : rulerMargin
+                , saveLoadButtons : vscode == undefined
+              }
          });
 
 

@@ -346,13 +346,14 @@ mkPath arg attrs q =
 makeLatex : { zindex:Int,
               label : String, preamble : String, pos : Point, dims : Point
               , angle : Float
-              , scale : Float} 
+              , scale : Float
+              , key : Maybe String} 
               -> List (Html.Attribute a) -> Drawing a
 makeLatex arg attrs = 
   Node {angle = arg.angle, label = arg.label, preamble = arg.preamble, pos = arg.pos, dims = arg.dims
     , scale = arg.scale}
   |> TikzShape attrs
-  |> ofShape arg.zindex 
+  |> ofShapeWithKey arg.zindex arg.key
 
 shadowWidth = 4
 
