@@ -1,7 +1,7 @@
-// Version: 3
+// Version: 4
 const CACHE_NAME = 'my-cache-v2';
 const urlsToCache = [
-  './',
+  '../',
   './index.html',
   './js/elm.js',
   './js/bundle.js',
