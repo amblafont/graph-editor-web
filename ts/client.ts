@@ -9,7 +9,11 @@ client to collaborate on the same diagram
 
 
   ***************** */
-export let expectedIdFromServer = 0;
+let expectedIdFromServer = 0;
+
+export function resetExpectedId() {
+  expectedIdFromServer = 0;
+}
 
 function logExpectedId() {
   console.log("expectedId: ");

@@ -35,7 +35,7 @@ export const defaultConfig = {magic: "% YADE DIAGRAM",
   };
 
   //
-export let defaultsExt:any = 
+export const defaultsExt:any = 
 {"tex":
    { prefix: "% GENERATED LATEX",
      suffix: "% END OF GENERATED LATEX",

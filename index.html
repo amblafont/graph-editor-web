@@ -927,7 +927,7 @@ function disableInAppInstallPrompt() {
             // socket.send("Coucou le serveur !");
                 online = true;
                 document.getElementById("connect-status").textContent = "(connected)";
-                Bundle.expectedIdFromServer = 0;
+                Bundle.resetExpectedId();
                 customAlert("YADE is connected to server");
                 Bundle.requestSnapshot(ws);
                 
