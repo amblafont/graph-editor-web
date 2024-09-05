@@ -704,7 +704,7 @@ posGraph g =
                         --  if n.editable then (0, 0) else
                         -- copied from source code of Collage                         
                                   getNodeDims n, 
-                           pos = n.pos
+                           pos = getNodePos n
                          } |> Geometry.pad padding
                         }
                        } )
