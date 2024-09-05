@@ -22,7 +22,8 @@ newStateWithDefault modifId ids =
    { -- modifs = [GraphInfo.activeGraphModifHelper graphInfo modif], 
         next = ids
      
-      , idModif = modifId}
+      , idModif = modifId,
+      alreadySelected = False}
 
 newState : GraphInfo -> ModifId -> List { id : Graph.Id, tabId : TabId, label : Maybe String} -> RenameState
 newState graphInfo modifId modifs =
@@ -137,6 +138,11 @@ update state msg model =
          }
    in 
     case msg of
+      RenderedTextInput ->
+            ({model | mode = RenameMode { state | alreadySelected = True }},
+              Cmd.batch <| Msg.focusId HtmlDefs.idInput ::
+              if state.alreadySelected then [] else
+              [ HtmlDefs.select HtmlDefs.idInput ] )
       KeyChanged False _ (Control "Escape") -> nextStage Cancel state model
       KeyChanged False _ (Control "Enter") -> nextStage Finish state model
       KeyChanged False _ (Control "Tab") -> nextStage Tab state  model

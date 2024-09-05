@@ -73,7 +73,10 @@ type alias ResizeState =
    }
 type alias RenameState = 
    { next:List { id : Graph.Id, tabId : TabId, label : String},
-     idModif : ModifId }
+     idModif : ModifId,
+     -- the input text is selected when first editing
+     -- but on rerendering the input, ti should not select again
+     alreadySelected : Bool }
         {- { next : List { id : Graph.Id, label : Maybe String, tabId : GraphInfo.TabId } 
         , idModif : ModifId
         } -}

@@ -131,9 +131,7 @@ make_input key pos label onChange =
                        Html.Attributes.style "width"
                            <| String.fromInt (String.length label + 1) ++ "ch"
                     ] ++ [class [HtmlDefs.renderedClass]] ++
-                    [HtmlDefs.onRendered (always <| Do <| Msg.focusId HtmlDefs.idInput )]
-                    ++
-                    [HtmlDefs.onRendered (always <| Do <| HtmlDefs.select HtmlDefs.idInput )]
+                    [HtmlDefs.onRendered (always RenderedTextInput)]
                     ) []                                        
              |> Drawing.htmlAnchor key foregroundZ pos (100,16) True ""
 

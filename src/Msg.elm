@@ -190,6 +190,7 @@ type Msg
   | AppliedProof { statement : String, script : String}
   | ProtocolReceive (List {isSender : Bool, msg : ProtocolMsg})
   | ProtocolRequestSnapshot
+  | RenderedTextInput
   -- | ProtocolReceiveSnapshot GraphInfo
   -- | ComputeLayout
   -- | FindInitial
