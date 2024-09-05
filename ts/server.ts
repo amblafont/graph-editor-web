@@ -20,7 +20,19 @@ let nextId = 0;
 let lastBreakId:null|number = null; 
 let lastSnapshot:null|{msg:Data,id : number, snapshot:true, sender:WebSocket.WebSocket} = null;
 
+function closeAll(reason:string) {
+    wss.clients.forEach(ws => {
+        closeConnection(ws, reason);
+      });
+}
 
+function restart() {
+  queue = [];
+  nextId = 0;
+  lastBreakId = null;
+  lastSnapshot = null;
+  console.log("Server restarted.");
+}
 
 function sendToClient(ws:WebSocket.WebSocket, data:ServerToClientMsg) {
   ws.send(JSON.stringify(data));
@@ -56,8 +68,8 @@ function sendQueueSince(ws:WebSocket.WebSocket, expectedId:number):boolean {
   if (depth > queue.length) {
     let clients = chooseSnapshotClient();
     if (clients.length == 0) {
-      const reason = "no updated client to get data from";
-      closeConnection(ws, reason);
+      const reason = "no updated client to get data from (server restarted)";
+      closeAll(reason);
       return false;
     }
     sendRequestSnapshot(clients);
@@ -180,6 +192,10 @@ wss.on('connection', function connection(ws:WebSocket.WebSocket) {
     // */
   
   ws.on('error', console.error);
+  ws.on('close', function close() {
+    if (wss.clients.size == 0)
+        restart();
+  });
   ws.on('message', function message(data, isBinary) {
     let str = data.toString();;
     console.log('received: %s', str.substring(0,200));
