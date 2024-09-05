@@ -41,6 +41,7 @@ maxRulerMargin = 2000
 type alias Model = {
   -- only one tab should be active
       graphInfo : GraphInfo
+    , saveLoadButtons : Bool
       -- tabs : List Tab
     -- , nextTabId : TabId
     -- , activeTabId : TabId
@@ -262,18 +263,24 @@ setSaveGraph m g =
 
 clearModel : Model -> Model
 clearModel m =
-   createModel m.defaultGridSize m.rulerMargin
+   createModel <| modelToFlag m
 
-createModel : Int -> Int -> Model
-createModel sizeGrid rulerMargin =
+modelToFlag : Model -> Flags
+modelToFlag m = {defaultGridSize = m.defaultGridSize, rulerMargin = m.rulerMargin, saveLoadButtons = m.saveLoadButtons}
+
+type alias Flags = {defaultGridSize : Int, rulerMargin : Int, saveLoadButtons:Bool}
+
+createModel : Flags -> Model
+createModel {defaultGridSize, rulerMargin, saveLoadButtons} =
     let g = Graph.empty in
     { 
-      graphInfo = {tabs = [ { graph = g, sizeGrid = sizeGrid, title = "1", id = 0 } ]
+      graphInfo = {tabs = [ { graph = g, sizeGrid = defaultGridSize, title = "1", id = 0 } ]
     , nextTabId = 1
     , activeTabId = 0
     , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
       }
-    , defaultGridSize = sizeGrid
+    , saveLoadButtons = saveLoadButtons
+    , defaultGridSize = defaultGridSize
     , history = []
     , nextModifId = 0
     , topModifId = defaultModifId

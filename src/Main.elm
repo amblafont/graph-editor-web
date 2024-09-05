@@ -1668,7 +1668,7 @@ viewGraph model =
           [ Html.div [] 
             (HtmlDefs.introHtml
             ++
-            if model.scenario /= Watch then [
+            if model.scenario /= Watch && model.saveLoadButtons then [
             Html.button [Html.Events.onClick (openFile () |> Do),
                Html.Attributes.id "load-button"] [Html.text "Load graph"] 
             ,  Html.button [Html.Events.onClick (quickLoad () |> Do),
@@ -1742,7 +1742,7 @@ viewGraph model =
 
 
 
-main : Program {defaultGridSize : Int, rulerMargin : Int} Model Msg
-main = Browser.element { init = \ {defaultGridSize, rulerMargin} -> (createModel defaultGridSize rulerMargin, Cmd.none),
+main : Program Flags Model Msg
+main = Browser.element { init = \ flags -> (createModel flags, Cmd.none),
                          view = view, update = updateIntercept,
                          subscriptions = subscriptions}
