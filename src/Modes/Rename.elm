@@ -170,7 +170,10 @@ nextStage action state model =
             case (action, list) of
               (Tab, head :: t :: q) ->
                 case 
-                   activateTab {model|mode = RenameMode {state | next = t :: q}}
+                   activateTab {model|mode = 
+                        RenameMode {state 
+                            | next = t :: q,
+                              alreadySelected = False}}
                       head.tabId
                       of 
                   Nothing -> aux (t :: q)
