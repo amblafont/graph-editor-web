@@ -166,6 +166,7 @@ if ('serviceWorker' in navigator) {
 
     <body>       
         <h1>Diagram editor</h1>
+        File: <span id="filename">(no file)</span>
         <button id="install" hidden>Install for offline use</button>
         <button id="connect" onclick="tryConnect()">Connect to server</button>
         <span id="connect-status"></span>
@@ -317,7 +318,14 @@ function disableInAppInstallPrompt() {
 
         function setFileName(newName) {
             document.title = newName;
-        }      
+            document.getElementById("filename").textContent = newName;
+        }
+        function getFileName(newName) {
+            return document.getElementById("filename").textContent;
+        }
+        function resetFileName() {
+            setFileName("(no file)");
+        }
 
          // we send a signal [keyInput] to elm and recieve
          // the answer on [keyOutput]
@@ -926,9 +934,17 @@ function disableInAppInstallPrompt() {
             ws.addEventListener("open", function (event) {
             // socket.send("Coucou le serveur !");
                 online = true;
+                
+                
                 document.getElementById("connect-status").textContent = "(connected)";
                 Bundle.resetExpectedId();
-                customAlert("YADE is connected to server");
+                let msg = "YADE is connected to server";
+                if (currentFileHandle) {
+                    msg += " (closing " + getFileName() + ")";
+                }
+                customAlert(msg);
+                resetFileName();
+                currentFileHandle = undefined;
                 Bundle.requestSnapshot(ws);
                 
             });
