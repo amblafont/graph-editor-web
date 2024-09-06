@@ -119,7 +119,9 @@ applyCommands arg model =
                            else noCmd ret.model 
    in
    let (finalModel2, cmd2) =
-         (case ret.focus of
+         (
+         if finalModel.mode /= DefaultMode then noCmd finalModel else
+         case ret.focus of
            Nothing -> noCmd finalModel
            Just {tabId, pos, selIds} -> 
             case activateTab finalModel tabId of 
@@ -199,7 +201,7 @@ applyCommand {isSender, msg} model =
         returnComputeLayout m2
      FocusPosition arg -> 
          { model = model, computeLayout = False, 
-           focus = if not isSender then Just arg else Nothing,
+           focus =  Just arg, -- if not isSender then Just arg else Nothing,
            undo = NoUndo }
         
 
