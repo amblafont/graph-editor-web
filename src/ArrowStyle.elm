@@ -287,6 +287,7 @@ tikzStyle stl =
 makeHeadShape : Style -> Svg a
 makeHeadShape style =
    if style.kind == NoneArrow then Svg.g [] [] else
+   let strokeAttr = Svg.strokeFromColor style.color in
    --   let (xh, yh) = (x - imgHeight / 2, y - imgHeight / 2) in
    --   let f = String.fromFloat in
    let double = isDouble style in
@@ -299,7 +300,7 @@ makeHeadShape style =
     <path d="M0 3.243H2"/>
   </g>
          -}
-           Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+           Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
             [ Svg.path [ Svg.d "M2.043.253c.473 1.794 1.528 2.64 2.59 2.99-1.062.348-2.117 1.194-2.59 2.988", Svg.strokeLinecap "round", Svg.strokeLinejoin "round", Svg.transform "translate(-1.8 0)" ] []
             , Svg.path [ Svg.d "M0 3.243H2" ] []
             ]
@@ -312,7 +313,7 @@ makeHeadShape style =
     <path d="M0 3.243H2.441" transform="translate(0 1.25)" />
   </g>
          -}
-             Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+             Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
                [ Svg.path [ Svg.d "M2.043.253c.473 1.794 1.528 2.64 2.59 2.99-1.062.348-2.117 1.194-2.59 2.988", Svg.strokeLinecap "round", Svg.strokeLinejoin "round" ] []
                , Svg.path [ Svg.d "M0 3.243H2.441", Svg.transform "translate(0 -1.25)" ] []
                , Svg.path [ Svg.d "M0 3.243H2.441", Svg.transform "translate(0 1.25)" ] []
@@ -325,7 +326,7 @@ makeHeadShape style =
     <path d="M0 3.243H4.882"/>
   </g>
          -}
-             Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10", Svg.strokeLinecap "round", Svg.strokeLinejoin "round" ]
+             Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10", Svg.strokeLinecap "round", Svg.strokeLinejoin "round" ]
                [ Svg.path [ Svg.d "M.25.252c.473 1.794 1.528 2.64 2.59 2.99C1.778 3.59.723 4.436.25 6.23" ] []
                , Svg.path [ Svg.d "M2.043.252c.473 1.794 1.528 2.64 2.59 2.99-1.062.348-2.117 1.194-2.59 2.988" ] []
                , Svg.path [ Svg.d "M0 3.243H4.882" ] []
@@ -341,7 +342,7 @@ makeHeadShape style =
     <path d="M0 3.243H1" transform="translate(0 -1.25)" />
   </g>
          -}
-               Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+               Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
                   [ Svg.g [ Svg.strokeLinecap "round", Svg.strokeLinejoin "round" ]
                      [ Svg.path [ Svg.d "M.25.252c.473 1.794 1.528 2.64 2.59 2.99C1.778 3.59.723 4.436.25 6.23" ] []
                      , Svg.path [ Svg.d "M2.043.252c.473 1.794 1.528 2.64 2.59 2.99-1.062.348-2.117 1.194-2.59 2.988" ] []
@@ -359,6 +360,7 @@ makeHeadShape style =
 makeTailShape : Style -> Svg a
 makeTailShape style =
      if style.kind == NoneArrow then Svg.g [] [] else
+     let strokeAttr = Svg.strokeFromColor style.color in
      let double = isDouble style in
    --   let (xh, yh) = (x - imgHeight / 2, y - imgHeight / 2) in
    --   let f = String.fromFloat in
@@ -370,7 +372,7 @@ makeTailShape style =
     <path d="M2.335.803C1.48.803.79 1.348.79 2.023c0 .674.69 1.22 1.544 1.22" stroke-linecap="round"/>
   </g>
 -}
-             Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+             Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
                [ Svg.path [ Svg.d "M2.335 3.243h.753" ] []
                , Svg.path [ Svg.d "M2.335.803C1.48.803.79 1.348.79 2.023c0 .674.69 1.22 1.544 1.22", Svg.strokeLinecap "round" ] []
                ]
@@ -387,7 +389,7 @@ makeTailShape style =
     </g>
   </g>
    -}
-               Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+               Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
                   [ Svg.g [ Svg.transform "translate(0 -1.25)" ]
                      [ Svg.path [ Svg.d "M2.335 3.243h.753" ] []
                      , Svg.path [ Svg.d "M2.335.803C1.48.803.79 1.348.79 2.023c0 .674.69 1.22 1.544 1.22", Svg.strokeLinecap "round" ] []
@@ -404,7 +406,7 @@ makeTailShape style =
     <path d="M2.335.803C1.48.803.79 1.348.79 2.023c0 .674.69 1.22 1.544 1.22" stroke-linecap="round"/>
   </g>
          -}
-               Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10", Svg.transform "translate(0 6.483) scale(1 -1)" ]
+               Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10", Svg.transform "translate(0 6.483) scale(1 -1)" ]
                   [ Svg.path [ Svg.d "M2.335 3.243h.753" ] []
                   , Svg.path [ Svg.d "M2.335.803C1.48.803.79 1.348.79 2.023c0 .674.69 1.22 1.544 1.22", Svg.strokeLinecap "round" ] []
                   ]
@@ -421,7 +423,7 @@ makeTailShape style =
     </g>
   </g>
          -}
-               Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10", Svg.transform "translate(0 6.483) scale(1 -1)" ]
+               Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10", Svg.transform "translate(0 6.483) scale(1 -1)" ]
                   [ Svg.g [ Svg.transform "translate(0 -1.25)" ]
                      [ Svg.path [ Svg.d "M2.335 3.243h.753" ] []
                      , Svg.path [ Svg.d "M2.335.803C1.48.803.79 1.348.79 2.023c0 .674.69 1.22 1.544 1.22", Svg.strokeLinecap "round" ] []
@@ -438,7 +440,7 @@ makeTailShape style =
     <path d="M1.544 5.283V1.2" stroke-linecap="round"/>
   </g>
          -}
-               Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+               Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
                   [ Svg.path [ Svg.d "M1.71 3.243h1.38" ] []
                   , Svg.path [ Svg.d "M1.544 5.283V1.2", Svg.strokeLinecap "round" ] []
                   ]
@@ -450,7 +452,7 @@ makeTailShape style =
     <path d="M1.544 5.783 V 0.7" stroke-linecap="round"/>
   </g>
          -}
-               Svg.g [ Svg.fill "none", Svg.stroke "#000", Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+               Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
                   [ Svg.path [ Svg.d "M1.71 3.243h1.38", Svg.transform "translate(0 -1.25)" ] []
                   , Svg.path [ Svg.d "M1.71 3.243h1.38", Svg.transform "translate(0 1.25)" ] []
                   , Svg.path [ Svg.d "M1.544 5.783 V 0.7", Svg.strokeLinecap "round" ] []
