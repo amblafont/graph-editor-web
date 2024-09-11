@@ -534,7 +534,7 @@ function disableInAppInstallPrompt() {
                 }
                 var promise = new Promise((resolve) => resolve("") );
                 if (config.preambleFile)
-                    promise = getTextFromFilepath(dirHandle,config.preambleFile);
+                    promise = Bundle.getTextFromFilepath(dirHandle,config.preambleFile);
                 promise.then(function(preamble) {
                     app.ports.clear.send({scenario:"watch", preamble:preamble});
                     processWatchedFile(config,preamble, dirHandle);
