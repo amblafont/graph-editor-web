@@ -203,8 +203,8 @@ wss.on('connection', function connection(ws:WebSocket.WebSocket) {
     // console.log(queue);
     const msg:ClientToServerDiff = JSON.parse(str);
 
-    if (msg.expectedId > getExpectedId(ws))
-      setExpectedId(ws, msg.expectedId);
+    // if (msg.expectedId > getExpectedId(ws))
+    setExpectedId(ws, msg.expectedId);
 
     if (msg.expectedId > nextId) {
       closeConnection(ws, 
