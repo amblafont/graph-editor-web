@@ -159,6 +159,7 @@ update state msg model =
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next {finish = False, merge = False}
+        KeyChanged False _ (Character ' ') -> next {finish = True, merge = state.isAdjunction}
         KeyChanged False _ (Control "Enter") -> next {finish = True, merge = state.isAdjunction}
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.isAdjunction}
@@ -273,7 +274,7 @@ help =
             ++ "[hjkl] position the new point with the keyboard "
             ++ "([f] to move by a multiple of the grid size), "
             ++ "[ctrl] merge, [a] merge without renaming, "
-             ++ "[RET] terminate the arrow creation, "
+             ++ "[RET] or space to terminate the arrow creation, "
              ++ "[\""
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
