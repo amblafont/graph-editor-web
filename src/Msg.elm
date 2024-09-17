@@ -185,6 +185,7 @@ type Msg
   -- means that some key has been pressed
   -- for a long time
   | PressTimeout
+  | LatexPreambleSwitch
   | LatexPreambleEdit String
   | SimpleMsg String
   | AppliedProof { statement : String, script : String}

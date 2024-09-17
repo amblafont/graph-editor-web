@@ -508,7 +508,6 @@ update msg modeli =
                                        --<| nextTabName modeli
      TabMoveLeft  -> returnModif <| GraphInfo.TabMoveLeft activeTabId
      TabMoveRight -> returnModif <| GraphInfo.TabMoveRight activeTabId
-     LatexPreambleEdit s -> returnModif <| GraphInfo.LatexPreamble s
      FindReplace req -> returnModif <| -- setSaveGraph model 
                          GraphInfo.activeGraphModifHelper model.graphInfo
                          <| GraphDefs.findReplaceInSelected modelGraph req
@@ -604,6 +603,18 @@ update msg modeli =
         CutHead state -> Modes.CutHead.update state msg model
         ResizeMode s -> update_Resize s msg model
         ColorMode ids -> Modes.Color.update ids msg model -- update_Color ids msg model
+        LatexPreamble s -> update_LatexPreamble s msg model
+
+update_LatexPreamble : String -> Msg -> Model -> (Model, Cmd Msg)
+update_LatexPreamble s msg model =
+    case msg of
+        LatexPreambleSwitch -> 
+            updateModif { model | mode = DefaultMode } 
+                <| GraphInfo.LatexPreamble s
+        LatexPreambleEdit newPreamble -> 
+            noCmd { model | mode = LatexPreamble newPreamble }
+        -- KeyChanged False _ (Control "Escape") -> switch_Default model
+        _ -> noCmd model
 
 checkMakeSave : Model -> (Model, Cmd Msg)
 checkMakeSave model =
@@ -821,6 +832,7 @@ update_DefaultMode msg model =
         MouseMove _ -> 
              weaklySelect <| GraphDefs.closest model.mousePos modelGraph             
         MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
+        LatexPreambleSwitch -> noCmd <| { model | mode = LatexPreamble model.graphInfo.latexPreamble }
         KeyChanged False _ (Control "Escape") -> clearSel
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Character 'w') -> clearSel
@@ -1297,7 +1309,7 @@ graphDrawingFromModel m =
              |> collageGraphFromGraph m
 --        NewNode -> collageGraphFromGraph m modelGraph
         Move s -> Modes.Move.graphDrawing m s          
-        RenameMode state -> Modes.Rename.graphDrawing m state              
+        RenameMode state -> Modes.Rename.graphDrawing m state             
         DebugMode ->
             modelGraph |> collageGraphFromGraph m 
                 |> Graph.map
@@ -1312,6 +1324,7 @@ graphDrawingFromModel m =
         ResizeMode sizeGrid -> graphResize sizeGrid m |>
                               Graph.applyModifHelper
                               |>  GraphDrawing.toDrawingGraph
+        LatexPreamble _ -> collageGraphFromGraph m modelGraph
         
 
 
@@ -1500,6 +1513,7 @@ helpMsg model =
         NewArrow _ -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
                            ++  Modes.NewArrow.help |> msg
+        LatexPreamble _ -> "Mode latex preamble." |> msg
         NewLine _ -> "Mode NewLine. "
                            ++  Modes.NewLine.help |> msg
         PullshoutMode _ -> "Mode Pullback/Pullshout. "
@@ -1691,9 +1705,6 @@ viewGraph model =
                Html.Attributes.title "Opens a save dialog box"] 
                [Html.text "Save"]
            , Html.button [Html.Events.onClick (Clear {scenario = model.scenario, preamble = ""})] [Html.text "Clear"]
-           
-           
-           , Html.a [Html.Attributes.href  ("#" ++ HtmlDefs.latexPreambleId)] [Html.text "Latex preamble"]
             {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),
                    Html.Attributes.title "Should not be necessary"
             ] [Html.text "Recompute labels"] -}
@@ -1722,21 +1733,24 @@ viewGraph model =
             else
                [])
           ++ 
-          [ Html.p [Html.Attributes.class "tabs"] (renderTabs model),          
-            Html.p [] [ Html.text <| if nmissings > 0 then 
-               String.fromInt nmissings ++ " nodes or edges could not be rendered."
-               else "" ]
-           , svg
-           , Html.p [] [
-            Html.text "LaTeX preamble",
-            Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
-              Html.Attributes.placeholder "latex Preamble",
-              Html.Attributes.value model.graphInfo.latexPreamble, 
-              Html.Attributes.id HtmlDefs.latexPreambleId,
-              Html.Events.onInput LatexPreambleEdit
-            ] [ ]
-           ]
-          ]
+          case model.mode of
+            LatexPreamble s -> 
+                [
+                Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Confirm preamble"],
+                Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
+                Html.Attributes.placeholder "latex Preamble",
+                Html.Attributes.value s, 
+                -- Html.Attributes.id HtmlDefs.latexPreambleId,
+                Html.Events.onInput LatexPreambleEdit
+               ] [ ]]
+            _ ->
+              [ Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Edit latex preamble"],                
+                Html.p [Html.Attributes.class "tabs"] (renderTabs model),          
+                Html.p [] [ Html.text <| if nmissings > 0 then 
+                  String.fromInt nmissings ++ " nodes or edges could not be rendered."
+                  else "" ]
+              , svg              
+              ]
     in
     Html.div [] contents
 

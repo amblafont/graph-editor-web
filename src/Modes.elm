@@ -37,6 +37,7 @@ type Mode
     | PullshoutMode PullshoutState
     | ColorMode (List EdgeId)
     | MakeSaveMode
+    | LatexPreamble String
 
 toString : Mode -> String
 toString m = case m of
@@ -46,6 +47,7 @@ toString m = case m of
     Move _ -> "Move"
     RenameMode _ -> "Rename"
     DebugMode -> "Debug"
+    LatexPreamble _ -> "Latex preamble"
     SquareMode _ -> "Square"
     RectSelect _ -> "Rect select"
     SplitArrow _ -> "Split arrow"
