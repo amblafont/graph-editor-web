@@ -311,7 +311,8 @@ subscriptions m =
                       DefaultMode  -> Do <| preventDefault e
                       SplitArrow _ -> Do <| preventDefault e
                       _ -> Msg.noOp 
-                 Character 'a' -> checkCtrl             
+                 Character 'a' -> checkCtrl
+                 Character ' ' -> Do <| preventDefault e
                  _ -> Msg.noOp
                 
                 )                

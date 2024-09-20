@@ -246,8 +246,9 @@ function disableInAppInstallPrompt() {
             if (e.keyCode == 9) 
               e.preventDefault(); 
             // let us do it with the space key as well
-            if (e.keyCode == 32) 
-              e.preventDefault();
+            // no, that's a bad idea: then it doesn't work when editing a label
+            // if (e.keyCode == 32) 
+            //   e.preventDefault();
 
             // Deactivate reloading with ctrl-R
             if (e.ctrlKey && e.key === "r") 
