@@ -10,7 +10,9 @@ katex:
 	unzip katex.zip
 	mv katex katex-temp
 	mkdir katex
-	mv katex-temp/katex.min.js katex-temp/katex.min.css katex-temp/fonts katex/
+	mv katex-temp/katex.min.js katex/
+	mv katex-temp/fonts fonts
+	{ echo "const katexStyles = \`"; cat katex-temp/katex.min.css; echo "\`;";} > katex/katex.min.css.js
 	rm katex.zip
 	rm -rf katex-temp
 	

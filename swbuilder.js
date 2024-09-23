@@ -3,7 +3,7 @@ const { generateSW } = require("workbox-build");
 
 generateSW({
   globDirectory: ".",
-  globPatterns: ["index.html", "js/*.js", "katex/**"],
+  globPatterns: ["index.html", "js/*.js", "katex/*", "fonts/*"],
   // so that it does not generate some additional workbox-*.js
   inlineWorkboxRuntime: true,
   swDest: "service-worker.js",
