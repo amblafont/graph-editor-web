@@ -263,7 +263,6 @@ dashedStr = "7, 3"
 
 tikzStyle : ArrowStyle -> String
 tikzStyle stl =
-    "fore, " ++
     Color.toString stl.color ++ "," ++
       (case (stl.head, stl.kind) of
             (NoHead, DoubleArrow) -> "identity,"

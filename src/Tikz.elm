@@ -43,7 +43,7 @@ encodeFakeLabel : Edge EdgeLabel -> String
 encodeFakeLabel e =
     case e.label.details of
         PullshoutEdge _ -> "" -- fake
-        NormalEdge l -> ArrowStyle.tikzStyle l.style
+        NormalEdge l -> "fore," ++ ArrowStyle.tikzStyle l.style
 
 graphToTikz : Int -> Graph NodeLabel EdgeLabel -> String
 graphToTikz sizeGrid g =
