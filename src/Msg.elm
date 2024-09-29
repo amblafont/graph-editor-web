@@ -155,6 +155,7 @@ type Msg
   | EdgeLabelEdit EdgeId String
   | NodeLabelEdit NodeId String
   | CopyGraph
+  | CutGraph
   | Loaded { graph : GraphInfo, scenario: String }
   | SetFirstTab GraphInfo  
   -- a graph is pasted

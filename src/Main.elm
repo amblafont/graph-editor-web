@@ -57,7 +57,7 @@ import Msg exposing (Msg(..), Scenario(..), MoveMode(..),
    Command(..), ProtocolMsg(..))
 import CommandCodec exposing (protocolReceive, protocolSend, protocolSendMsg, protocolSendModif
           , updateModif, updateModifHelper, scenarioOfString
-          , protocolRequestSnapshot)
+          , protocolRequestSnapshot, protocolSendGraphModif)
 
 import Tuple exposing (first, second)
 import Maybe exposing (withDefault)
@@ -187,6 +187,7 @@ port onMouseMoveFromJS : (Point -> a) -> Sub a
 
 -- we receive a copy event
 port onCopy : (() -> a) -> Sub a
+port onCut : (() -> a) -> Sub a
 -- we return the stuff to be written
 port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
@@ -296,7 +297,7 @@ subscriptions m =
     [ E.onKeyUp (D.map2 (KeyChanged False) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       E.onKeyDown (D.map2 (KeyChanged True) HtmlDefs.keysDecoder HtmlDefs.keyDecoder),
       onCopy (always CopyGraph),
-      
+      onCut (always CutGraph),
       onMouseMoveFromJS MouseMove,
       onKeyDownActive
            (\e -> e |> D.decodeValue (D.map2 ( \ks k -> 
@@ -733,7 +734,6 @@ graphQuickInput model (eq1, eq2) =
                 |> Maybe.withDefault default
                
 
-
 update_DefaultMode : Msg -> Model -> (Model, Cmd Msg)
 update_DefaultMode msg model =
     let delta_angle = pi / 5 in
@@ -846,19 +846,21 @@ update_DefaultMode msg model =
               noCmd <| Modes.NewArrow.initialise model 
             else
               noCmd <| setActiveGraph model <| GraphDefs.selectAll modelGraph
-        CopyGraph ->
-              
-              (model,
+        CopyGraph -> 
+           (model,
                clipboardWriteGraph <| 
                toJsGraphInfo <| Model.restrictSelection model
-                --  { graph = LastFormat.toJSGraph 
-                --     { tabs = [ {graph = GraphDefs.selectedGraph modelGraph
-                --       , sizeGrid = sizeGrid, title = "", 
-                --       active = True }]
-                --       , latexPreamble = model.latexPreamble
-                --       }
-                --     , version = LastFormat.version }
-                 )
+                 ) 
+        CutGraph -> 
+            let copyCmd = 
+                    clipboardWriteGraph <| 
+                    toJsGraphInfo <| Model.restrictSelection model
+            in
+            let removeCmd = 
+                    protocolSendGraphModif model.graphInfo defaultModifId 
+                    <| GraphDefs.removeSelected modelGraph
+            in
+            (model, Cmd.batch [copyCmd, removeCmd])
         KeyChanged False _ (Character 'd') ->
             noCmd <| { model | mode = DebugMode }
         KeyChanged True _ (Character 'g') -> 
@@ -1000,7 +1002,9 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
 
         
         KeyChanged False _ (Character '/') -> Modes.SplitArrow.initialise model
-        KeyChanged False _ (Character 'x') ->
+        KeyChanged False k (Character 'x') ->
+            if k.ctrl then noCmd model -- we don't want to interfer with the cut event C-x
+            else
             updateModifHelper model <| GraphDefs.removeSelected modelGraph
         KeyChanged False _ (Control "Delete") ->
             updateModifHelper model <| GraphDefs.removeSelected modelGraph            
@@ -1442,6 +1446,7 @@ helpMsg model =
                 ++ ", [Q]uicksave" 
                 ++ "\nCopy/Paste: "
                 ++ "[C-c] copy selection" 
+                ++ ", [C-x] cut selection" 
                 ++ ", [C-v] paste"                
 
                 ++ "\n Basic editing: "

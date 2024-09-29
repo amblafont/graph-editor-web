@@ -801,9 +801,11 @@ function disableInAppInstallPrompt() {
             })
          );
 
-         triggerElmCopy = makeElmRequest('onCopy', 'clipboardWriteGraph', function(g) {
+
+         app.ports.clipboardWriteGraph.subscribe(function(g) {
             navigator.clipboard.writeText(JSON.stringify(g));                                     
-         })
+         });
+
 
          function toClipboard({content, success, failure}) {
             navigator.clipboard.writeText(content).then(
@@ -890,7 +892,10 @@ function disableInAppInstallPrompt() {
 
 
          document.addEventListener("copy", function(event) {
-                    triggerElmCopy(null);
+                    app.ports.onCopy.send(null);
+         });
+         document.addEventListener("cut", function(event) {
+                    app.ports.onCut.send(null);
          });
       
 
