@@ -1712,7 +1712,7 @@ viewGraph model =
            --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
            , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)           
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
-           , HtmlDefs.checkbox ToggleAlternativeLatex "Alternative latex generation" "The alternative generated code should render something closer to what you see here, but is more verbose" model.alternativeLatex           
+           , HtmlDefs.checkbox ToggleAlternativeLatex "Legacy latex generation" "The legacy latex generation relies on Tikz to compute the exact position of edges" (not model.alternativeLatex)
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
            , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 

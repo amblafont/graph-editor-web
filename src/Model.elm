@@ -286,7 +286,7 @@ createModel {defaultGridSize, rulerMargin, saveLoadButtons} =
     , topModifId = defaultModifId
     , mode = DefaultMode
     , statusMsg = ""
-    , alternativeLatex = False
+    , alternativeLatex = True
     , mouseOnCanvas = False
      -- Debug.toString ([pointToAngle (0,1), pointToAngle (0.001,1),
       --                    pointToAngle (1,0), pointToAngle(0,-1),
