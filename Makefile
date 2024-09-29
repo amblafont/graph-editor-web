@@ -1,10 +1,10 @@
 
+KATEX= katex/katex.min.js katex/katex.min.css.js fonts
+.PHONY: server all elm js site vscode http service-worker
 
-.PHONY: server all elm js site vscode http
+all: js elm $(KATEX)
 
-all: js elm katex service-worker.js
-
-katex:
+$(KATEX):
 	set -e
 	curl -L -O "https://github.com/KaTeX/KaTeX/releases/download/v0.16.11/katex.zip"
 	unzip katex.zip
@@ -32,8 +32,5 @@ server: server.js
 server.js: ts/interface.d.ts ts/server.ts
 	npx tsc --outDir . $^
 
-service-worker.js: swbuilder.js
+service-worker:
 	node swbuilder.js
-
-
-

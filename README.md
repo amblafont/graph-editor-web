@@ -12,7 +12,7 @@ By running a server, it is possible to collaborate on the same diagram (check th
 The easiest way to use this feature is to install vscode with the [appropriate extension](https://marketplace.visualstudio.com/items?itemName=amblafont.coreact-yade).
 
 If you prefer to run the server manually (on port 8080, cf head of server.ts):
-- `npm install` (the first time)
+- `npm install` (the first time, or if needed)
 - `make server`
 
 
@@ -23,6 +23,7 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 
 # Compiling the web app
 
+- `npm install` (the first time, or if needed)
 - `make`
 
 (or download the latest elm.js and bundle.js from https://amblafont.github.io/graph-editor/js/elm.js and https://amblafont.github.io/graph-editor/js/bundle.js)
