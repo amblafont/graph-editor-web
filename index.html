@@ -109,13 +109,6 @@
 // This is for caching the files for offline use in the PWA version
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistration("./js/service-worker.js").then(registration => {
-      if (registration) {
-        registration.unregister().then(() => {
-          window.location.reload();
-        });
-      }
-    });
     navigator.serviceWorker.register('./service-worker.js')
       .then(registration => {
         console.log('ServiceWorker registration successful with scope: ', registration.scope);
