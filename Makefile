@@ -2,7 +2,7 @@
 KATEX= katex/katex.min.js katex/katex.min.css.js fonts
 .PHONY: server all elm js site vscode http service-worker
 
-all: js elm $(KATEX)
+all: js elm $(KATEX) service-worker
 
 $(KATEX):
 	set -e
