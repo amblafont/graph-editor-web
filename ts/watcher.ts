@@ -3,8 +3,8 @@
 // Some default values are available below
 // (check defaults, and defaultsExt for each extension)
 interface Config {
-    // name of the file to watch
-    watchedFile:string,
+    // name of the file to watch (could be an array)
+    watchedFile:string|string[],
     magic:string,
     // Latex preamble file used for new diagrams
     preambleFile:string,
@@ -207,10 +207,9 @@ function writeLines(fd:string[], lines:string[], indent:string) {
   }
 
 
-
-async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcontent:string, output:string, index:number) {
+async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcontent:string, output:string, index:number, watchedFile:string) {
     let fd:string[] = [];
-    const file_lines = await getLinesFromFilepath(d, config.watchedFile);
+    const file_lines = await getLinesFromFilepath(d, watchedFile);
     
     let line:false|string = false;
     let content:string|null = null;
@@ -255,13 +254,15 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
     }
     // fs.copyFileSync(tmpobj.name, watchedFile);
     // console.log("on va ecrire ceci:" + fd);
-    return fsWriteFile(d, config.watchedFile, fd.join(""));
+    return fsWriteFile(d, watchedFile, fd.join(""));
   
     // tmpobj.removeCallback();
   }
 
 interface HandleFileConfig {
     diagFile : null|string,
+    config:Config,
+    watchedFile : string,
     index: number,
     // not used by handleSave
     content:string,
@@ -270,10 +271,12 @@ interface HandleFileConfig {
     onlyExternalFile:boolean
 }
 // save
-export async function watchSaveDiagram(config:Config,
+export async function watchSaveDiagram(
            handleConfig:HandleFileConfig, d:FileSystemDirectoryHandle,
            newcontent_json:Object, exports:Exports) {
     // resetHandleSave();
+    let config = handleConfig.config;
+
     let newcontent = JSON.stringify(newcontent_json);
     let generatedOutput = exports[config.exportFormat];
     if (handleConfig.diagFile !== null) {
@@ -289,7 +292,8 @@ export async function watchSaveDiagram(config:Config,
     }
   
     if (!handleConfig.onlyExternalFile)
-        await writeContent(config, d, newcontent, generatedOutput, handleConfig.index);
+        await writeContent(config, d, newcontent, generatedOutput, 
+            handleConfig.index, handleConfig.watchedFile);
 
   }
 
@@ -316,9 +320,12 @@ async function getContent(d:FileSystemDirectoryHandle, config:Config, diagFile:s
   // false means no update
 export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Promise<undefined|false|HandleFileConfig> {
 //    resetOnFocus();
+   let watchedFile = config.watchedFile;
+   if (typeof watchedFile != "string")
+      return undefined;
    let file_lines:string[];
    try {
-   file_lines = await getLinesFromFilepath(d,config.watchedFile);
+   file_lines = await getLinesFromFilepath(d,watchedFile);
    }
    catch (e) {
        alert("Unable to read " + config.watchedFile);
@@ -354,6 +361,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
         if (checkExistRfile && !checkExist) {
           let data = await getContent(d, config, diagFile);
           return {diagFile:diagFile, index:index, content:data,
+                  config:config, watchedFile:watchedFile,
                      onlyExternalFile:true};
         }
         if (!checkExistRfile) 
@@ -384,7 +392,8 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
       
       
     let handleConfig:HandleFileConfig = 
-       {content:content, diagFile:diagFile, index:index, onlyExternalFile: false};
+       {content:content, config:config,watchedFile:watchedFile,
+         diagFile:diagFile, index:index, onlyExternalFile: false};
     return handleConfig;
       // console.log(content);
     //   loadEditor(content);
