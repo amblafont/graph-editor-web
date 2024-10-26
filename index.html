@@ -469,6 +469,7 @@ function disableInAppInstallPrompt() {
                     }
                     if(!r) {
                         var watchedFiles = configs.map((c) => c.watchedFile);
+                        resetFileName();
                         app.ports.simpleMsg.send(
                             "Waiting for incomplete diagram in " + watchedFiles.join (", "));
                         window.onfocus =  function () {
@@ -477,6 +478,7 @@ function disableInAppInstallPrompt() {
                         };
                         return;
                     }
+                    setFileName(r.watchedFile + ":" + r.line);
                     saveGraphFun = function(d){
                         if (d.autosave) {
                             defaultQuickSave(d, false);

@@ -263,6 +263,7 @@ interface HandleFileConfig {
     diagFile : null|string,
     config:Config,
     watchedFile : string,
+    line:number,
     index: number,
     // not used by handleSave
     content:string,
@@ -338,11 +339,13 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
     let index = 0;
     let line = "" as string|false;
     let content:string|null = null;
+    let lineNum = 0;
     while (line !== false && remainder !== null && remainder.length == 0) {
       index++;
       content = null;
       while (content === null) {
         line = readLine(file_lines);
+        lineNum++;
         if (line === false)
             break;
         content = parseMagic(config.magic, line).content;
@@ -362,6 +365,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
           let data = await getContent(d, config, diagFile);
           return {diagFile:diagFile, index:index, content:data,
                   config:config, watchedFile:watchedFile,
+                  line:lineNum,
                      onlyExternalFile:true};
         }
         if (!checkExistRfile) 
@@ -393,6 +397,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
       
     let handleConfig:HandleFileConfig = 
        {content:content, config:config,watchedFile:watchedFile,
+        line:lineNum,
          diagFile:diagFile, index:index, onlyExternalFile: false};
     return handleConfig;
       // console.log(content);
