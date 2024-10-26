@@ -7,7 +7,7 @@ import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
 import Drawing.Color as Color
-import ArrowStyle exposing (ArrowStyle)
+import ArrowStyle exposing (ArrowStyle, MarkerStyle(..))
 import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
@@ -328,12 +328,38 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
         Drawing.group [
          Drawing.arrow {zindex = z, style = style, bezier = q}
           attrs,
-          segmentLabel cfg q edgeId activity label curve]
+          segmentLabel cfg q edgeId activity label curve,
+          drawMarker style.marker q]
 
 {- type alias DrawingDims msg =
     { drawing : Drawing msg
     , posDims : Geometry.PosDims    
     } -}
+drawMarker : MarkerStyle -> QuadraticBezier -> Drawing Msg
+drawMarker marker q =
+  case marker of
+    NoMarker -> Drawing.empty
+    BulletMarker -> drawStringMarker "\\bullet" q
+    BarMarker -> drawStringMarker "|" q
+
+drawStringMarker : String -> QuadraticBezier -> Drawing Msg
+drawStringMarker marker q =
+    let pos = Bez.middle q in
+    let angle = Point.pointToAngle <| Point.subtract q.to q.from in
+             
+             Drawing.makeLatex 
+             {
+                zindex = foregroundZ,
+                label = marker,
+                preamble = "",
+                pos = pos,
+                dims = (12,18),
+                angle = angle,
+                scale = GraphDefs.edgeScaleFactor,
+                key = Nothing
+             } 
+             []   
+
 
 type alias Extrem =
  { bez : QuadraticBezier,

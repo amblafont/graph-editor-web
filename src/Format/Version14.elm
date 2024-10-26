@@ -52,11 +52,16 @@ type alias Graph = {
       nextTabId : Int,
       activeTabId : Int}
 
+toNextStyle : ArrowStyle -> NextVersion.ArrowStyle
+toNextStyle {tail, head, kind, dashed, bend, alignment, position, color} = 
+  {marker = "", tail = tail, head = head, kind = kind, dashed = dashed, bend = bend, alignment = alignment, position = position, color = color}
+
 toNextEdge : Edge -> NextVersion.Edge 
 toNextEdge {label, style, kind, zindex} = 
   {label = label, 
-   style = if kind /= pullshoutKey then style else 
-            {style | bend = defaultPullshoutShift, position = defaultPullshoutShift},
+   style = let newStyle = toNextStyle style in
+        if kind /= pullshoutKey then newStyle else 
+            {newStyle | bend = defaultPullshoutShift, position = defaultPullshoutShift},
    kind = kind, zindex = zindex} --, selected = False}
 
 

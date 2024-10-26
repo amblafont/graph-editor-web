@@ -2,15 +2,17 @@ module Format.Version15 exposing (Graph, Node, pullshoutStyle, nodeCodec, edgeCo
 {- 
 Changes from Version 14:
 - offset1 and offset2 of pullshout edges are saved in the bend and position fields of the style
+- style has now a marker field
 -}
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
-import ArrowStyle exposing (tailCodec, headCodec, alignmentCodec, kindCodec)
+import ArrowStyle exposing (tailCodec, headCodec, alignmentCodec, kindCodec, markerCodec)
 import GraphDefs exposing (EdgeLabel, NodeLabel)
 import Format.GraphInfo as GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
 import Codec exposing (Codec)
+import Svg exposing (marker)
 
 version = 15
 pullshoutKey = "pullshout"
@@ -19,13 +21,14 @@ adjunctionKey = "adjunction"
 
 type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 
-   position : Float, color : String }
+   position : Float, color : String, marker : String
+   }
 
 pullshoutStyle : GraphDefs.PullshoutEdgeLabel -> ArrowStyle
 pullshoutStyle {color, offset1, offset2} =
   { tail = "", head = "", kind = "normal", 
     dashed = False, bend = offset1, alignment = "", position = offset2,
-    color = Codec.encoder Color.codec color }
+    color = Codec.encoder Color.codec color, marker = "" }
 
 type alias Edge = { label : String, style : ArrowStyle, kind : String,
        zindex : Int
@@ -60,16 +63,16 @@ defaultGraph = { tabs = [], latexPreamble = "", nextTabId = 0, activeTabId = 0}
 arrowStyleCodec : Codec ArrowStyle.ArrowStyle ArrowStyle
 arrowStyleCodec =
   Codec.object
-  (\tail head kind dashed bend alignment position color ->
+  (\tail head kind dashed bend alignment position color marker ->
       { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, labelAlignment = alignment, 
-   labelPosition = position, color = color }
+   labelPosition = position, color = color, marker = marker }
     
   )
-  (\tail head kind dashed bend alignment position color ->
+  (\tail head kind dashed bend alignment position color marker ->
     { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, alignment = alignment, 
-   position = position, color = color }
+   position = position, color = color, marker = marker }
   )
   |> Codec.fields .tail .tail tailCodec
   |> Codec.fields .head .head headCodec
@@ -79,6 +82,7 @@ arrowStyleCodec =
   |> Codec.fields .labelAlignment .alignment alignmentCodec
   |> Codec.fields .labelPosition (.position >> min 0.9 >> max 0.1) Codec.identity
   |> Codec.fields .color .color Color.codec
+  |> Codec.fields .marker .marker markerCodec
   |> Codec.buildObject
   
 
