@@ -5,6 +5,7 @@ import Polygraph as Graph exposing (EdgeId, NodeId, Graph, Node)
 import Msg exposing (..)
 import Geometry.Point as Point exposing (Point)
 import InputPosition
+import HtmlDefs exposing (Key)
 import Format.GraphInfoCodec
 import GraphDefs exposing (NodeLabel, EdgeLabel, newNodeLabel, coqProofTexCommand)
 import HtmlDefs
@@ -494,6 +495,16 @@ returnSetColor colorOption model ids =
                       (getActiveGraph model)
         in
         modifHelper
+
+returnUpdatePullshout : Key -> Model -> List (Graph.Edge EdgeLabel) 
+                       -> Graph.ModifHelper NodeLabel EdgeLabel
+returnUpdatePullshout k model edges = 
+   let modifHelper = GraphDefs.updatePullshoutEdges 
+                  (GraphDefs.keyMaybeUpdatePullshout k)
+                  edges
+                  (getActiveGraph model)
+    in
+    modifHelper
               
 returnUpdateStyle : (ArrowStyle.ArrowStyle -> Maybe ArrowStyle.ArrowStyle) 
                   -> Model -> List (Graph.Edge EdgeLabel) 

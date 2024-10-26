@@ -1,7 +1,9 @@
 -- deprecated: we now use Bezier (from Quiver)
 -- TODO: delete this file
-module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx, dummy, toCubic)
+module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx, dummy, toCubic
+ , shiftFrom, shiftTo)
 import Geometry.Point as Point exposing (Point)
+import Geometry.Point exposing (orthoVectPx)
 
 type alias QuadraticBezier = 
   { from : Point, to : Point, controlPoint : Point}
@@ -29,6 +31,17 @@ toCubic {from, to, controlPoint} =
 middle : QuadraticBezier -> Point
 middle {from, to, controlPoint } =
   Point.middle controlPoint <| Point.middle from to
+
+
+
+shiftFrom : QuadraticBezier -> Float -> Point
+shiftFrom ({from, controlPoint} as q) shift =
+  Point.towardsBentDiagonal from (middle q) controlPoint shift
+
+shiftTo : QuadraticBezier -> Float -> Point
+shiftTo ({to, controlPoint} as q) shift =
+  Point.towardsBentDiagonal to (middle q) controlPoint shift
+
 
 
 isLine : QuadraticBezier -> Bool

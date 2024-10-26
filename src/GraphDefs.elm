@@ -1,5 +1,5 @@
-module GraphDefs exposing (EdgeLabel, NodeLabel, allDimsReady,clearDims,
-   NormalEdgeLabel, EdgeType(..), GenericEdge, edgeToNodeLabel, getEdgeColor,
+module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsReady,clearDims,
+   NormalEdgeLabel, PullshoutEdgeLabel, EdgeType(..), GenericEdge, edgeToNodeLabel, getEdgeColor,
    newEdgeLabelAdj, selectIds, setColorEdgesId,
    filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
    filterNormalEdges, coqProofTexCommand,
@@ -23,11 +23,12 @@ module GraphDefs exposing (EdgeLabel, NodeLabel, allDimsReady,clearDims,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect, weaklySelectMany,
    getSurroundingDiagrams, updateNormalEdge,
-   rectEnveloppe, updateStyleEdges,
+   rectEnveloppe, updateStyleEdges, updatePullshoutEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
    ,invertEdge
    , edgeScaleFactor
+   , keyMaybeUpdatePullshout
    )
 
 import IntDict
@@ -46,7 +47,9 @@ import List.Extra as List
 import Maybe.Extra as Maybe
 import Geometry.Point
 import Polygraph exposing (edges)
+import HtmlDefs exposing (Key(..))
 
+defaultPullshoutShift = 30
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, 
                          selected : Bool, weaklySelected : Bool,
                          isMath : Bool, zindex: Int, isCoqValidated: Bool}
@@ -56,7 +59,7 @@ type alias GenericEdge a = { details : a, selected : Bool,
                    weaklySelected : Bool,
                    zindex : Int}
 
-type alias PullshoutEdgeLabel = { color : Color.Color }
+type alias PullshoutEdgeLabel = { color : Color.Color, offset1 : Float, offset2 : Float}
 
 type EdgeType = 
      PullshoutEdge PullshoutEdgeLabel
@@ -122,10 +125,21 @@ filterNormalEdges d =  case d of
              PullshoutEdge _ -> Nothing
              NormalEdge l -> Just l
 
+filterPullshoutEdges : EdgeType -> Maybe PullshoutEdgeLabel
+filterPullshoutEdges d =  case d of
+             PullshoutEdge l -> Just l
+             NormalEdge _ -> Nothing
+
 filterLabelNormal : EdgeLabel -> Maybe (GenericEdge NormalEdgeLabel)
 filterLabelNormal =
     mapDetails filterNormalEdges
              >> flattenDetails
+
+filterLabelPullshout : EdgeLabel -> Maybe (GenericEdge PullshoutEdgeLabel)
+filterLabelPullshout =
+    mapDetails filterPullshoutEdges
+             >> flattenDetails
+
 
 filterEdgeNormal : Edge EdgeLabel -> Maybe (Edge (GenericEdge NormalEdgeLabel))
 filterEdgeNormal e =
@@ -134,7 +148,14 @@ filterEdgeNormal e =
                         \ l -> 
                         Graph.edgeMap (always l) e
                     )
-       
+
+filterEdgePullshout : Edge EdgeLabel -> Maybe (Edge (GenericEdge PullshoutEdgeLabel))
+filterEdgePullshout e =
+      filterLabelPullshout e.label |>
+                    Maybe.map (
+                        \ l -> 
+                        Graph.edgeMap (always l) e
+                    )
 
 keepNormalEdges : Graph NodeLabel EdgeLabel -> Graph NodeLabel (GenericEdge NormalEdgeLabel)
 keepNormalEdges = Graph.filterMap Just
@@ -145,9 +166,11 @@ getEdgeColor e = case e.details of
     PullshoutEdge {color} -> color
     NormalEdge l -> l.style.color
 
-mapEdgeType : (NormalEdgeLabel -> NormalEdgeLabel) -> EdgeType -> EdgeType
-mapEdgeType f e = case e of
-    PullshoutEdge _ -> e
+mapEdgeType : (NormalEdgeLabel -> NormalEdgeLabel) -> 
+              (PullshoutEdgeLabel -> PullshoutEdgeLabel) ->
+               EdgeType -> EdgeType
+mapEdgeType f g e = case e of
+    PullshoutEdge l -> PullshoutEdge (g l)
     NormalEdge l -> NormalEdge (f l)
 
 mapDetails : (a -> b) -> GenericEdge a -> GenericEdge b
@@ -170,7 +193,11 @@ isNormalId g id = Graph.get id (always True)
     isNormal g |> Maybe.withDefault False
 
 mapNormalEdge : (NormalEdgeLabel -> NormalEdgeLabel) -> EdgeLabel -> EdgeLabel
-mapNormalEdge = mapEdgeType >> mapDetails
+mapNormalEdge f = mapEdgeType f identity |> mapDetails
+
+mapPullshoutEdge : (PullshoutEdgeLabel -> PullshoutEdgeLabel) -> EdgeLabel -> EdgeLabel
+mapPullshoutEdge f  = mapEdgeType identity f |> mapDetails
+
 
 mapMaybeNormalEdge : (NormalEdgeLabel -> Maybe NormalEdgeLabel) -> EdgeLabel -> Maybe EdgeLabel
 mapMaybeNormalEdge f e = 
@@ -297,6 +324,12 @@ md_updateNormalEdge id f =
     Graph.md_updateEdge id 
      (mapNormalEdge f)
 
+md_updatePullshoutEdge : EdgeId -> (PullshoutEdgeLabel -> PullshoutEdgeLabel) 
+   -> Graph.ModifHelper NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
+md_updatePullshoutEdge id f =
+    Graph.md_updateEdge id 
+     (mapPullshoutEdge f)
+
 setColorEdgesId : Color.Color -> List EdgeId -> Graph NodeLabel EdgeLabel -> 
            Graph.ModifHelper NodeLabel EdgeLabel
 setColorEdgesId color edges graph =
@@ -311,6 +344,29 @@ setColorEdgesId color edges graph =
       Graph.md_updateEdgesId edges updateColor modif 
      
 
+updatePullshoutEdges : (PullshoutEdgeLabel -> Maybe PullshoutEdgeLabel) 
+       -> List (Edge EdgeLabel) -> Graph NodeLabel EdgeLabel -> 
+           Graph.ModifHelper NodeLabel EdgeLabel 
+updatePullshoutEdges update edges g =
+     let updateStyle e = update e.label.details 
+                  |> Maybe.map (\newStyle ->
+                              { id = e.id , style = newStyle }
+                           )   
+     in
+     let newEdges =   edges
+                 |> List.filterMap filterEdgePullshout
+                 |> List.filterMap updateStyle
+     in
+     let updateEdge edge graph =            
+              md_updatePullshoutEdge edge.id 
+              (\ e -> edge.style)
+              graph
+     in
+     let modif = Graph.newModif g in
+     if newEdges == [] then modif else
+     let newGraph = List.foldl updateEdge modif newEdges in
+   --   Just
+      newGraph
 
 updateStyleEdges : (ArrowStyle -> Maybe ArrowStyle) 
         -> List (Edge EdgeLabel) -> Graph NodeLabel EdgeLabel -> 
@@ -388,8 +444,8 @@ newEdgeLabelAdj s style isAdjunction = newGenericLabel
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
 newEdgeLabel s style = newEdgeLabelAdj s style False
 
-newPullshout : Color.Color -> EdgeLabel
-newPullshout color = newGenericLabel <| PullshoutEdge {color = color}
+newPullshout : PullshoutEdgeLabel -> EdgeLabel
+newPullshout l = newGenericLabel <| PullshoutEdge l
 
 
 emptyEdge : EdgeLabel
@@ -656,7 +712,9 @@ posGraph : Graph NodeLabel EdgeLabel ->
 posGraph g = 
       let padding = 5 in
       -- ca c'est utile pour calculer les coordonnes du symbole de pullback
-      let dummyExtrem = { fromId = 0, fromPos = (0, 0), toPos = (2,2), controlPoint = (1,1)} in
+      let dummyExtrem = { fromId = 0,
+           fromPos = (0,0), toPos = (2,2),
+           bez = {from = (0, 0), to = (2,2), controlPoint = (1,1)}} in
       let dummyAcc id pos = {
                       id = id,
                       posDims = 
@@ -667,8 +725,8 @@ posGraph g =
       let computeEdge id n1 n2 e = 
             
              case e.details of
-               PullshoutEdge _ -> 
-                 let h = pullshoutHat n1.extrems n2.extrems in
+               PullshoutEdge {offset1, offset2} -> 
+                 let h = pullshoutHat offset1 offset2 n1.extrems n2.extrems in
                  {label = e, 
                   acc = dummyAcc id h.summit,                     
                   shape = HatShape h }
@@ -684,9 +742,11 @@ posGraph g =
                              dims = (padding, padding) |> Point.resize 4
                          },
                      extrems = { fromId = n1.id, 
+                                 bez = q,
                                  fromPos = n1.posDims.pos, 
-                                 toPos = n2.posDims.pos,
-                                 controlPoint = q.controlPoint}
+                                 toPos = n2.posDims.pos
+                                 -- controlPoint = q.controlPoint
+                                 }
                    }
                      
                   }
@@ -795,3 +855,14 @@ invertEdge g id = Graph.md_updateEdge id
                   (mapNormalEdge (\ l -> { l | style = ArrowStyle.invert l.style}))
                           <| Graph.md_invertEdge id 
                           <| Graph.newModif g
+
+-- doesn't update the color
+keyMaybeUpdatePullshout : Key -> { a | offset1 : Float, offset2 : Float} -> Maybe { a | offset1 : Float, offset2 : Float}
+keyMaybeUpdatePullshout k style = 
+   case k of         
+        Character 'b' -> Just <| {style | offset1 = style.offset1 + 5 }
+        Character 'B' -> Just <| {style | offset1 = max (style.offset1 - 5) 5}
+        Character ']' -> Just <| {style | offset2 = style.offset2 + 5 }
+        Character '[' -> Just <| {style | offset2 = max (style.offset2 - 5) 5}
+
+        _ -> Nothing

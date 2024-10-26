@@ -3,9 +3,11 @@ module Geometry.Point exposing (Point, radius, orthoVectPx, towards, diamondPx, 
   angleWithInRange, distance, flipAngle, snapToGrid, distanceAngleSigned,
   countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
   -- from quiver
-  lerp, lendir, rotate, scale, inv_scale, normaliseAngle, barycenter)
+  lerp, lendir, rotate, scale, inv_scale, normaliseAngle, barycenter,
+  towardsBentDiagonal)
 
 import ListExtraExtra as List
+-- import Geometry.QuadraticBezier exposing (orthoVectPx)
 
 type alias Point = (Float, Float)
 type alias NamedPoint = { x : Float, y : Float}
@@ -207,3 +209,17 @@ barycenter pts =
    let length = if length0 == 0 then 1 else length0 in
    (List.sum xs / length,
     List.sum ys / length)
+
+-- from to1 and to2 defines a triangle.
+-- I want to shift px towards somewhere between to1 and to2,
+-- depending on how far I am from the start.
+-- if I am at the start, I want to go towards to1.
+-- if I am at the end, I want to go towards to2.
+towardsBentDiagonal : Point -> Point -> Point -> Float -> Point
+towardsBentDiagonal from to1 to2 shift =
+  let p1 = towards from to1 shift in
+  let ratio = shift / distance from to1 in
+  let p2 = towards from to2 shift in 
+--   let diff = subtract p2 p1 in 
+
+  add p2 <| resize ratio <| subtract p1 p2

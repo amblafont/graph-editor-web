@@ -123,6 +123,8 @@ type alias PullshoutState =
     , kind : PullshoutKind
     , currentDest : EdgeId
     , possibilities : List EdgeId
+    , offset1 : Float
+    , offset2 : Float
     }
 
 type PullshoutKind = Pullback | Pushout

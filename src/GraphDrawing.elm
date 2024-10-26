@@ -95,7 +95,7 @@ make_edgeDrawingLabel : {editable : Bool, isActive : Activity, shape : EdgeShape
 make_edgeDrawingLabel {editable, isActive, shape} e =
    { isActive = isActive, zindex = e.zindex, shape = shape,
      details = case e.details of 
-        GraphDefs.PullshoutEdge x -> PullshoutEdge x
+        GraphDefs.PullshoutEdge x -> PullshoutEdge { color = x.color}
         GraphDefs.NormalEdge ({label, style, isAdjunction} as l) ->
            NormalEdge { label = label, editable = editable, 
               isAdjunction = isAdjunction,

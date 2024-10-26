@@ -20,7 +20,9 @@ initialise g id k =
             kind = k,
             color = Color.black,
             currentDest = t, 
-            possibilities = q}
+            possibilities = q,
+            offset1 = GraphDefs.defaultPullshoutShift,
+            offset2 = GraphDefs.defaultPullshoutShift}
      [] -> Nothing
 
 fixModel : Model -> PullshoutState -> Model
@@ -57,7 +59,7 @@ graph : Model -> PullshoutState -> Graph.ModifHelper NodeLabel EdgeLabel
 graph m s =
    Graph.md_newEdge (Graph.newModif <| getActiveGraph m) 
       s.chosenEdge s.currentDest
-   (GraphDefs.newPullshout s.color)
+   (GraphDefs.newPullshout {color = s.color, offset1 = s.offset1, offset2 = s.offset2})
    |> Tuple.first
 
 graphDrawing : Model -> PullshoutState -> Graph NodeDrawingLabel EdgeDrawingLabel
@@ -93,9 +95,13 @@ update state msg model =
         KeyChanged False _ (Control "Enter") -> 
             updateModifHelper { model | mode = DefaultMode } <| graph model state
         KeyChanged False _ (Character c) ->
-           case Color.fromChar c of
-            Nothing -> noCmd model
+           case Color.fromChar c of            
             Just col -> noCmd <| updateState { state | color = col }
+            Nothing -> 
+               case GraphDefs.keyMaybeUpdatePullshout (Character c) state of 
+                  Nothing -> noCmd model
+                  Just newState -> noCmd <| updateState 
+                                  newState
         _ -> noCmd model
 
 
@@ -105,5 +111,6 @@ help =
             HtmlDefs.overlayHelpMsg 
             ++ ", cycle between [p]ullback/[P]ushout possibilities, "
             ++ Color.helpMsg
+            ++ ", [\"bB[]\"] to customize the size"
             ++ ", [RET] confirm"             
              
