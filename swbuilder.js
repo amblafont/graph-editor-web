@@ -8,6 +8,8 @@ generateSW({
   inlineWorkboxRuntime: true,
   swDest: "service-worker.js",
   sourcemap: false,
+  skipWaiting: true,
+  clientsClaim: true
 }).then(({ count, size, warnings }) => {
   if (warnings.length > 0) {
     console.warn(
