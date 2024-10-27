@@ -49,7 +49,7 @@ import Geometry.Point
 import Polygraph exposing (edges)
 import HtmlDefs exposing (Key(..))
 
-defaultPullshoutShift = 30
+defaultPullshoutShift = 10
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, 
                          selected : Bool, weaklySelected : Bool,
                          isMath : Bool, zindex: Int, isCoqValidated: Bool}
