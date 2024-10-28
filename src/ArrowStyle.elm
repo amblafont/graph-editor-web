@@ -169,7 +169,7 @@ toggleMapsto s =  { s | tail = nextInList [Mapsto, DefaultTail] s.tail }
 
 toggleLabelAlignement : Style -> Style
 toggleLabelAlignement s =  
-        { s | labelAlignment = nextInList [Left, Right, Over]
+        { s | labelAlignment = nextInList [Left, Right]
         -- , Centre, Over] 
         -- the other ones do not seem to work properly
         s.labelAlignment }
