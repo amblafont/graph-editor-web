@@ -202,9 +202,15 @@ nodeDrawing cfg node =
         
 
 
-segmentLabel : Config -> QuadraticBezier -> Graph.EdgeId -> Activity -> NormalEdgeDrawingLabel -> Float -> Drawing Msg
-segmentLabel cfg q edgeId activity label curve =
-    let edge_width = 2 + (if ArrowStyle.isDouble label.style then 2 * ArrowStyle.doubleSize else 0) in
+segmentLabel : Config -> QuadraticBezier -> Graph.EdgeId -> Activity -> NormalEdgeDrawingLabel -> MarkerStyle -> Float -> Drawing Msg
+segmentLabel cfg q edgeId activity label marker curve =
+    let offset = 
+          if ArrowStyle.isDouble label.style then 2 * ArrowStyle.doubleSize else
+          if ArrowStyle.isMarker marker then 5 else
+          0
+    in
+      
+    let edge_width = 2 + offset in
     let labelpos =              
               -- Quiver algorithm, following redraw_label
               -- https://github.com/varkor/quiver/blob/2c62d40b820cadc3c7f9d0816a33121f389b6240/src/arrow.js#L1219
@@ -328,7 +334,7 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
         Drawing.group [
          Drawing.arrow {zindex = z, style = style, bezier = q}
           attrs,
-          segmentLabel cfg q edgeId activity label curve,
+          segmentLabel cfg q edgeId activity label style.marker curve,
           drawMarker style.marker q]
 
 {- type alias DrawingDims msg =

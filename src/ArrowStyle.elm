@@ -1,7 +1,7 @@
 module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
    tikzStyle,
    isDouble, doubleSize,
-   controlChars, MarkerStyle(..),
+   controlChars, MarkerStyle(..), isMarker,
    kindCodec, tailCodec, headCodec, alignmentCodec, markerCodec,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
@@ -141,6 +141,9 @@ getStyle {style, isAdjunction} =
    else style
 
 type MarkerStyle = NoMarker | BulletMarker | BarMarker
+
+isMarker : MarkerStyle -> Bool
+isMarker marker = marker /= NoMarker
 
 
 type HeadStyle = DefaultHead | TwoHeads | NoHead
