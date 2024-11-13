@@ -355,7 +355,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
       
       console.log("Graph found");
       // check if the tex file exists
-      if (content !== null && config.exportFormat && contentIsFile(content)) {
+      if (content !== null && config.externalOutput && contentIsFile(content)) {
         let diagFile = content;
         let outputFile = outputFileName(config,diagFile);
         let checkExist = await checkFileExistsFromPath(d,outputFile);
