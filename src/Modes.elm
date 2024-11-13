@@ -23,7 +23,7 @@ type Mode
     | RenameMode RenameState
     | DebugMode
     | SquareMode SquareState
-    | RectSelect Point
+    | RectSelect SelectState
     -- Bool -- keep previous selection?
       -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
@@ -68,6 +68,10 @@ isResizeMode : Mode -> Bool
 isResizeMode m = case m of 
    ResizeMode _ -> True
    _ -> False
+
+type alias SelectState =
+ { orig : Point, 
+   hold : Bool}
 
 type alias ResizeState = 
    { sizeGrid : Int,

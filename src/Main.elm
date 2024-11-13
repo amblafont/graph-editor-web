@@ -72,7 +72,7 @@ import Modes.Move
 import Modes.Rename
 import Modes.Color
 import Drawing.Color as Color
-import Modes exposing (Mode(..), MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
+import Modes exposing (Mode(..), SelectState, MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
 import ArrowStyle
 
@@ -595,7 +595,7 @@ update msg modeli =
         MakeSaveMode -> noCmd model
         NewLine state -> Modes.NewLine.update state msg model
         DefaultMode -> update_DefaultMode msg model
-        RectSelect orig -> update_RectSelect msg orig model.specialKeys.shift model
+        RectSelect state -> update_RectSelect msg state model.specialKeys.shift model
         EnlargeMode state -> update_Enlarge msg state model
         NewArrow astate -> Modes.NewArrow.update astate msg model
         PullshoutMode astate -> Modes.Pullshout.update astate msg model
@@ -642,18 +642,27 @@ save model =
    (model, saveGraph { info = toJsGraphInfo model 
                               , export = makeExports model })
 
-update_RectSelect : Msg -> Point -> Bool -> Model -> (Model, Cmd Msg)
-update_RectSelect msg orig keep model =
+update_RectSelect : Msg -> SelectState -> Bool -> Model -> (Model, Cmd Msg)
+update_RectSelect msg {orig,hold} keep model =
+   let finalise () =
+          switch_Default 
+                <| setActiveGraph model <| selectGraph model orig keep
+   in
    case msg of
       KeyChanged False _ (Control "Escape") -> switch_Default model
+      KeyChanged False _ (Character 's') -> 
+          if hold then 
+            finalise ()
+          else
+            noCmd <| { model | mode = RectSelect { orig = orig, hold = True } }
       {- MouseUp -> switch_Default 
                   { model | graph = selectGraph model orig keep } -}
       MouseClick ->
+          if hold then noCmd model else
           if model.mousePos == orig then
            switch_Default <| selectByClick model
           else
-           switch_Default 
-                <| setActiveGraph model <| selectGraph model orig keep
+           finalise ()
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
       --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
@@ -836,7 +845,7 @@ update_DefaultMode msg model =
            
         MouseMove _ -> 
              weaklySelect <| GraphDefs.closest model.mousePos modelGraph             
-        MouseDown _ -> noCmd <| { model | mode = RectSelect model.mousePos }
+        MouseDown _ -> noCmd <| { model | mode = RectSelect {orig = model.mousePos, hold = False} }
         LatexPreambleSwitch -> noCmd <| { model | mode = LatexPreamble model.graphInfo.latexPreamble }
         KeyChanged False _ (Control "Escape") -> clearSel
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
@@ -1329,7 +1338,7 @@ graphDrawingFromModel m =
         MakeSaveMode -> collageGraphFromGraph m modelGraph 
         ColorMode _ -> collageGraphFromGraph m modelGraph
         DefaultMode -> collageGraphFromGraph m modelGraph
-        RectSelect p -> GraphDrawing.toDrawingGraph  <| selectGraph m p m.specialKeys.shift
+        RectSelect {orig} -> GraphDrawing.toDrawingGraph  <| selectGraph m orig m.specialKeys.shift
         EnlargeMode p ->
              enlargeGraph m p
              |> collageGraphFromGraph m
@@ -1581,6 +1590,10 @@ helpMsg model =
                          "[g] to resize the grid only. "
                          ++ "[ESC] to cancel, "
                          ++ "[RET] to confirm"
+        RectSelect {hold} -> msg <| "Rectangle selection mode. "
+                         ++ "Draw a rectangle to select objects. [ESC] to cancel. "
+                         ++ if hold then "[s] to confirm." 
+                         else "[s] to select without holding the mouse, [click] to confirm."
 
         _ -> let txt = "Mode: " ++ Modes.toString model.mode ++ ". [ESC] to cancel and come back to the default"
                    ++ " mode."
@@ -1603,7 +1616,7 @@ additionnalDrawing m =
               _ -> drawSelPoint m.mousePos orig
    in
    case m.mode of
-      RectSelect orig -> drawSel InputPosMouse orig
+      RectSelect {orig} -> drawSel InputPosMouse orig
       EnlargeMode state -> 
          case (state.pos, state.direction) of
               (InputPosMouse, Vertical) -> 
