@@ -6,7 +6,7 @@ import Html
 import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
-import Drawing.Color as Color
+import Drawing.Color as Color exposing (Color)
 import ArrowStyle exposing (ArrowStyle, MarkerStyle(..))
 import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
@@ -335,21 +335,21 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
          Drawing.arrow {zindex = z, style = style, bezier = q}
           attrs,
           segmentLabel cfg q edgeId activity label style.marker curve,
-          drawMarker style.marker q]
+          drawMarker style.color style.marker q]
 
 {- type alias DrawingDims msg =
     { drawing : Drawing msg
     , posDims : Geometry.PosDims    
     } -}
-drawMarker : MarkerStyle -> QuadraticBezier -> Drawing Msg
-drawMarker marker q =
+drawMarker : Color -> MarkerStyle -> QuadraticBezier -> Drawing Msg
+drawMarker color marker q =
   case marker of
     NoMarker -> Drawing.empty
-    BulletMarker -> drawStringMarker "\\bullet" q
-    BarMarker -> drawStringMarker "|" q
+    BulletMarker -> drawStringMarker color "\\bullet" q
+    BarMarker -> drawStringMarker color "|" q
 
-drawStringMarker : String -> QuadraticBezier -> Drawing Msg
-drawStringMarker marker q =
+drawStringMarker : Color -> String -> QuadraticBezier -> Drawing Msg
+drawStringMarker color marker q =
     let pos = Bez.middle q in
     let angle = Point.pointToAngle <| Point.subtract q.to q.from in
              
@@ -357,7 +357,7 @@ drawStringMarker marker q =
              {
                 zindex = foregroundZ,
                 label = marker,
-                preamble = "",
+                preamble = "\\color{" ++ Color.toString color ++ "}",
                 pos = pos,
                 dims = (12,18),
                 angle = angle,
