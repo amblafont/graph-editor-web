@@ -697,7 +697,7 @@ findReplaceInSelected g r =
 
 distanceToNode : Point -> NodeLabel -> Float
 distanceToNode p n = 
-   let posDims = { pos = n.pos, dims = getNodeDims n } in
+   let posDims = { pos = getNodePos n, dims = getNodeDims n } in
    let rect = Geometry.rectFromPosDims posDims in 
    Geometry.distanceToRect p rect
 
