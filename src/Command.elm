@@ -72,7 +72,7 @@ fixModel modeli =
       SplitArrow state -> ifTabChanged <| \ _ -> Modes.SplitArrow.fixModel model state
       PullshoutMode state -> ifTabChanged <| \ _ -> Modes.Pullshout.fixModel model state
       SquareMode state ->  ifTabChanged <| \ _ -> Modes.Square.fixModel model state
-      LatexPreamble _ -> defaultModel
+      LatexPreamble _ -> model
       
 
 undo : Model -> (Model, Cmd Msg.Msg)
