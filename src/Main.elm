@@ -1778,7 +1778,7 @@ viewGraph model =
           case model.mode of
             LatexPreamble s -> 
                 [
-                Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Confirm preamble"],
+                Html.p [] [Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Confirm preamble"]],
                 Html.textarea [Html.Attributes.cols 100, Html.Attributes.rows 100, 
                 Html.Attributes.placeholder "latex Preamble",
                 Html.Attributes.value s, 
