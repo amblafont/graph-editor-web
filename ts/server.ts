@@ -2,8 +2,14 @@
 import * as WebSocket from 'ws';
 
 // import {Data, ServerToClientDiffs, ClientToServerDiff, ServerToClientDiff, ServerToClientMsg} from "./interface.js";
+let port:number = 8080;
+if (process.env.PORT !== undefined) {
+  let n = parseInt(process.env.PORT);
+  if (!isNaN(n))
+    port = n;
+}
 
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ port: port });
 
 /*
 Ca peut demenader un 
@@ -251,4 +257,4 @@ wss.on('connection', function connection(ws:WebSocket.WebSocket) {
   });
 });
 
-console.log("Server started.");
+console.log("Server started on port " + port);
