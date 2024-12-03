@@ -9,20 +9,19 @@ There is also a vscode extension which embeds the web app to provide Coq mechani
 
 By running a server, it is possible to collaborate on the same diagram (check the "Connect" button at the top of the diagram editor). But for that you need to run a server (see below).
 
+## Hosting platform
+
+Check https://github.com/amblafont/yade-server to give it a try with a public available test server, and more information about how to host your own server.
+
 ## VSCode
 
-The easiest way to use this feature is to install vscode with the [appropriate extension](https://marketplace.visualstudio.com/items?itemName=amblafont.coreact-yade).
-
+The [vscode extension](https://marketplace.visualstudio.com/items?itemName=amblafont.coreact-yade) includes an implementation of the server, that you can start with the appropriate command.
 You can then share the server running locally using the LiveShare vscode extension.
 
 If you prefer to run the server manually (on port 8080, cf head of server.ts):
 - `npm install` (the first time, or if needed)
 - `make server`
 
-## Hosting platform
-
-There are some web hosting platforms (such as glitch.com which has a free tier) that can host a server powered by node.js, by importing a github repository.
-For this purpose, you can use https://github.com/amblafont/yade-server.
 
 
 # Easy editing of latex documents
@@ -35,7 +34,7 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 - `npm install` (the first time, or if needed)
 - `make`
 
-(or download the latest elm.js and bundle.js from https://amblafont.github.io/graph-editor/js/elm.js and https://amblafont.github.io/graph-editor/js/bundle.js)
+(or download the latest [elm.js](https://amblafont.github.io/graph-editor/js/elm.js) and [bundle.js](https://amblafont.github.io/graph-editor/js/bundle.js).
 
 
 
