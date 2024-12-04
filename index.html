@@ -1024,6 +1024,10 @@ function disableInAppInstallPrompt() {
 
 
          };
+         // get the GET parameter server
+         if (urlParams.has("server")) {
+            connectToServer(urlParams.get("server"));
+         }
 
 
          app.ports.protocolSendJS.subscribe((arg) => {

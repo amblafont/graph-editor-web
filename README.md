@@ -7,7 +7,7 @@ There is also a vscode extension which embeds the web app to provide Coq mechani
 
 # Collaborating on the same diagram
 
-By running a server, it is possible to collaborate on the same diagram (check the "Connect" button at the top of the diagram editor). But for that you need to run a server (see below).
+By running a server, it is possible to collaborate on the same diagram (check the "Connect" button at the top of the diagram editor, or use the url index.html?server=address-of-the-server). But for that you need to run a server (see below).
 
 ## Hosting platform
 
