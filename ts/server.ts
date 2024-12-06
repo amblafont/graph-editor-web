@@ -1,5 +1,6 @@
 
 import * as WebSocket from 'ws';
+import * as http from 'http';
 
 // import {Data, ServerToClientDiffs, ClientToServerDiff, ServerToClientDiff, ServerToClientMsg} from "./interface.js";
 let port:number = 8080;
@@ -9,7 +10,37 @@ if (process.env.PORT !== undefined) {
     port = n;
 }
 
-const wss = new WebSocket.Server({ port: port });
+
+// Define the port and hostname
+const hostname = '127.0.0.1'; // localhost
+
+// Create the server
+
+const server = http.createServer((req, res) => {
+  // Set the response HTTP headers
+  res.statusCode = 200; // OK
+  res.setHeader('Content-Type', 'text/html');
+
+  res.end('Server ready! <a href="https://amblafont.github.io/graph-editor/index.html?server=' 
+            + 'wss://' + req.headers.host
+          + '">Connect from the diagram editor</a>.'
+          );
+      
+});
+
+// Start the server
+server.listen(port, hostname, () => {
+  console.log(`Server running at http://${hostname}:${port}/`);
+});
+
+const wss = new WebSocket.Server({ noServer: true });
+
+server.on('upgrade', function upgrade(request, socket, head) {
+    wss.handleUpgrade(request, socket, head, function done(ws) {
+      wss.emit('connection', ws, request);
+    });
+});
+
 
 /*
 Ca peut demenader un 
@@ -256,5 +287,3 @@ wss.on('connection', function connection(ws:WebSocket.WebSocket) {
    broadcastMsg(ws, msg, currentId);
   });
 });
-
-console.log("Server started on port " + port);
