@@ -546,6 +546,7 @@ function disableInAppInstallPrompt() {
                     watchedFiles = [json.watchedFile]
                 else
                     watchedFiles = json.watchedFile;
+                delete json.watchedFile;
 
                 if (watchedFiles == []) {
                     console.log("No file to watch");
@@ -561,6 +562,7 @@ function disableInAppInstallPrompt() {
                         Object.assign(config, Bundle.defaultsExt[extension]);
                     else
                         console.log("Unknown extension " + extension + ".");
+                    Object.assign(config, json);
                     configs.push(config);
                 } 
                 
