@@ -35,7 +35,7 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 {
     "watchedFile": "main.tex",
     "baseDir": "diagrams",
-    "externalOutput": true,
+    "externalOutput": true
 }
 ```
 
