@@ -30,6 +30,9 @@ The button "open directory" offers easy editing of diagrams in latex documents (
 You must pick a directory which includes a file "yade-config.json". This file must contain a field "watchedFile" which indicates the file to be watched. Other fields may be specified: check the top of the file [watcher.ts](ts/watcher.ts).
 
 ## Step-by-step process
+
+(might not work with firefox)
+
 1. Create a file named yade-config.json in the same directory as the your latex file `main.tex` with the following content
 ```
 {
