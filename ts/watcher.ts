@@ -139,16 +139,17 @@ function escapeStringRegexp(s:string):string {
     return s.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
  }
 
-function parseMagic(magic:string, line:string):{content:string|null,indent:string} {
+function parseMagic(magic:string, line:string):{content:string,indent:string,prefix:string}|undefined {
     let magicRe = new RegExp(escapeStringRegexp(magic.trim()) + "(.*)$");
-    let search = magicRe.exec(line.trim());
+    let search = magicRe.exec(line.trimEnd());
   
     if (search !== null) {
       let indent = line.search(/\S|$/);
       return {content:search[1].trim(), 
-              indent:line.substring(0,indent)};
+              indent:line.substring(0,indent),
+              prefix:line.substring(0,search.index)};
     } else {
-      return {content:null,indent:""};
+      return undefined;
     }
 }
 
@@ -212,23 +213,25 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
     const file_lines = await getLinesFromFilepath(d, watchedFile);
     
     let line:false|string = false;
-    let content:string|null = null;
+    let content:string|undefined = undefined;
     let indent = "";
+    let prefix = "";
     for (let i=0; i < index; i++) {
       writeLine(fd, line);
-      content = null;
+      content = undefined;
       line = false;
-      while (content === null) {
+      while (content === undefined) {
          writeLine(fd, line);
          line = readLine(file_lines);
          if (line === false)
            break;
          let magic = parseMagic(config.magic, line);
-         content = magic.content;
-         indent = magic.indent;
+         content = magic?.content;
+         indent = magic?.indent || "";
+         prefix = magic?.prefix || "";
       }
     }
-    if (content === null) {
+    if (content === undefined) {
        console.log("error");
        throw new Error("error");
        return;
@@ -237,7 +240,7 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
     if (isFile)
        writeLine(fd, line)
     else
-       writeLine(fd, indent + config.magic + " " + newcontent)
+       writeLine(fd, prefix + config.magic + " " + newcontent)
        writeLines(fd, config.prefixes, indent);
     if (! config.externalOutput || ! isFile)
        writeLines(fd, output.split("\n"), indent);
@@ -338,24 +341,24 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
     let remainder:string[]|null = [];
     let index = 0;
     let line = "" as string|false;
-    let content:string|null = null;
+    let content:string|undefined = undefined;
     let lineNum = 0;
     while (line !== false && remainder !== null && remainder.length == 0) {
       index++;
-      content = null;
-      while (content === null) {
+      content = undefined;
+      while (content === undefined) {
         line = readLine(file_lines);
         lineNum++;
         if (line === false)
             break;
-        content = parseMagic(config.magic, line).content;
+        content = parseMagic(config.magic, line)?.content;
       }
       if (line === false)
         break;
       
       console.log("Graph found");
       // check if the tex file exists
-      if (content !== null && config.externalOutput && contentIsFile(content)) {
+      if (content !== undefined && config.externalOutput && contentIsFile(content)) {
         let diagFile = content;
         let outputFile = outputFileName(config,diagFile);
         let checkExist = await checkFileExistsFromPath(d,outputFile);
@@ -381,7 +384,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
       }
     }
   
-    if (!((remainder === null || remainder.length > 0) && content !== null)){
+    if (!((remainder === null || remainder.length > 0) && content !== undefined)){
       return false;
     }
     
