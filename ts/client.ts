@@ -15,10 +15,6 @@ export function resetExpectedId() {
   expectedIdFromServer = 0;
 }
 
-function logExpectedId() {
-  console.log("expectedId: ");
-  console.log(expectedIdFromServer);
-}
 
 
 export function requestSnapshot(ws:WebSocket):void {

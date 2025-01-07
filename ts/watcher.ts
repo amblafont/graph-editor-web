@@ -139,7 +139,9 @@ function escapeStringRegexp(s:string):string {
     return s.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
  }
 
-function parseMagic(magic:string, line:string):{content:string,indent:string,prefix:string}|undefined {
+interface MagicInfo {content:string,indent:string,prefix:string};
+
+function parseMagic(magic:string, line:string):MagicInfo|undefined {
     let magicRe = new RegExp(escapeStringRegexp(magic.trim()) + "(.*)$");
     let search = magicRe.exec(line.trimEnd());
   
@@ -211,42 +213,36 @@ function writeLines(fd:string[], lines:string[], indent:string) {
 async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcontent:string, output:string, index:number, watchedFile:string) {
     let fd:string[] = [];
     const file_lines = await getLinesFromFilepath(d, watchedFile);
-    
     let line:false|string = false;
-    let content:string|undefined = undefined;
-    let indent = "";
-    let prefix = "";
+    let magicInfo:MagicInfo|undefined = undefined;
     for (let i=0; i < index; i++) {
       writeLine(fd, line);
-      content = undefined;
       line = false;
-      while (content === undefined) {
+      magicInfo = undefined;
+      while (magicInfo === undefined) {
          writeLine(fd, line);
          line = readLine(file_lines);
          if (line === false)
            break;
-         let magic = parseMagic(config.magic, line);
-         content = magic?.content;
-         indent = magic?.indent || "";
-         prefix = magic?.prefix || "";
+         magicInfo = parseMagic(config.magic, line);
       }
     }
-    if (content === undefined) {
+    if (magicInfo === undefined) {
        console.log("error");
        throw new Error("error");
        return;
     }
-    let isFile = contentIsFile(content);
+    let isFile = contentIsFile(magicInfo.content);
     if (isFile)
        writeLine(fd, line)
     else
-       writeLine(fd, prefix + config.magic + " " + newcontent)
-       writeLines(fd, config.prefixes, indent);
+       writeLine(fd, magicInfo.prefix + config.magic + " " + newcontent)
+       writeLines(fd, config.prefixes, magicInfo.indent);
     if (! config.externalOutput || ! isFile)
-       writeLines(fd, output.split("\n"), indent);
+       writeLines(fd, output.split("\n"), magicInfo.indent);
     else
-       writeLine(fd, indent + config.includeCmd.replace("@", outputFileName(config, content)));
-    writeLines(fd, config.suffixes, indent);
+       writeLine(fd, magicInfo.indent + config.includeCmd.replace("@", outputFileName(config, magicInfo.content)));
+    writeLines(fd, config.suffixes, magicInfo.indent);
     while (line !== false) {
       line = readLine(file_lines);
       if (line === false) {
