@@ -339,6 +339,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
     let line = "" as string|false;
     let content:string|undefined = undefined;
     let lineNum = 0;
+    let magicLineNumber = 0;
     while (line !== false && remainder !== null && remainder.length == 0) {
       index++;
       content = undefined;
@@ -349,6 +350,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
             break;
         content = parseMagic(config.magic, line)?.content;
       }
+      magicLineNumber = lineNum;
       if (line === false)
         break;
       
@@ -376,6 +378,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
         if (line === false)
            // EOF
            break;
+        lineNum++;
         remainder = parsePrefix(line, remainder)
       }
     }
@@ -396,7 +399,7 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
       
     let handleConfig:HandleFileConfig = 
        {content:content, config:config,watchedFile:watchedFile,
-        line:lineNum,
+        line:magicLineNumber,
          diagFile:diagFile, index:index, onlyExternalFile: false};
     return handleConfig;
       // console.log(content);
