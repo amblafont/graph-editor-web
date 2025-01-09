@@ -393,8 +393,21 @@ updateIntercept msg modeli =
            
      _ -> update msg modeli
 
+textNodesToLatex : List NodeLabel -> String
+textNodesToLatex nodes =
+    nodes |> 
+    List.sortBy (\{pos} -> Tuple.second pos) |> 
+    List.map .label |>
+    String.join "\n\n"
+
 graphToTikz : Model -> Graph NodeLabel EdgeLabel -> String
 graphToTikz model graph =
+    let nodes = Graph.nodes graph |> List.map .label in
+    if List.all (.isMath >> not) nodes 
+        && Graph.edges graph == [] then
+       -- return the text
+      textNodesToLatex nodes
+    else
     if model.alternativeLatex then 
       let d = toDrawing model 
             <| GraphDrawing.toDrawingGraph graph
