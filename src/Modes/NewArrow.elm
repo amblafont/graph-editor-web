@@ -115,12 +115,15 @@ nextStep model {finish, merge} state =
      else
         let ids = info.renamable
         in
-        -- let label = Graph.topmostObject state.chosen |> 
-        --             Maybe.andThen (\ id -> GraphDefs.getLabelLabel id state.chosen)
-        --             -- info.graph)
-        --             |> Maybe.withDefault ""                    
-        -- in
-        let ids_labels = List.map (\ id -> { id = id, label = Nothing -- Just label
+        let label = 
+               if state.kind == CreateCylinder then Nothing else
+                Graph.topmostObject state.chosen |> 
+                    Maybe.andThen (\ id -> GraphDefs.getLabelLabel id state.chosen)
+        -- info.graph)
+        |> Maybe.withDefault ""                    
+        |> Just                   
+in
+        let ids_labels = List.map (\ id -> { id = id, label = label
                         , tabId = model.graphInfo.activeTabId}) ids 
         in
         let (nextModel, idModif) = popIdModif model in

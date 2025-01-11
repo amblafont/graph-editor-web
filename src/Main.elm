@@ -196,6 +196,7 @@ port onCut : (() -> a) -> Sub a
 -- we return the stuff to be written
 port clipboardWriteGraph : JsGraphInfo -> Cmd a
 -- statement
+port clipboardWriteLatex : {graph: JsGraphInfo, tex:String} -> Cmd a
 -- port incompleteEquation : { statement : String, script : String} -> Cmd a
 
 -- we send a request to get a proof (by prompt?)
@@ -204,7 +205,7 @@ port requestProof : { statement : String, script : String} -> Cmd a
 port applyProof : { statement : String, script : String} -> Cmd a
 port appliedProof : ({ statement : String, script : String} -> a) -> Sub a
 
-port toClipboard : { content:String, success: String, failure: String } -> Cmd a
+-- port toClipboard : { content:String, success: String, failure: String } -> Cmd a
 port generateProofJs : { proof : String, graph : JsGraphInfo } -> Cmd a
 port generateSvg : String -> Cmd a
 
@@ -726,12 +727,6 @@ selectLoop direction model =
 
 
 
-latexToClipboard : String -> Cmd a
-latexToClipboard tex =
-   toClipboard {content = tex,
-                success = "latex successfully copied.",
-                failure = "unable to copy latex"
-            }
 
 generateProofString : Bool -> Graph NodeLabel EdgeLabel -> String
 generateProofString debug g =
@@ -1038,13 +1033,17 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False _ (Control "Delete") ->
             updateModifHelper model <| GraphDefs.removeSelected modelGraph            
         KeyChanged False _ (Character 'X') ->
+            let selectedGraph = GraphDefs.selectedGraph modelGraph in
             let latex = graphToTikz model -- (getActiveSizeGrid model)
-                            (GraphDefs.selectedGraph modelGraph)
+                            selectedGraph
             in
             let cmd = if latex == "" then
                          alert "No diagram found!"
                       else
-                         latexToClipboard latex
+                         clipboardWriteLatex 
+                          {tex = latex,
+                           graph = toJsGraphInfo 
+                            <| Model.restrictSelection model}
             in
               (model, cmd)
             -- fillBottom latex "No diagram found!"

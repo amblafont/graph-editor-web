@@ -829,7 +829,20 @@ function disableInAppInstallPrompt() {
             navigator.clipboard.writeText(JSON.stringify(g));                                     
          });
 
+         app.ports.clipboardWriteLatex.subscribe(function(g) {
+            navigator.clipboard.writeText(
+                "% YADE DIAGRAM " + JSON.stringify(g.graph)
+                + "\n% GENERATED LATEX\n"
+                + g.tex
+                + "\n% END OF GENERATED LATEX"
+            ).then(
+            () => {
+                customAlert("LaTeX copied to clipboard");
+            });
+         });
 
+
+         /*
          function toClipboard({content, success, failure}) {
             navigator.clipboard.writeText(content).then(
             () => {
@@ -839,8 +852,9 @@ function disableInAppInstallPrompt() {
                 failure && customAlert(failure);
             });
          };
-
+         
          app.ports.toClipboard.subscribe(toClipboard);
+         */
          const err = "This feature is only enabled with the webview version embedded in the appropriate vscode extension";
 
        
