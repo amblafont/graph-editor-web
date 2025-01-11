@@ -1,4 +1,4 @@
-module Format.Version12 exposing (Graph, Node, Tab, pullshoutKey, normalKey, ArrowStyle, Edge, fromJSGraph, version)
+module Format.Version12 exposing (Graph, Node, Tab, ArrowStyle, Edge, fromJSGraph, version)
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
@@ -9,8 +9,6 @@ import List.Extra
 
 version = 12
 
-pullshoutKey = NextVersion.pullshoutKey
-normalKey = NextVersion.normalKey
 
 type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 

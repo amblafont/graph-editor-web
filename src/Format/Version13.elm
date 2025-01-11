@@ -1,4 +1,4 @@
-module Format.Version13 exposing (Graph, Node,  normalKey, pullshoutKey, Tab, ArrowStyle, Edge, fromJSGraph, version)
+module Format.Version13 exposing (Graph, Node, Tab, ArrowStyle, Edge, fromJSGraph, version)
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
@@ -9,10 +9,9 @@ import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
 import Codec exposing (Codec)
 import Format.Version14 as NextVersion
+import Format.Keys exposing (normalKey, pullshoutKey)
 
 version = 13
-pullshoutKey = NextVersion.pullshoutKey
-normalKey = NextVersion.normalKey
 
 type alias ArrowStyle = NextVersion.ArrowStyle
 

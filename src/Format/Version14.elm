@@ -1,18 +1,16 @@
-module Format.Version14 exposing (Graph, Node, normalKey, pullshoutKey, Tab, ArrowStyle, Edge, fromJSGraph, version)
+module Format.Version14 exposing (Graph, Node, Tab, ArrowStyle, Edge, fromJSGraph, version)
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
-import ArrowStyle exposing (tailCodec, headCodec, alignmentCodec, kindCodec)
 import GraphDefs exposing (defaultPullshoutShift)
 import Format.GraphInfo as GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
-import Codec exposing (Codec)
+import Codec
 import Format.Version15 as NextVersion
+import Format.Keys exposing (pullshoutKey)
 
 version = 14
-pullshoutKey = NextVersion.pullshoutKey
-normalKey = NextVersion.normalKey
 
 adjunctionKey = "adjunction"
 

@@ -1,4 +1,4 @@
-module Format.Version15 exposing (Graph, Node, normalKey, pullshoutKey, Tab, ArrowStyle, Edge, fromJSGraph, version)
+module Format.Version15 exposing (Graph, Node, Tab, ArrowStyle, Edge, fromJSGraph, version)
 {- 
 Changes from Version 14:
 - offset1 and offset2 of pullshout edges are saved in the bend and position fields of the style
@@ -11,8 +11,6 @@ import Format.Version16 as NextVersion
 
 
 version = 15
-pullshoutKey = NextVersion.pullshoutKey
-normalKey = NextVersion.normalKey
 
 type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 

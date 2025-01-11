@@ -4,6 +4,7 @@ import Polygraph as Graph exposing (Graph)
 import GraphDefs exposing (EdgeType(..))
 import Format.Version12 as NextVersion
 import Format.GraphInfo exposing (GraphInfo)
+import Format.Keys exposing (normalKey, pullshoutKey)
 
 version = 11
 
@@ -38,7 +39,7 @@ toNextEdge e =
   --      zindex : Int }
   { label = e.label,
     style = toNextStyle e.style,
-    kind = if e.isPullshout then NextVersion.pullshoutKey else NextVersion.normalKey,
+    kind = if e.isPullshout then pullshoutKey else normalKey,
     zindex = e.zindex }
 
 toNextTab : Tab -> NextVersion.Tab

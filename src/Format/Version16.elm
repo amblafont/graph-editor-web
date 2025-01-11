@@ -1,4 +1,4 @@
-module Format.Version16 exposing (Graph, Node, pullshoutStyle, nodeCodec, edgeCodec, normalKey, pullshoutKey, Tab, ArrowStyle, Edge, toJSGraph, fromJSGraph, version, tabCodec, graphInfoCodec, defaultGraph)
+module Format.Version16 exposing (Graph, Node, pullshoutStyle, nodeCodec, edgeCodec, Tab, ArrowStyle, Edge, toJSGraph, fromJSGraph, version, tabCodec, graphInfoCodec, defaultGraph)
 {- 
 Changes from Version 15:
 - style has now a head / tail colors
@@ -11,12 +11,10 @@ import Format.GraphInfo as GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
 import Codec exposing (Codec)
-import Svg exposing (marker)
+import Format.Keys exposing (normalKey, pullshoutKey, adjunctionKey)
 
 version = 16
-pullshoutKey = "pullshout"
-normalKey = "normal"
-adjunctionKey = "adjunction"
+
 
 type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 
