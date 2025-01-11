@@ -26,7 +26,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    rectEnveloppe, updateStyleEdges, updatePullshoutEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
-   ,invertEdge
+   ,invertEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
    )
@@ -853,11 +853,17 @@ rectEnveloppe g =
    let points = Graph.nodes g |> List.map (.label >> .pos) in
    Geometry.rectEnveloppe points
 
-invertEdge : Graph NodeLabel EdgeLabel -> EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
-invertEdge g id = Graph.md_updateEdge id
-                  (mapNormalEdge (\ l -> { l | style = ArrowStyle.invert l.style}))
-                          <| Graph.md_invertEdge id 
-                          <| Graph.newModif g
+invertEdges : Graph NodeLabel EdgeLabel -> List EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
+invertEdges g ids =
+   List.foldl (Graph.md_invertEdge)
+   (Graph.md_updateEdgesId ids
+      (mapNormalEdge (\ l -> { l | style = ArrowStyle.invert l.style}))
+      <| Graph.newModif g
+   )
+   ids
+   
+   
+
 
 -- doesn't update the color
 keyMaybeUpdatePullshout : Key -> { a | offset1 : Float, offset2 : Float} -> Maybe { a | offset1 : Float, offset2 : Float}

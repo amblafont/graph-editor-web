@@ -899,10 +899,10 @@ update_DefaultMode msg model =
                <| Process.sleep pressTimeoutMs)
         KeyChanged False _ (Character 'i') -> 
           --  noCmd <|
-                  case GraphDefs.selectedEdgeId modelGraph of
-                      Just id -> updateModifHelper model 
-                          <| GraphDefs.invertEdge modelGraph id
-                      _ -> noCmd model
+                  case GraphDefs.selectedEdges modelGraph of
+                      [] -> noCmd model
+                      edges -> updateModifHelper model 
+                          <| GraphDefs.invertEdges modelGraph <| List.map .id edges
         {- KeyChanged False _ (Character 'I') -> noCmd <| selectInitial model -}
         {- KeyChanged False _ (Character 'E') -> 
            noCmd <| { model | graph = 
