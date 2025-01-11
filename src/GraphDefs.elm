@@ -38,7 +38,7 @@ import Geometry.Point as Point exposing (Point)
 import Geometry exposing (LabelAlignment(..))
 import Geometry.QuadraticBezier as Bez
 import EdgeShape exposing (EdgeShape(..), pullshoutHat)
-import ArrowStyle exposing (ArrowStyle)
+import ArrowStyle exposing (ArrowStyle, EdgePart)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 import GraphProof exposing (LoopNode, LoopEdge, Diagram)
 
@@ -330,14 +330,17 @@ md_updatePullshoutEdge id f =
     Graph.md_updateEdge id 
      (mapPullshoutEdge f)
 
-setColorEdgesId : Color.Color -> List EdgeId -> Graph NodeLabel EdgeLabel -> 
+
+
+setColorEdgesId : Color.Color -> EdgePart -> List EdgeId -> Graph NodeLabel EdgeLabel -> 
            Graph.ModifHelper NodeLabel EdgeLabel
-setColorEdgesId color edges graph =
+setColorEdgesId color part edges graph =
      let updateColor e = 
            case e.details of
             NormalEdge l -> 
                let oldStyle = l.style in
-               { e | details = NormalEdge { l | style = { oldStyle | color = color }}}
+               let newStyle = ArrowStyle.updateEdgeColor part color oldStyle in
+               { e | details = NormalEdge { l | style = newStyle }}
             PullshoutEdge x -> {e | details = PullshoutEdge { x | color = color}} 
      in
      let modif = Graph.newModif graph in

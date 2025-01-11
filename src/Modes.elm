@@ -1,6 +1,6 @@
 module Modes exposing (..)
 
-import ArrowStyle exposing (ArrowStyle)
+import ArrowStyle exposing (ArrowStyle, EdgePart)
 import Geometry.Point exposing (Point)
 import Polygraph as Graph exposing (EdgeId, NodeId)
 import InputPosition exposing (InputPosition)
@@ -35,7 +35,7 @@ type Mode
     | CutHead CutHeadState
     | ResizeMode ResizeState -- current sizegrid
     | PullshoutMode PullshoutState
-    | ColorMode (List EdgeId)
+    | ColorMode ColorModeState
     | MakeSaveMode
     | LatexPreamble String
 
@@ -133,10 +133,16 @@ type alias PullshoutState =
 
 type PullshoutKind = Pullback | Pushout
 
-type ArrowMode =
+type ArrowStateKind =
     CreateArrow Graph.Id
   | CreateCylinder
   | CreateCone
+
+
+type alias ColorModeState = 
+   { edges: (List (Graph.Edge EdgeLabel)),
+      mode : EdgePart
+    }
 
 
 type alias NewLineState = {
@@ -146,7 +152,8 @@ type alias NewLineState = {
 
 type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,
-      mode : ArrowMode, 
+      kind : ArrowStateKind, 
+      mode : EdgePart,
       style : ArrowStyle, 
       pos : InputPosition, inverted : Bool,
       isAdjunction : Bool

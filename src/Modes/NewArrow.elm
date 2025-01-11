@@ -4,10 +4,10 @@ module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update, help
 import GraphDrawing exposing (..)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Msg exposing (Msg(..))
-import ArrowStyle 
+import ArrowStyle exposing (EdgePart(..))
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import Modes exposing ( NewArrowState, Mode(..),  ArrowMode(..))
+import Modes exposing ( NewArrowState, Mode(..),  ArrowStateKind(..))
 import InputPosition exposing (InputPosition(..))
 import Model exposing (..)
 import Modes exposing (PullshoutKind(..))
@@ -68,7 +68,7 @@ initialise : Model -> Model
 initialise m =
     let modelGraph = getActiveGraph m in
     -- noCmd <|
-    let mode = 
+    let kind = 
             case GraphDefs.selectedId modelGraph 
                 |> Maybe.Extra.filter (GraphDefs.isNormalId modelGraph)
                 of 
@@ -79,7 +79,8 @@ initialise m =
         { style = ArrowStyle.empty, 
             pos = InputPosMouse,                                 
             chosen = Graph.empty, -- GraphDefs.selectedGraph modelGraph,
-            mode = mode,
+            kind = kind,
+            mode = MainEdgePart,
             inverted = False,
             isAdjunction = False
             -- merge = False 
@@ -135,16 +136,38 @@ nextStep model {finish, merge} state =
         -- initialise_RenameModeWithDefault False ids_labels m2
        
 
-            
-
 update : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
+   let updateHeadOrTail part = 
+        case msg of
+                KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
+                KeyChanged False _ (Control "Escape")
+                    -> noCmd <| updateState model { state | mode = MainEdgePart }
+                KeyChanged False _ k ->                              
+                    case ArrowStyle.keyMaybeUpdateColor k part state.style of
+                        Just newStyle -> 
+                           let st2 = { state | style = newStyle, mode = MainEdgePart } in
+                             updateState model st2
+                              |> noCmd
+                        _ -> noCmd model                               
+                _ -> noCmd model
+    in
+
+   case state.mode of
+      MainEdgePart -> updateNormal state msg model
+      HeadPart -> updateHeadOrTail state.mode
+      TailPart -> updateHeadOrTail state.mode
+
+            
+
+updateNormal : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
+updateNormal state msg model =
     let modelGraph = getActiveGraph model in
     let next finishMerge = nextStep model finishMerge state in
     let pullshoutMode k = 
            noCmd <|
            
-           case state.mode  of
+           case state.kind  of
              CreateArrow id -> 
                 { model | mode =
                           Modes.Pullshout.initialise modelGraph id k
@@ -152,6 +175,11 @@ update state msg model =
                           |> Maybe.withDefault (NewArrow state)
                        }
              _ -> model
+    in
+    let changeMode m = 
+                if ArrowStyle.isPartColorable m state.style then
+                    noCmd <| updateState model { state | mode = m } 
+                else noCmd model
     in
     case msg of
       
@@ -170,18 +198,20 @@ update state msg model =
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}                 
         KeyChanged False _ (Character 'p') -> pullshoutMode Pullback 
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
+        KeyChanged False _ (Character 'H') -> changeMode HeadPart
+        KeyChanged False _ (Character 'T') -> changeMode TailPart
         KeyChanged False _ (Character 'C') -> 
-              let mode = nextPossibleMode state
-                      |> Maybe.withDefault state.mode
+              let kind = nextPossibleKind state
+                      |> Maybe.withDefault state.kind
               in
-              noCmd <| updateState model { state | mode = mode}             
+              noCmd <| updateState model { state | kind = kind}             
 
         _ ->
             let newStyle =  case msg of
                        KeyChanged False _ k -> 
                             ArrowStyle.keyMaybeUpdateStyle k state.style
                            |> Maybe.withDefault 
-                             ((ArrowStyle.keyMaybeUpdateColor k state.style)
+                             ((ArrowStyle.keyMaybeUpdateColor k MainEdgePart state.style)
                                |> Maybe.withDefault state.style)
                        _ -> state.style 
             in
@@ -193,9 +223,9 @@ update state msg model =
                   
                 
             
-nextPossibleMode : NewArrowState -> Maybe ArrowMode
-nextPossibleMode s =
-   case s.mode of
+nextPossibleKind : NewArrowState -> Maybe ArrowStateKind
+nextPossibleKind s =
+   case s.kind of
      CreateCone -> Nothing
      CreateCylinder -> Just CreateCone
      CreateArrow _ -> 
@@ -228,7 +258,7 @@ moveNodeInfo merge emptyLabel model state =
                 let nodeLabel = GraphDefs.newNodeLabel nodePos "" True Zindex.defaultZ  in
                 let modifGraph = Graph.newModif modelGraph in
                 let extendedGraph = 
-                     case state.mode of
+                     case state.kind of
                         CreateCylinder ->                        
                             Graph.md_makeCylinder modifGraph state.chosen edgeLabel state.inverted
                         CreateCone ->                            
@@ -264,8 +294,10 @@ graphDrawing m s =
    
             --  Graph.applyModifHelper info.graph 
          
-help : String
-help =
+help : NewArrowState -> String
+help s =
+    case s.mode of        
+        MainEdgePart ->
 --  case s of
 --         NewArrowMoveNode _ ->
             -- Debug.toString st ++
@@ -284,3 +316,9 @@ help =
              ++ "[C] switch to cone/cylinder creation (if relevant).\n"
              ++ "[p]ullback/[P]ushout mode.\n"
              ++ "Colors: " ++ Color.helpMsg
+             ++ ", color [H]ead/[T]ail"
+        _ -> "Submode color "
+            ++ (if s.mode == HeadPart then "head" else "tail")
+            ++ " of the arrow: [ESC] to cancel, "
+            ++ Color.helpMsg ++ ", "
+            ++ HtmlDefs.overlayHelpMsg

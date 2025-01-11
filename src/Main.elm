@@ -101,6 +101,7 @@ import Format.Version12
 import Format.Version13
 import Format.Version14
 import Format.Version15
+import Format.Version16
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo as GraphInfo exposing (Tab)
@@ -167,6 +168,7 @@ port loadedGraph12 : (LoadGraphInfo Format.Version12.Graph -> a) -> Sub a
 port loadedGraph13 : (LoadGraphInfo Format.Version13.Graph -> a) -> Sub a
 port loadedGraph14 : (LoadGraphInfo Format.Version14.Graph -> a) -> Sub a
 port loadedGraph15 : (LoadGraphInfo Format.Version15.Graph -> a) -> Sub a
+port loadedGraph16 : (LoadGraphInfo Format.Version16.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -263,6 +265,7 @@ subscriptions m =
       loadedGraph13 (mapLoadGraphInfo Format.Version13.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph14 (mapLoadGraphInfo Format.Version14.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph15 (mapLoadGraphInfo Format.Version15.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph16 (mapLoadGraphInfo Format.Version16.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
@@ -1561,18 +1564,16 @@ helpMsg model =
                     ++ " [RET] to accept the current chain"       
                     ++ ", [ESC] to cancel and comeback to the default mode."]
                 ] -}
-        NewArrow _ -> "Mode NewArrow. "
+        NewArrow s -> "Mode NewArrow. "
                           -- ++ Debug.toString model 
-                           ++  Modes.NewArrow.help |> msg
+                           ++  Modes.NewArrow.help s |> msg
         LatexPreamble _ -> "Mode latex preamble." |> msg
         NewLine _ -> "Mode NewLine. "
                            ++  Modes.NewLine.help |> msg
         PullshoutMode _ -> "Mode Pullback/Pullshout. "
                           -- ++ Debug.toString model 
                            ++  Modes.Pullshout.help |> msg
-        ColorMode _ -> "Mode color. "
-                        ++ overlayHelpMsgNewLine
-                        ++ "[ESC] or colorise selected edges: " ++ Color.helpMsg |> msg
+        ColorMode s -> Modes.Color.help s |> msg 
         SquareMode _ -> "Mode Commutative square. "
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "

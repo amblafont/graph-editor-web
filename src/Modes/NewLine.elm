@@ -7,7 +7,7 @@ import Msg exposing (Msg(..))
 import ArrowStyle 
 import HtmlDefs exposing (Key(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
-import Modes exposing ( NewLineState, Mode(..),  ArrowMode(..))
+import Modes exposing ( NewLineState, Mode(..))
 import InputPosition exposing (InputPosition(..))
 import Model exposing (..)
 import Modes exposing (PullshoutKind(..))

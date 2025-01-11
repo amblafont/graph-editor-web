@@ -1,13 +1,15 @@
 module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
    tikzStyle,
-   isDouble, doubleSize,
+   isDouble, doubleSize, updateEdgeColor, EdgePart(..),
    controlChars, MarkerStyle(..), isMarker,
    kindCodec, tailCodec, headCodec, alignmentCodec, markerCodec,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
     keyMaybeUpdateStyle, shadow,
     increaseBend, decreaseBend,
-    keyMaybeUpdateColor, makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle
+    keyMaybeUpdateColor, isPartColorable,
+    -- keyMaybeUpdateHeadColor, keyMaybeUpdateTailColor,
+    makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle
     , invert)
 
 import HtmlDefs exposing (Key(..))
@@ -36,13 +38,16 @@ type alias Style = { tail : TailStyle,
                      -- betweeon 0 and 1, 0.5 by default
                      labelPosition : Float,
                      color : Color,
+                     headColor : Color,
+                     tailColor : Color,
                      marker : MarkerStyle
                     } 
 
 simpleLineStyle : Float -> Style
 simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashed = False,
           bend = bend, labelAlignment = Left, marker = NoMarker,
-          labelPosition = 0.5, color = Color.black }
+          labelPosition = 0.5, color = Color.black,
+          headColor = Color.black, tailColor = Color.black }
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
 
@@ -127,7 +132,8 @@ empty : Style
 empty = { tail = DefaultTail, head = DefaultHead, dashed = False,
           bend = 0, labelAlignment = Left,
           labelPosition = 0.5, color = Color.black, kind = NormalArrow,
-          marker = NoMarker }
+          marker = NoMarker,
+          headColor = Color.black, tailColor = Color.black }
 isDouble : Style -> Basics.Bool
 isDouble { kind } = kind == DoubleArrow
   
@@ -214,19 +220,58 @@ keyMaybeUpdateStyle k style =
                Just {style | labelPosition = style.labelPosition - 0.1 |> max minLabelPosition}
         _ -> Nothing
 
-keyMaybeUpdateColor : Key -> Style -> Maybe Style
-keyMaybeUpdateColor k style =
+keyToNewColor : Color -> Key -> Maybe Color
+keyToNewColor oldColor k =
    case k of 
       Character c ->
          -- let _ = Debug.log "char" c in 
          Color.fromChar c
          |> Maybe.andThen 
-            (\ color -> if color == style.color then Nothing else 
-                        Just { style | color = color})
+            (\ color -> if color == oldColor then Nothing else Just color)
+                        -- Just (upd color))
       _ -> Nothing
+
+keyMaybeUpdateColor : Key -> EdgePart -> Style -> Maybe Style
+keyMaybeUpdateColor k p s = 
+  keyToNewColor (getEdgeColor p s) k 
+  |> Maybe.map (\ c -> updateEdgeColor p c s)
+
+
+isPartColorable : EdgePart -> Style -> Bool
+isPartColorable part s = 
+  case part of
+    HeadPart -> s.head /= NoHead
+    TailPart -> s.tail /= DefaultTail
+    MainEdgePart -> True
+
+
+   
 
 --keyUpdateStyle : Key -> Style -> Style
 --keyUpdateStyle k style = keyMaybeUpdateStyle k style |> Maybe.withDefault style
+
+type EdgePart =
+      MainEdgePart
+    | HeadPart
+    | TailPart
+
+getEdgeColor : EdgePart -> Style -> Color
+getEdgeColor part s = 
+  case part of
+    HeadPart -> s.headColor
+    TailPart -> s.tailColor
+    MainEdgePart -> s.color
+
+updateEdgeColor : EdgePart -> Color -> Style -> Style
+updateEdgeColor part c s = 
+  case part of    
+    HeadPart -> { s | headColor = c }
+    TailPart -> { s | tailColor = c }
+    MainEdgePart ->
+        { s | color = c,
+          headColor = if s.headColor == s.color then c else s.headColor,
+          tailColor = if s.tailColor == s.color then c else s.tailColor }
+          
 
 shadow : ArrowStyle -> ArrowStyle
 shadow st = { st | color = Color.white, dashed = False, head = NoHead, tail = DefaultTail }
@@ -311,7 +356,7 @@ tikzStyle stl =
 makeHeadShape : Style -> Svg a
 makeHeadShape style =
    if style.kind == NoneArrow then Svg.g [] [] else
-   let strokeAttr = Svg.strokeFromColor style.color in
+   let strokeAttr = Svg.strokeFromColor style.headColor in
    --   let (xh, yh) = (x - imgHeight / 2, y - imgHeight / 2) in
    --   let f = String.fromFloat in
    let double = isDouble style in
@@ -384,7 +429,7 @@ makeHeadShape style =
 makeTailShape : Style -> Svg a
 makeTailShape style =
      if style.kind == NoneArrow then Svg.g [] [] else
-     let strokeAttr = Svg.strokeFromColor style.color in
+     let strokeAttr = Svg.strokeFromColor style.tailColor in
      let double = isDouble style in
    --   let (xh, yh) = (x - imgHeight / 2, y - imgHeight / 2) in
    --   let f = String.fromFloat in
