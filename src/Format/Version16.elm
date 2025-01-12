@@ -1,7 +1,7 @@
 module Format.Version16 exposing (Graph, Node, pullshoutStyle, nodeCodec, edgeCodec, Tab, ArrowStyle, Edge, toJSGraph, fromJSGraph, version, tabCodec, graphInfoCodec, defaultGraph)
 {- 
 Changes from Version 15:
-- style has now a head / tail colors
+- style has now head / tail colors and a wavy field
 -}
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
@@ -19,7 +19,7 @@ version = 16
 type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 
    position : Float, color : String, marker : String,
-   headColor : String, tailColor : String
+   headColor : String, tailColor : String, wavy : Bool
    }
 
 pullshoutStyle : GraphDefs.PullshoutEdgeLabel -> ArrowStyle
@@ -27,7 +27,7 @@ pullshoutStyle {color, offset1, offset2} =
   { tail = "", head = "", kind = "normal", 
     dashed = False, bend = offset1, alignment = "", position = offset2,
     color = Codec.encoder Color.codec color, marker = "",
-    headColor = "", tailColor = ""}
+    headColor = "", tailColor = "", wavy = False}
 
 type alias Edge = { label : String, style : ArrowStyle, kind : String,
        zindex : Int
@@ -62,18 +62,18 @@ defaultGraph = { tabs = [], latexPreamble = "", nextTabId = 0, activeTabId = 0}
 arrowStyleCodec : Codec ArrowStyle.ArrowStyle ArrowStyle
 arrowStyleCodec =
   Codec.object
-  (\tail head kind dashed bend alignment position color headColor tailColor marker ->
+  (\tail head kind dashed bend alignment position color headColor tailColor marker wavy ->
       { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, labelAlignment = alignment, 
    labelPosition = position, color = color, marker = marker,
-   headColor = headColor, tailColor = tailColor }
+   headColor = headColor, tailColor = tailColor, wavy = wavy }
     
   )
-  (\tail head kind dashed bend alignment position color headColor tailColor marker ->
+  (\tail head kind dashed bend alignment position color headColor tailColor marker wavy  ->
     { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, alignment = alignment, 
    position = position, color = color, marker = marker,
-   headColor = headColor, tailColor = tailColor  }
+   headColor = headColor, tailColor = tailColor, wavy = wavy }
   )
   |> Codec.fields .tail .tail tailCodec
   |> Codec.fields .head .head headCodec
@@ -86,6 +86,7 @@ arrowStyleCodec =
   |> Codec.fields .headColor .headColor Color.codec
   |> Codec.fields .tailColor .tailColor Color.codec
   |> Codec.fields .marker .marker markerCodec
+  |> Codec.fields .wavy .wavy Codec.identity
   |> Codec.buildObject
   
 

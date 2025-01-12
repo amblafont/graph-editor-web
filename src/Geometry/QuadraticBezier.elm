@@ -1,7 +1,7 @@
 -- deprecated: we now use Bezier (from Quiver)
 -- TODO: delete this file
 module Geometry.QuadraticBezier exposing (QuadraticBezier, middle, isLine, orthoVectPx, dummy, toCubic
- , shiftFrom, shiftTo)
+ , shiftFrom, shiftTo, point, length)
 import Geometry.Point as Point exposing (Point)
 import Geometry.Point exposing (orthoVectPx)
 
@@ -32,7 +32,17 @@ middle : QuadraticBezier -> Point
 middle {from, to, controlPoint } =
   Point.middle controlPoint <| Point.middle from to
 
+point : QuadraticBezier -> Float -> Point
+point {from, to, controlPoint} t =
+  let p0 = Point.lerp from controlPoint t in
+  let p1 = Point.lerp controlPoint to t in
+  Point.lerp p0 p1 t
 
+length : QuadraticBezier -> Float
+length {from, to, controlPoint} =
+  let p0 = Point.subtract controlPoint from in
+  let p1 = Point.subtract to controlPoint in
+  Point.radius p0 + Point.radius p1
 
 shiftFrom : QuadraticBezier -> Float -> Point
 shiftFrom ({from, controlPoint} as q) shift =

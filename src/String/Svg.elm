@@ -1,5 +1,5 @@
 module String.Svg  exposing (..)
-
+-- Actually, we could spare this work by exporting to svg from js
 import String.Html exposing (Html, attribute, attributeNS)
 import Geometry
 import Geometry exposing (PosDims)

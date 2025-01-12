@@ -41,14 +41,15 @@ type alias Style = { tail : TailStyle,
                      color : Color,
                      headColor : Color,
                      tailColor : Color,
-                     marker : MarkerStyle
+                     marker : MarkerStyle,
+                     wavy : Bool
                     } 
 
 simpleLineStyle : Float -> Style
 simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashed = False,
           bend = bend, labelAlignment = Left, marker = noMarker,
           labelPosition = 0.5, color = Color.black,
-          headColor = Color.black, tailColor = Color.black }
+          headColor = Color.black, tailColor = Color.black, wavy = False }
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
 
@@ -134,7 +135,8 @@ empty = { tail = DefaultTail, head = DefaultHead, dashed = False,
           bend = 0, labelAlignment = Left,
           labelPosition = 0.5, color = Color.black, kind = NormalArrow,
           marker = noMarker,
-          headColor = Color.black, tailColor = Color.black }
+          headColor = Color.black, tailColor = Color.black ,
+          wavy = False }
 isDouble : Style -> Basics.Bool
 isDouble { kind } = kind == DoubleArrow
   
@@ -165,6 +167,8 @@ type TailStyle = DefaultTail | Hook | HookAlt | Mapsto
 
 
 
+toggleWavy : Style -> Style
+toggleWavy s = { s | wavy = not s.wavy }
 
 
 toggleHead : Style -> Style
@@ -195,7 +199,7 @@ toggleDashed s = { s | dashed = not s.dashed }
 
 
 -- chars used to control in keyUpdateStyle
-controlChars = "|>(=-bBA]["
+controlChars = "|>(=-~bBA]["
 maxLabelPosition = 0.9
 minLabelPosition = 0.1
 
@@ -214,6 +218,7 @@ keyMaybeUpdateStyle k style =
         Character '(' -> Just <| toggleHook style
         Character '=' -> Just <| toggleDouble style
         Character '-' -> Just <| toggleDashed style
+        Character '~' -> Just <| toggleWavy style
         -- Character '.' -> Just <| toggleMarker style
         Character 'b' -> Just <| {style | bend = decreaseBend style.bend |> norm0}
         Character 'B' -> Just <| {style | bend = increaseBend style.bend |> norm0}
@@ -349,6 +354,8 @@ tikzStyle stl =
     ++ (if stl.bend /= 0 then
            "curve={ratio=" ++ String.fromFloat stl.bend ++ "}, "
         else "")
+    ++ (if stl.wavy then "decorate,decoration={zigzag, pre length=3px, post length=3px,amplitude=0.05cm, segment length=0.15cm}, " 
+         else "")
     ++  (case stl.tail of
          DefaultTail -> ""
          Mapsto -> "mapsto,"

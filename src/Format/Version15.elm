@@ -20,7 +20,7 @@ type alias ArrowStyle = { tail : String, head : String, kind : String
 toNextStyle : ArrowStyle -> NextVersion.ArrowStyle
 toNextStyle {tail, head, kind, dashed, bend, alignment, position, color, marker} = 
   {marker = marker, tail = tail, head = head, kind = kind, dashed = dashed, bend = bend, alignment = alignment, position = position, color = color,  
-  headColor = color, tailColor = color}
+  headColor = color, tailColor = color, wavy = False}
 
 
 type alias Edge = { label : String, style : ArrowStyle, kind : String,

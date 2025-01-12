@@ -12,7 +12,7 @@ module Drawing exposing (Drawing,
 import Tikz
 import Zindex exposing (defaultZ, backgroundZ)
 import String.Svg as Svg exposing (Svg)
-import Geometry.Point exposing (Point)
+import Geometry.Point as Point exposing (Point)
 import Geometry
 import Html 
 import ArrowStyle exposing (ArrowStyle)
@@ -227,11 +227,11 @@ arrowToSvg args attrs0 =
     else
     -- let zindex = attributesToZIndex attrs in
     let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    
-    let mkgen d l = mkPath {dashed = d, color = arrowStyle.color,
+    let mkgen l = mkPath {wavy=arrowStyle.wavy, dashed = arrowStyle.dashed, color = arrowStyle.color,
                             strokeWidth = args.strokeWidth }
                       (l ++ attrs) 
     in
-    let mkl = mkgen arrowStyle.dashed [] in
+    let mkl = mkgen [] in
     -- let mkshadow = mkgen False [Svg.class shadowClass] in
     
     -- let mkshadow = mkgen False [style "stroke-width : 4;  stroke: white;"] in
@@ -319,19 +319,74 @@ dashedToAttrs dashed =
               []
 
 
-quadraticBezierToAttr : QuadraticBezier -> Svg.Attribute a 
-quadraticBezierToAttr  {from, to, controlPoint } =
+qBezToPath : QuadraticBezier -> String
+qBezToPath {from, to, controlPoint} =
   let f = String.fromFloat in
   let p (x1, x2) = f x1 ++ " " ++ f x2 in    
-    Svg.d  <|
     "M" ++ p from 
     ++ " Q " ++ p controlPoint
     ++ ", " ++ p to
 
-mkPath : {dashed:Bool, color:Color, strokeWidth : Int} -> List (Svg.Attribute a) -> QuadraticBezier -> Svg a
+generateWavyPath : QuadraticBezier -> String
+generateWavyPath ({from, to, controlPoint} as b) =
+  let amplitude = 2 in
+  let ratio = 2 in
+  -- this offset is to avoid the path to be too close to the end
+  let offsetEnd = 3 in
+  let pxOffsetEnd = 5 in
+  let f = String.fromFloat in
+  let p (x1, x2) = f x1 ++ " " ++ f x2 in
+  let bUnder = Bez.orthoVectPx amplitude b 
+      bOver = Bez.orthoVectPx (0 - amplitude) b
+  in
+  let n = round (Bez.length b / ratio) in
+  let steps = (List.range 1 (n - offsetEnd)) in
+  let stepToStr i = 
+         let t = toFloat i / toFloat n in
+         let bez = 
+                let r = modBy 4 i in
+                if r == 0 then bUnder 
+                else if r == 2 then bOver
+                else b
+         in
+         "L " ++ p (Bez.point bez t) ++ "\n" in
+  -- let points = List.map Bez.point steps in  
+  
+  let path = "M " ++ p from ++ " "
+        ++ String.join "" (List.map stepToStr steps) 
+        ++ "L " ++ p (Bez.shiftTo b pxOffsetEnd)
+        ++ "L " ++ p to
+  in
+  path
+      
+
+
+
+wavyQBezToPath : QuadraticBezier -> String
+wavyQBezToPath ({from, to, controlPoint} as b) =
+  let f = String.fromFloat in
+  let p (x1, x2) = f x1 ++ " " ++ f x2 in
+  -- Drawing.WavyLine.
+  -- generateWavyPath from controlPoint to
+  generateWavyPath b
+    --  (Point.name from) 
+    --  (Point.name controlPoint) 
+    --  (Point.name to)
+    --  2
+     
+  -- like qBezToAttr, but make it squiggly
+
+
+quadraticBezierToAttr : Bool -> QuadraticBezier -> Svg.Attribute a 
+quadraticBezierToAttr wavy b =
+  let f = String.fromFloat in
+  let p (x1, x2) = f x1 ++ " " ++ f x2 in    
+    Svg.d  <| if wavy then wavyQBezToPath b else qBezToPath b
+
+mkPath : {dashed:Bool, wavy:Bool, color:Color, strokeWidth : Int} -> List (Svg.Attribute a) -> QuadraticBezier -> Svg a
 mkPath arg attrs q =
   Svg.path 
-  ( quadraticBezierToAttr q ::
+  ( quadraticBezierToAttr arg.wavy q ::
     Svg.fill "none" :: 
       Svg.strokeFromColor arg.color
       ::
