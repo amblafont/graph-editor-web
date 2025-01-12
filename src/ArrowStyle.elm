@@ -1,7 +1,7 @@
 module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
    tikzStyle,
    isDouble, doubleSize, updateEdgeColor, EdgePart(..),
-   controlChars, MarkerStyle(..), isMarker,
+   controlChars, MarkerStyle, isMarker,
    kindCodec, tailCodec, headCodec, alignmentCodec, markerCodec,
    toggleDashed, dashedStr, -- PosLabel(..),
    -- quiver
@@ -9,7 +9,8 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
     increaseBend, decreaseBend,
     keyMaybeUpdateColor, isPartColorable,
     -- keyMaybeUpdateHeadColor, keyMaybeUpdateTailColor,
-    makeHeadShape, makeTailShape, getStyle, isNone, simpleLineStyle
+    makeHeadShape, 
+    makeTailShape, getStyle, isNone, simpleLineStyle
     , invert)
 
 import HtmlDefs exposing (Key(..))
@@ -45,7 +46,7 @@ type alias Style = { tail : TailStyle,
 
 simpleLineStyle : Float -> Style
 simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashed = False,
-          bend = bend, labelAlignment = Left, marker = NoMarker,
+          bend = bend, labelAlignment = Left, marker = noMarker,
           labelPosition = 0.5, color = Color.black,
           headColor = Color.black, tailColor = Color.black }
 type alias ArrowStyle = Style
@@ -115,24 +116,24 @@ alignmentCodec =
    |> Codec.buildVariant
 
 markerCodec : Codec MarkerStyle String
-markerCodec =
-   let split bullet bar nomarker v =
-          case v of 
-            BulletMarker -> bullet
-            BarMarker -> bar
-            NoMarker -> nomarker 
-   in
-   Codec.customEnum split 
-   |> Codec.variant0 "\\bullet" BulletMarker
-   |> Codec.variant0 "|" BarMarker
-   |> Codec.variant0 "" NoMarker
-   |> Codec.buildVariant
+markerCodec = Codec.identity
+  --  let split bullet bar nomarker v =
+  --         case v of 
+  --           BulletMarker -> bullet
+  --           BarMarker -> bar
+  --           NoMarker -> nomarker 
+  --  in
+  --  Codec.customEnum split 
+  --  |> Codec.variant0 "\\bullet" BulletMarker
+  --  |> Codec.variant0 "|" BarMarker
+  --  |> Codec.variant0 "" NoMarker
+  --  |> Codec.buildVariant
  
 empty : Style
 empty = { tail = DefaultTail, head = DefaultHead, dashed = False,
           bend = 0, labelAlignment = Left,
           labelPosition = 0.5, color = Color.black, kind = NormalArrow,
-          marker = NoMarker,
+          marker = noMarker,
           headColor = Color.black, tailColor = Color.black }
 isDouble : Style -> Basics.Bool
 isDouble { kind } = kind == DoubleArrow
@@ -146,17 +147,21 @@ getStyle {style, isAdjunction} =
       { style | head = NoHead, tail = DefaultTail, kind = NoneArrow, labelAlignment = Over }
    else style
 
-type MarkerStyle = NoMarker | BulletMarker | BarMarker
+type alias MarkerStyle = String 
+-- NoMarker | BulletMarker | BarMarker
 
 isMarker : MarkerStyle -> Bool
-isMarker marker = marker /= NoMarker
+isMarker marker = marker /= "" -- NoMarker
+
+noMarker : MarkerStyle 
+noMarker = ""
 
 
 type HeadStyle = DefaultHead | TwoHeads | NoHead
 type TailStyle = DefaultTail | Hook | HookAlt | Mapsto
 
-toggleMarker : Style -> Style
-toggleMarker s =  { s | marker = nextInList [NoMarker, BulletMarker, BarMarker] s.marker }
+-- toggleMarker : Style -> Style
+-- toggleMarker s =  { s | marker = nextInList [NoMarker, BulletMarker, BarMarker] s.marker }
 
 
 
@@ -190,7 +195,7 @@ toggleDashed s = { s | dashed = not s.dashed }
 
 
 -- chars used to control in keyUpdateStyle
-controlChars = "|>(=-.bBA]["
+controlChars = "|>(=-bBA]["
 maxLabelPosition = 0.9
 minLabelPosition = 0.1
 
@@ -209,7 +214,7 @@ keyMaybeUpdateStyle k style =
         Character '(' -> Just <| toggleHook style
         Character '=' -> Just <| toggleDouble style
         Character '-' -> Just <| toggleDashed style
-        Character '.' -> Just <| toggleMarker style
+        -- Character '.' -> Just <| toggleMarker style
         Character 'b' -> Just <| {style | bend = decreaseBend style.bend |> norm0}
         Character 'B' -> Just <| {style | bend = increaseBend style.bend |> norm0}
         Character 'A' -> Just <| toggleLabelAlignement style

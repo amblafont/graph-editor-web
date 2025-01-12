@@ -7,7 +7,7 @@ import Html.Attributes
 import Html.Events
 import Drawing exposing (Drawing)
 import Drawing.Color as Color exposing (Color)
-import ArrowStyle exposing (ArrowStyle, MarkerStyle(..))
+import ArrowStyle exposing (ArrowStyle, MarkerStyle)
 import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
@@ -343,10 +343,11 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     } -}
 drawMarker : Color -> MarkerStyle -> QuadraticBezier -> Drawing Msg
 drawMarker color marker q =
-  case marker of
-    NoMarker -> Drawing.empty
-    BulletMarker -> drawStringMarker color "\\bullet" q
-    BarMarker -> drawStringMarker color "|" q
+   if marker == "" then Drawing.empty else drawStringMarker color marker q
+  -- case marker of
+  --   NoMarker -> Drawing.empty
+  --   BulletMarker -> drawStringMarker color "\\bullet" q
+  --   BarMarker -> drawStringMarker color "|" q
 
 drawStringMarker : Color -> String -> QuadraticBezier -> Drawing Msg
 drawStringMarker color marker q =

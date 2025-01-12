@@ -240,6 +240,7 @@ subscriptions m =
     [
       protocolReceive ProtocolReceive,
       protocolRequestSnapshot (always ProtocolRequestSnapshot),
+      Modes.NewArrow.returnMarker Marker,
       -- protocolReceiveSnapshot ProtocolReceiveSnapshot,
       makeSave (always MakeSave),
       findReplace FindReplace,
@@ -858,8 +859,19 @@ update_DefaultMode msg model =
              weaklySelect <| GraphDefs.closest model.mousePos modelGraph             
         MouseDown _ -> noCmd <| { model | mode = RectSelect {orig = model.mousePos, hold = False} }
         LatexPreambleSwitch -> noCmd <| { model | mode = LatexPreamble model.graphInfo.latexPreamble }
+        Marker s ->
+            let edges = GraphDefs.selectedEdges modelGraph in
+            let newStyle oldStyle = 
+                  if oldStyle.marker == s then Nothing else
+                  Just { oldStyle | marker = s }
+            in
+            if edges == [] then noCmd model else            
+            updateModifHelper model
+            <| GraphDefs.updateStyleEdges newStyle edges modelGraph
+
         KeyChanged False _ (Control "Escape") -> clearSel
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
+        KeyChanged False _ (Character '.') -> (model, Modes.NewArrow.requestMarkerDefault "")
         KeyChanged False _ (Character 'w') -> clearSel
         KeyChanged False _ (Character 'e') ->
            noCmd <| initialiseEnlarge model
@@ -1512,6 +1524,7 @@ helpMsg model =
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, "
+                ++ "[.] customise arrow marker, "
                 ++  "[\"bB][\"] to customize the pullback/pushout sign, "
                 ++  "[i]nvert arrow, "
                 ++ "[+<] move to the foreground/background (also for vertices)."

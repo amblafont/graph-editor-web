@@ -855,6 +855,13 @@ function disableInAppInstallPrompt() {
          
          app.ports.toClipboard.subscribe(toClipboard);
          */
+
+         app.ports.requestMarker.subscribe((oldMarker) => {
+                customPrompt("Enter middle marker", oldMarker, (marker) => {
+                    app.ports.returnMarker.send(marker);
+                });
+            });
+
          const err = "This feature is only enabled with the webview version embedded in the appropriate vscode extension";
 
        

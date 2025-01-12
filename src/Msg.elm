@@ -133,6 +133,7 @@ mapLoadGraphInfo f { graph, scenario, clipboard, setFirstTab } =
 type Msg
   = -- call some js function
     Do (Cmd Msg)
+  | Marker String
   | Save
   | MakeSave
   | ExportQuiver

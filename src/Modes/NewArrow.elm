@@ -1,4 +1,5 @@
-module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update, help)
+port module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update, help, 
+    requestMarkerDefault, returnMarker)
 
 
 import GraphDrawing exposing (..)
@@ -22,8 +23,13 @@ import Msg exposing (defaultModifId)
 import IntDict
 import CommandCodec exposing (protocolSend)
 
+-- ask js a marker
+port requestMarker : String -> Cmd a
+-- js returns the marker
+port returnMarker : (String -> a) -> Sub a
 
-
+requestMarkerDefault : String -> Cmd a
+requestMarkerDefault s = requestMarker <| if s == "" then "\\bullet" else s
 
 updateState : Model -> NewArrowState  -> Model
 updateState m state = {m | mode = NewArrow state}
@@ -119,10 +125,10 @@ nextStep model {finish, merge} state =
                if state.kind == CreateCylinder then Nothing else
                 Graph.topmostObject state.chosen |> 
                     Maybe.andThen (\ id -> GraphDefs.getLabelLabel id state.chosen)
-        -- info.graph)
-        |> Maybe.withDefault ""                    
-        |> Just                   
-in
+                    -- info.graph)
+                    |> Maybe.withDefault "" 
+                    |> Just                   
+        in
         let ids_labels = List.map (\ id -> { id = id, label = label
                         , tabId = model.graphInfo.activeTabId}) ids 
         in
@@ -192,6 +198,12 @@ updateNormal state msg model =
         MouseClick -> next {finish = False, merge = False}
         KeyChanged False _ (Character ' ') -> next {finish = True, merge = state.isAdjunction}
         KeyChanged False _ (Control "Enter") -> next {finish = True, merge = state.isAdjunction}
+        Marker s -> 
+                    let style = state.style in
+                    noCmd <| updateState model { state | style = 
+                                   {style | marker = s}
+                                }
+        KeyChanged False _ (Character '.') -> (model, requestMarkerDefault state.style.marker)
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
@@ -313,6 +325,7 @@ help s =
              ++ "[\""
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
+             ++ "[.] customise the marker"
              ++ "[i]nvert arrow, "
              ++ "create a[d]junction arrow, "
              ++ "[p]ullback/[P]ushout mode, "
