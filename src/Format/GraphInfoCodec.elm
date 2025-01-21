@@ -141,4 +141,4 @@ codecModif =
               |> Codec.buildObject
             )
     |> Codec.variant0 "noop" Noop
-    |> Codec.buildVariant
+    |> Codec.buildVariant (always Noop)

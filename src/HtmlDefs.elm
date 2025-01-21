@@ -31,7 +31,7 @@ introHtml : List (Html.Html msg)
 introHtml = (textHtml <| """
    <p>
             A vi-inspired diagram editor, with              
-            (latex) labelled nodes and edges, tested with Firefox, written in <a href="https://elm-lang.org/">Elm</a> (see the code on 
+            (latex) labelled nodes and edges, tested with Chrome (doesn't work properly in Safari), written in <a href="https://elm-lang.org/">Elm</a> (see the code on 
         <a href="https://github.com/amblafont/graph-editor-web">github</a>).
             Multiple collaboration is supported (check the <a href="https://github.com/amblafont/graph-editor-web/blob/master/README.md">README</a>).
 	    For a short description, see <a href="https://hal.science/hal-04407118v1">here</a>.

@@ -3,16 +3,15 @@ module Format.Version14 exposing (Graph, Node, Tab, ArrowStyle, Edge, fromJSGrap
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
 import GraphDefs exposing (defaultPullshoutShift)
-import Format.GraphInfo as GraphInfo exposing (GraphInfo)
+import Format.GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
 import Codec
 import Format.Version15 as NextVersion
-import Format.Keys exposing (pullshoutKey)
+import Format.Version16 exposing (keys)
 
 version = 14
 
-adjunctionKey = "adjunction"
 
 type alias ArrowStyle = { tail : String, head : String, kind : String
    , dashed : Bool, bend : Float, alignment : String, 
@@ -30,7 +29,7 @@ type alias Edge = { label : String, style : ArrowStyle, kind : String,
        }
 
 pullshoutEdge : Int -> Color.Color -> Edge
-pullshoutEdge z color = Edge "" (emptyArrowStyle color) pullshoutKey z -- False
+pullshoutEdge z color = Edge "" (emptyArrowStyle color) keys.pullshout z -- False
 
 type alias Node = { pos : Point , label : String, isMath : Bool, zindex: Int
   , isCoqValidated : Bool
@@ -58,7 +57,7 @@ toNextEdge : Edge -> NextVersion.Edge
 toNextEdge {label, style, kind, zindex} = 
   {label = label, 
    style = let newStyle = toNextStyle style in
-        if kind /= pullshoutKey then newStyle else 
+        if kind /= keys.pullshout then newStyle else 
             {newStyle | bend = defaultPullshoutShift, position = defaultPullshoutShift},
    kind = kind, zindex = zindex} --, selected = False}
 

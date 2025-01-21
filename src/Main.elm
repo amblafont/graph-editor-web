@@ -102,6 +102,7 @@ import Format.Version13
 import Format.Version14
 import Format.Version15
 import Format.Version16
+import Format.Version17
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo as GraphInfo exposing (Tab)
@@ -169,6 +170,7 @@ port loadedGraph13 : (LoadGraphInfo Format.Version13.Graph -> a) -> Sub a
 port loadedGraph14 : (LoadGraphInfo Format.Version14.Graph -> a) -> Sub a
 port loadedGraph15 : (LoadGraphInfo Format.Version15.Graph -> a) -> Sub a
 port loadedGraph16 : (LoadGraphInfo Format.Version16.Graph -> a) -> Sub a
+port loadedGraph17 : (LoadGraphInfo Format.Version17.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -268,6 +270,7 @@ subscriptions m =
       loadedGraph14 (mapLoadGraphInfo Format.Version14.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph15 (mapLoadGraphInfo Format.Version15.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph16 (mapLoadGraphInfo Format.Version16.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph17 (mapLoadGraphInfo Format.Version17.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),

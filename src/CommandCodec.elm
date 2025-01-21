@@ -46,7 +46,7 @@ scenarioCodec = Codec.customEnum
     |> Codec.variant0 "watch" Watch
     |> Codec.variant0 "coqlsp" CoqLsp
     |> Codec.variant0 "standard" Standard 
-    |> Codec.buildVariant
+    |> Codec.buildVariant (always Standard)
 
 scenarioOfString : String -> Scenario
 scenarioOfString = Codec.decoder scenarioCodec
@@ -217,7 +217,7 @@ moveModeCodec =
     |> Codec.variant0 "press" PressMove
     |> Codec.variant0 "undefined" UndefinedMove
     |> Codec.variant0 "free" FreeMove
-    |> Codec.buildVariant
+    |> Codec.buildVariant (always FreeMove)
 
 defaultCommand : Command
 defaultCommand = Noop

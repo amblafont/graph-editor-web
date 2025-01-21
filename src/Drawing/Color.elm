@@ -48,7 +48,8 @@ codec =
    |> Codec.variant0 "yellow" Yellow
    |> Codec.variant0 "orange" Orange
    |> Codec.variant0 "black" Black
-   |> Codec.buildVariant
+   |> Codec.buildVariant (always Black)
+
 
 toString : Color -> String
 toString = Codec.encoder codec

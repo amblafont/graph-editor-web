@@ -319,6 +319,10 @@ function disableInAppInstallPrompt() {
               }
          });
 
+         if (window.safari !== undefined) {
+            alert("The editor does not work properly in Safari.");
+         }
+
 
         function setFileName(newName) {
             document.title = newName;

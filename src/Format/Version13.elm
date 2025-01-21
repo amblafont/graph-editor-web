@@ -2,15 +2,9 @@ module Format.Version13 exposing (Graph, Node, Tab, ArrowStyle, Edge, fromJSGrap
 
 import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
-import ArrowStyle exposing (tailCodec, headCodec, alignmentCodec, kindCodec)
-import GraphDefs exposing (EdgeLabel, NodeLabel)
-import Format.GraphInfo as GraphInfo exposing (GraphInfo)
+import Format.GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
-import Drawing.Color as Color
-import Codec exposing (Codec)
 import Format.Version14 as NextVersion
-import Format.Keys exposing (normalKey, pullshoutKey)
-
 version = 13
 
 type alias ArrowStyle = NextVersion.ArrowStyle

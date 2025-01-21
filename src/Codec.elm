@@ -11,8 +11,9 @@ module Codec exposing
     , ObjectCodec, object, compose, composite
     , fields, buildObject 
     , custom,  variant1, buildVariant
-    , variant2,variant0
+    , variant2,variant0, prefixVariant0
     , maybeCustom, maybeBuildVariant, maybeVariant0, maybeVariant1
+    , maybeList, boolList
    -- , maybe
     -- , variant0, variant2
     )
@@ -23,6 +24,7 @@ two ways of encoding custom types: custom and maybeCustom
 
 import List.Extra as List
 import Dict exposing (Dict)
+import Maybe.Extra
 
 
 
@@ -207,39 +209,63 @@ Codec with {tag, snapshot, clear, load, modif}
     |> Codec.variant1 "modif" ModifProtocol (\ m r -> { r | modif = m}) .modif protocolModifCodec
     |> Codec.buildVariant
 -}
-type CustomCodec v tag r a x = CustomCodec
+type CustomCodec v tag r a = CustomCodec
     { encoder : a
     -- , make : tag -> common -> r
     , getTag : r -> tag
     , setTag : tag -> r -> r
     -- , getCommon : r -> common
 
-    , decoder : Dict tag (r -> v) 
-    , defaultDecoder : r -> x
+    , decoder : r -> Maybe v 
     , defaultCommon : r
     }
 
+{-
+partialCustom : a -> (b -> a) -> (a -> Maybe b) -> FinalCustomCodec a b a
+partialCustom default f g =
+    CustomCodec { encoder = f
+    , decoder = g
+    , getTag = Basics.identity
+    , setTag = \ x _ -> x
+    , defaultCommon = default
+    }
+
+customString : FinalCustomCodec String String String
+customString = partialCustom "" Basics.identity Just
+    
+-}
 -- type alias CustomType tag content = {tag : tag, content:content}
 
 custom : a -> r -> (r -> tag) -> (tag -> r -> r) 
-             -> CustomCodec v tag r a r
+             -> CustomCodec v tag r a
 custom a common getTag setTag = 
    CustomCodec { encoder = a
-    , decoder = Dict.empty
+    , decoder = always Nothing
     , getTag = getTag
     , setTag = setTag
     , defaultCommon = common
-    , defaultDecoder = Basics.identity
     }
 
 customStringTag : a -> { b | tag : String} -> 
-                 CustomCodec v String {b | tag : String} a {b | tag : String}
+                 CustomCodec v String {b | tag : String} a
 customStringTag a common =
     custom a common .tag (\ tag r -> {r | tag = tag})
 
+maybeList : a -> (a -> b) -> (b -> Maybe a) -> Codec a (List b)
+maybeList defaultA enc dec =
+    build 
+    (\ a -> if a == defaultA then [] else [ enc a ])
+    (\ bs -> ( (List.findMap dec bs)) |> Maybe.withDefault defaultA)
+
+boolList : b -> Codec Bool (List b)
+boolList b =
+    maybeList False (always b) (\ b2 -> if b == b2 then Just True else Nothing) 
+
+
 customEnum : a 
-             -> CustomCodec v String String a String
+             -> CustomCodec v String String a
 customEnum a  = custom a "" (\x -> x) (\ x _ -> x)
+
 
 -- variant1 "A" A .A defautA codec
 variant1 : comparable -> (arg -> v)
@@ -247,8 +273,8 @@ variant1 : comparable -> (arg -> v)
              -> (common -> arg2)
              -> Codec arg arg2
              -> CustomCodec v comparable common 
-                          ((arg -> common) -> a) x
-             -> CustomCodec v comparable common a v
+                          ((arg -> common) -> a)
+             -> CustomCodec v comparable common a
 variant1 tag constr enc deco codec (CustomCodec c) =
     let dec = (\r -> r |> deco |> decoder codec |> constr) in
     CustomCodec {
@@ -260,10 +286,7 @@ variant1 tag constr enc deco codec (CustomCodec c) =
                 )
               
         
-      , decoder = Dict.insert tag 
-                  dec
-                  c.decoder
-      , defaultDecoder = dec
+      , decoder = \ r -> if c.getTag r == tag then Just <| dec r else c.decoder r
       , defaultCommon = c.defaultCommon
       , getTag = c.getTag
       , setTag = c.setTag
@@ -274,13 +297,12 @@ variant2 : comparable -> (arg1 -> arg2 -> v)
              -> (common -> arg1)
              -> (common -> arg2)
              -> CustomCodec v comparable common 
-                          ((arg1 -> arg2 -> common) -> a) x
-             -> CustomCodec v comparable common a v
+                          ((arg1 -> arg2 -> common) -> a)
+             -> CustomCodec v comparable common a
 variant2 tag constr enc dec1 dec2 (CustomCodec c) =
    let cc2 = {
               encoder = (\ f -> c.encoder (\ a b -> f (a,b)))
             , decoder = c.decoder
-            , defaultDecoder = c.defaultDecoder
             , defaultCommon = c.defaultCommon
             , getTag = c.getTag
             , setTag = c.setTag
@@ -292,15 +314,37 @@ variant2 tag constr enc dec1 dec2 (CustomCodec c) =
                 (CustomCodec cc2)
                 
 
+
+prefixVariant0 : String -> (arg -> v) -> Codec arg String 
+            ->   CustomCodec v String common 
+                          ((arg -> common) -> a)
+            -> CustomCodec v String common a
+prefixVariant0 prefixStr constr codec (CustomCodec c) =
+    CustomCodec  {
+              encoder = c.encoder ( \ arg -> c.defaultCommon 
+                |> c.setTag (prefixStr ++ encoder codec arg)
+                )
+            , decoder = \ r -> 
+                    let tag = c.getTag r in
+                    if not <| String.startsWith prefixStr tag then
+                        c.decoder r
+                    else
+                        Just <| constr <| 
+                        decoder codec <| 
+                          String.dropLeft (String.length prefixStr) tag
+            , defaultCommon = c.defaultCommon
+            , getTag = c.getTag
+            , setTag = c.setTag
+             }
+
 variant0 : comparable -> v
              -> CustomCodec v comparable common 
-                          (common -> a) x
-             -> CustomCodec v comparable common a v
+                          (common -> a)
+             -> CustomCodec v comparable common a
 variant0 tag constr (CustomCodec c) =
    let cc2 = {
               encoder = (\ f -> c.encoder (f ()))
             , decoder = c.decoder
-            , defaultDecoder = c.defaultDecoder
             , defaultCommon = c.defaultCommon
             , getTag = c.getTag
             , setTag = c.setTag
@@ -312,18 +356,19 @@ variant0 tag constr (CustomCodec c) =
                 (CustomCodec cc2)
                 
 
+type alias FinalCustomCodec comparable v common =
+    CustomCodec v comparable common 
+                (v -> common)
 
-
-buildVariant : CustomCodec v comparable common 
-                (v -> common) v -> 
+buildVariant : (common -> v) -> FinalCustomCodec comparable v common -> 
                 Codec v common
-buildVariant (CustomCodec c) =
+buildVariant default (CustomCodec c) =
     Codec {
         encoder = c.encoder
-      , decoder = \ r ->
-           case Dict.get (c.getTag r) c.decoder of 
-              Nothing -> c.defaultDecoder r
-              Just f -> f r
+      , decoder = \ r -> 
+           case c.decoder r of 
+              Nothing -> default r
+              Just f -> f
     }
    
 

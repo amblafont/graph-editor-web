@@ -7,7 +7,7 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle
    -- quiver
     keyMaybeUpdateStyle, shadow,
     increaseBend, decreaseBend,
-    keyMaybeUpdateColor, isPartColorable,
+    keyMaybeUpdateColor, isPartColorable, TailStyle(..), HeadStyle(..), ArrowKind(..),
     -- keyMaybeUpdateHeadColor, keyMaybeUpdateTailColor,
     makeHeadShape, 
     makeTailShape, getStyle, isNone, simpleLineStyle
@@ -65,7 +65,7 @@ kindCodec =
   |> Codec.variant0 "none" NoneArrow
   |> Codec.variant0 "double" DoubleArrow
   |> Codec.variant0 "normal" NormalArrow
-  |> Codec.buildVariant
+  |> Codec.buildVariant (always NormalArrow)
 
 
 tailCodec : Codec TailStyle String
@@ -82,7 +82,7 @@ tailCodec =
   |> Codec.variant0 "hookalt" HookAlt
   |> Codec.variant0 "mapsto" Mapsto
   |> Codec.variant0 "none" DefaultTail
-  |> Codec.buildVariant
+  |> Codec.buildVariant (always DefaultTail)
 
 
 headCodec : Codec HeadStyle String
@@ -97,7 +97,7 @@ headCodec =
    |> Codec.variant0 "twoheads" TwoHeads
    |> Codec.variant0 "none" NoHead
    |> Codec.variant0 "default" DefaultHead
-   |> Codec.buildVariant
+   |> Codec.buildVariant (always DefaultHead)
 
 alignmentCodec : Codec LabelAlignment String
 alignmentCodec = 
@@ -114,7 +114,7 @@ alignmentCodec =
    |> Codec.variant0 "over" Over
    |> Codec.variant0 "left" Left
    |> Codec.variant0 "right" Right
-   |> Codec.buildVariant
+   |> Codec.buildVariant (always Right)
 
 markerCodec : Codec MarkerStyle String
 markerCodec = Codec.identity
