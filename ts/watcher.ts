@@ -156,7 +156,7 @@ function parseMagic(magic:string, line:string):MagicInfo|undefined {
 }
 
 
-function parsePrefix(line:string, remainder_arg:string[]) {
+function parsePrefix(prefix:string, line:string, remainder_arg:string[]) {
   
     // copy the array
     let remainder = [...remainder_arg];
@@ -173,10 +173,10 @@ function parsePrefix(line:string, remainder_arg:string[]) {
     let head = remainder.shift()!.trim();
     // reaminder is now the tail
     if (head === "") {
-      parsePrefix(linestrip, remainder);
+      parsePrefix(prefix, linestrip, remainder);
     }
   
-    if (linestrip === head) {
+    if (linestrip === head || linestrip === (prefix + head).trim()) {
       return remainder;
     } else {
       return null;
@@ -337,26 +337,32 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
     let remainder:string[]|null = [];
     let index = 0;
     let line = "" as string|false;
-    let content:string|undefined = undefined;
+    let magicInfo:MagicInfo|undefined = undefined;
+    // let content:string|undefined = undefined;
     let lineNum = 0;
+
     let magicLineNumber = 0;
     while (line !== false && remainder !== null && remainder.length == 0) {
       index++;
-      content = undefined;
-      while (content === undefined) {
+      magicInfo = undefined;
+      while (magicInfo === undefined) {
         line = readLine(file_lines);
         lineNum++;
         if (line === false)
             break;
-        content = parseMagic(config.magic, line)?.content;
+        magicInfo = parseMagic(config.magic, line);
       }
       magicLineNumber = lineNum;
-      if (line === false)
+      // the check that content is undefined is redundant, but 
+      // typescript is not smart enough to deduce it
+      if (line === false|| magicInfo === undefined)
         break;
+
+      let content = magicInfo.content;
       
       console.log("Graph found");
       // check if the tex file exists
-      if (content !== undefined && config.externalOutput && contentIsFile(content)) {
+      if (config.externalOutput && contentIsFile(content)) {
         let diagFile = content;
         let outputFile = outputFileName(config,diagFile);
         let checkExist = await checkFileExistsFromPath(d,outputFile);
@@ -379,14 +385,15 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
            // EOF
            break;
         lineNum++;
-        remainder = parsePrefix(line, remainder)
+        remainder = parsePrefix(magicInfo.prefix, line, remainder)
       }
     }
   
-    if (!((remainder === null || remainder.length > 0) && content !== undefined)){
+    if (!((remainder === null || remainder.length > 0) && magicInfo !== undefined)){
       return false;
     }
     
+    let content = magicInfo.content;
       console.log("do something with " + content);
       let diagFile:null|string = null;
     
