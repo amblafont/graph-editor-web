@@ -37,7 +37,7 @@ toNextStyle {tail, head, kind, dashed, wavy, bend, alignment, position, color, h
             enc2 wavyFlag wavy ++ 
             enc2 bendFlag bend ++
             enc2 positionFlag position ++
-            [color, prefix .headColor headColor, 
+            [prefix .color color, prefix .headColor headColor, 
             prefix .tailColor tailColor,
             prefix .tail tail,
             prefix .head head, 
