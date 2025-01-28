@@ -36,6 +36,7 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 1. Create a file named yade-config.json in the same directory as the your latex file `main.tex` with the following content
 ```
 {
+    // watchedFile could also be an array of filenames
     "watchedFile": "main.tex",
     "baseDir": "diagrams",
     "externalOutput": true
