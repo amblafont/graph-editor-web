@@ -8,6 +8,8 @@ interface Config {
     magic:string,
     // Latex preamble file used for new diagrams
     preambleFile:string,
+    // additional preamble that will be prefixed to the one from the preamble file
+    additionalPreamble : string,
     /*
     the external output option means that the latex code generated from the diagram is not inlined in the watched file, but is put in an external file, in the directory baseDir, included with the includeCmd command (see defaultsExt.tex below)
     */
@@ -31,7 +33,8 @@ export const defaultConfig = {magic: "% YADE DIAGRAM",
     prefixes: [],
     suffixes: [],
     includeCmd: "\\input{@}",
-    preambleFile:""
+    preambleFile:"",
+    additionalPreamble:""
   };
 
   //
