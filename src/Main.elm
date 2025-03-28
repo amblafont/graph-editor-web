@@ -44,7 +44,6 @@ import Html.Events
 import Maybe.Extra as Maybe
 import IntDict
 import Unification
-import Tikz
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
@@ -414,13 +413,10 @@ graphToTikz model graph =
        -- return the text
       textNodesToLatex nodes
     else
-    if model.alternativeLatex then 
-      let d = toDrawing model 
+     let d = toDrawing model 
             <| GraphDrawing.toDrawingGraph graph
-      in
-      Drawing.tikz d
-    else 
-      Tikz.graphToTikz model.defaultGridSize graph
+     in
+     Drawing.tikz d
 
 makeExports : Model -> ExportFormats
 makeExports model = 
@@ -572,7 +568,6 @@ update msg modeli =
          --  (iniModel, Task.attempt (always Msg.noyarn comOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
-     ToggleAlternativeLatex -> noCmd {model | alternativeLatex = not model.alternativeLatex}
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n (x,y) ->
@@ -1777,7 +1772,6 @@ viewGraph model =
            --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
            , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)           
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
-           , HtmlDefs.checkbox ToggleAlternativeLatex "Legacy latex generation" "The legacy latex generation relies on Tikz to compute the exact position of edges" (not model.alternativeLatex)
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 
            , Html.button [Html.Events.onClick OptimalGridSize, 

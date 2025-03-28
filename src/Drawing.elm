@@ -9,7 +9,6 @@ module Drawing exposing (Drawing,
    emptyForeign, toString --, shadowClass
   )
 
-import Tikz
 import Zindex exposing (defaultZ, backgroundZ)
 import String.Svg as Svg exposing (Svg)
 import Geometry.Point as Point exposing (Point)
@@ -134,11 +133,12 @@ nodeToTikz arg =
         ++ arg.label
         ++ "$} ;"
 
+
 dimToTikz : Float -> String
 -- d / 21
 -- 17.7667
 -- tikz uses 1.2 em size
-dimToTikz d = String.fromFloat (Tikz.dimToTikz d) ++ "em"
+dimToTikz d = String.fromFloat (d / (16 * 1.2)) ++ "em"
 
 pointToTikz : Point -> String
 pointToTikz (x,y) = 

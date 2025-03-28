@@ -170,7 +170,6 @@ type Msg
   | RulerMargin Int
   | ToggleHideGrid
   | ToggleHideRuler
-  | ToggleAlternativeLatex
   | ToggleAutosave
   | SaveRulerGridSize
   | OptimalGridSize
