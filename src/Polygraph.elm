@@ -14,7 +14,7 @@ module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds, nodeIds,
      modifCodec, mapModifCodec,
      Modif, ModifJS, ModifHelper, finaliseModif, newModif, MergeFunctions
      , md_newNode, md_newEdge, md_update, md_map, 
-     md_updateEdge, md_updateNode, md_updateNodes, md_updateEdgesId, applyModifHelper,
+     md_updateEdge, md_updateEdges, md_updateNode, md_updateNodes, md_updateEdgesId, applyModifHelper,
      md_makeCylinder, md_makeCone, debugModifHelperGraph,
      translateId,TranslationId,applyModifTrans, defaultTranslation
      , {- findInitial, sourceNode, -} removeLoops,
@@ -1227,6 +1227,18 @@ md_updateEdge : EdgeId -> (e -> e) -> ModifHelper n e -> ModifHelper n e
 md_updateEdge i fe =
   md_graphMap <| update i identity (\ { label, edit } -> { label = fe label, edit = updateStatus edit })
 
+-- check that the edges are indeed modified
+md_updateEdges : List (Edge e) -> Graph n e -> ModifHelper n e
+md_updateEdges es graph =
+   let compare edge modif = 
+         case getEdge edge.id graph of
+            Nothing -> modif
+            Just edgeOriginal -> 
+               if edge == edgeOriginal then modif else 
+               md_updateEdge edge.id (always edge.label)
+               modif
+   in
+   List.foldl compare (newModif graph) es
 
    {-
    case getNode i (md_base m) of

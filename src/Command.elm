@@ -17,7 +17,7 @@ import Modes.Rename
 import Modes.Move
 import Modes exposing (EnlargeState)
 import Modes.NewArrow
-import Modes.Color
+import Modes.Customize
 import Modes.CutHead
 import Modes.SplitArrow
 import Modes.Pullshout
@@ -67,7 +67,7 @@ fixModel modeli =
                     model
       RenameMode state ->
          ifTabChanged <| \ _ -> Modes.Rename.fixModel model state
-      ColorMode ids -> ifTabChanged <| \ _ -> Modes.Color.fixModel model
+      CustomizeMode ids -> ifTabChanged <| \ _ -> Modes.Customize.fixModel model
       CutHead state -> ifTabChanged <| \ _ -> Modes.CutHead.fixModel model state
       SplitArrow state -> ifTabChanged <| \ _ -> Modes.SplitArrow.fixModel model state
       PullshoutMode state -> ifTabChanged <| \ _ -> Modes.Pullshout.fixModel model state

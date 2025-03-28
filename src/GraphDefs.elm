@@ -1,6 +1,6 @@
 module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsReady,clearDims,
    NormalEdgeLabel, PullshoutEdgeLabel, EdgeType(..), GenericEdge, edgeToNodeLabel, getEdgeColor,
-   newEdgeLabelAdj, selectIds, setColorEdgesId,
+   newEdgeLabelAdj, selectIds, setColor, -- setColorEdgesId,
    filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
    filterNormalEdges, coqProofTexCommand,
    newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
@@ -331,20 +331,44 @@ md_updatePullshoutEdge id f =
      (mapPullshoutEdge f)
 
 
+-- edgesToModif : List (Edge EdgeLabel) -> Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
+-- edgesToModif edges graph =
+--    -- we compare
+--    let compare edge = 
+--          case Graph.getEdge edge.id graph of
+--             Nothing -> Nothing
+--             Just edgeOriginal -> 
+--                if edge == edgeOriginal then Nothing else 
+--                Just edge 
+--    in
+--    let modifEdges = List.filterMap edges in 
 
-setColorEdgesId : Color.Color -> EdgePart -> List EdgeId -> Graph NodeLabel EdgeLabel -> 
-           Graph.ModifHelper NodeLabel EdgeLabel
-setColorEdgesId color part edges graph =
-     let updateColor e = 
-           case e.details of
-            NormalEdge l -> 
-               let oldStyle = l.style in
-               let newStyle = ArrowStyle.updateEdgeColor part color oldStyle in
-               { e | details = NormalEdge { l | style = newStyle }}
-            PullshoutEdge x -> {e | details = PullshoutEdge { x | color = color}} 
-     in
-     let modif = Graph.newModif graph in
-      Graph.md_updateEdgesId edges updateColor modif 
+
+
+setColor : Color.Color -> EdgePart -> EdgeLabel -> EdgeLabel
+setColor color part e = 
+   case e.details of
+   NormalEdge l -> 
+      let oldStyle = l.style in
+      let newStyle = ArrowStyle.updateEdgeColor part color oldStyle in
+      { e | details = NormalEdge { l | style = newStyle }}
+   PullshoutEdge x -> {e | details = PullshoutEdge { x | color = color}} 
+
+
+
+-- setColorEdgesId : Color.Color -> EdgePart -> List EdgeId -> Graph NodeLabel EdgeLabel -> 
+--            Graph.ModifHelper NodeLabel EdgeLabel
+-- setColorEdgesId color part edges graph =
+--      let updateColor e = 
+--            case e.details of
+--             NormalEdge l -> 
+--                let oldStyle = l.style in
+--                let newStyle = ArrowStyle.updateEdgeColor part color oldStyle in
+--                { e | details = NormalEdge { l | style = newStyle }}
+--             PullshoutEdge x -> {e | details = PullshoutEdge { x | color = color}} 
+--      in
+--      let modif = Graph.newModif graph in
+--       Graph.md_updateEdgesId edges updateColor modif 
      
 
 updatePullshoutEdges : (PullshoutEdgeLabel -> Maybe PullshoutEdgeLabel) 
@@ -714,15 +738,17 @@ posGraph : Graph NodeLabel EdgeLabel ->
          {label : EdgeLabel, shape : EdgeShape, pos : Point}
 posGraph g = 
       let padding = 5 in
+      let dummyBez =  {from = (0, 0), to = (2,2), controlPoint = (1,1)} in
       -- ca c'est utile pour calculer les coordonnes du symbole de pullback
       let dummyExtrem = { fromId = 0,
            fromPos = (0,0), toPos = (2,2),
-           bez = {from = (0, 0), to = (2,2), controlPoint = (1,1)}} in
+           bez = dummyBez} in
       let dummyAcc id pos = {
                       id = id,
                       posDims = 
                          { pos = pos, dims = (0, 0)},
-                      extrems = dummyExtrem
+                      extrems = dummyExtrem,
+                      isArrow = False
                       }
       in
       let computeEdge id n1 n2 e = 
@@ -734,15 +760,29 @@ posGraph g =
                   acc = dummyAcc id h.summit,                     
                   shape = HatShape h }
                NormalEdge l ->
-                   let q = Geometry.segmentRectBent n1.posDims n2.posDims l.style.bend in
+                  --  let dims = (padding, padding) |> Point.resize 4 in
+                   let computePosDims isSource = 
+                        let (n, part) = 
+                                 if isSource then (n1, ArrowStyle.TailPart)
+                                 else (n2, ArrowStyle.HeadPart)
+                        in
+                        if not n.isArrow then n.posDims else
+                        let oldPosDims = n.posDims in
+                        { oldPosDims | 
+                          pos = Bez.point n.extrems.bez <| 
+                           ArrowStyle.shiftRatioFromPart l.style part
+                        }
+                   in
+                   let q = Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend in
                    {label = e, 
                     shape = Bezier q,
                     acc = {
                      id = id,
+                     isArrow = True,
                      posDims = 
                          {
                              pos = Bez.middle q,
-                             dims = (padding, padding) |> Point.resize 4
+                             dims = (padding, padding) |> Point.resize 4 
                          },
                      extrems = { fromId = n1.id, 
                                  bez = q,
@@ -760,7 +800,8 @@ posGraph g =
               (\id n -> { 
                       label = n,
                       acc = {
-                        id = id,                        
+                        id = id,
+                        isArrow = False,                        
                         extrems = dummyExtrem,
                         posDims = {
                            dims =                       

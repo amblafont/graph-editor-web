@@ -88,7 +88,8 @@ initialise m =
             kind = kind,
             mode = MainEdgePart,
             inverted = False,
-            isAdjunction = False
+            isAdjunction = False,
+            merge = False
             -- merge = False 
             }
         
@@ -195,9 +196,9 @@ updateNormal state msg model =
         KeyChanged True _ (Control "Control") -> next {finish = False, merge = True}
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model
-        MouseClick -> next {finish = False, merge = False}
-        KeyChanged False _ (Character ' ') -> next {finish = True, merge = state.isAdjunction}
-        KeyChanged False _ (Control "Enter") -> next {finish = True, merge = state.isAdjunction}
+        MouseClick -> next {finish = False, merge = state.merge}
+        KeyChanged False _ (Character ' ') -> next {finish = True, merge = state.merge || state.isAdjunction}
+        KeyChanged False _ (Control "Enter") -> next {finish = True, merge = state.merge || state.isAdjunction}
         Marker s -> 
                     let style = state.style in
                     noCmd <| updateState model { state | style = 
@@ -205,7 +206,7 @@ updateNormal state msg model =
                                 }
         KeyChanged False _ (Character '.') -> (model, requestMarkerDefault state.style.marker)
     --     TabInput -> Just <| ValidateNext
-        KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.isAdjunction}
+        KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.merge || state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         KeyChanged False _ (Character 'f') -> 
@@ -213,8 +214,10 @@ updateNormal state msg model =
         KeyChanged False _ (Character 'i') -> noCmd <| updateState model { state | inverted = not state.inverted}                 
         KeyChanged False _ (Character 'p') -> pullshoutMode Pullback 
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
-        KeyChanged False _ (Character 'H') -> changeMode HeadPart
-        KeyChanged False _ (Character 'T') -> changeMode TailPart
+        -- KeyChanged False _ (Character 's') -> noCmd <| initialiseShifts model state
+        KeyChanged False _ (Character 'm') -> noCmd <| updateState model { state | merge = not state.merge} 
+        KeyChanged False _ (Character 'H') -> changeMode <| HeadPart
+        KeyChanged False _ (Character 'T') -> changeMode <| TailPart
         KeyChanged False _ (Character 'C') -> 
               let kind = nextPossibleKind state
                       |> Maybe.withDefault state.kind
@@ -227,7 +230,11 @@ updateNormal state msg model =
                             ArrowStyle.keyMaybeUpdateStyle k state.style
                            |> Maybe.withDefault 
                              ((ArrowStyle.keyMaybeUpdateColor k MainEdgePart state.style)
-                               |> Maybe.withDefault state.style)
+                               
+                           |> Maybe.withDefault
+                           (ArrowStyle.keyUpdateShiftBend k state.style
+                             |> Maybe.withDefault state.style
+                           ))
                        _ -> state.style 
             in
             let st2 = { state | style = newStyle } in
@@ -300,7 +307,7 @@ moveNodeInfo merge emptyLabel model state =
 
 graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s =
-     let info = moveNodeInfo s.isAdjunction False m s in
+     let info = moveNodeInfo (s.merge || s.isAdjunction) False m s in
      
     -- let defaultView movedNode = modelGraph{ graph = modelGraph, movedNode = movedNode}  in
     -- graphMakeEditable (renamableFromState s) <|
@@ -320,11 +327,13 @@ help s =
             ", [ESC] cancel, [click, TAB] name the point (if new) and arrow, "
             ++ "[hjkl] position the new point with the keyboard "
             ++ "([f] to move by a multiple of the grid size), "
-            ++ "[ctrl] merge, [a] merge without renaming, "
+            ++ "[ctrl] merge, [a] merge without renaming, toggle [m]erge preview, "
              ++ "[RET] or space to terminate the arrow creation, "
              ++ "[\""
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
+             ++ ArrowStyle.shiftHelpMsg
+             ++ ", "
              ++ "[.] customise the marker"
              ++ "[i]nvert arrow, "
              ++ "create a[d]junction arrow, "

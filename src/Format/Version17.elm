@@ -46,6 +46,12 @@ floatCodec =
     myStringFromFloat
     (myStringToFloat >> Maybe.withDefault 0)
 
+intCodec : Codec Int String
+intCodec = 
+  Codec.build 
+    String.fromInt
+    (String.toInt >> Maybe.withDefault 0)
+
 type EdgeFlag = 
       Dashed
     | Wavy
@@ -62,7 +68,8 @@ type EdgeFlag =
     | Marker String
     | Bend Float
     | Position Float
-
+    | ShiftSource Int
+    | ShiftTarget Int
 
 
 
@@ -97,14 +104,16 @@ prefixes =
     headColor = "headColor ",
     marker = "marker ",
     bend = "bend ",
-    position = "position "
+    position = "position ",
+    shiftSource = "shiftSource ",
+    shiftTarget = "shiftTarget "
   }
 
     
 
 edgeFlagCodec : Codec EdgeFlag String
 edgeFlagCodec =
-    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor unrecognized v =
+    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor shiftSource shiftTarget unrecognized v =
                     case v of
                         Dashed -> dashed
                         Marker s -> marker s
@@ -121,6 +130,8 @@ edgeFlagCodec =
                         Color c -> color c
                         HeadColor c -> headcolor c
                         TailColor c -> tailcolor c
+                        ShiftSource c -> shiftSource c
+                        ShiftTarget c -> shiftTarget c
    in
    Codec.customEnum split
    |> Codec.variant0 prefixes.dashed Dashed
@@ -138,6 +149,8 @@ edgeFlagCodec =
     |> Codec.prefixVariant0 prefixes.color Color Color.codec
     |> Codec.prefixVariant0 prefixes.headColor HeadColor Color.codec
     |> Codec.prefixVariant0 prefixes.tailColor TailColor Color.codec
+    |> Codec.prefixVariant0 prefixes.shiftSource ShiftSource intCodec
+    |> Codec.prefixVariant0 prefixes.shiftTarget ShiftTarget intCodec
     |> Codec.variant0 prefixes.unrecognized Unrecognized
     |> Codec.buildVariant (always Unrecognized)
 
@@ -210,6 +223,22 @@ positionFlag =
        edgeMaybeFlagCodec 0.5 Position
     (\ flag -> case flag of 
         Position a -> Just (a |> min 0.9 |> max 0.1)
+        _ -> Nothing
+    )
+
+shiftSourceFlag : Codec Int (List String)
+shiftSourceFlag =
+       edgeMaybeFlagCodec 0 ShiftSource
+    (\ flag -> case flag of 
+        ShiftSource a -> Just a
+        _ -> Nothing
+    )
+
+shiftTargetFlag : Codec Int (List String)
+shiftTargetFlag =
+       edgeMaybeFlagCodec 0 ShiftTarget
+    (\ flag -> case flag of 
+        ShiftTarget a -> Just a
         _ -> Nothing
     )
 
@@ -352,15 +381,16 @@ arrowStyleCodec =
         Codec.fields f1 Basics.identity codec
   in
   Codec.object
-  (\tail head kind dashed bend alignment position colors marker wavy ->
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy ->
       { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, labelAlignment = alignment, 
+   shiftSource = shiftSource, shiftTarget = shiftTarget,
    labelPosition = position, color = colors.main, marker = marker,
    headColor = colors.head, tailColor = colors.tail, wavy = wavy }
     
   )
-  (\tail head kind dashed bend alignment position colors marker wavy  ->
-     position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy  ->
+     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy
     
   )
   |> flagField .tail tailFlag
@@ -370,6 +400,8 @@ arrowStyleCodec =
   |> flagField  .bend bendFlag
   |> flagField .labelAlignment alignmentFlag
   |> flagField .labelPosition positionFlag
+  |> flagField .shiftSource shiftSourceFlag
+  |> flagField .shiftTarget shiftTargetFlag
   -- |> Codec.fields .labelPosition (.position >> min 0.9 >> max 0.1) Codec.identity
   |> flagField (\{color, headColor, tailColor} -> {main = color, head = headColor, tail = tailColor})
                   colorsFlag

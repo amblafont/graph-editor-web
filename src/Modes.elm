@@ -35,7 +35,7 @@ type Mode
     | CutHead CutHeadState
     | ResizeMode ResizeState -- current sizegrid
     | PullshoutMode PullshoutState
-    | ColorMode ColorModeState
+    | CustomizeMode CustomizeModeState
     | MakeSaveMode
     | LatexPreamble String
 
@@ -55,7 +55,7 @@ toString m = case m of
     CutHead _ -> "Cut head"
     ResizeMode _ -> "Resize"
     PullshoutMode _ -> "Pullshout"
-    ColorMode _ -> "Color"
+    CustomizeMode _ -> "Color"
     MakeSaveMode -> "MakeSave"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
@@ -139,9 +139,12 @@ type ArrowStateKind =
   | CreateCone
 
 
-type alias ColorModeState = 
+type alias CustomizeModeState = 
    { edges: (List (Graph.Edge EdgeLabel)),
       mode : EdgePart
+      -- the style of the singleton edge being selected
+      -- we can change its bend/shift
+      -- style : Maybe ArrowStyle
     }
 
 
@@ -156,8 +159,8 @@ type alias NewArrowState =
       mode : EdgePart,
       style : ArrowStyle, 
       pos : InputPosition, inverted : Bool,
-      isAdjunction : Bool
-      -- merge : Bool
+      isAdjunction : Bool,
+      merge : Bool
        }
 
 

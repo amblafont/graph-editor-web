@@ -482,22 +482,6 @@ restrictSelection model =
                                , nextTabId = 1 }
       }
 
-returnSetColor : Maybe (Color.Color)
-                  -> Model -> 
-                  EdgePart
-                  -> List (Graph.Edge EdgeLabel)
-                  -> Graph.ModifHelper NodeLabel EdgeLabel -- (Model, Cmd Msg)
-returnSetColor colorOption model part edges =
-    case colorOption of
-      Nothing -> Graph.newModif <| getActiveGraph model
-      Just color ->
-        let modifHelper = GraphDefs.setColorEdgesId 
-                      color
-                      part
-                      (List.map .id edges)
-                      (getActiveGraph model)
-        in
-        modifHelper
 
 returnUpdatePullshout : Key -> Model -> List (Graph.Edge EdgeLabel) 
                        -> Graph.ModifHelper NodeLabel EdgeLabel

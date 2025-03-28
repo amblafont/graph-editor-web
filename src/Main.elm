@@ -70,7 +70,7 @@ import Modes.Pullshout
 import Modes.CutHead
 import Modes.Move
 import Modes.Rename
-import Modes.Color
+import Modes.Customize
 import Drawing.Color as Color
 import Modes exposing (Mode(..), SelectState, MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
@@ -629,7 +629,7 @@ update msg modeli =
         SplitArrow state -> Modes.SplitArrow.update state msg model
         CutHead state -> Modes.CutHead.update state msg model
         ResizeMode s -> update_Resize s msg model
-        ColorMode ids -> Modes.Color.update ids msg model -- update_Color ids msg model
+        CustomizeMode ids -> Modes.Customize.update ids msg model -- update_Color ids msg model
         LatexPreamble s -> update_LatexPreamble s msg model
 
 update_LatexPreamble : String -> Msg -> Model -> (Model, Cmd Msg)
@@ -940,7 +940,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         KeyChanged False k (Character 'c') -> 
             if k.ctrl then noCmd model -- we don't want to interfer with the copy event C-c
             else
-            noCmd <| Modes.Color.initialise model
+            noCmd <| Modes.Customize.initialise model
                 -- , 
                 --   graph = GraphDefs.clearSelection 
                 --   <| GraphDefs.clearWeakSelection modelGraph }              
@@ -1366,7 +1366,7 @@ graphDrawingFromModel m =
     let modelGraph = getActiveGraph m in
     case m.mode of
         MakeSaveMode -> collageGraphFromGraph m modelGraph 
-        ColorMode _ -> collageGraphFromGraph m modelGraph
+        CustomizeMode s -> Modes.Customize.graphDrawing m s
         DefaultMode -> collageGraphFromGraph m modelGraph
         RectSelect {orig} -> GraphDrawing.toDrawingGraph  <| selectGraph m orig m.specialKeys.shift
         EnlargeMode p ->
@@ -1523,7 +1523,7 @@ helpMsg model =
                 ++ ", new li[n]e"  
                 ++ ", [/] split arrow" 
                 ++ ", [C]ut head of selected arrow" 
-                ++ ", [c]olor arrow" 
+                ++ ", [c]ustomise arrow (color, shift)" 
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, "
@@ -1588,7 +1588,7 @@ helpMsg model =
         PullshoutMode _ -> "Mode Pullback/Pullshout. "
                           -- ++ Debug.toString model 
                            ++  Modes.Pullshout.help |> msg
-        ColorMode s -> Modes.Color.help s |> msg 
+        CustomizeMode s -> Modes.Customize.help s |> msg 
         SquareMode _ -> "Mode Commutative square. "
                              ++ Modes.Square.help |> msg
         SplitArrow _ -> "Mode Split Arrow. "
