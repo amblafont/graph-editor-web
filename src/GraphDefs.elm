@@ -16,7 +16,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    selectedEdge,
    selectedEdgeId, selectedNode, selectedId,selectedIds,
    removeSelected, getLabelLabel, getProofNodes,
-   getNodesAt, snapToGrid, snapNodeToGrid, exportQuiver,
+   getNodesAt, snapToGrid, snapNodeToGrid,
    addOrSetSel, toProofGraph, selectedIncompleteDiagram,
    selectSurroundingDiagram,
    centerOfNodes, --mergeWithSameLoc,
@@ -419,30 +419,6 @@ updateStyleEdges update edges g =
    --   Just
       newGraph
 
-
-exportQuiver : Int -> Graph NodeLabel EdgeLabel -> JEncode.Value
-exportQuiver sizeGrid g =
-  let gnorm = g |> keepNormalEdges |> Graph.normalise in
-  let nodes = Graph.nodes gnorm
-      edges = Graph.edges gnorm
-  in
-  let coordInt x = floor (x / toFloat sizeGrid) |> JEncode.int in
-  let encodePos (x, y) = [coordInt x, coordInt y] in
-  let encodeNode n = JEncode.list identity <| encodePos n.label.pos ++ 
-            [ JEncode.string (if n.label.label == "" then "\\bullet" else n.label.label)] in
-  let encodeEdge e = JEncode.list identity <| 
-               [JEncode.int e.from
-               , JEncode.int e.to
-               , JEncode.string e.label.details.label
-               , JEncode.int (if e.label.details.style.labelAlignment == Right then 2 else 0) -- alignment
-               , JEncode.object <| ArrowStyle.quiverStyle e.label.details.style
-                  -- [("level", if e.label.style.double then JEncode.int 2 else JEncode.int 1)] --options
-                ] in
-  let jnodes = nodes |> List.map encodeNode
-      jedges = edges |> List.map encodeEdge
-  in
-  JEncode.list identity <|
-  [JEncode.int 0, JEncode.int <| List.length nodes] ++ jnodes ++ jedges
 
 newNodeLabel : Point -> String -> Bool -> Int -> NodeLabel
 newNodeLabel p s isMath zindex = 

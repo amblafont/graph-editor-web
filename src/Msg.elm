@@ -136,7 +136,6 @@ type Msg
   | Marker String
   | Save
   | MakeSave
-  | ExportQuiver
     -- on reception of this message, the js function onMouseMove is called
     -- which sends back a MouseMove message with the relative position to 
     -- the canvas

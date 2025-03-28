@@ -108,7 +108,6 @@ import Format.LastVersion as LastFormat
 import Format.GraphInfo as GraphInfo exposing (Tab)
 
 import List.Extra
-import GraphDefs exposing (exportQuiver)
 import GraphProof
 import GraphDrawing
 import String.Svg
@@ -141,7 +140,6 @@ port quicksaveGraph : { info : JsGraphInfo, export: ExportFormats, autosave : Bo
 port saveGraph : {info: JsGraphInfo, export: ExportFormats} -> Cmd a
 port makeSave : (() -> a) -> Sub a
 
-port exportQuiver : JE.Value -> Cmd a
 port alert : String -> Cmd a
 
 
@@ -576,9 +574,6 @@ update msg modeli =
      ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
      ToggleAlternativeLatex -> noCmd {model | alternativeLatex = not model.alternativeLatex}
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
-     ExportQuiver -> (model,  
-                    exportQuiver <| 
-                     GraphDefs.exportQuiver sizeGrid (GraphDefs.selectedGraph modelGraph))
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n (x,y) ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
@@ -1784,7 +1779,6 @@ viewGraph model =
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
            , HtmlDefs.checkbox ToggleAlternativeLatex "Legacy latex generation" "The legacy latex generation relies on Tikz to compute the exact position of edges" (not model.alternativeLatex)
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
-           , Html.button [Html.Events.onClick ExportQuiver] [Html.text "Export selection to quiver"] 
            , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 
            , Html.button [Html.Events.onClick OptimalGridSize, 
               Html.Attributes.title "Select two nodes. The new grid size is the max of the coordinate differences."] 

@@ -717,13 +717,6 @@ function disableInAppInstallPrompt() {
             localStorage.setItem(rulerMarginKey, arg.rulerMargin);                                     
          });
 
-         app.ports.exportQuiver.subscribe(function(d) {
-             // copied from quiver/quiver.js (export base64)
-             var s = `https://q.uiver.app/?q=${
-              btoa(unescape(encodeURIComponent(JSON.stringify(d))))}`;
-              window.open(s);             
-         });
-
          var saveGraphFun = function (b) {
             var a = b.info;
             // var name = getFileName();

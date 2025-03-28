@@ -1,4 +1,4 @@
-module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} quiverStyle,
+module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} 
    tikzStyle,
    isDouble, doubleSize, updateEdgeColor, EdgePart(..),
    controlChars, MarkerStyle, isMarker,
@@ -327,33 +327,6 @@ updateEdgeColor part c s =
 
 shadow : ArrowStyle -> ArrowStyle
 shadow st = { st | color = Color.white, dashed = False, head = NoHead, tail = DefaultTail }
-
-quiverStyle : ArrowStyle -> List (String, JEncode.Value)
-quiverStyle st =
-   let { tail, head, kind, dashed } = st in
-   let makeIf b x = if b then [x] else [] in
-   let double = isDouble st in
-   let headStyle = case head of 
-          DefaultHead -> []       
-          TwoHeads -> [("head", [("name", "epi")])]
-          NoHead -> [("head", [("name", "none")])]
-   in
-   let tailStyle = case tail of 
-          DefaultTail -> []
-          Mapsto -> [("tail", [("name", "maps to")])]
-          Hook -> [("tail", [("name", "hook"),("side", "top")])]
-          HookAlt -> [("tail", [("name", "hook"),("side", "bottom")])]
-   in
-   let style = List.map (\(x,y) -> (x, JEncode.object <| List.map (\(s, l) -> (s, JEncode.string l)) y)) <|
-               headStyle
-               ++
-               tailStyle ++
-               (makeIf dashed ("body", [("name", "dashed")]))
-   in
-   (makeIf double ("level", JEncode.int 2))  
-   ++ [("style", JEncode.object style )]
-   ++ (makeIf (st.bend /= 0) ("curve", JEncode.int <| floor (st.bend * 10)))
-   ++ (makeIf (st.labelPosition /= 0.5) ("label_position", JEncode.int <| floor (st.labelPosition * 100)))
 
 -- from Quiver
 {-type LabelAlignment =
