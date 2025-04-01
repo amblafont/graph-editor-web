@@ -590,9 +590,15 @@ update msg modeli =
                      noCmd { modelf | scenario = SimpleScenario, statusMsg = s }
      SetFirstTab g ->
          let tab = GraphInfo.getActiveTab g in
-        (updateFirstTab model <| \t ->
-                  { tab | title = t.title },
-                 computeLayout ())
+         let newModel = 
+               updateFirstTab model <| \t ->
+                  { tab | title = t.title }
+         in
+          if model.graphInfo.latexPreamble == g.latexPreamble then
+            (newModel, computeLayout ())
+          else
+               updateModif newModel
+                <| GraphInfo.LatexPreamble g.latexPreamble
      Loaded {scenario, graph} ->
         (model, protocolSendMsg 
             <| LoadProtocol {graph = graph, scenario = 
