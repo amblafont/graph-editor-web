@@ -12,6 +12,7 @@ import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
 import Geometry 
+import Verbatim
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import HtmlDefs
 import Html.Events.Extra.Mouse as MouseEvents
@@ -158,34 +159,51 @@ nodeDrawing cfg node =
      if n.editable then
          make_input (idToKey id) n.inputPos n.label (NodeLabelEdit id)
      else
+        let attrs = ([   MouseEvents.onClick (NodeClick id),
+                    MouseEvents.onDoubleClick (EltDoubleClick id)
+                    -- Html.Events.on "mousemove" (D.succeed (EltHover id))
+                ] 
+                ++ [HtmlDefs.renderedClass :: activityToClasses n.isActive |> class]
+
+                ++
+                [HtmlDefs.onRendered (Msg.NodeRendered id)]
+                )
+        in
         --  if n.label == "" then
             --  (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
         --  else 
-            let label = (if n.isValidated then "\\color{green}" else "")
-                     ++ (if n.label == "" then "\\bullet" else
-                     if n.isMath then n.label else "\\text{" ++ n.label ++ "}" )
-            in
-            -- makeLatex cfg n.pos id n.dims label n.zindex
-            Drawing.makeLatex 
-            {
-                zindex = n.zindex,
-                label = label,
-                preamble = cfg.latexPreamble,
-                pos = n.pos,
-                dims = n.dims,
-                angle = 0,
-                scale = 1,
-                key = idToKey id
-            }
-            ([   MouseEvents.onClick (NodeClick id),
-                 MouseEvents.onDoubleClick (EltDoubleClick id)
-                 -- Html.Events.on "mousemove" (D.succeed (EltHover id))
-            ] 
-            ++ [HtmlDefs.renderedClass :: activityToClasses n.isActive |> class]
-
-            ++
-            [HtmlDefs.onRendered (Msg.NodeRendered id)]
-            )
+            case Verbatim.extractVerbatim n.label of 
+              Just vLabel -> 
+                    Drawing.makeVerbatim
+                    {
+                        zindex = n.zindex,
+                        label = vLabel,
+                        -- preamble = cfg.latexPreamble,
+                        pos = n.pos,
+                        dims = n.dims,
+                        angle = 0,
+                        scale = 1,
+                        key = idToKey id
+                    } attrs
+              Nothing -> 
+                let label = (if n.isValidated then "\\color{green}" else "")
+                        ++ (if n.label == "" then "\\bullet" else
+                        -- let vLabel = verbatimLabel n.isVerbatim n.label in
+                        if n.isMath then n.label else "\\text{" ++ n.label ++ "}" )
+                in
+                -- makeLatex cfg n.pos id n.dims label n.zindex
+                Drawing.makeLatex 
+                {
+                    zindex = n.zindex,
+                    label = label,
+                    preamble = cfg.latexPreamble,
+                    pos = n.pos,
+                    dims = n.dims,
+                    angle = 0,
+                    scale = 1,
+                    key = idToKey id
+                } attrs
+                
                 
 
              {- Drawing.fromString 
@@ -254,28 +272,40 @@ segmentLabel cfg q edgeId activity label marker curve =
                    Point.pointToAngle <| Point.subtract q.to q.from 
                   else 0
              in
+             let attrs =    [   MouseEvents.onClick (EdgeClick edgeId),
+                      MouseEvents.onDoubleClick (EltDoubleClick edgeId),
+                      MouseEvents.onMove  (always (MouseOn edgeId))
+                    , HtmlDefs.renderedClass :: activityToClasses activity |> class
+                    , HtmlDefs.onRendered (Msg.EdgeRendered edgeId)]
+                    
+             in
                           -- makeLatex cfg labelpos edgeId label.dims finalLabel foregroundZ
-             
-             Drawing.makeLatex 
-             {
-                zindex = foregroundZ,
-                label = finalLabel,
-                preamble = cfg.latexPreamble,
-                pos = labelpos,
-                dims = label.dims,
-                angle = angle,
-                scale = GraphDefs.edgeScaleFactor,
-                key = idToKey edgeId
-             }  -- -}          
-             ([   MouseEvents.onClick (EdgeClick edgeId),
-                  MouseEvents.onDoubleClick (EltDoubleClick edgeId),
-                  MouseEvents.onMove  (always (MouseOn edgeId))
-                 -- Html.Events.onMouseOver (EltHover edgeId)
-             ] ++
-             [HtmlDefs.renderedClass :: activityToClasses activity |> class]
-              ++
-              [HtmlDefs.onRendered (Msg.EdgeRendered edgeId)]
-             )
+             case Verbatim.extractVerbatim finalLabel of 
+              Just vLabel -> 
+                    Drawing.makeVerbatim
+                       {
+                        zindex = foregroundZ,
+                        label = vLabel,
+                        -- preamble = cfg.latexPreamble,
+                        pos = labelpos,
+                        dims = label.dims,
+                        angle = angle,
+                        scale = GraphDefs.edgeScaleFactor,
+                        key = idToKey edgeId
+                    } attrs
+              Nothing ->
+                    Drawing.makeLatex 
+                    {
+                        zindex = foregroundZ,
+                        label = finalLabel,
+                        preamble = cfg.latexPreamble,
+                        pos = labelpos,
+                        dims = label.dims,
+                        angle = angle,
+                        scale = GraphDefs.edgeScaleFactor,
+                        key = idToKey edgeId
+                    } attrs  -- -}          
+          
             
             {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
               labelpos label.label  -}

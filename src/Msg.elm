@@ -161,7 +161,7 @@ type Msg
   -- a graph is pasted
   | PasteGraph GraphInfo
   | QuickInput String
-  | SetFirstTabEquation String
+  | SetFirstTabEquation {statement : String, isVerbatim : Bool}
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
   | MouseOn Graph.Id
@@ -188,7 +188,7 @@ type Msg
   | LatexPreambleSwitch
   | LatexPreambleEdit String
   | SimpleMsg String
-  | AppliedProof { statement : String, script : String}
+  | AppliedProof { statement : String, script : String, isVerbatim : Bool}
   | ProtocolReceive (List {isSender : Bool, msg : ProtocolMsg})
   | ProtocolRequestSnapshot
   | RenderedTextInput

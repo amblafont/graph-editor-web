@@ -3,9 +3,9 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    newEdgeLabelAdj, selectIds, setColor, -- setColorEdgesId,
    filterLabelNormal, filterEdgeNormal, isNormalId, isNormal, isPullshout,
    filterNormalEdges, coqProofTexCommand,
-   newNodeLabel, newEdgeLabel, newPullshout, emptyEdge,
+   newNodeLabel, newEdgeLabel, newEdgeLabelVerbatimAdj, newPullshout, emptyEdge,
    selectedEdges, mapNormalEdge,  mapDetails, 
-   createNodeLabel, md_createNodeLabel, createProofNode, createProofNodeLabel,
+   createNodeLabel, md_createNodeLabel, md_createNodeLabelVerbatim, createProofNode, createProofNodeLabel,
    getNodeLabelOrCreate, getNodeDims, getNodePos, getEdgeDims,
    addNodesSelection, selectAll, clearSelection, 
    clearWeakSelection,
@@ -41,7 +41,7 @@ import EdgeShape exposing (EdgeShape(..), pullshoutHat)
 import ArrowStyle exposing (ArrowStyle, EdgePart)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 import GraphProof exposing (LoopNode, LoopEdge, Diagram)
-
+import Verbatim exposing (makeVerbatimLabel)
 import Json.Encode as JEncode
 import List.Extra as List
 import Maybe.Extra as Maybe
@@ -439,9 +439,17 @@ newGenericLabel d = { details = d,
                       weaklySelected = False,
                       zindex = defaultZ}
 
+
+
+newEdgeLabelVerbatimAdj : Bool -> Bool -> String -> ArrowStyle -> EdgeLabel
+newEdgeLabelVerbatimAdj isVerbatim isAdjunction s style = 
+   newGenericLabel 
+    <| NormalEdge 
+    { label = makeVerbatimLabel isVerbatim s, style = style, dims = Nothing, isAdjunction = isAdjunction}
+
 newEdgeLabelAdj : String -> ArrowStyle -> Bool -> EdgeLabel
-newEdgeLabelAdj s style isAdjunction = newGenericLabel 
-    <| NormalEdge { label = s, style = style, dims = Nothing, isAdjunction = isAdjunction }
+newEdgeLabelAdj s style isAdjunction = 
+   newEdgeLabelVerbatimAdj False isAdjunction s style
 
 
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
@@ -464,8 +472,14 @@ createNodeLabel g s p =
 
 md_createNodeLabel : Graph.ModifHelper NodeLabel EdgeLabel -> String -> Point -> (Graph.ModifHelper NodeLabel EdgeLabel,
                                                                        NodeId, Point)
-md_createNodeLabel g s p =
-    let label = newNodeLabel p s True defaultZ in
+md_createNodeLabel =
+   md_createNodeLabelVerbatim False
+
+md_createNodeLabelVerbatim : Bool -> Graph.ModifHelper NodeLabel EdgeLabel -> 
+            String -> Point -> (Graph.ModifHelper NodeLabel EdgeLabel,
+                                                                       NodeId, Point)
+md_createNodeLabelVerbatim isVerbatim g s p =
+    let label = newNodeLabel p (makeVerbatimLabel isVerbatim s) True defaultZ in
     let (g2, id) = Graph.md_newNode g label in
      (g2, id, p)
 

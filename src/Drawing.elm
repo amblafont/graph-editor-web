@@ -5,7 +5,7 @@ module Drawing exposing (Drawing,
   svg, tikz,
   -- class, 
   empty, grid, ruler, htmlAnchor,
-  makeLatex,
+  makeLatex, makeVerbatim,
    emptyForeign, toString --, shadowClass
   )
 
@@ -25,6 +25,7 @@ import Svg.Attributes exposing (to)
 import HtmlDefs
 import ArrowStyle exposing (shadow)
 import ListExtraExtra as ListExtra
+import List.Extra
 
 keyPartition (Drawing l) =
     let (unkeyedList, keyedList) =
@@ -409,6 +410,36 @@ makeLatex arg attrs =
     , scale = arg.scale}
   |> TikzShape attrs
   |> ofShapeWithKey arg.zindex arg.key
+
+makeVerbatimString : String -> String
+makeVerbatimString s =
+      let verbatimDelimiters = ['|', '@', '\'', '"', '#', '/', '!', '*', '+', '-'] in 
+          case List.Extra.find (\ d -> String.contains d s |> not) 
+             (List.map String.fromChar verbatimDelimiters)
+            of 
+            Nothing -> "\\text{Err: unable to find a verbatim delimiter}"
+            Just d -> "\\verb" ++ d ++ s ++ d 
+
+makeVerbatim : { zindex:Int,
+              label : String, pos : Point, dims : Point
+              , angle : Float
+              , scale : Float
+              , key : Maybe String} 
+              -> List (Html.Attribute a) -> Drawing a
+makeVerbatim arg attrs = 
+  let label = makeVerbatimString arg.label in          
+    makeLatex 
+    {zindex = arg.zindex
+    , label = label
+    , preamble = ""
+    , pos = arg.pos
+    , dims = arg.dims
+    , angle = arg.angle
+    , scale = arg.scale
+    , key = arg.key
+    }
+    attrs 
+
 
 shadowWidth = 4
 

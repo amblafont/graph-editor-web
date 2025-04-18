@@ -93,8 +93,8 @@ equalityParser =
 
 -- TODO
 -- replaces the given edge with a composition of edges
-splitWithChain : Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel -> HandSide -> EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
-splitWithChain g modifiedGraph ch id =
+splitWithChain : Bool -> Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel -> HandSide -> EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
+splitWithChain isVerbatim g modifiedGraph ch id =
    -- to get the position
    -- let gd = GraphDrawing.toDrawingGraph g in
 --    let modifiedGraph = Graph.newModif g in
@@ -105,7 +105,7 @@ splitWithChain g modifiedGraph ch id =
     
     case (on1, on2) of
         (Just n1, Just n2) ->
-            buildGraphSegment 
+            buildGraphSegment isVerbatim
             { from = n1.pos, to = n2.pos,
               fromId = edge.from, toId = edge.to,
               edges = ch,
@@ -117,21 +117,21 @@ splitWithChain g modifiedGraph ch id =
     |> Maybe.withDefault modifiedGraph
    -- let g2 = Graph.s
 
-buildGraphSegment : Segment 
+buildGraphSegment : Bool -> Segment 
      -> Graph.ModifHelper NodeLabel EdgeLabel 
      -> Graph.ModifHelper NodeLabel EdgeLabel 
-buildGraphSegment s g =
+buildGraphSegment isVerbatim s g =
     let offset = Point.subtract s.to s.from
              |> Point.resize (1 / (List.length s.edges |> toFloat))
     in
-      buildGraphEdges g offset 
+      buildGraphEdges isVerbatim g offset 
         (if s.alignLeft then Geometry.Left else Geometry.Right)
         s.from s.fromId s.toId s.edges
 
 
-buildGraphEdges : Graph.ModifHelper NodeLabel EdgeLabel -> Point -> Geometry.LabelAlignment 
+buildGraphEdges : Bool -> Graph.ModifHelper NodeLabel EdgeLabel -> Point -> Geometry.LabelAlignment 
            -> Point -> NodeId -> NodeId -> List Edge -> Graph.ModifHelper NodeLabel EdgeLabel
-buildGraphEdges g offset alignment pos from to ch =
+buildGraphEdges isVerbatim g offset alignment pos from to ch =
    let style =
           let st= ArrowStyle.empty in
            { st | labelAlignment = alignment } 
@@ -140,25 +140,25 @@ buildGraphEdges g offset alignment pos from to ch =
        [] -> g
        [ e ] -> 
           Tuple.first <| Graph.md_newEdge g from to
-                        <| GraphDefs.newEdgeLabel e.edge style
+                        <| GraphDefs.newEdgeLabelVerbatimAdj isVerbatim False e.edge style
        e :: tail -> 
           let posf = Point.add offset pos in          
-          let (g2, idto, _ ) = GraphDefs.md_createNodeLabel g e.to posf in          
+          let (g2, idto, _ ) = GraphDefs.md_createNodeLabelVerbatim isVerbatim g e.to posf in          
           let (g3, _) = Graph.md_newEdge g2 from idto
-                        <| GraphDefs.newEdgeLabel e.edge
+                        <| GraphDefs.newEdgeLabelVerbatimAdj isVerbatim False e.edge
                         <| style
           in
-            buildGraphEdges g3 offset alignment posf idto to tail
+            buildGraphEdges isVerbatim g3 offset alignment posf idto to tail
 
 
 type alias Segment = { edges : List Edge, from : Point, fromId : NodeId, to : Point, toId : NodeId,
                       alignLeft : Bool }
 
 -- it implicitly assumes that source and targets are not empty
-orientEquation : Point -> Equation -> Float -> Graph NodeLabel EdgeLabel ->
+orientEquation : Bool -> Point -> Equation -> Float -> Graph NodeLabel EdgeLabel ->
                    (Graph.ModifHelper NodeLabel EdgeLabel, 
                    List Segment)
-orientEquation iniP (source, but) offset origG =
+orientEquation isVerbatim iniP (source, but) offset origG =
    let g = Graph.newModif origG in
    
    let nsource = List.length source
@@ -194,18 +194,18 @@ orientEquation iniP (source, but) offset origG =
        bottomLeftLabel = lastLabel but1
    in
    
-   let (g2, topLeftId, _)    = GraphDefs.md_createNodeLabel g  startLabel topLeftPos in
-   let (g3, bottomRightId, _) = GraphDefs.md_createNodeLabel g2 endLabel   bottomRightPos   in
+   let (g2, topLeftId, _)    = GraphDefs.md_createNodeLabelVerbatim isVerbatim g  startLabel topLeftPos in
+   let (g3, bottomRightId, _) = GraphDefs.md_createNodeLabelVerbatim isVerbatim g2 endLabel   bottomRightPos   in
    let (g4, topRightId, _) = 
         if source2 == [] then
           (g3, bottomRightId, iniP)
         else
-           GraphDefs.md_createNodeLabel g3 topRightLabel topRightPos   in
+           GraphDefs.md_createNodeLabelVerbatim isVerbatim g3 topRightLabel topRightPos   in
    let (g5, bottomLeftId, _) = 
         if but2 == [] then
           (g4, bottomRightId, iniP)
         else   
-           GraphDefs.md_createNodeLabel g4 bottomLeftLabel bottomLeftPos in
+           GraphDefs.md_createNodeLabelVerbatim isVerbatim g4 bottomLeftLabel bottomLeftPos in
    (g5, 
    [
       { edges = source1, from = topLeftPos, fromId = topLeftId, to = topRightPos, toId = topRightId, alignLeft = True }
@@ -216,11 +216,11 @@ orientEquation iniP (source, but) offset origG =
    
 
 
-graphEquation : Point -> Float -> Equation -> Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
-graphEquation pos offset eq gi =
-    let (gf, l) = orientEquation pos eq offset gi in
+graphEquation : Point -> Float -> Bool -> Equation -> Graph NodeLabel EdgeLabel -> Graph.ModifHelper NodeLabel EdgeLabel
+graphEquation pos offset isVerbatim eq gi =
+    let (gf, l) = orientEquation isVerbatim pos eq offset gi in
     List.foldl 
-       buildGraphSegment
+       (buildGraphSegment isVerbatim)
        gf l
     
 

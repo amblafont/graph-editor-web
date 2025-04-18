@@ -13,6 +13,7 @@ import Tuple exposing (first, second)
 import IntDict exposing (IntDict)
 import Set exposing (Set)
 import Maybe.Extra as Maybe
+import Verbatim
 import Parser exposing (Step(..))
 
 type alias LoopEdge = { pos : Point, from : Point, to : Point, angleIn : Float, angleOut : Float, label : String, identity : Bool }
@@ -317,47 +318,29 @@ fullProofs g0 =
 statementToString : Diagram -> String
 statementToString d = 
   let expand s =  if s == "" then "{_}" else s in
-  let edgeToString = List.map (.label >> .label >> expand) >> String.join " · " in
-  "{ " ++ edgeToString d.lhs ++ " = " ++ edgeToString d.rhs ++ " }"
+  let edgeToString = List.map (.label >> .label >> expand >>
+                               Verbatim.removeVerbatim) >> String.join " · " in
+   "<YADE> " ++ 
+  edgeToString d.lhs ++ " = " ++ edgeToString d.rhs 
+   ++ " </YADE>"
 
 
-write0 n s = if n == 0 then [] else s 
-repeat n s = case n of 
-                0 -> []
-                1 ->  ["  " ++ s]
-                _ ->  ["  do " ++ String.fromInt n ++ " " ++ s] 
+
    
 getToThePoint : Int -> Int -> String
 getToThePoint startOffset backOffset =
-   String.join "\n" <|
-    repeat backOffset "apply cancel_postcomposition."   
-   ++
-     write0 startOffset 
-    (
-    ([ "  repeat rewrite assoc'." ]
-    ++
-    repeat startOffset "apply cancel_precomposition."    
-    ++ 
-    [ "  repeat rewrite assoc." ]))
+   "yade_strip " ++ String.fromInt startOffset ++ " " ++ String.fromInt backOffset ++ "."
+
 proofStepToString : ProofStep -> String
 proofStepToString { startOffset, backOffset, diag} =
- 
-   String.join "\n" <|
-   [ "assert(eq : " ++ statementToString diag ++ ")."
-   , "{"
-   , "  " ++ (diag.proof |> Maybe.withDefault "admit.")
-   , "}"
-   , "etrans."
-   , "{" ,
-     getToThePoint startOffset backOffset
-   , "  apply eq."
-   , "}" ]
-   ++ (write0 startOffset ["repeat rewrite assoc."])
-   ++ [
-    "clear eq."
-   ]
+   "eapply yade.transitivity.\n" ++
+   getToThePoint startOffset backOffset ++
+   "\n" ++ 
+   "refine (_ :> " ++ statementToString diag ++ ").\n" ++
+    "{\n"
+   ++ "  " ++ (diag.proof |> Maybe.withDefault "admit.")
+   ++ "\n}\nrepeat rewrite -> yade.assoc''.\n"
 
-symmetryStr = "apply pathsinv0."
 
 
 
@@ -412,13 +395,15 @@ proofStatementToDebugString st =
    ++ ",\n  "
    ++ statementToString (renameDebugDiag st.statement) ++ ".\n\nintros.\n"
    ++ (String.join "\n" <| List.map (renameDebugProofStep >> proofStepToString) st.proof)
-   ++ "\n apply idpath."
+   ++ "\n reflexivity."
 
 
 proofStatementToString : ProofStatement -> String
 proofStatementToString st =
-   "(* Goal " ++ statementToString st.statement ++ ". *)\n\n"
+   -- "(* Goal " ++ statementToString st.statement ++ ". *)\n\n"
   -- ++ "(* generated with YADE *)"
+   -- ++ "make_infix.\n"
+    "change (" ++ statementToString st.statement ++ ").\n\n"
    ++ (String.join "\n" <| List.map proofStepToString st.proof)
-   ++ "\n apply idpath."
+   ++ "\n reflexivity."
    ++ "\nQed."

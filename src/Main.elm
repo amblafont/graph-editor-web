@@ -202,7 +202,7 @@ port clipboardWriteLatex : {graph: JsGraphInfo, tex:String} -> Cmd a
 port requestProof : { statement : String, script : String} -> Cmd a
 
 port applyProof : { statement : String, script : String} -> Cmd a
-port appliedProof : ({ statement : String, script : String} -> a) -> Sub a
+port appliedProof : ({ statement : String, script : String, isVerbatim : Bool} -> a) -> Sub a
 
 -- port toClipboard : { content:String, success: String, failure: String } -> Cmd a
 port generateProofJs : { proof : String, graph : JsGraphInfo } -> Cmd a
@@ -217,7 +217,7 @@ port findReplace : ({ search: String, replace:String} -> a) -> Sub a
 port promptEquation : () -> Cmd a
 -- return the equation
 port promptedEquation : (String -> a) -> Sub a
-port setFirstTabEquation : (String -> a) -> Sub a
+port setFirstTabEquation : ({ statement :String, isVerbatim : Bool} -> a) -> Sub a
 
 -- ask js to prompt tab title
 port promptTabTitle : String -> Cmd a
@@ -428,9 +428,9 @@ makeExports model =
 
 -- TODO change the name
 -- the suffix perform is to make the difference with the port name
-setFirstTabEquationPerform : Model -> String -> (Model, Cmd Msg)
+setFirstTabEquationPerform : Model -> { statement : String, isVerbatim : Bool} -> (Model, Cmd Msg)
 setFirstTabEquationPerform m s = 
-   case Parser.run equalityParser s of
+   case Parser.run equalityParser s.statement of
      Err _  -> noCmd m
      Ok chain -> 
         let mUpdated =
@@ -438,7 +438,7 @@ setFirstTabEquationPerform m s =
               \ t -> 
               { t | graph = 
                  Graph.applyModifHelper <| 
-                 graphDrawingChain t.sizeGrid Graph.empty chain
+                 graphDrawingChain t.sizeGrid s.isVerbatim Graph.empty chain
               }
         in 
         ({ mUpdated | mode = DefaultMode}, computeLayout())
@@ -742,13 +742,14 @@ generateProofString debug g =
 
 graphQuickInput : Model -> QuickInput.Equation -> Graph.ModifHelper NodeLabel EdgeLabel
 graphQuickInput model (eq1, eq2) = 
+  let isVerbatim = False in
   let modelGraph = getActiveGraph model in
   let sizeGrid = getActiveSizeGrid model in
   -- if an incomplete subdiagram is selected, we use it
   let od = GraphDefs.selectedIncompleteDiagram modelGraph in
-  let default = graphDrawingChain sizeGrid modelGraph (eq1, eq2) in 
+  let default = graphDrawingChain sizeGrid isVerbatim modelGraph (eq1, eq2) in 
   let split l edges = GraphProof.isEmptyBranch l |> 
-          Maybe.map (QuickInput.splitWithChain modelGraph (Graph.newModif modelGraph) edges) 
+          Maybe.map (QuickInput.splitWithChain isVerbatim modelGraph (Graph.newModif modelGraph) edges) 
   in
   case od of
     Nothing -> default
@@ -972,13 +973,13 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                                               script = proof }
                in
                  (model, cmd)
-        AppliedProof {statement, script} ->
+        AppliedProof {statement, script, isVerbatim} ->
           let failWith s = (model, alert s) in
           let registerProof graph diagram = 
                 case Parser.run equalityParser statement of
                   Err _ -> failWith ("fail to parse " ++ statement)
                   Ok eqs ->
-                    case Unification.unifyDiagram eqs diagram graph of
+                    case Unification.unifyDiagram isVerbatim eqs diagram graph of
                       Err s -> failWith s
                       Ok finalg ->                
                           updateModifHelper model finalg
@@ -1411,13 +1412,13 @@ graphResize st m =
    
 
 
-graphDrawingChain : Int -> Graph NodeLabel EdgeLabel -> QuickInput.Equation -> Graph.ModifHelper NodeLabel EdgeLabel
-graphDrawingChain offset g eq =         
+graphDrawingChain : Int -> Bool -> Graph NodeLabel EdgeLabel -> QuickInput.Equation -> Graph.ModifHelper NodeLabel EdgeLabel
+graphDrawingChain offset isVerbatim g eq =         
             let mid = toFloat offset / 2 in
             let iniP = (mid, mid) in
             {- graphDrawingEquation -}
-            QuickInput.graphEquation iniP (toFloat offset) 
-               eq g  -- QuickInput.Right
+            QuickInput.graphEquation iniP (toFloat offset) isVerbatim
+                  eq g  -- QuickInput.Right
 
 
 
