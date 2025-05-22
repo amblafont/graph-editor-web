@@ -164,7 +164,7 @@ nodeDrawing cfg node =
                     -- Html.Events.on "mousemove" (D.succeed (EltHover id))
                 ] 
                 ++ [HtmlDefs.renderedClass :: activityToClasses n.isActive |> class]
-
+                ++ HtmlDefs.dimsAttribute n.dims
                 ++
                 [HtmlDefs.onRendered (Msg.NodeRendered id)]
                 )
@@ -275,8 +275,10 @@ segmentLabel cfg q edgeId activity label marker curve =
              let attrs =    [   MouseEvents.onClick (EdgeClick edgeId),
                       MouseEvents.onDoubleClick (EltDoubleClick edgeId),
                       MouseEvents.onMove  (always (MouseOn edgeId))
-                    , HtmlDefs.renderedClass :: activityToClasses activity |> class
+                    , HtmlDefs.renderedClass :: activityToClasses activity |> class                    
                     , HtmlDefs.onRendered (Msg.EdgeRendered edgeId)]
+                    ++ HtmlDefs.dimsAttribute -- label.dims
+                    (Point.resize (1 / GraphDefs.edgeScaleFactor) label.dims)
                     
              in
                           -- makeLatex cfg labelpos edgeId label.dims finalLabel foregroundZ

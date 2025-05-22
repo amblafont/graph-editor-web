@@ -2,7 +2,7 @@ port module HtmlDefs exposing (onRendered, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown,
    computeLayout, select, introHtml, overlayHelpMsg
-   , focusPosition, renderedClass)
+   , focusPosition, renderedClass, dimsAttribute)
 import Html
 import Html.Attributes
 import Html.Events
@@ -153,6 +153,12 @@ slider msg name min max value =
           Html.Events.onInput (String.toInt >> Maybe.withDefault value >> msg) ] []
         , Html.text name
         ]
+
+dimsAttribute : (Float, Float) -> List (Html.Attribute a)
+dimsAttribute (width, height) = 
+    [ Html.Attributes.attribute "data-width" (String.fromFloat width),
+      Html.Attributes.attribute "data-height" (String.fromFloat height)
+    ]
 
 overlayHelpMsg : String
 overlayHelpMsg = "[?] to toggle help overlay"

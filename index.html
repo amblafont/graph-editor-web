@@ -267,17 +267,19 @@ function disableInAppInstallPrompt() {
                          // a listener
                          var rect = { width : node.clientWidth , height : node.clientHeight }
                          // no need to notify Elm if the rectangle hasn't changed.
-                         if (node.previousRect 
-                                  && node.previousRect.width == rect.width
-                                  && node.previousRect.height == rect.height)
-                            return;
-                         node.previousRect = rect;
-                         // no need to update
+                         if (!(node.dataset.width && node.dataset.height && 
+                             Math.round(parseFloat(node.dataset.width)) == node.clientWidth 
+                             && Math.round(parseFloat(node.dataset.height)) == node.clientHeight 
+                         )) {
+            
+                            node.dispatchEvent(new CustomEvent(renderedEvent, { detail : rect } ));
+                         }
+                       
                          /* if (node.tagName = "MATH-LATEX") {
                             console.log (rect);
                             console.log (node.getBoundingClientRect());
                          } */
-                         node.dispatchEvent(new CustomEvent(renderedEvent, { detail : rect } ));
+                         
                      }
         };
 
