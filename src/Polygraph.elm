@@ -359,7 +359,7 @@ mapRecAux cn ce fn fe dict ids =
          NodeObj n -> cn n
          EdgeObj _ _ e -> ce e
    in
-   let rec = mapRecAux cn ce fn fe in
+   -- let rec = mapRecAux cn ce fn fe in
    let ins id o = IntDict.insert id o dict in
     case ids of
        [] -> dict
@@ -367,26 +367,32 @@ mapRecAux cn ce fn fe dict ids =
                    
          case IntDict.get id dict of           
             Just (Input (NodeObj n)) ->
-                  rec 
+                  -- rec 
+                  mapRecAux cn ce fn fe
                       (ins id (Output <| NodeObj <| fn id n)) 
                       tailIds                         
             Just (Input (EdgeObj i1 i2 e)) ->
-                  rec (ins id <| Waiting i1 i2 e) (i1 :: i2 :: id :: tailIds)
+                  -- rec 
+                  mapRecAux cn ce fn fe
+                     (ins id <| Waiting i1 i2 e) (i1 :: i2 :: id :: tailIds)
             Just (Waiting i1 i2 e) ->
                   case (IntDict.get i1 dict, IntDict.get i2 dict) of                  
                      (Just (Output o1), Just (Output o2)) ->
                         let a1 = getA o1
                             a2 = getA o2
                         in
-                        rec
+                        -- rec
+                        mapRecAux cn ce fn fe
                            (ins id 
                                (Output <| EdgeObj i1 i2 <| 
                                        fe id a1 a2 e) 
                                 ) 
                                tailIds
-                     _ ->  rec dict tailIds
+                     _ ->  
+                     --rec 
+                         mapRecAux cn ce fn fe dict tailIds
                    
-            _ -> rec dict tailIds
+            _ -> mapRecAux cn ce fn fe dict tailIds
 
 -- edges whose source or target do not exist anymore.
 invalidEdges : Graph n e -> List (Edge e)
