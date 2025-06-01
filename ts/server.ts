@@ -12,7 +12,10 @@ if (process.env.PORT !== undefined) {
 
 
 // Define the port and hostname
-const hostname = '127.0.0.1'; // localhost
+let hostname = '0.0.0.0'; // localhost
+if (process.env.YADEHOSTNAME !== undefined) {
+  hostname = process.env.YADEHOSTNAME;
+}
 
 // Create the server
 
