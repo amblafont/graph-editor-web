@@ -45,6 +45,12 @@ document.adoptedStyleSheets = [styleSheet];
             // slotchange is not enough
             observer =  new MutationObserver( () => this._render());
             observer.observe(this, { characterData : true, subtree : true }); 
+            // This attributeObserver is useful when
+            // data-height or data-width are updated to check
+            // that they are indeed correct 
+            // (the Elm command computeLayout runs before rendering the model, so it does not help!)
+            var attributeObserver = new MutationObserver( () => dispatchRendered(this));
+            attributeObserver.observe(this, { attributes : true }); 
         }
     
         _render() {
