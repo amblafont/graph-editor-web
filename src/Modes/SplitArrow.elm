@@ -8,7 +8,7 @@ import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
 import Maybe
 import IntDict
 import Msg exposing (Msg(..))
-import HtmlDefs exposing (Key(..), computeLayout)
+import HtmlDefs exposing (Key(..)) --, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel, EdgeType(..))
 
 import Modes exposing ( Mode(..), SplitArrowState)

@@ -633,13 +633,13 @@ function disableInAppInstallPrompt() {
                 elmnt.select();
          });
 
-         app.ports.computeLayout.subscribe(function(s) { 
-             console.log("compute layout signal");                        
-             var children = document.getElementsByClassName(renderedClass);             
-             for (var i = 0; i < children.length; ++i) {
-                          dispatchRendered(children[i]);
-                      }   
-         });
+        //  app.ports.computeLayout.subscribe(function(s) { 
+        //      console.log("compute layout signal");                        
+        //      var children = document.getElementsByClassName(renderedClass);             
+        //      for (var i = 0; i < children.length; ++i) {
+        //                   dispatchRendered(children[i]);
+        //               }   
+        //  });
 
          app.ports.preventDefault.subscribe(function (e) {
             e.preventDefault(); 

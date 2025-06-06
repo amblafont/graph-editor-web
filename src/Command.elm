@@ -23,7 +23,7 @@ import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.Square
 import CommandCodec exposing (protocolSendMsg)
-import HtmlDefs exposing (computeLayout)
+import HtmlDefs -- exposing (computeLayout)
 import Maybe.Extra
 
 
@@ -105,13 +105,13 @@ applyCommands arg model =
             let ret = applyCommand msg status.model in
             {
                model = ret.model,
-               computeLayout = ret.computeLayout || status.computeLayout,
+               -- computeLayout = ret.computeLayout || status.computeLayout,
                undo = mergeUndoStatus ret.undo status.undo,
                focus = Maybe.Extra.or ret.focus status.focus
             }
    in
    let ret = List.foldl aux 
-                   {model = model, computeLayout = False,
+                   {model = model, -- computeLayout = False,
                    focus = Nothing, undo = NoUndo }
                       arg
    in
@@ -137,7 +137,7 @@ applyCommands arg model =
       
    in 
   (finalModel2, Cmd.batch <| 
-     cmd :: cmd2 :: (if ret.computeLayout then [computeLayout ()] else [])
+     [cmd,  cmd2] -- :: (if ret.computeLayout then [computeLayout ()] else [])
     
      
      )
@@ -157,10 +157,11 @@ mergeUndoStatus s1 s2 =
       (NoUndo, NoUndo) -> NoUndo
 
 applyCommand : {isSender : Bool, msg : ProtocolMsg} -> Model ->
-               { model : Model, computeLayout : Bool, undo : UndoStatus,
+               { model : Model, -- computeLayout : Bool, 
+               undo : UndoStatus,
                  focus : Maybe {tabId : GraphInfo.TabId, pos : Point, selIds : List Graph.Id} }
 applyCommand {isSender, msg} model =
-   let returnComputeLayout m = { model = m, computeLayout = True, 
+   let returnComputeLayout m = { model = m, -- computeLayout = True, 
                        focus = Nothing, undo = NoUndo } 
    in
    case msg of
@@ -170,9 +171,9 @@ applyCommand {isSender, msg} model =
           case  Modif.fold GraphInfo.applyModifSimple model.graphInfo modifs of
            Just r -> { model = { model | graphInfo = r.next},
                            focus = Nothing,
-                           computeLayout = True, 
+                          -- computeLayout = True, 
                            undo = if isSender then AtLeastOneUndo else NoUndo }
-           Nothing -> { model = model, computeLayout = False, 
+           Nothing -> { model = model, -- computeLayout = False, 
                        focus = Nothing,
                       undo = if isSender then FailedUndo else NoUndo }
      ClearProtocol {scenario, preamble} -> 
@@ -201,7 +202,7 @@ applyCommand {isSender, msg} model =
         in 
         returnComputeLayout m2
      FocusPosition arg -> 
-         { model = model, computeLayout = False, 
+         { model = model, -- computeLayout = False, 
            focus =  Just arg, -- if not isSender then Just arg else Nothing,
            undo = NoUndo }
         

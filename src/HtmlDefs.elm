@@ -1,7 +1,8 @@
 port module HtmlDefs exposing (onRendered, idInput, canvasId,
    Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
    , preventsDefaultOnKeyDown,
-   computeLayout, select, introHtml, overlayHelpMsg
+   --computeLayout, 
+   select, introHtml, overlayHelpMsg
    , focusPosition, renderedClass, dimsAttribute)
 import Html
 import Html.Attributes
@@ -13,7 +14,7 @@ import Html.Parser.Util
 
 
 port focusPosition : Point -> Cmd a
-port computeLayout : () -> Cmd a
+-- port computeLayout : () -> Cmd a
 port select : String -> Cmd a
 
 

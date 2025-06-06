@@ -75,7 +75,8 @@ import Modes exposing (Mode(..), SelectState, MoveDirection(..), isResizeMode, R
 
 import ArrowStyle
 
-import HtmlDefs exposing (Key(..), computeLayout)
+-- import HtmlDefs exposing (Key(..), computeLayout)
+import HtmlDefs exposing (Key(..)) --, computeLayout)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDefs exposing (newNodeLabel, MaybeProofDiagram(..), coqProofTexCommand, MaybeChain(..))
 -- import Tikz exposing (graphToTikz)
@@ -441,7 +442,8 @@ setFirstTabEquationPerform m s =
                  graphDrawingChain t.sizeGrid s.isVerbatim Graph.empty chain
               }
         in 
-        ({ mUpdated | mode = DefaultMode}, computeLayout())
+        noCmd { mUpdated | mode = DefaultMode}
+        -- ({ mUpdated | mode = DefaultMode}, computeLayout())
 
 {-
 handleCommand : {isSender : Bool, msg : ProtocolMsg} -> Model -> (Model, Cmd Msg)
@@ -550,7 +552,8 @@ update msg modeli =
                 updateActiveGraph model 
                 GraphDefs.clearDims
         in
-        ({newModel | mode = MakeSaveMode}, computeLayout())
+        noCmd {newModel | mode = MakeSaveMode}
+        -- ({newModel | mode = MakeSaveMode}, computeLayout())
      Save -> save model
      RulerMargin rulerMargin -> noCmd {model | rulerMargin = rulerMargin}
      SaveRulerGridSize -> ({model | defaultGridSize = sizeGrid } , 
@@ -595,7 +598,8 @@ update msg modeli =
                   { tab | title = t.title }
          in
           if model.graphInfo.latexPreamble == g.latexPreamble then
-            (newModel, computeLayout ())
+            noCmd newModel
+            -- (newModel, computeLayout ())
           else
                updateModif newModel
                 <| GraphInfo.LatexPreamble g.latexPreamble
