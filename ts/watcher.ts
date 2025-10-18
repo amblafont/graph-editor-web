@@ -203,7 +203,7 @@ async function fsWriteFile(d:FileSystemDirectoryHandle, filename:string, content
 
 function writeLine(fd:string[], line:string|false) {
     if (line !== false)
-       fd.push( line + "\n");
+       fd.push( line);
   }
 
 function writeLines(fd:string[], lines:string[], indent:string) {
@@ -256,7 +256,7 @@ async function writeContent( config:Config, d:FileSystemDirectoryHandle, newcont
     }
     // fs.copyFileSync(tmpobj.name, watchedFile);
     // console.log("on va ecrire ceci:" + fd);
-    return fsWriteFile(d, watchedFile, fd.join(""));
+    return fsWriteFile(d, watchedFile, fd.join("\n"));
   
     // tmpobj.removeCallback();
   }
