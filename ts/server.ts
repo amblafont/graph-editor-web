@@ -54,24 +54,52 @@ const depthHistory = 20;
 interface item 
 {msg:Data, snapshot:boolean, id:number, sender:WebSocket.WebSocket}
 
-let queue:item[] = [];
-
-let nextId = 0;
-let lastBreakId:null|number = null; 
-let lastSnapshot:null|{msg:Data,id : number, snapshot:true, sender:WebSocket.WebSocket} = null;
-
-function closeAll(reason:string) {
-    wss.clients.forEach(ws => {
-        closeConnection(ws, reason);
-      });
+interface session {name:string, queue: item[], nextId:number; lastBreakId:null|number,
+    lastSnapshot:null|{msg:Data,id : number, snapshot:true, sender:WebSocket.WebSocket};
 }
 
-function restart() {
-  queue = [];
-  nextId = 0;
-  lastBreakId = null;
-  lastSnapshot = null;
-  console.log("Server restarted.");
+function freshSession(name:string):session {
+  return  {name:name, queue : [], nextId : 0, lastBreakId : null, lastSnapshot : null};
+}
+let sessions :Record<string, session> = {};
+
+function getSessionFromClient(ws:WebSocket.WebSocket):session|null {
+  let sessionName = getSessionName(ws);
+  if (!(sessionName  in sessions)) 
+    return null;
+  return sessions[sessionName];
+}
+
+// let queue:item[] = [];
+
+// let nextId = 0;
+// let lastBreakId:null|number = null; 
+// let lastSnapshot:null|{msg:Data,id : number, snapshot:true, sender:WebSocket.WebSocket} = null;
+
+function closeSession(session : session, reason:string) {
+    getSessionClients(session).forEach(ws => {
+          closeConnection(ws, reason);
+      });
+    
+    console.log("Closing session " + session.name + ": " + reason);
+    delete sessions[session.name];
+    let ks = Object.keys(sessions);
+    console.log("Remaining opened sessions: " + ks.join(", "));
+}
+
+function closeIfNoClient(session:session) {
+  let nclient = getSessionClients(session).length;
+  // for (let ws of wss.clients) {
+  //   if (getSessionName(ws) == session)
+  //     nclient++;
+  // }
+  if (nclient > 0) {
+    console.log("Session " + session.name + ": still " + nclient + " connected");
+  }
+  else {
+    closeSession(session, "no client left");
+  }
+  // console.log("Deleting session " + session + " (no client left).");
 }
 
 function sendToClient(ws:WebSocket.WebSocket, data:ServerToClientMsg) {
@@ -88,28 +116,28 @@ function closeConnection(ws:WebSocket.WebSocket, reason:string) {
   ws.close(1011, reason);
 }
 
-function sendQueueSince(ws:WebSocket.WebSocket, expectedId:number):boolean {
+function sendQueueSince(session:session, ws:WebSocket.WebSocket, expectedId:number):boolean {
   
   // strictly bigger is impossible (already checked before)
-  if (expectedId >= nextId) {
+  if (expectedId >= session.nextId) {
     return true;
   }
 
   let idFirst = expectedId;
   let diffs:item[] = [];
   // looking if snapshot is available
-  if (lastSnapshot != null && lastSnapshot.id >= expectedId) {    
-    idFirst = lastSnapshot.id + 1;
-    diffs.push(lastSnapshot);
+  if (session.lastSnapshot != null && session.lastSnapshot.id >= expectedId) {    
+    idFirst = session.lastSnapshot.id + 1;
+    diffs.push(session.lastSnapshot);
   } 
   
 
-  let depth = nextId - idFirst;
-  if (depth > queue.length) {
-    let clients = chooseSnapshotClient();
+  let depth = session.nextId - idFirst;
+  if (depth > session.queue.length) {
+    let clients = chooseSnapshotClient(session);
     if (clients.length == 0) {
       const reason = "no updated client to get data from (server restarted)";
-      closeAll(reason);
+      closeSession(session, reason);
       return false;
     }
     sendRequestSnapshot(clients);
@@ -117,7 +145,7 @@ function sendQueueSince(ws:WebSocket.WebSocket, expectedId:number):boolean {
   }
   // let data:ServerToClientDiff[] = []; // queue.slice(-depth);
   for ( let i = 0; i < depth; i++) {
-    let msg = queue[queue.length - depth + i];
+    let msg = session.queue[session.queue.length - depth + i];
     diffs.push(msg);
     // diffs.push({isSender : ws === msg.sender, msg: msg.msg
     //     , id:msg.id, snapshot:msg.snapshot
@@ -135,12 +163,14 @@ function sendQueueSince(ws:WebSocket.WebSocket, expectedId:number):boolean {
   };
 
   let stuff2 : ServerToClientMsg = stuff;
-  console.log("sending %d diffs to one client", diffs.length);
+  console.log("sending %d diffs to one client (%s)", diffs.length, session.name);
   sendToClient(ws, stuff2);
   return true;
 }
 
+// we add those properties to each ws client.
 const expectedIdKey = "expectedId";
+const sessionNameKey = "sessionName";
 
 function hasProperty<T extends Object>(obj:T, key: PropertyKey): key is keyof T {
   return key in obj;
@@ -163,17 +193,37 @@ function setExpectedId(ws:WebSocket.WebSocket, id:number) {
   ws2[expectedIdKey] = id;
 }
 
-function minimalId() {
-  let id = nextId - queue.length - 1;
-  if (lastSnapshot != null && lastSnapshot.id > id)
-      return lastSnapshot.id;
+function getSessionName(ws:WebSocket.WebSocket):string {
+  if (hasProperty(ws,sessionNameKey)) {
+    return ws[sessionNameKey] as string;
+  }
+  console.log("client has not " + sessionNameKey);
+  return "";
+}
+
+function setSessionName(ws:WebSocket.WebSocket, sessionName:string) {
+  let ws2 = ws as any;
+  ws2[sessionNameKey] = sessionName;
+}
+
+function minimalId(session:session) {
+  let id = session.nextId - session.queue.length - 1;
+  if (session.lastSnapshot != null && session.lastSnapshot.id > id)
+      return session.lastSnapshot.id;
   return id;
 }
 
-function chooseSnapshotClient():WebSocket.WebSocket[] {
+// function getSessionClients(session:session):WebSocket.WebSocket[] {
+//   let clients = [];
+//   for (client of wss.clients)
+    
+//   return clients;
+// }
+
+function chooseSnapshotClient(session:session):WebSocket.WebSocket[] {
   let clients:WebSocket.WebSocket[] = [];
-  const minId = minimalId();
-  wss.clients.forEach(ws => {
+  const minId = minimalId(session);
+  getSessionClients(session).forEach(ws => {
     if (getExpectedId(ws) >= minId)
       clients.push(ws);
   });
@@ -181,38 +231,49 @@ function chooseSnapshotClient():WebSocket.WebSocket[] {
   
 }
 
-function saveMsg(ws:WebSocket.WebSocket, msg:ClientToServerDiff) {
+function saveMsg(session:session, ws:WebSocket.WebSocket, msg:ClientToServerDiff) {
   if (!msg.history)
     return;
-  queue.push({msg : msg.msg, sender : ws, id : nextId, snapshot: msg.snapshot});
-  nextId++;
-  queue = queue.slice(-depthHistory);
-  console.log("saving msg; queue length: %d", queue.length);
+  session.queue.push({msg : msg.msg, sender : ws, id : session.nextId, snapshot: msg.snapshot});
+  session.nextId++;
+  session.queue = session.queue.slice(-depthHistory);
+  console.log("saving msg; queue length: %d", session.queue.length);
 }
 
-function handleReceiveStart(ws:WebSocket.WebSocket, msg:ClientToServerDiff) {
+function handleReceiveStart(session:session, ws:WebSocket.WebSocket, msg:ClientToServerDiff) {
   if (!msg.snapshot) {
       sendRequestSnapshot([ws]);
       return;
   }
-  let id = nextId;
-  lastBreakId = id;
-  nextId++;
+  let id = session.nextId;
+  session.lastBreakId = id;
+  session.nextId++;
   // saveMsg(ws, msg);
-  updateLastSnapshot(ws,msg.msg, id);  
-  broadcastMsg(ws, msg, id);
+  updateLastSnapshot(session,ws,msg.msg, id);  
+  broadcastMsg(session, ws, msg, id);
 }
 
-function updateLastSnapshot(ws:WebSocket.WebSocket, msg:Data, id :number) {
-  lastSnapshot = { id : id, snapshot:true, msg:msg, sender:ws };
+function updateLastSnapshot(session:session, ws:WebSocket.WebSocket, msg:Data, id :number) {
+  session.lastSnapshot = { id : id, snapshot:true, msg:msg, sender:ws };
 }
 
-function broadcastMsg(ws:WebSocket.WebSocket, msg:ClientToServerDiff, id:number) {
+function getSessionClients(session:session):WebSocket.WebSocket[]{
+  let clients:WebSocket.WebSocket[] = [];
+  wss.clients.forEach(function each(client) {
+      if (getSessionName(client) == session.name)
+        clients.push(client);
+    });
+  return clients;
+}
+
+function broadcastMsg(session:session, ws:WebSocket.WebSocket, msg:ClientToServerDiff, id:number) {
   if (!msg.broadcast) {
     return;
   }
-  console.log("sending diff to %d clients", wss.clients.size);
-  wss.clients.forEach(function each(client) {
+  let clients = getSessionClients(session);
+
+  console.log("sending diff to %d clients", clients.length);
+  clients.forEach(function each(client) {
     let data = {msg:msg.msg, isSender:client === ws, id:id,
          snapshot:msg.snapshot
     };
@@ -225,20 +286,40 @@ function broadcastMsg(ws:WebSocket.WebSocket, msg:ClientToServerDiff, id:number)
   });
 }
 
-wss.on('connection', function connection(ws:WebSocket.WebSocket) {
+wss.on('connection', function connection(ws:WebSocket.WebSocket, request:http.IncomingMessage) {
+  // extract session name from url
+  let url = request.url;
+  console.log("new connection with url: " + url);
+  if (url === undefined) {
+    closeConnection(ws, "no session specified");
+    return;
+  }
+  let sessionName = url.substring(1); // removing leading /
   
-  console.log("new connection");
+  if (sessionName == "")
+      sessionName = "default";
+  console.log("session name: " + sessionName);
+  setSessionName(ws, sessionName);
+  let session = getSessionFromClient(ws);
+  if (session === null) {
+    console.log("Creating new session: " + sessionName);
+    session = freshSession(sessionName);
+    sessions[sessionName] = session;    
+  }
   
+ 
+  
+
     // */
   
   ws.on('error', console.error);
   ws.on('close', function close() {
-    if (wss.clients.size == 0)
-        restart();
+    // if (wss.clients.size == 0)
+        closeIfNoClient(session);
   });
-  ws.on('message', function message(data, isBinary) {
+  ws.on('message', function message(data) {
     let str = data.toString();;
-    console.log('received: %s', str.substring(0,200));
+    console.log('received (' + session.name + '): %s', str.substring(0,200));
     // console.log('the queue:');
     // console.log(queue);
     const msg:ClientToServerDiff = JSON.parse(str);
@@ -246,47 +327,47 @@ wss.on('connection', function connection(ws:WebSocket.WebSocket) {
     // if (msg.expectedId > getExpectedId(ws))
     setExpectedId(ws, msg.expectedId);
 
-    if (msg.expectedId > nextId) {
+    if (msg.expectedId > session.nextId) {
       closeConnection(ws, 
-        "impossible: expectedId(" + msg.expectedId + ") > nextId(" + nextId + ")");
+        "impossible: expectedId(" + msg.expectedId + ") > nextId(" + session.nextId + ")");
       return;
     }
 
-    if (lastSnapshot === null) {
+    if (session.lastSnapshot === null) {
       console.log("no snapshot available (prelude)");
-      handleReceiveStart(ws, msg);
+      handleReceiveStart(session, ws, msg);
       return;
     }
     
-    if (!sendQueueSince(ws, msg.expectedId))
+    if (!sendQueueSince(session, ws, msg.expectedId))
         return;
 
 
 
-    if (lastBreakId !== null && msg.expectedId <= lastBreakId) {
+    if (session.lastBreakId !== null && msg.expectedId <= session.lastBreakId) {
       return;
     }
     
     if (msg.break) 
-      lastBreakId = nextId;
+      session.lastBreakId = session.nextId;
 
     
-    if (msg.snapshot && lastSnapshot.id > msg.expectedId) {
-      updateLastSnapshot(ws, msg.msg, msg.expectedId - 1);
+    if (msg.snapshot && session.lastSnapshot.id > msg.expectedId) {
+      updateLastSnapshot(session, ws, msg.msg, msg.expectedId - 1);
     }
 
     // msg.id = currentId;
     let currentId:number;
     
     if (msg.history)
-      currentId = nextId;      
+      currentId = session.nextId;      
     else
-      currentId = nextId - 1;
+      currentId = session.nextId - 1;
 
-    saveMsg(ws, msg);
+    saveMsg(session, ws, msg);
 
 
 
-   broadcastMsg(ws, msg, currentId);
+   broadcastMsg(session, ws, msg, currentId);
   });
 });
