@@ -30,7 +30,7 @@ fixModel model state =
    if Graph.existsAll (getActiveGraph model)
        [state.n1, state.e1.id, state.n2, state.e2.id]
    then 
-     model else {model | mode = DefaultMode}
+     model else setMode DefaultMode model
  
 possibleSquareStates : Graph GraphDefs.NodeLabel GraphDefs.EdgeLabel -> Graph.NodeId {- NodeContext a b -} -> List SquareState
 possibleSquareStates g id =
@@ -108,7 +108,7 @@ square_updatePossibility : Model -> Int -> NodeId -> ( Model, Cmd Msg )
 square_updatePossibility m idx node =
     let modelGraph = getActiveGraph m in
     square_setPossibility idx modelGraph node
-        |> Maybe.map (\state -> { m | mode = SquareMode state })
+        |> Maybe.map (\state -> setMode (SquareMode state) m)
         |> Maybe.withDefault m
         |> noCmd
 
@@ -145,7 +145,7 @@ nextStep model finish state =
     let  selIds = IntDict.insert tabId [movedNode] IntDict.empty in
     -- let finalGraph = setSelModif movedNode info.graph in
      if finish then        
-        ({ model | mode = DefaultMode }, -- computeLayout ()
+        (setMode DefaultMode model, -- computeLayout ()
           protocolSend
          {id =  Msg.defaultModifId,
           modif = GraphInfo.activeGraphModif model.graphInfo modif,
@@ -161,7 +161,7 @@ nextStep model finish state =
                 List.map (\id -> {id = id, label = Nothing, tabId = tabId})
         in
         let (nextModel, idModif) = popIdModif model in
-        let finalModel = {nextModel | mode = DefaultMode } in
+        let finalModel = setMode DefaultMode nextModel in
         (finalModel, 
             protocolSend -- finalModel idModif
           <| 
@@ -392,12 +392,12 @@ update state msg model =
         KeyChanged False _ (Character 's') ->            
                     square_updatePossibility model state.configuration state.chosenNode
         KeyChanged False _ (Character 'a') ->
-                    noCmd  { model | mode = SquareMode { state | labelConfiguration = state.labelConfiguration + 1}}                    
+                    noCmd (setMode (SquareMode { state | labelConfiguration = state.labelConfiguration + 1}) model)
 
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next False          
         MouseMove _ -> 
-                 noCmd  { model | mode = SquareMode { state | guessPos = False}}                    
+                 noCmd (setMode (SquareMode { state | guessPos = False}) model)                    
         KeyChanged False _ (Control "Enter") -> next True
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next False

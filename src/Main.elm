@@ -292,11 +292,11 @@ subscriptions m =
     (if m.scenario == Watch then [promptedEquation QuickInput]
     else [])
     -- ++
-    -- (if m.mode == DefaultMode && m.mouseOnCanvas then
+    -- (if currentMode m == DefaultMode && m.mouseOnCanvas then
     --    [ onPaste (Do << decodeGraph)]
     --  else [])
     ++
-    if case m.mode of
+    if case currentMode m of
         ResizeMode _ -> False
         _ -> not m.mouseOnCanvas
     then [] 
@@ -312,13 +312,13 @@ subscriptions m =
       onKeyDownActive
            (\e -> e |> D.decodeValue (D.map2 ( \ks k -> 
                let checkCtrl =
-                    if ks.ctrl && m.mode == DefaultMode then
+                    if ks.ctrl && currentMode m == DefaultMode then
                       Do <| preventDefault e
                     else Msg.noOp
                in
                case k of
                  Character '/' ->
-                    case m.mode of
+                    case currentMode m of
                       DefaultMode  -> Do <| preventDefault e
                       SplitArrow _ -> Do <| preventDefault e
                       _ -> Msg.noOp 
@@ -442,13 +442,13 @@ setFirstTabEquationPerform m s =
                  graphDrawingChain t.sizeGrid s.isVerbatim Graph.empty chain
               }
         in 
-        noCmd { mUpdated | mode = DefaultMode}
-        -- ({ mUpdated | mode = DefaultMode}, computeLayout())
+        noCmd (setMode DefaultMode mUpdated)
+        -- (setMode DefaultMode mUpdated, computeLayout())
 
 {-
 handleCommand : {isSender : Bool, msg : ProtocolMsg} -> Model -> (Model, Cmd Msg)
 handleCommand r model =
-  let currentMode = model.mode in
+  let currentModeValue = currentMode model in
   let (suite, idModif) =
           case r.command of
             Noop -> (Nothing, Nothing)
@@ -483,7 +483,7 @@ update msg modeli =
     -- switchtab non c'est pas bon, il faut d'abord finaliser le mode
                 SwitchTab i -> 
                     Maybe.withDefault modeli
-                    <| activateTab { modeli | mode = DefaultMode} i
+                    <| activateTab (setMode DefaultMode modeli) i
                 
                 
                 KeyChanged _ r _ -> { modeli | specialKeys = r }
@@ -552,7 +552,7 @@ update msg modeli =
                 updateActiveGraph model 
                 GraphDefs.clearDims
         in
-        noCmd {newModel | mode = MakeSaveMode}
+        noCmd (setMode MakeSaveMode newModel)
         -- ({newModel | mode = MakeSaveMode}, computeLayout())
      Save -> save model
      RulerMargin rulerMargin -> noCmd {model | rulerMargin = rulerMargin}
@@ -612,7 +612,7 @@ update msg modeli =
         (model, protocolSendMsg 
           <| ClearProtocol arg)
      _ ->
-      case model.mode of
+      case currentMode model of
         MakeSaveMode -> noCmd model
         NewLine state -> Modes.NewLine.update state msg model
         DefaultMode -> update_DefaultMode msg model
@@ -636,25 +636,25 @@ update_LatexPreamble : String -> Msg -> Model -> (Model, Cmd Msg)
 update_LatexPreamble s msg model =
     case msg of
         LatexPreambleSwitch -> 
-            updateModif { model | mode = DefaultMode } 
+            updateModif (setMode DefaultMode model) 
                 <| GraphInfo.LatexPreamble s
         LatexPreambleEdit newPreamble -> 
-            noCmd { model | mode = LatexPreamble newPreamble }
+            noCmd (setMode (LatexPreamble newPreamble) model)
         -- KeyChanged False _ (Control "Escape") -> switch_Default model
         _ -> noCmd model
 
 checkMakeSave : Model -> (Model, Cmd Msg)
 checkMakeSave model =
-  if model.mode == MakeSaveMode
+  if currentMode model == MakeSaveMode
      && (getActiveGraph model |> GraphDefs.allDimsReady )
   then 
-    let edges =
-           getActiveGraph model |>
-          Graph.edges |> List.filterMap GraphDefs.filterEdgeNormal
-         |> List.map (\e -> (e.id, e.label.details.dims))
-    in
+    -- let edges =
+    --        getActiveGraph model |>
+    --       Graph.edges |> List.filterMap GraphDefs.filterEdgeNormal
+    --      |> List.map (\e -> (e.id, e.label.details.dims))
+    -- in
     -- let _ = Debug.log "les dimensions:" edges in
-    save { model | mode = DefaultMode }
+    save <| setMode DefaultMode model
   else
     noCmd model
 
@@ -675,7 +675,7 @@ update_RectSelect msg {orig,hold} keep model =
           if hold then 
             finalise ()
           else
-            noCmd <| { model | mode = RectSelect { orig = orig, hold = True } }
+            noCmd <| setMode (RectSelect { orig = orig, hold = True }) model
       {- MouseUp -> switch_Default 
                   { model | graph = selectGraph model orig keep } -}
       MouseClick ->
@@ -691,8 +691,8 @@ update_RectSelect msg {orig,hold} keep model =
 
 update_Enlarge : Msg -> EnlargeState -> Model -> (Model, Cmd Msg)
 update_Enlarge msg state model =
-   let fin () = updateModifHelper { model | mode = DefaultMode } <| enlargeModif model state in
-   let updateState st = { model | mode = EnlargeMode st } in
+   let fin () = updateModifHelper (setMode DefaultMode model) <| enlargeModif model state in
+   let updateState st = setMode (EnlargeMode st) model in
    let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
    case msg of
       KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
@@ -708,7 +708,7 @@ update_Enlarge msg state model =
       -- au cas ou le click n'a pas eu le temps de s'enregistrer
       --   NodeClick n -> switch_Default { model | selectedObjs = [ONode n]} 
       --   EdgeClick n -> switch_Default { model | selectedObjs = [OEdge n]}
-      _ -> noCmd <| { model | mode = EnlargeMode { state | pos = InputPosition.update state.pos msg }}
+      _ -> noCmd <| setMode (EnlargeMode { state | pos = InputPosition.update state.pos msg }) model
 
 selectLoop : Bool -> Model -> Model
 selectLoop direction model =
@@ -861,8 +861,8 @@ update_DefaultMode msg model =
            
         MouseMove _ -> 
              weaklySelect <| GraphDefs.closest model.mousePos modelGraph             
-        MouseDown _ -> noCmd <| { model | mode = RectSelect {orig = model.mousePos, hold = False} }
-        LatexPreambleSwitch -> noCmd <| { model | mode = LatexPreamble model.graphInfo.latexPreamble }
+        MouseDown _ -> noCmd <| setMode (RectSelect {orig = model.mousePos, hold = False}) model
+        LatexPreambleSwitch -> noCmd <| setMode (LatexPreamble model.graphInfo.latexPreamble) model
         Marker s ->
             let edges = GraphDefs.selectedEdges modelGraph in
             let newStyle oldStyle = 
@@ -902,7 +902,7 @@ update_DefaultMode msg model =
             in
             (model, Cmd.batch [copyCmd, removeCmd])
         KeyChanged False _ (Character 'd') ->
-            noCmd <| { model | mode = DebugMode }
+            noCmd <| setMode DebugMode model
         KeyChanged True _ (Character 'g') -> 
             let pressTimeoutMs = 100 in
             (Modes.Move.initialise defaultModifId UndefinedMove model,
@@ -1224,21 +1224,18 @@ selectByClick model =
 
 initialise_Resize : Model -> Model
 initialise_Resize model =
-         { model | mode = 
-                       ResizeMode { sizeGrid = getActiveSizeGrid model,
+         setMode (ResizeMode { sizeGrid = getActiveSizeGrid model,
                                     onlyGrid = False
-                                  }
-                     }             
+                                  }) model
 
 initialiseEnlarge : Model -> Model
 initialiseEnlarge model =
-   { model | mode = EnlargeMode 
+   setMode (EnlargeMode 
              {orig = model.mousePos,
              -- onlySubdiag = True,
               pos = InputPosMouse,
               direction = Free
-       }
-   }
+       }) model
 
 update_DebugMode : Msg -> Model -> (Model, Cmd Msg)
 update_DebugMode msg model =
@@ -1261,20 +1258,20 @@ update_Resize st msg m =
                   |>
                   List.map (protocolSendModif Msg.defaultModifId)
           in 
-          ({ m | mode = DefaultMode}, Cmd.batch
+          (setMode DefaultMode m, Cmd.batch
              modifications)
-          -- noCmd <| applyModifs { m | mode = DefaultMode}  modifications
+          -- noCmd <| applyModifs (setMode DefaultMode m)  modifications
     --  pushHistory [] m
     --     let m2 = pushHistory m in
     --      noCmd <|
-    --       setActiveGraph (setActiveSizeGrid { m2 | mode = DefaultMode } st.sizeGrid)
+    --       setActiveGraph (setActiveSizeGrid (setMode DefaultMode m2) st.sizeGrid)
     --       <| graphResize st m
          -- computeLayout())
   in
   -- let _ = Debug.log "msg resize" msg in
   let increment = 10 in
   let newState st2 = 
-       noCmd {m | mode = ResizeMode st2 }
+       noCmd (setMode (ResizeMode st2) m)
   in
   let newSize si =
        let s = max minSizeGrid <| min maxSizeGrid si in
@@ -1282,7 +1279,7 @@ update_Resize st msg m =
   in
   case msg of
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay m
-        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
+        KeyChanged False _ (Control "Escape") -> (setMode DefaultMode m, Cmd.none)
         KeyChanged False _ (Control "Enter") -> finalise ()
         -- MouseClick -> finalise ()        
         KeyChanged False _ (Character 'k') -> newSize (st.sizeGrid + increment)
@@ -1365,7 +1362,7 @@ enlargeGraph m orig =
 graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
     let modelGraph = getActiveGraph m in
-    case m.mode of
+    case currentMode m of
         MakeSaveMode -> collageGraphFromGraph m modelGraph 
         CustomizeMode s -> Modes.Customize.graphDrawing m s
         DefaultMode -> collageGraphFromGraph m modelGraph
@@ -1484,7 +1481,7 @@ helpMsg model =
     -- let b = \ s -> Html.span [] [Html.text "[", Html.b [] [Html.text s], Html.text"]"]
     -- in
     -- let info = \ s1 s2 -> Html.span [] (b s1) (Html.text s2)
-    case model.mode of
+    case currentMode model of
         DefaultMode ->
             -- msg <| "Default mode. couc[c]" 
             msg <| "Default mode.\n "
@@ -1625,7 +1622,7 @@ helpMsg model =
                          ++ if hold then "[s] to confirm." 
                          else "[s] to select without holding the mouse, [click] to confirm."
 
-        _ -> let txt = "Mode: " ++ Modes.toString model.mode ++ ". [ESC] to cancel and come back to the default"
+        _ -> let txt = "Mode: " ++ Modes.toString (currentMode model) ++ ". [ESC] to cancel and come back to the default"
                    ++ " mode."
              in
                 makeHelpDiv [ Html.text txt ]
@@ -1645,7 +1642,7 @@ additionnalDrawing m =
                       (getActiveSizeGrid m) p) orig
               _ -> drawSelPoint m.mousePos orig
    in
-   case m.mode of
+   case currentMode m of
       RectSelect {orig} -> drawSel InputPosMouse orig
       EnlargeMode state -> 
          case (state.pos, state.direction) of
@@ -1796,14 +1793,14 @@ viewGraph model =
                   minRulerMargin maxRulerMargin model.rulerMargin ]
           )
           ++
-           (if isResizeMode model.mode then
+           (if isResizeMode (currentMode model) then
                [ HtmlDefs.slider SizeGrid 
                 ("Grid size (" ++ String.fromInt (Model.getCurrentSizeGrid model) ++ ")")
                   minSizeGrid maxSizeGrid (Model.getCurrentSizeGrid model) ]
             else
                [])
           ++ 
-          case model.mode of
+          case currentMode model of
             LatexPreamble s -> 
                 [
                 Html.p [] [Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Confirm preamble"]],

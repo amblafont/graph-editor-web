@@ -202,9 +202,23 @@ setActiveGraph m g =
 
 getCurrentSizeGrid : Model -> Int
 getCurrentSizeGrid m = 
-  case m.mode of
+  case currentMode m of
       ResizeMode s -> s.sizeGrid
       _ -> GraphInfo.getActiveSizeGrid m.graphInfo
+
+-- Fonctions helper pour gérer la pile de modes
+
+-- Obtenir le mode actuel (en tête de pile)
+currentMode : Model -> Mode
+currentMode m = m.mode
+
+
+
+
+-- Remplacer complètement la pile de modes
+setMode : Mode -> Model -> Model
+setMode mode m =
+    { m | mode = mode }
 
 setActiveSizeGrid : Model -> Int -> Model
 setActiveSizeGrid m s =
@@ -284,7 +298,7 @@ createModel {defaultGridSize, rulerMargin, saveLoadButtons} =
     , history = []
     , nextModifId = 0
     , topModifId = defaultModifId
-    , mode = DefaultMode
+    , mode = DefaultMode  -- Pile initialisée avec DefaultMode
     , statusMsg = ""
     , mouseOnCanvas = False
      -- Debug.toString ([pointToAngle (0,1), pointToAngle (0.001,1),
@@ -442,8 +456,7 @@ noCmd m =
 
 
 switch_Default : Model -> ( Model, Cmd Msg )
-switch_Default m =
-    noCmd { m | mode = DefaultMode }
+switch_Default m = noCmd <| setMode DefaultMode m
 
 
 

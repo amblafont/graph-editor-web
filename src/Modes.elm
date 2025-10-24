@@ -6,7 +6,7 @@ import Polygraph as Graph exposing (EdgeId, NodeId)
 import InputPosition exposing (InputPosition)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Format.GraphInfo as GraphInfo exposing (TabId)
-import Msg exposing (ModifId, MoveMode)
+import Msg exposing (ModifId, MoveMode, ModeReturn(..))
 import Drawing.Color as Color
 
 

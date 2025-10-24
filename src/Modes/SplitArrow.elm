@@ -30,7 +30,7 @@ isValid model {chosenEdge, source, target} =
   
 fixModel : Model -> SplitArrowState -> Model
 fixModel model state =
-  if isValid model state then model else {model | mode = DefaultMode }
+  if isValid model state then model else popMode model
    
 
 initialise : Model -> ( Model, Cmd Msg )
@@ -42,13 +42,13 @@ initialise m =
         |> Maybe.andThen (\ e -> 
           GraphDefs.filterNormalEdges e.label.details
           |> Maybe.map (\ l -> 
-            noCmd {m | mode = SplitArrow 
+            noCmd <| setMode (SplitArrow 
                    { chosenEdge = id, source = e.from, target = e.to, 
                      pos = InputPosMouse,
                      label = GraphDefs.mapDetails (always l) e.label,
                      labelOnSource = True,
                      guessPos = True}
-                   })))
+                   ) m ))) 
         
         -- |> Maybe.map
         -- -- prevent bugs (if the mouse is thought
@@ -70,7 +70,7 @@ nextStep model finish state =
     in
     -- let finalGraph = setSelModif info.movedNode info.graph in
     let finalGraph = info.graph in
-     if finish then ({ model | mode = DefaultMode }, 
+     if finish then (popMode model, 
         protocolSendGraphModif model.graphInfo Msg.defaultModifId finalGraph)
      --computeLayout())  
     else
@@ -93,7 +93,7 @@ nextStep model finish state =
               )
         in
         let (nextModel, idModif) = popIdModif model in
-        ({nextModel | mode = DefaultMode}, 
+        (popMode nextModel, 
         protocolSend
         { id =  idModif 
         , modif = GraphInfo.activeGraphModifHelper nextModel.graphInfo finalGraph
@@ -194,7 +194,7 @@ graphDrawing m state =
 update : SplitArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
     let next finish = nextStep model finish state in
-    let updateState st = { model | mode = SplitArrow st } in
+    let updateState st = setMode (SplitArrow st) model in
     let updatePos st = InputPosition.updateNoKeyboard st.pos msg in
     case msg of  
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model

@@ -3,7 +3,7 @@ module Modes.Customize exposing (initialise, fixModel, update, help, graphDrawin
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDrawing exposing (NodeDrawingLabel,EdgeDrawingLabel)
 import Modes exposing (Mode(..), CustomizeModeState)
-import Model exposing (noCmd, Model, collageGraphFromGraph, getActiveGraph, toggleHelpOverlay, switch_Default)
+import Model exposing (noCmd, Model, collageGraphFromGraph, getActiveGraph, toggleHelpOverlay, switch_Default, setMode)
 import Polygraph as Graph exposing (Graph, Edge)
 import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
@@ -16,14 +16,14 @@ initialise model =
      let modelGraph = getActiveGraph model in
      let edges = GraphDefs.selectedEdges modelGraph -- |> List.filter (.label >> GraphDefs.isNormal) 
      in
-     if edges == [] then { model | mode = DefaultMode } else 
-    { model | mode = CustomizeMode { edges = edges, mode = MainEdgePart} } 
+     if edges == [] then setMode DefaultMode model else 
+    setMode (CustomizeMode { edges = edges, mode = MainEdgePart}) model 
 
 fixModel : Model -> Model
 fixModel = initialise
 
 updateState : Model -> CustomizeModeState  -> Model
-updateState m state = {m | mode = CustomizeMode state}
+updateState m state = setMode (CustomizeMode state) m
 
 finaliseModif : Model -> List (Edge EdgeLabel) -> Graph.ModifHelper NodeLabel EdgeLabel
 finaliseModif model edges = 
@@ -32,7 +32,7 @@ finaliseModif model edges =
 
 finalise : Model -> List (Edge EdgeLabel) -> (Model, Cmd a)
 finalise model edges = 
-    updateModifHelper { model | mode = DefaultMode }
+    updateModifHelper (setMode DefaultMode model)
     <| finaliseModif model edges
 
 updateEdgeShiftBend : List (Edge EdgeLabel) -> Char -> List (Edge EdgeLabel)

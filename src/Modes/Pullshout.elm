@@ -1,14 +1,12 @@
 module Modes.Pullshout exposing (initialise, fixModel, update, graphDrawing, help)
 import Polygraph as Graph exposing (EdgeId, Graph)
 import Modes exposing (Mode(..), PullshoutState, PullshoutKind(..))
-import Model exposing (switch_Default)
-import Model exposing (Model, switch_Default, noCmd, collageGraphFromGraph, getActiveGraph)
+import Model exposing (Model, switch_Default, noCmd, collageGraphFromGraph, getActiveGraph, toggleHelpOverlay, setMode)
 import Msg exposing (Msg(..))
 import HtmlDefs exposing (Key(..))
 import GraphDrawing exposing (NodeDrawingLabel, EdgeDrawingLabel)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import List.Extra
-import Model exposing ({- setSaveGraph, -} toggleHelpOverlay)
 import CommandCodec exposing (updateModifHelper)
 import Drawing.Color as Color
 
@@ -29,12 +27,12 @@ fixModel : Model -> PullshoutState -> Model
 fixModel model state =
    let modelGraph = getActiveGraph model in
    if Graph.getEdge state.chosenEdge modelGraph == Nothing 
-   then {model | mode = DefaultMode} else
+   then setMode DefaultMode model else
    case List.filter (Graph.exists modelGraph) 
      (state.currentDest::state.possibilities) of
-        [] -> {model | mode = DefaultMode}
-        t :: q -> {model | mode = PullshoutMode 
-                        {state | currentDest = t, possibilities = q}}
+        [] -> setMode DefaultMode model
+        t :: q -> setMode (PullshoutMode 
+                        {state | currentDest = t, possibilities = q}) model
    
 
 possibleDests : Graph NodeLabel EdgeLabel -> EdgeId -> PullshoutKind -> List EdgeId
@@ -86,14 +84,14 @@ nextPullshout m k st =
 
 update : PullshoutState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
-    let updateState st = { model | mode = PullshoutMode st } in
+    let updateState st = setMode (PullshoutMode st) model in
     case msg of  
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model  
         KeyChanged False _ (Character 'p') -> noCmd <| updateState <| nextPullshout model Pullback state 
         KeyChanged False _ (Character 'P') -> noCmd <| updateState <| nextPullshout model Pushout state 
         KeyChanged False _ (Control "Enter") -> 
-            updateModifHelper { model | mode = DefaultMode } <| graph model state
+            updateModifHelper (setMode DefaultMode model) <| graph model state
         KeyChanged False _ (Character c) ->
            case Color.fromChar c of            
             Just col -> noCmd <| updateState { state | color = col }

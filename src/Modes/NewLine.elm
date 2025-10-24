@@ -20,17 +20,17 @@ import CommandCodec exposing (updateModifHelper)
 
 initialise : Model -> ( Model, Cmd Msg )
 initialise m =
-     noCmd { m  | mode = NewLine
-        { initialPos = m.mousePos, bend = 0 }  }
+     noCmd (setMode (NewLine
+        { initialPos = m.mousePos, bend = 0 }) m)
             
 
 update : NewLineState -> Msg -> Model -> ( Model, Cmd Msg )
 update state msg model =
-    let finalise () = let newModel = { model | mode = DefaultMode } in 
+    let finalise () = let newModel = setMode DefaultMode model in 
               updateModifHelper newModel <| makeGraph newModel state
 
     in
-    let updState s = noCmd { model | mode = NewLine s } in
+    let updState s = noCmd (setMode (NewLine s) model) in
     case msg of
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
         KeyChanged False _ (Control "Escape") -> switch_Default model

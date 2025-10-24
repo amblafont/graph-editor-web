@@ -3,7 +3,7 @@ port module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update,
 
 
 import GraphDrawing exposing (..)
-import Polygraph as Graph exposing (Graph, NodeId, EdgeId)
+import Polygraph as Graph exposing (Graph)
 import Msg exposing (Msg(..))
 import ArrowStyle exposing (EdgePart(..))
 import HtmlDefs exposing (Key(..))
@@ -32,7 +32,7 @@ requestMarkerDefault : String -> Cmd a
 requestMarkerDefault s = requestMarker <| if s == "" then "\\bullet" else s
 
 updateState : Model -> NewArrowState  -> Model
-updateState m state = {m | mode = NewArrow state}
+updateState m state = setMode (NewArrow state) m
 {-
 fixModel : Model -> NewArrowState -> Model
 fixModel model state = 
@@ -61,14 +61,13 @@ reinitialise : Model -> NewArrowState -> Model
 reinitialise m state =
     let modelGraph = getActiveGraph m in
     -- noCmd <|
-    if GraphDefs.isEmptySelection modelGraph then { m | mode = DefaultMode } else
-     { m  | mode = NewArrow
+    if GraphDefs.isEmptySelection modelGraph then setMode DefaultMode m else
+     setMode (NewArrow
         { state | 
             chosen = GraphDefs.selectedGraph modelGraph
             -- mode = mode
             -- merge = False 
-            }
-        }  
+            }) m  
 
 initialise : Model -> Model
 initialise m =
@@ -113,7 +112,7 @@ nextStep model {finish, merge} state =
      
      
      if finish then 
-        ({model | mode = DefaultMode}, protocolSend { id = defaultModifId ,
+        (setMode DefaultMode model, protocolSend { id = defaultModifId ,
           modif = modif,
           selIds = selIds,
           command = Msg.Noop
@@ -134,7 +133,7 @@ nextStep model {finish, merge} state =
                         , tabId = model.graphInfo.activeTabId}) ids 
         in
         let (nextModel, idModif) = popIdModif model in
-        let finalModel = { nextModel | mode = DefaultMode} in
+        let finalModel = setMode DefaultMode nextModel in
         (finalModel, 
         protocolSend 
         { id = idModif ,
@@ -179,11 +178,11 @@ updateNormal state msg model =
            
            case state.kind  of
              CreateArrow id -> 
-                { model | mode =
-                          Modes.Pullshout.initialise modelGraph id k
+                setMode 
+                          (Modes.Pullshout.initialise modelGraph id k
                           |> Maybe.map PullshoutMode
-                          |> Maybe.withDefault (NewArrow state)
-                       }
+                          |> Maybe.withDefault (NewArrow state))
+                          model
              _ -> model
     in
     let changeMode m = 

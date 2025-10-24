@@ -45,11 +45,11 @@ initialise m state =
     -- let m = applyTopModif state mi in
 
          
-    let cancelModel = { m | mode = DefaultMode } in
+    let cancelModel = setMode DefaultMode m in
     case (getHead m.graphInfo state, nextState state) of 
       (Nothing,Nothing) -> cancelModel
       (Just head,_) -> 
-         activateTab { m | mode = RenameMode state } head.tabId
+         activateTab (setMode (RenameMode state) m) head.tabId
          |> Maybe.withDefault cancelModel
       (Nothing, Just state2) -> initialise m state2
     
@@ -133,13 +133,11 @@ type Action =
 update : RenameState -> Msg -> Model -> (Model, Cmd Msg)
 update state msg model =
    let edit_label s = 
-         noCmd {model | mode = RenameMode 
-         <| editLabel state s
-         }
+         noCmd (setMode (RenameMode (editLabel state s)) model)
    in 
     case msg of
       RenderedTextInput ->
-            ({model | mode = RenameMode { state | alreadySelected = True }},
+            (setMode (RenameMode { state | alreadySelected = True }) model,
               Cmd.batch <| Msg.focusId HtmlDefs.idInput ::
               if state.alreadySelected then [] else
               [ HtmlDefs.select HtmlDefs.idInput ] )
@@ -170,15 +168,14 @@ nextStage action state model =
             case (action, list) of
               (Tab, head :: t :: q) ->
                 case 
-                   activateTab {model|mode = 
-                        RenameMode {state 
+                   activateTab (setMode (RenameMode {state 
                             | next = t :: q,
-                              alreadySelected = False}}
+                              alreadySelected = False}) model)
                       head.tabId
                       of 
                   Nothing -> aux (t :: q)
                   Just newModel -> newModel
-              _ -> {model | mode = DefaultMode}
+              _ -> setMode DefaultMode model
     in
     (aux state.next, command)
     

@@ -2,7 +2,7 @@ module Msg exposing (Msg(..), noOp, focusId, unfocusId,
   onTabPreventDefault, Scenario(..), LoadGraphInfo, mapLoadGraphInfo,
   isSimpleScenario, loadGraphInfoToMsg, Command(..), ModifId, defaultModifId,
   trueModifId, modifIdsEq, idModifCodec
-  , ProtocolMsg(..), ProtocolModif,  MoveMode(..)
+  , ProtocolMsg(..), ProtocolModif,  MoveMode(..), ModeReturn(..)
   -- , RenameCommand, CreatePointCommand
   )
 
@@ -33,6 +33,10 @@ type MoveMode =
     | FreeMove
     -- we don't know yet
     | UndefinedMove
+
+-- Type pour les valeurs de retour des modes
+type ModeReturn
+    = NoReturn
 
 
 
@@ -192,6 +196,8 @@ type Msg
   | ProtocolReceive (List {isSender : Bool, msg : ProtocolMsg})
   | ProtocolRequestSnapshot
   | RenderedTextInput
+  -- Message interne pour gérer les valeurs de retour des modes
+  | InternalMsg ModeReturn
   -- | ProtocolReceiveSnapshot GraphInfo
   -- | ComputeLayout
   -- | FindInitial

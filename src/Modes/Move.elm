@@ -6,7 +6,7 @@ import Modes exposing (MoveDirection(..), Mode(..), MoveState)
 import Model exposing (Model, getActiveGraph, setActiveGraph, 
    getActiveSizeGrid, 
    switch_Default, noCmd, toggleHelpOverlay,
-   collageGraphFromGraph)
+   collageGraphFromGraph, setMode)
 import Polygraph as Graph exposing (Graph)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Geometry.Point as Point
@@ -23,27 +23,25 @@ isValid model =
 initialise : ModifId -> MoveMode -> Model -> Model
 initialise id mode model =
   --  let modelGraph = getActiveGraph model in
-   { model | mode = 
-        if not <| isValid model 
-         then
-           -- Nothing is selected
-           DefaultMode
-         else 
-           Move 
-              { -- save = save,  
-              idModif = id,             
-              pos = InputPosMouse,
-              direction = Free,
-              -- merge = False,
-              mode = mode }
-      }
+   if not <| isValid model 
+   then
+       -- Nothing is selected
+       setMode DefaultMode model
+   else 
+       setMode (Move 
+          { -- save = save,  
+          idModif = id,             
+          pos = InputPosMouse,
+          direction = Free,
+          -- merge = False,
+          mode = mode }) model
 
 update : Msg -> Modes.MoveState -> Model -> (Model, Cmd Msg)
 update msg state model =
     let movedRet merge = 
            let info = mkInfo model merge state in
            if info.valid then
-              updateModifHelperWithId { model | mode = DefaultMode }
+              updateModifHelperWithId (setMode DefaultMode model)
                  state.idModif info.graph
            else
               
@@ -53,7 +51,7 @@ update msg state model =
     let terminedRet merge = 
          if terminable then movedRet merge else noCmd model
     in
-    let updateState st = { model | mode = Move st } in
+    let updateState st = setMode (Move st) model in
     let updateDirection direction = noCmd <| updateState  { state | direction = direction} in
     case msg of
         KeyChanged True _ (Control "Control") -> terminedRet True

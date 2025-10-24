@@ -1,7 +1,7 @@
 module Modes.CutHead exposing (update, graphDrawing, help, initialise, fixModel)
 import Modes exposing (CutHeadState, Mode(..), MoveDirection(..))
 import Modes.Move
-import Model exposing (Model, {- setActiveGraph, setSaveGraph, -} noCmd, toggleHelpOverlay, getActiveGraph)
+import Model exposing (Model, {- setActiveGraph, setSaveGraph, -} noCmd, toggleHelpOverlay, getActiveGraph, setMode)
 import Msg exposing (Msg(..), Command(..))
 import Polygraph as Graph exposing (Graph)
 import HtmlDefs exposing (Key(..))
@@ -18,8 +18,8 @@ fixModel : Model -> CutHeadState -> Model
 fixModel model state =
    let modelGraph = getActiveGraph model in
    case Graph.getEdge state.edge.id modelGraph of 
-     Nothing -> {model | mode = DefaultMode }
-     Just edge -> {model | mode = CutHead {state | edge = edge}}
+     Nothing -> setMode DefaultMode model
+     Just edge -> setMode (CutHead {state | edge = edge}) model
 
 
 initialise : Model -> Model
@@ -28,7 +28,7 @@ initialise model =
    case GraphDefs.selectedEdge modelGraph of
       Nothing -> model
       Just e -> if GraphDefs.isPullshout e.label then model else 
-                 {  model | mode = CutHead { edge = e,head = True, duplicate = False } }   
+                 setMode (CutHead { edge = e,head = True, duplicate = False }) model   
 
 help : String 
 help =          HtmlDefs.overlayHelpMsg
@@ -40,14 +40,14 @@ update : CutHeadState -> Msg -> Model -> (Model, Cmd Msg)
 update state msg m =
   let finalise merge = 
          let info = makeGraph merge state m in
-         updateModifHelper {m | mode = DefaultMode} info.graph
-         -- (setSaveGraph {m | mode = DefaultMode} info.graph, Cmd.none)
+         updateModifHelper (setMode DefaultMode m) info.graph
+         -- (setSaveGraph (setMode DefaultMode m) info.graph, Cmd.none)
          -- computeLayout())
   in
-  let changeState s = { m | mode = CutHead s } in
+  let changeState s = setMode (CutHead s) m in
   case msg of
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay m
-        KeyChanged False _ (Control "Escape") -> ({ m | mode = DefaultMode}, Cmd.none)
+        KeyChanged False _ (Control "Escape") -> (setMode DefaultMode m, Cmd.none)
         KeyChanged False _ (Control "Enter") -> finalise False
         KeyChanged True _ (Control "Control") -> finalise True
         MouseClick -> finalise False
