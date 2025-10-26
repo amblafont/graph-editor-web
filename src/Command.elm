@@ -22,6 +22,7 @@ import Modes.CutHead
 import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.Square
+import Modes.Bend
 import CommandCodec exposing (protocolSendMsg)
 import HtmlDefs -- exposing (computeLayout)
 import Maybe.Extra
@@ -59,6 +60,7 @@ fixModel modeli =
       ResizeMode _ -> defaultIfTabChanged 
       EnlargeMode _ -> defaultIfTabChanged
       NewLine state -> defaultIfTabChanged
+      BendMode state -> Modes.Bend.fixModel model state
       NewArrow state -> 
          ifTabChanged <| \ _ -> Modes.NewArrow.fixModel model state
       Move _ -> if changedTab || not (Modes.Move.isValid model) then 

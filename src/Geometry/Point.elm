@@ -4,7 +4,7 @@ module Geometry.Point exposing (Point, radius, orthoVectPx, towards, diamondPx, 
   countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
   -- from quiver
   lerp, lendir, rotate, scale, inv_scale, normaliseAngle, barycenter,
-  towardsBentDiagonal)
+  towardsBentDiagonal, scalarProduct)
 
 import ListExtraExtra as List
 -- import Geometry.QuadraticBezier exposing (orthoVectPx)
@@ -17,13 +17,13 @@ name (x, y) = {x = x, y = y}
 unname : NamedPoint -> Point
 unname {x, y} = (x, y)
 
-
+scalarProduct : Point -> Point -> Float
+scalarProduct (x1, y1) (x2, y2) = x1 * x2 + y1 * y2
 -- get the radius of a pont
 
 
 radius : Point -> Float
-radius ( x, y ) =
-    sqrt (x * x + y * y)
+radius p = sqrt <| scalarProduct p p
 
 
 

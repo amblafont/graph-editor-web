@@ -16,16 +16,10 @@ type Mode
     | NewArrow NewArrowState
     | NewLine NewLineState
     | Move MoveState
-      -- the list of ids to be edited, with associated default labels 
-      -- (which may differ from the labels of the objects in the model)
-      -- the boolean specifies whether we need to save the state at the
-      -- end
     | RenameMode RenameState
     | DebugMode
     | SquareMode SquareState
     | RectSelect SelectState
-    -- Bool -- keep previous selection?
-      -- | SplitArrow EdgeId
     | SplitArrow SplitArrowState
     {-
     We should enlarge vertices below right the origin
@@ -33,30 +27,38 @@ type Mode
     -}
     | EnlargeMode EnlargeState
     | CutHead CutHeadState
-    | ResizeMode ResizeState -- current sizegrid
+    | ResizeMode ResizeState
     | PullshoutMode PullshoutState
     | CustomizeMode CustomizeModeState
+    | BendMode BendState
     | MakeSaveMode
     | LatexPreamble String
+type alias BendState =
+  { edge : Graph.Edge EdgeLabel
+  , origMouse : (Float, Float)
+  , direction : Point
+  , origBend : Float
+    }
 
 toString : Mode -> String
 toString m = case m of
-    DefaultMode -> "Default"
-    NewArrow _ -> "New arrow"
-    NewLine _ -> "New line"
-    Move _ -> "Move"
-    RenameMode _ -> "Rename"
-    DebugMode -> "Debug"
-    LatexPreamble _ -> "Latex preamble"
-    SquareMode _ -> "Square"
-    RectSelect _ -> "Rect select"
-    SplitArrow _ -> "Split arrow"
-    EnlargeMode _ -> "Enlarge"
-    CutHead _ -> "Cut head"
-    ResizeMode _ -> "Resize"
-    PullshoutMode _ -> "Pullshout"
-    CustomizeMode _ -> "Color"
-    MakeSaveMode -> "MakeSave"
+  DefaultMode -> "Default"
+  NewArrow _ -> "New arrow"
+  NewLine _ -> "New line"
+  Move _ -> "Move"
+  RenameMode _ -> "Rename"
+  DebugMode -> "Debug"
+  LatexPreamble _ -> "Latex preamble"
+  SquareMode _ -> "Square"
+  RectSelect _ -> "Rect select"
+  SplitArrow _ -> "Split arrow"
+  EnlargeMode _ -> "Enlarge"
+  CutHead _ -> "Cut head"
+  ResizeMode _ -> "Resize"
+  PullshoutMode _ -> "Pullshout"
+  CustomizeMode _ -> "Color"
+  BendMode _ -> "Bend"
+  MakeSaveMode -> "MakeSave"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
     , head : Bool -- the head or the tail?

@@ -10,6 +10,7 @@ import HtmlDefs exposing (Key(..))
 import CommandCodec exposing (updateModifHelper)
 import ArrowStyle exposing (EdgePart(..))
 import Drawing.Color as Color exposing (Color)
+import Modes.Lib
 
 initialise : Model -> Model
 initialise model =
@@ -25,15 +26,13 @@ fixModel = initialise
 updateState : Model -> CustomizeModeState  -> Model
 updateState m state = setMode (CustomizeMode state) m
 
-finaliseModif : Model -> List (Edge EdgeLabel) -> Graph.ModifHelper NodeLabel EdgeLabel
-finaliseModif model edges = 
-    let modelGraph = getActiveGraph model in
-    Graph.md_updateEdges edges modelGraph
+-- finaliseModif : Model -> List (Edge EdgeLabel) -> Graph.ModifHelper NodeLabel EdgeLabel
+-- finaliseModif model edges = 
+--     let modelGraph = getActiveGraph model in
+--     Graph.md_updateEdges edges modelGraph
 
-finalise : Model -> List (Edge EdgeLabel) -> (Model, Cmd a)
-finalise model edges = 
-    updateModifHelper (setMode DefaultMode model)
-    <| finaliseModif model edges
+api = Modes.Lib.makeApi (\modelGraph _ edges -> Graph.md_updateEdges edges modelGraph)
+
 
 updateEdgeShiftBend : List (Edge EdgeLabel) -> Char -> List (Edge EdgeLabel)
 updateEdgeShiftBend edges c =
@@ -72,10 +71,10 @@ update state msg model =
              checkColorable HeadPart
         KeyChanged False _ (Character 'T') ->
              checkColorable TailPart
-        KeyChanged False _ (Character ' ') -> finalise model state.edges
+        KeyChanged False _ (Character ' ') -> api.finalise model state.edges
         KeyChanged False _ (Character c) ->
             case Color.fromChar c of
-                Just color -> finalise model 
+                Just color -> api.finalise model 
                             <| updateEdgeColor state.edges state.mode color
                 Nothing ->
                         let newEdges = updateEdgeShiftBend state.edges c in
@@ -107,6 +106,4 @@ help state =
 
 
 graphDrawing : Model -> CustomizeModeState -> Graph NodeDrawingLabel EdgeDrawingLabel
-graphDrawing m s = 
-    let modif = finaliseModif m s.edges in
-    collageGraphFromGraph m <| Graph.applyModifHelper modif
+graphDrawing m s = api.graphDrawing m s.edges

@@ -62,6 +62,7 @@ import Tuple exposing (first, second)
 import Maybe exposing (withDefault)
 
 import Modes.Square
+import Modes.Bend
 import Modes.NewArrow 
 import Modes.NewLine
 import Modes.SplitArrow
@@ -620,16 +621,15 @@ update msg modeli =
         EnlargeMode state -> update_Enlarge msg state model
         NewArrow astate -> Modes.NewArrow.update astate msg model
         PullshoutMode astate -> Modes.Pullshout.update astate msg model
-            -- update_Modes.NewArrow astate msg m
         RenameMode b -> Modes.Rename.update b msg model
         Move s -> Modes.Move.update msg s model
         DebugMode -> update_DebugMode msg model
-       -- NewNode -> update_NewNode msg model
         SquareMode state -> Modes.Square.update state msg model
         SplitArrow state -> Modes.SplitArrow.update state msg model
         CutHead state -> Modes.CutHead.update state msg model
         ResizeMode s -> update_Resize s msg model
-        CustomizeMode ids -> Modes.Customize.update ids msg model -- update_Color ids msg model
+        CustomizeMode ids -> Modes.Customize.update ids msg model
+        BendMode state -> Modes.Bend.update state msg model
         LatexPreamble s -> update_LatexPreamble s msg model
 
 update_LatexPreamble : String -> Msg -> Model -> (Model, Cmd Msg)
@@ -901,6 +901,8 @@ update_DefaultMode msg model =
                     <| GraphDefs.removeSelected modelGraph
             in
             (model, Cmd.batch [copyCmd, removeCmd])
+        KeyChanged False _ (Character 'b') ->
+            noCmd <| Modes.Bend.initialise model
         KeyChanged False _ (Character 'd') ->
             noCmd <| setMode DebugMode model
         KeyChanged True _ (Character 'g') -> 
@@ -1361,33 +1363,33 @@ enlargeGraph m orig =
  -}
 graphDrawingFromModel : Model -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawingFromModel m =
-    let modelGraph = getActiveGraph m in
-    case currentMode m of
-        MakeSaveMode -> collageGraphFromGraph m modelGraph 
-        CustomizeMode s -> Modes.Customize.graphDrawing m s
-        DefaultMode -> collageGraphFromGraph m modelGraph
-        RectSelect {orig} -> GraphDrawing.toDrawingGraph  <| selectGraph m orig m.specialKeys.shift
-        EnlargeMode p ->
-             enlargeGraph m p
-             |> collageGraphFromGraph m
---        NewNode -> collageGraphFromGraph m modelGraph
-        Move s -> Modes.Move.graphDrawing m s          
-        RenameMode state -> Modes.Rename.graphDrawing m state             
-        DebugMode ->
-            modelGraph |> collageGraphFromGraph m 
-                |> Graph.map
-                   (\id n ->  {n | label = String.fromInt id}) 
-                   (\id -> GraphDrawing.mapNormalEdge (\ e -> {e | label = String.fromInt id}) )
-        NewLine astate -> Modes.NewLine.graphDrawing m astate  
-        NewArrow astate -> Modes.NewArrow.graphDrawing m astate
-        SquareMode state -> Modes.Square.graphDrawing m state
-        SplitArrow state -> Modes.SplitArrow.graphDrawing m state
-        PullshoutMode state -> Modes.Pullshout.graphDrawing m state
-        CutHead state -> Modes.CutHead.graphDrawing m state
-        ResizeMode sizeGrid -> graphResize sizeGrid m |>
-                              Graph.applyModifHelper
-                              |>  GraphDrawing.toDrawingGraph
-        LatexPreamble _ -> collageGraphFromGraph m modelGraph
+  let modelGraph = getActiveGraph m in
+  case currentMode m of
+    MakeSaveMode -> collageGraphFromGraph m modelGraph 
+    CustomizeMode s -> Modes.Customize.graphDrawing m s
+    DefaultMode -> collageGraphFromGraph m modelGraph
+    RectSelect {orig} -> GraphDrawing.toDrawingGraph  <| selectGraph m orig m.specialKeys.shift
+    EnlargeMode p ->
+       enlargeGraph m p
+       |> collageGraphFromGraph m
+    Move s -> Modes.Move.graphDrawing m s          
+    RenameMode state -> Modes.Rename.graphDrawing m state             
+    DebugMode ->
+      modelGraph |> collageGraphFromGraph m 
+        |> Graph.map
+           (\id n ->  {n | label = String.fromInt id}) 
+           (\id -> GraphDrawing.mapNormalEdge (\ e -> {e | label = String.fromInt id}) )
+    NewLine astate -> Modes.NewLine.graphDrawing m astate  
+    NewArrow astate -> Modes.NewArrow.graphDrawing m astate
+    SquareMode state -> Modes.Square.graphDrawing m state
+    SplitArrow state -> Modes.SplitArrow.graphDrawing m state
+    PullshoutMode state -> Modes.Pullshout.graphDrawing m state
+    CutHead state -> Modes.CutHead.graphDrawing m state
+    ResizeMode sizeGrid -> graphResize sizeGrid m
+                |> Graph.applyModifHelper
+                |> GraphDrawing.toDrawingGraph
+    BendMode state -> Modes.Bend.graphDrawing m state
+    LatexPreamble _ -> collageGraphFromGraph m modelGraph
         
 
 
@@ -1622,6 +1624,7 @@ helpMsg model =
                          ++ if hold then "[s] to confirm." 
                          else "[s] to select without holding the mouse, [click] to confirm."
 
+        BendMode _ -> msg Modes.Bend.help
         _ -> let txt = "Mode: " ++ Modes.toString (currentMode model) ++ ". [ESC] to cancel and come back to the default"
                    ++ " mode."
              in
