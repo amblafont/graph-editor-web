@@ -30,7 +30,7 @@ isValid model {chosenEdge, source, target} =
   
 fixModel : Model -> SplitArrowState -> Model
 fixModel model state =
-  if isValid model state then model else popMode model
+  if isValid model state then model else setMode DefaultMode model
    
 
 initialise : Model -> ( Model, Cmd Msg )
@@ -70,7 +70,7 @@ nextStep model finish state =
     in
     -- let finalGraph = setSelModif info.movedNode info.graph in
     let finalGraph = info.graph in
-     if finish then (popMode model, 
+     if finish then (setMode DefaultMode model, 
         protocolSendGraphModif model.graphInfo Msg.defaultModifId finalGraph)
      --computeLayout())  
     else
@@ -93,7 +93,7 @@ nextStep model finish state =
               )
         in
         let (nextModel, idModif) = popIdModif model in
-        (popMode nextModel, 
+        (setMode DefaultMode nextModel, 
         protocolSend
         { id =  idModif 
         , modif = GraphInfo.activeGraphModifHelper nextModel.graphInfo finalGraph
