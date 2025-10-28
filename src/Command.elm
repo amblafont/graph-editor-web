@@ -138,7 +138,7 @@ applyCommands arg model =
          )
       
    in 
-  (finalModel2, Cmd.batch <| 
+  (fixModel finalModel2, Cmd.batch <| 
      [cmd,  cmd2] -- :: (if ret.computeLayout then [computeLayout ()] else [])
     
      
@@ -167,8 +167,8 @@ applyCommand {isSender, msg} model =
                        focus = Nothing, undo = NoUndo } 
    in
    case msg of
-     Snapshot g -> returnComputeLayout <| fixModel <| setGraphInfo model g
-     ModifProtocol m -> returnComputeLayout <| fixModel <| applyModifProtocol isSender m model
+     Snapshot g -> returnComputeLayout <| setGraphInfo model g
+     ModifProtocol m -> returnComputeLayout <| applyModifProtocol isSender m model
      Undo modifs ->
           case  Modif.fold GraphInfo.applyModifSimple model.graphInfo modifs of
            Just r -> { model = { model | graphInfo = r.next},
