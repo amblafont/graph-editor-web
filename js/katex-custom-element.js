@@ -43,7 +43,7 @@ document.adoptedStyleSheets = [styleSheet];
             this._slot = shadowRoot.querySelector('slot');
             this._slot.addEventListener('slotchange', () => this._render());
             // slotchange is not enough
-            observer =  new MutationObserver( () => this._render());
+            var observer =  new MutationObserver( () => this._render());
             observer.observe(this, { characterData : true, subtree : true }); 
             // This attributeObserver is useful when
             // data-height or data-width are updated to check

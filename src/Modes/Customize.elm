@@ -31,7 +31,7 @@ updateState m state = setMode (CustomizeMode state) m
 --     let modelGraph = getActiveGraph model in
 --     Graph.md_updateEdges edges modelGraph
 
-api = Modes.Lib.makeApi (\modelGraph _ edges -> Graph.md_updateEdges edges modelGraph)
+api = Modes.Lib.makeApi (\modelGraph edges -> Graph.md_updateEdges edges modelGraph)
 
 
 updateEdgeShiftBend : List (Edge EdgeLabel) -> Char -> List (Edge EdgeLabel)

@@ -147,6 +147,9 @@ type Msg
   | MouseLeaveCanvas
   | KeyChanged Bool HtmlDefs.Keys Key
   | MouseMove Point
+  -- when the mouse is locked, this is the delta movement from the original locked position.
+  | MouseLockedDelta Point
+  | MouseUnlock
   | MouseClick 
   | MouseDown MouseEvents.Event -- is Shift selected?
   | MouseUp

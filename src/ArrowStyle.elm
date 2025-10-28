@@ -217,7 +217,7 @@ toggleDashed s = { s | dashed = not s.dashed }
 
 
 -- chars used to control in keyUpdateStyle
-controlChars = "|>(=-~bBA]["
+controlChars = "|>(=-~A]["
 maxLabelPosition = 0.9
 minLabelPosition = 0.1
 
@@ -238,8 +238,8 @@ keyMaybeUpdateStyle k style =
         Character '-' -> Just <| toggleDashed style
         Character '~' -> Just <| toggleWavy style
         -- Character '.' -> Just <| toggleMarker style
-        Character 'b' -> Just <| {style | bend = decreaseBend style.bend |> norm0}
-        Character 'B' -> Just <| {style | bend = increaseBend style.bend |> norm0}
+        -- Character 'b' -> Just <| {style | bend = decreaseBend style.bend |> norm0}
+        -- Character 'B' -> Just <| {style | bend = increaseBend style.bend |> norm0}
         Character 'A' -> Just <| toggleLabelAlignement style
         Character ']' -> if style.labelPosition + epsilon >= maxLabelPosition then Nothing else
                Just {style | labelPosition = style.labelPosition + 0.1 |> min maxLabelPosition}

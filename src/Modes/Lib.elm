@@ -14,10 +14,10 @@ type alias Api state a =
     graphDrawing : Model -> state -> Graph NodeDrawingLabel EdgeDrawingLabel
   }
 
-makeApi : (Graph NodeLabel EdgeLabel -> Model -> state -> Graph.ModifHelper NodeLabel EdgeLabel) -> Api state a 
+makeApi : (Graph NodeLabel EdgeLabel -> state -> Graph.ModifHelper NodeLabel EdgeLabel) -> Api state a 
 makeApi f = 
   let finaliseModif m state = 
-         f (getActiveGraph m) m state
+         f (getActiveGraph m) state
   in
   {
     graphDrawing = \ m state -> 

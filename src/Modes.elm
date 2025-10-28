@@ -35,10 +35,13 @@ type Mode
     | LatexPreamble String
 type alias BendState =
   { edge : Graph.Edge EdgeLabel
-  , origMouse : (Float, Float)
-  , direction : Point
-  , origBend : Float
-    }
+  , componentState : BendComponentState
+  }
+
+-- only the bend component is going to change
+type alias BendComponentState = 
+    { bend : Float, origBend : Float, direction : Point }
+
 
 toString : Mode -> String
 toString m = case m of
@@ -155,11 +158,15 @@ type alias NewLineState = {
     bend : Float
     }
 
+type NewArrowMode = 
+    NewArrowPart EdgePart
+  | NewArrowBend BendComponentState
+
 type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,
       kind : ArrowStateKind, 
-      mode : EdgePart,
-      style : ArrowStyle, 
+      mode : NewArrowMode,
+      style : ArrowStyle,
       pos : InputPosition, inverted : Bool,
       isAdjunction : Bool,
       merge : Bool

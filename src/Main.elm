@@ -182,6 +182,14 @@ port onMouseMove : JE.Value -> Cmd a
 -- to access to the currentTarget field of the event,
 -- which is a js object)
 port onMouseMoveFromJS : (Point -> a) -> Sub a
+-- returns the delta of mouse movement when pointer is locked
+port lockPointerDelta : (Point -> a) -> Sub a
+port unlockPointer : (() -> a) -> Sub a
+
+port pointerLock : () -> Cmd a
+port pointerUnlock : () -> Cmd a
+
+
 
 -- JS tells us that we received some paste event with such data
 -- port onPaste : (String -> a) -> Sub a
@@ -242,6 +250,8 @@ subscriptions m =
       protocolReceive ProtocolReceive,
       protocolRequestSnapshot (always ProtocolRequestSnapshot),
       Modes.NewArrow.returnMarker Marker,
+      lockPointerDelta MouseLockedDelta,
+      unlockPointer <| always MouseUnlock,
       -- protocolReceiveSnapshot ProtocolReceiveSnapshot,
       makeSave (always MakeSave),
       findReplace FindReplace,
@@ -383,22 +393,47 @@ toJsGraphInfo model= { graph = LastFormat.toJSGraph
                               -- fileName = model.fileName,
                               version = LastFormat.version}
 
+computeFlags : Mode -> Model.CmdFlags
+computeFlags mode =
+    case mode of
+        BendMode state -> Modes.Bend.computeFlags state
+        NewArrow state -> Modes.NewArrow.computeFlags state
+        _ -> { pointerLock = False }
+
+compareFlagsToCmd : Model.CmdFlags -> Model.CmdFlags -> Cmd Msg
+compareFlagsToCmd oldFlags newFlags =
+    if oldFlags.pointerLock == newFlags.pointerLock then
+       Cmd.none
+    else
+      if newFlags.pointerLock then
+         pointerLock ()
+      else
+         pointerUnlock ()
+
+
+
 updateIntercept : Msg -> Model -> (Model, Cmd Msg)
 updateIntercept msg modeli =
-  case modeli.scenario of
-     Exercise1 -> 
-        let nothing = noCmd modeli in
-        case msg of
-           MouseMove _  -> nothing
-           MouseDown _ -> nothing
-           NodeClick _ _ -> nothing
-           EdgeClick _ _ -> nothing
-           EltDoubleClick _ _ -> nothing
-           MouseOn _ -> nothing
-           MouseClick -> nothing
-           _ -> update msg modeli
-           
-     _ -> update msg modeli
+  let initialFlags = computeFlags modeli.mode in
+  let (finalModel, cmd) = 
+          case modeli.scenario of
+            Exercise1 -> 
+                let nothing = noCmd modeli in
+                case msg of
+                  MouseMove _  -> nothing
+                  MouseDown _ -> nothing
+                  NodeClick _ _ -> nothing
+                  EdgeClick _ _ -> nothing
+                  EltDoubleClick _ _ -> nothing
+                  MouseOn _ -> nothing
+                  MouseClick -> nothing
+                  _ -> update msg modeli
+                  
+            _ -> update msg modeli
+  in 
+    (finalModel, Cmd.batch [cmd, 
+        compareFlagsToCmd initialFlags <| computeFlags finalModel.mode])
+
 
 textNodesToLatex : List NodeLabel -> String
 textNodesToLatex nodes =

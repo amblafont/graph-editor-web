@@ -1,5 +1,5 @@
 port module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update, help, 
-    requestMarkerDefault, returnMarker)
+    requestMarkerDefault, returnMarker, computeFlags)
 
 
 import GraphDrawing exposing (..)
@@ -11,10 +11,11 @@ import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Modes exposing ( NewArrowState, Mode(..),  ArrowStateKind(..))
 import InputPosition exposing (InputPosition(..))
 import Model exposing (..)
-import Modes exposing (PullshoutKind(..))
+import Modes exposing (PullshoutKind(..), NewArrowMode(..))
 import Modes exposing (MoveDirection(..))
 import Modes.Move
 import Modes.Pullshout
+import Modes.Bend exposing (ComponentUpdateResult(..))
 import Maybe.Extra
 import Drawing.Color as Color
 import Zindex
@@ -22,6 +23,7 @@ import Format.GraphInfo exposing (activeGraphModifHelper)
 import Msg exposing (defaultModifId)
 import IntDict
 import CommandCodec exposing (protocolSend)
+import Modes exposing (BendComponentState)
 
 -- ask js a marker
 port requestMarker : String -> Cmd a
@@ -30,6 +32,13 @@ port returnMarker : (String -> a) -> Sub a
 
 requestMarkerDefault : String -> Cmd a
 requestMarkerDefault s = requestMarker <| if s == "" then "\\bullet" else s
+
+
+computeFlags : NewArrowState -> Model.CmdFlags
+computeFlags state = 
+    case state.mode of
+        NewArrowBend _ -> { pointerLock = True }
+        _ -> { pointerLock = False }
 
 updateState : Model -> NewArrowState  -> Model
 updateState m state = setMode (NewArrow state) m
@@ -85,7 +94,7 @@ initialise m =
             pos = InputPosMouse,                                 
             chosen = Graph.empty, -- GraphDefs.selectedGraph modelGraph,
             kind = kind,
-            mode = MainEdgePart,
+            mode = NewArrowPart MainEdgePart,
             inverted = False,
             isAdjunction = False,
             merge = False
@@ -151,11 +160,11 @@ update state msg model =
         case msg of
                 KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
                 KeyChanged False _ (Control "Escape")
-                    -> noCmd <| updateState model { state | mode = MainEdgePart }
+                    -> noCmd <| updateState model { state | mode = NewArrowPart MainEdgePart }
                 KeyChanged False _ k ->                              
                     case ArrowStyle.keyMaybeUpdateColor k part state.style of
                         Just newStyle -> 
-                           let st2 = { state | style = newStyle, mode = MainEdgePart } in
+                           let st2 = { state | style = newStyle, mode = NewArrowPart MainEdgePart } in
                              updateState model st2
                               |> noCmd
                         _ -> noCmd model                               
@@ -163,11 +172,60 @@ update state msg model =
     in
 
    case state.mode of
-      MainEdgePart -> updateNormal state msg model
-      HeadPart -> updateHeadOrTail state.mode
-      TailPart -> updateHeadOrTail state.mode
+      NewArrowPart MainEdgePart -> updateNormal state msg model
+      NewArrowPart HeadPart -> updateHeadOrTail HeadPart
+      NewArrowPart TailPart -> updateHeadOrTail TailPart
+      NewArrowBend b -> updateBend b state msg model
 
-            
+updateBend : BendComponentState -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
+updateBend bendState state msg model =
+    case Modes.Bend.updateComponent bendState msg of
+        NewState newCompState ->
+            let newState = { state | mode = NewArrowBend newCompState } in
+            noCmd <| updateState model newState
+        -- ToggleHelp -> noCmd <| toggleHelpOverlay model
+        NoChange ->
+            noCmd model
+        Finalise ->
+            let newState = { state | mode = NewArrowPart MainEdgePart,
+                         style = getStyle state } 
+            in
+            noCmd <| updateState model newState
+        Cancel ->
+            let newState = { state | mode = NewArrowPart MainEdgePart } in
+            noCmd <| updateState model newState
+
+initialiseBendMode : NewArrowState -> Model -> Model
+initialiseBendMode state model =
+    -- case state.kind of
+    --   CreateArrow id -> 
+         let fromTo = 
+                case state.kind of 
+                    CreateArrow id ->
+                        Maybe.map 
+                        (\ from -> (from, model.mousePos))
+                        (Graph.get id .pos .pos <| GraphDefs.posGraph state.chosen)
+                    _ -> Just ((0, 0), (1, 0))
+         in
+         case fromTo of
+            Nothing -> model
+            Just (from, to) ->
+                    let bend = ArrowStyle.getStyle state |> .bend in
+                    updateState model { state | mode = NewArrowBend
+                      <|  Modes.Bend.initialiseComponent from to
+                      {
+                           bend = bend,
+                           origBend = bend
+                      } } 
+    --   _ -> 
+    --   noCmd model
+
+getStyle : NewArrowState -> ArrowStyle.ArrowStyle
+getStyle state = 
+    let style = ArrowStyle.getStyle state in
+    case state.mode of 
+        NewArrowBend { bend } -> { style | bend = bend }
+        _ -> style 
 
 updateNormal : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 updateNormal state msg model =
@@ -185,9 +243,9 @@ updateNormal state msg model =
                           model
              _ -> model
     in
-    let changeMode m = 
+    let changePart m = 
                 if ArrowStyle.isPartColorable m state.style then
-                    noCmd <| updateState model { state | mode = m } 
+                    noCmd <| updateState model { state | mode = NewArrowPart m } 
                 else noCmd model
     in
     case msg of
@@ -207,6 +265,7 @@ updateNormal state msg model =
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.merge || state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
+        KeyChanged False _ (Character 'b') -> noCmd <| initialiseBendMode state model
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         KeyChanged False _ (Character 'f') -> 
               noCmd <| updateState model { state | pos = truncateInputPosition model state.chosen }
@@ -215,8 +274,8 @@ updateNormal state msg model =
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
         -- KeyChanged False _ (Character 's') -> noCmd <| initialiseShifts model state
         KeyChanged False _ (Character 'm') -> noCmd <| updateState model { state | merge = not state.merge} 
-        KeyChanged False _ (Character 'H') -> changeMode <| HeadPart
-        KeyChanged False _ (Character 'T') -> changeMode <| TailPart
+        KeyChanged False _ (Character 'H') -> changePart <| HeadPart
+        KeyChanged False _ (Character 'T') -> changePart <| TailPart
         KeyChanged False _ (Character 'C') -> 
               let kind = nextPossibleKind state
                       |> Maybe.withDefault state.kind
@@ -269,7 +328,7 @@ moveNodeInfo :
         }
 moveNodeInfo merge emptyLabel model state =
                 let modelGraph = getActiveGraph model in
-                let style = ArrowStyle.getStyle state in                       
+                let style = getStyle state in                       
                 let edgeLabel = GraphDefs.newEdgeLabelAdj 
                               (if state.isAdjunction then "\\vdash" else 
                                 if emptyLabel then "" else "-") 
@@ -288,7 +347,9 @@ moveNodeInfo merge emptyLabel model state =
                             Graph.md_makeCone modifGraph [id] nodeLabel edgeLabel state.inverted        
                 in            
                 let moveInfo =
-                        Modes.Move.mkGraph model state.pos
+                        Modes.Move.mkGraph model
+                        --  (getTargetPos state model)
+                         state.pos
                         Free merge
                          extendedGraph.extendedGraph
                          modelGraph
@@ -302,7 +363,11 @@ moveNodeInfo merge emptyLabel model state =
                             (if state.isAdjunction then [] else extendedGraph.edgeIds)
                 }
 
-
+-- getTargetPos : NewArrowState -> Model -> Point
+-- getTargetPos state model = model.mousePos
+    -- case state.mode of
+    --     NewArrowBend b -> model.mousPos --b.origMouse
+    --     _ -> model.mousePos
 
 graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s =
@@ -318,7 +383,7 @@ graphDrawing m s =
 help : NewArrowState -> String
 help s =
     case s.mode of        
-        MainEdgePart ->
+        NewArrowPart MainEdgePart ->
 --  case s of
 --         NewArrowMoveNode _ ->
             -- Debug.toString st ++
@@ -341,8 +406,9 @@ help s =
              ++ "[p]ullback/[P]ushout mode.\n"
              ++ "Colors: " ++ Color.helpMsg
              ++ ", color [H]ead/[T]ail"
-        _ -> "Submode color "
-            ++ (if s.mode == HeadPart then "head" else "tail")
+        NewArrowPart p -> "Submode color "
+            ++ (if p == HeadPart then "head" else "tail")
             ++ " of the arrow: [ESC] to cancel, "
             ++ Color.helpMsg ++ ", "
             ++ HtmlDefs.overlayHelpMsg
+        NewArrowBend _ -> Modes.Bend.help 

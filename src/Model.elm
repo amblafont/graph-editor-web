@@ -38,6 +38,13 @@ minRulerMargin = 50
 maxRulerMargin = 2000
 
 
+-- we must send commands when this flag changes values
+type alias CmdFlags = 
+    { 
+      
+      pointerLock : Bool
+    }
+
 -- type alias ModifId = Maybe Int
 type alias Model = {
   -- only one tab should be active
