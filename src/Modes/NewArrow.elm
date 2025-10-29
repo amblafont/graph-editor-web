@@ -1,8 +1,9 @@
 port module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update, help, 
     requestMarkerDefault, returnMarker, computeFlags)
 
-
+import Modes.Capture exposing (UpdateResult(..))
 import GraphDrawing exposing (..)
+import Geometry.Point
 import Polygraph as Graph exposing (Graph)
 import Msg exposing (Msg(..))
 import ArrowStyle exposing (EdgePart(..))
@@ -15,7 +16,7 @@ import Modes exposing (PullshoutKind(..), NewArrowMode(..))
 import Modes exposing (MoveDirection(..))
 import Modes.Move
 import Modes.Pullshout
-import Modes.Bend exposing (ComponentUpdateResult(..))
+import Modes.Bend
 import Maybe.Extra
 import Drawing.Color as Color
 import Zindex
@@ -179,8 +180,9 @@ update state msg model =
 
 updateBend : BendComponentState -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 updateBend bendState state msg model =
-    case Modes.Bend.updateComponent bendState msg of
-        NewState newCompState ->
+    let (result, newCompState) = Modes.Bend.updateComponent bendState msg in
+    case result of
+        NewState ->
             let newState = { state | mode = NewArrowBend newCompState } in
             noCmd <| updateState model newState
         -- ToggleHelp -> noCmd <| toggleHelpOverlay model
@@ -212,7 +214,8 @@ initialiseBendMode state model =
             Just (from, to) ->
                     let bend = ArrowStyle.getStyle state |> .bend in
                     updateState model { state | mode = NewArrowBend
-                      <|  Modes.Bend.initialiseComponent from to
+                      <|  Modes.Bend.initialiseComponent 
+                      (Geometry.Point.subtract to from)
                       {
                            bend = bend,
                            origBend = bend
@@ -224,7 +227,7 @@ getStyle : NewArrowState -> ArrowStyle.ArrowStyle
 getStyle state = 
     let style = ArrowStyle.getStyle state in
     case state.mode of 
-        NewArrowBend { bend } -> { style | bend = bend }
+        NewArrowBend b -> { style | bend = Modes.Bend.componentGetBend b }
         _ -> style 
 
 updateNormal : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )

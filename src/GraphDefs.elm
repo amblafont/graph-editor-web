@@ -29,6 +29,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    ,invertEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
+   , getEdgeDirection
    )
 
 import IntDict
@@ -906,3 +907,15 @@ keyMaybeUpdatePullshout k style =
         Character '[' -> Just <| {style | offset2 = max (style.offset2 - 5) 5}
 
         _ -> Nothing
+
+getEdgeDirection : Graph NodeLabel EdgeLabel -> Edge EdgeLabel -> Maybe Point
+getEdgeDirection g e =
+   let pGraph = posGraph g in
+   let getPos id = Graph.get id .pos .pos pGraph in
+         
+   case (getPos e.from , getPos e.to) of
+      (Nothing, _) -> Nothing
+      (_, Nothing) -> Nothing
+      (Just from, Just to) -> Just <| Point.subtract to from
+            -- if from == to then failedRet else
+          

@@ -40,8 +40,8 @@ type alias BendState =
 
 -- only the bend component is going to change
 type alias BendComponentState = 
-    { bend : Float, origBend : Float, direction : Point }
-
+    { captureState : CaptureState, origBend : Float }
+type alias CaptureState = {direction : Point, value : Float}
 
 toString : Mode -> String
 toString m = case m of
