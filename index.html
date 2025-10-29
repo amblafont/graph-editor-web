@@ -655,12 +655,10 @@ function disableInAppInstallPrompt() {
              a.download = fileName;
              a.click();
          }
-         var mouseLockDelta = [0, 0];
 
         function lockChangeAlert() {
             if (document.pointerLockElement === appDiv) {
                 console.log("The pointer lock status is now locked");
-                mouseLockDelta = [0, 0];            
                 document.addEventListener("mousemove", handleMouseMoveOnLock, false);            
             } else {
                 console.log("The pointer lock status is now unlocked");                
@@ -678,11 +676,13 @@ function disableInAppInstallPrompt() {
                 // mouseLockDelta = null;
                 return null;
             }
-            mouseLockDelta[0] += e.movementX;
-            mouseLockDelta[1] += e.movementY;
             // console.log("new mouse delta: " + mouseLockDelta);
-            app.ports.lockPointerDelta.send(mouseLockDelta);
+            app.ports.lockPointerDelta.send([e.movementX, e.movementY]);
          }
+         document.addEventListener('pointerlockerror', () => {
+            console.log('Pointer lock request denied');
+            app.ports.unlockPointer.send(null);
+         });
 
          app.ports.pointerLock.subscribe(function () {
             appDiv.requestPointerLock();

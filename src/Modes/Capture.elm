@@ -21,30 +21,21 @@ type UpdateResult =
     -- | ToggleHelp
 
 
-initialise : Point -> Point -> Float -> 
-   CaptureState
-initialise from to ini =
-    ( { value = ini
-    --   , origMouse = ini.origMouse
-      , direction = Point.normalise 1 <| Point.subtract to from
-      }
-    -- , if isFix then Cmd.none else pointerLock ()
-    )
 
--- newBendComponent : CaptureState -> Point -> Float
--- newBendComponent state mousePos =
---             let delta = Point.scalarProduct state.direction mousePos in
---             let newBend = state.origBend + delta / 100 in
---             let finalBend = toFloat (round (newBend * 10)) / 10 in
---             finalBend
 
 update : CaptureState -> Msg -> (UpdateResult, CaptureState)
 update state msg =
     let sameState v = (v , state) in
     -- let final = (Finalise, HtmlDefs.pointerUnlock ()) in
     case msg of
-        MouseLockedDelta pos -> (NewState, 
-            { state | value = Point.scalarProduct state.direction pos })
+        MouseLockedDelta pos ->
+            let delta = Point.scalarProduct state.direction pos in
+            let newRawValue = state.value + delta in
+            let newValue = case state.bounds of
+                    Nothing -> newRawValue
+                    Just (minV, maxV) -> 
+                        max minV (min maxV newRawValue)
+            in (NewState, { state | value = newValue })
         KeyChanged False _ (Control "Escape") ->  sameState Cancel
         MouseUnlock -> sameState Cancel
         -- to be fixed but, currently can't capture any key when in pointer lock

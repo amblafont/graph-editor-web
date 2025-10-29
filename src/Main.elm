@@ -398,6 +398,7 @@ computeFlags mode =
     case mode of
         BendMode state -> Modes.Bend.computeFlags state
         NewArrow state -> Modes.NewArrow.computeFlags state
+        CustomizeMode state -> Modes.Customize.computeFlags state
         _ -> { pointerLock = False }
 
 compareFlagsToCmd : Model.CmdFlags -> Model.CmdFlags -> Cmd Msg

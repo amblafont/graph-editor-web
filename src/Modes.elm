@@ -41,7 +41,8 @@ type alias BendState =
 -- only the bend component is going to change
 type alias BendComponentState = 
     { captureState : CaptureState, origBend : Float }
-type alias CaptureState = {direction : Point, value : Float}
+type alias CaptureState = {direction : Point, value : Float, 
+     bounds : Maybe (Float, Float)}
 
 toString : Mode -> String
 toString m = case m of
@@ -146,12 +147,24 @@ type ArrowStateKind =
 
 type alias CustomizeModeState = 
    { edges: (List (Graph.Edge EdgeLabel)),
-      mode : EdgePart
+      mode : CustomizeMode
       -- the style of the singleton edge being selected
       -- we can change its bend/shift
       -- style : Maybe ArrowStyle
     }
 
+type alias ShiftComponentState = CaptureState
+    -- { captureState : CaptureState, origShift : Float }
+type alias CustomizeModeShiftState =
+    { isSource : Bool
+    , componentState : ShiftComponentState
+    -- , edge : Graph.Edge EdgeLabel
+    }
+type CustomizeMode =
+    CustomizeModePart EdgePart
+                       -- true if source, false if target
+  | CustomizeModeShift CustomizeModeShiftState
+  
 
 type alias NewLineState = {
     initialPos : Point,
@@ -161,6 +174,7 @@ type alias NewLineState = {
 type NewArrowMode = 
     NewArrowPart EdgePart
   | NewArrowBend BendComponentState
+  | NewArrowShift Bool ShiftComponentState
 
 type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,

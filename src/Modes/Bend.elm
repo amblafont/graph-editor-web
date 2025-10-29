@@ -131,7 +131,6 @@ initialiseComponent dir0 ini =
       , captureState = 
          { value = ini.bend, 
     --   , origMouse = ini.origMouse
-       direction = Point.orthoVectPx (0, 0) dir 0.01
+       direction = Point.orthoVectPx (0, 0) dir 0.01,
+         bounds = Nothing
       } }
-    -- , if isFix then Cmd.none else pointerLock ()
-    

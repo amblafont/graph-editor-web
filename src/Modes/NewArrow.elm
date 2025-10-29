@@ -17,6 +17,7 @@ import Modes exposing (MoveDirection(..))
 import Modes.Move
 import Modes.Pullshout
 import Modes.Bend
+import Modes.Customize
 import Maybe.Extra
 import Drawing.Color as Color
 import Zindex
@@ -24,7 +25,9 @@ import Format.GraphInfo exposing (activeGraphModifHelper)
 import Msg exposing (defaultModifId)
 import IntDict
 import CommandCodec exposing (protocolSend)
-import Modes exposing (BendComponentState)
+import Modes exposing (BendComponentState, ShiftComponentState)
+import Modes exposing (CaptureState)
+
 
 -- ask js a marker
 port requestMarker : String -> Cmd a
@@ -39,6 +42,7 @@ computeFlags : NewArrowState -> Model.CmdFlags
 computeFlags state = 
     case state.mode of
         NewArrowBend _ -> { pointerLock = True }
+        NewArrowShift _ _ -> { pointerLock = True }
         _ -> { pointerLock = False }
 
 updateState : Model -> NewArrowState  -> Model
@@ -177,15 +181,12 @@ update state msg model =
       NewArrowPart HeadPart -> updateHeadOrTail HeadPart
       NewArrowPart TailPart -> updateHeadOrTail TailPart
       NewArrowBend b -> updateBend b state msg model
+      NewArrowShift isSource s -> updateShift s isSource state msg model
 
-updateBend : BendComponentState -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
-updateBend bendState state msg model =
-    let (result, newCompState) = Modes.Bend.updateComponent bendState msg in
+updateComponentBaseCases : NewArrowState -> UpdateResult -> Model -> (Model, Cmd Msg)
+updateComponentBaseCases state result model =
     case result of
-        NewState ->
-            let newState = { state | mode = NewArrowBend newCompState } in
-            noCmd <| updateState model newState
-        -- ToggleHelp -> noCmd <| toggleHelpOverlay model
+        NewState -> noCmd model -- should be handled elsewhere
         NoChange ->
             noCmd model
         Finalise ->
@@ -196,38 +197,76 @@ updateBend bendState state msg model =
         Cancel ->
             let newState = { state | mode = NewArrowPart MainEdgePart } in
             noCmd <| updateState model newState
+        
+-- TODO: factor updateShift and updateBend
+updateShift : ShiftComponentState -> Bool -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
+updateShift shiftState isSource state msg model =
+    let (result, newCompState) = Modes.Customize.updateComponent shiftState msg in
+    let newState = { state | mode = NewArrowShift isSource newCompState } in
+            updateComponentBaseCases state result <| updateState  model newState
+    
+
+updateBend : BendComponentState -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
+updateBend bendState state msg model =
+    let (result, newCompState) = Modes.Bend.updateComponent bendState msg in
+    let newState = { state | mode = NewArrowBend newCompState } in
+    updateComponentBaseCases state result <| updateState  model newState
+
+getRawDirection : Model -> NewArrowState -> Geometry.Point.Point
+getRawDirection model state =
+    let mayDir =
+            case state.kind of 
+                CreateArrow id ->
+                    Maybe.map 
+                    (\ from -> Geometry.Point.subtract model.mousePos from)
+                    (Graph.get id .pos .pos <| GraphDefs.posGraph state.chosen)
+                _ -> Nothing
+    in
+       mayDir |> Maybe.withDefault (20, 0)
+
+initialiseShiftMode : Bool -> NewArrowState -> Model -> Model
+initialiseShiftMode isSource state model =
+    let modelGraph = getActiveGraph model in
+    let odir = 
+            if isSource then
+                case state.kind of 
+                    CreateArrow id ->
+                        GraphDefs.getEdgeDirectionFromId modelGraph id
+                    _ -> Just (20, 0)
+            else
+                let closestId = GraphDefs.closest model.mousePos modelGraph in 
+                GraphDefs.getEdgeDirectionFromId modelGraph closestId
+
+            
+    in
+    case odir of
+        Nothing -> model
+        Just dir ->
+            updateState model { state | mode = NewArrowShift isSource
+            <|  Modes.Customize.initialiseComponent isSource
+            dir
+            {shift = 0.5}, merge = state.merge || not isSource }
 
 initialiseBendMode : NewArrowState -> Model -> Model
 initialiseBendMode state model =
-    -- case state.kind of
-    --   CreateArrow id -> 
-         let fromTo = 
-                case state.kind of 
-                    CreateArrow id ->
-                        Maybe.map 
-                        (\ from -> (from, model.mousePos))
-                        (Graph.get id .pos .pos <| GraphDefs.posGraph state.chosen)
-                    _ -> Just ((0, 0), (1, 0))
-         in
-         case fromTo of
-            Nothing -> model
-            Just (from, to) ->
-                    let bend = ArrowStyle.getStyle state |> .bend in
+     let bend = ArrowStyle.getStyle state |> .bend in
                     updateState model { state | mode = NewArrowBend
                       <|  Modes.Bend.initialiseComponent 
-                      (Geometry.Point.subtract to from)
+                      (getRawDirection model state)
                       {
                            bend = bend,
                            origBend = bend
                       } } 
-    --   _ -> 
-    --   noCmd model
+   
 
 getStyle : NewArrowState -> ArrowStyle.ArrowStyle
 getStyle state = 
     let style = ArrowStyle.getStyle state in
     case state.mode of 
         NewArrowBend b -> { style | bend = Modes.Bend.componentGetBend b }
+        NewArrowShift isSource s -> 
+            let shift = Modes.Customize.componentGetShift s in
+            ArrowStyle.updateShift {isSource=isSource, shift=shift} style
         _ -> style 
 
 updateNormal : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
@@ -269,6 +308,8 @@ updateNormal state msg model =
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.merge || state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
         KeyChanged False _ (Character 'b') -> noCmd <| initialiseBendMode state model
+        KeyChanged False _ (Character 's') -> noCmd <| initialiseShiftMode True state model
+        KeyChanged False _ (Character 'e') -> noCmd <| initialiseShiftMode False state model
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         KeyChanged False _ (Character 'f') -> 
               noCmd <| updateState model { state | pos = truncateInputPosition model state.chosen }
@@ -292,10 +333,11 @@ updateNormal state msg model =
                            |> Maybe.withDefault 
                              ((ArrowStyle.keyMaybeUpdateColor k MainEdgePart state.style)
                                
-                           |> Maybe.withDefault
-                           (ArrowStyle.keyUpdateShiftBend k state.style
+                        --    |> Maybe.withDefault
+                        --    (ArrowStyle.keyUpdateShiftBend k state.style
                              |> Maybe.withDefault state.style
-                           ))
+                           -- )
+                             )
                        _ -> state.style 
             in
             let st2 = { state | style = newStyle } in
@@ -399,8 +441,9 @@ help s =
              ++ "[\""
              ++ ArrowStyle.controlChars
              ++ "\"] alternate between different arrow styles, "
-             ++ ArrowStyle.shiftHelpMsg
-             ++ ", "
+             ++ "shift [s]ource/targ[e]t, "
+            --  ++ ArrowStyle.shiftHelpMsg
+            --  ++ ", "
              ++ "[.] customise the marker"
              ++ "[i]nvert arrow, "
              ++ "create a[d]junction arrow, "
@@ -414,4 +457,5 @@ help s =
             ++ " of the arrow: [ESC] to cancel, "
             ++ Color.helpMsg ++ ", "
             ++ HtmlDefs.overlayHelpMsg
-        NewArrowBend _ -> Modes.Bend.help 
+        NewArrowBend _ -> "new arrow " ++ Modes.Bend.help 
+        NewArrowShift isSource _ -> "New arrow " ++ Modes.Customize.helpShift isSource

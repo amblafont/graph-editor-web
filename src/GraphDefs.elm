@@ -29,7 +29,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    ,invertEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
-   , getEdgeDirection
+   , getEdgeDirection, getEdgeDirectionFromId
    )
 
 import IntDict
@@ -907,6 +907,10 @@ keyMaybeUpdatePullshout k style =
         Character '[' -> Just <| {style | offset2 = max (style.offset2 - 5) 5}
 
         _ -> Nothing
+
+getEdgeDirectionFromId : Graph NodeLabel EdgeLabel -> EdgeId -> Maybe Point
+getEdgeDirectionFromId g eid =
+    Graph.getEdge eid g |> Maybe.andThen (getEdgeDirection g )
 
 getEdgeDirection : Graph NodeLabel EdgeLabel -> Edge EdgeLabel -> Maybe Point
 getEdgeDirection g e =

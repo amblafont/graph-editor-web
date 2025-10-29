@@ -46,11 +46,11 @@ floatCodec =
     myStringFromFloat
     (myStringToFloat >> Maybe.withDefault 0)
 
-intCodec : Codec Int String
-intCodec = 
-  Codec.build 
-    String.fromInt
-    (String.toInt >> Maybe.withDefault 0)
+-- intCodec : Codec Int String
+-- intCodec = 
+--   Codec.build 
+--     String.fromInt
+--     (String.toInt >> Maybe.withDefault 0)
 
 type EdgeFlag = 
       Dashed
@@ -68,8 +68,8 @@ type EdgeFlag =
     | Marker String
     | Bend Float
     | Position Float
-    | ShiftSource Int
-    | ShiftTarget Int
+    | ShiftSource Float
+    | ShiftTarget Float
 
 
 
@@ -149,8 +149,8 @@ edgeFlagCodec =
     |> Codec.prefixVariant0 prefixes.color Color Color.codec
     |> Codec.prefixVariant0 prefixes.headColor HeadColor Color.codec
     |> Codec.prefixVariant0 prefixes.tailColor TailColor Color.codec
-    |> Codec.prefixVariant0 prefixes.shiftSource ShiftSource intCodec
-    |> Codec.prefixVariant0 prefixes.shiftTarget ShiftTarget intCodec
+    |> Codec.prefixVariant0 prefixes.shiftSource ShiftSource floatCodec
+    |> Codec.prefixVariant0 prefixes.shiftTarget ShiftTarget floatCodec
     |> Codec.variant0 prefixes.unrecognized Unrecognized
     |> Codec.buildVariant (always Unrecognized)
 
@@ -226,19 +226,21 @@ positionFlag =
         _ -> Nothing
     )
 
-shiftSourceFlag : Codec Int (List String)
+-- for backwards compatibility, we add conversion between 
+-- the range [0,1] and [-5,5]
+shiftSourceFlag : Codec Float (List String)
 shiftSourceFlag =
-       edgeMaybeFlagCodec 0 ShiftSource
+       edgeMaybeFlagCodec 0.5 (\ x -> ShiftSource <| (x - 0.5) * 10)
     (\ flag -> case flag of 
-        ShiftSource a -> Just a
+        ShiftSource a -> Just <| (a + 5) / 10
         _ -> Nothing
     )
 
-shiftTargetFlag : Codec Int (List String)
+shiftTargetFlag : Codec Float (List String)
 shiftTargetFlag =
-       edgeMaybeFlagCodec 0 ShiftTarget
+       edgeMaybeFlagCodec 0.5 (\ x -> ShiftTarget <| (x - 0.5) * 10)
     (\ flag -> case flag of 
-        ShiftTarget a -> Just a
+        ShiftTarget a -> Just <| (a + 5) / 10
         _ -> Nothing
     )
 
