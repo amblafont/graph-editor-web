@@ -247,7 +247,7 @@ initialiseShiftMode isSource state model =
             updateState model { state | mode = NewArrowShift isSource
             <|  Modes.Customize.initialiseComponent isSource
             dir
-            {shift = 0.5}, merge = state.merge || not isSource }
+            {shift = 0.5} } -- , merge = state.merge || not isSource }
 
 initialiseBendMode : NewArrowState -> Model -> Model
 initialiseBendMode state model =
@@ -416,9 +416,16 @@ moveNodeInfo merge emptyLabel model state =
     --     NewArrowBend b -> model.mousPos --b.origMouse
     --     _ -> model.mousePos
 
+getMerge : NewArrowState -> Bool
+getMerge state =
+    state.merge || state.isAdjunction
+    || case state.mode of
+        NewArrowShift b _ -> not b
+        _ -> False
+
 graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s =
-     let info = moveNodeInfo (s.merge || s.isAdjunction) False m s in
+     let info = moveNodeInfo (getMerge s) False m s in
      
     -- let defaultView movedNode = modelGraph{ graph = modelGraph, movedNode = movedNode}  in
     -- graphMakeEditable (renamableFromState s) <|
