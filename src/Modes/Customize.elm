@@ -94,6 +94,8 @@ updateShift state shiftState msg model =
             api.finalise model state
         Cancel ->
             switch_Default model
+        ToggleHelp ->
+            noCmd <| toggleHelpOverlay model
             -- noCmd <| updateState model { state | mode = CustomizeModePart MainEdgePart }
 
 initialiseShiftMode : Bool -> CustomizeModeState -> Model -> Model

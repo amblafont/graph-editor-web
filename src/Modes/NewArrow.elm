@@ -197,6 +197,8 @@ updateComponentBaseCases state result model =
         Cancel ->
             let newState = { state | mode = NewArrowPart MainEdgePart } in
             noCmd <| updateState model newState
+        ToggleHelp ->
+            noCmd <| toggleHelpOverlay model
         
 -- TODO: factor updateShift and updateBend
 updateShift : ShiftComponentState -> Bool -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )

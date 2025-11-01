@@ -42,7 +42,7 @@ update state msg m =
                     noCmd m
                 Finalise ->
                     api.finalise m state
-                -- ToggleHelp -> noCmd <| toggleHelpOverlay m
+                ToggleHelp -> noCmd <| toggleHelpOverlay m
                 Cancel ->
                     noCmd <| setMode DefaultMode m
 
@@ -111,8 +111,8 @@ help = "Bend mode: " ++ Modes.Capture.help
 
 componentGetBend : BendComponentState -> Float
 componentGetBend state =
-    let delta = state.captureState.value in
-    let newBend = state.origBend + delta in
+    let newBend = state.captureState.value in
+    -- let newBend = state.origBend + delta in
     let finalBend = toFloat (round (newBend * 10)) / 10 in
     finalBend
 

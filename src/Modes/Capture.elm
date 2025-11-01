@@ -8,7 +8,7 @@ import Geometry.Point as Point
 import HtmlDefs exposing (Key(..))
 
 help : String
-help = "move the mouse. [Click] to confirm, [ESC] to cancel."
+help = "move the mouse. [?] toggle help overlay, [Click] or [SPC] to confirm, [ESC] to cancel."
 
 
 
@@ -18,7 +18,7 @@ type UpdateResult =
     | Finalise
     | Cancel
     | NoChange
-    -- | ToggleHelp
+    | ToggleHelp
 
 
 
@@ -31,12 +31,14 @@ update state msg =
         MouseLockedDelta pos ->
             let delta = Point.scalarProduct state.direction pos in
             let newRawValue = state.value + delta in
-            let newValue = case state.bounds of
+            let newValue = Debug.log "capture value" <| case state.bounds of
                     Nothing -> newRawValue
                     Just (minV, maxV) -> 
                         max minV (min maxV newRawValue)
             in (NewState, { state | value = newValue })
         KeyChanged False _ (Control "Escape") ->  sameState Cancel
+        KeyChanged False _ (Character ' ') -> sameState Finalise
+        KeyChanged False _ (Character '?') -> sameState ToggleHelp
         MouseUnlock -> sameState Cancel
         -- to be fixed but, currently can't capture any key when in pointer lock
         -- KeyChanged False _ (Character ' ') -> Finalise

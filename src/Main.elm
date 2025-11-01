@@ -309,7 +309,7 @@ subscriptions m =
     ++
     if case currentMode m of
         ResizeMode _ -> False
-        _ -> not m.mouseOnCanvas
+        _ -> not m.mouseOnCanvas && not (computeFlags m.mode).pointerLock
     then [] 
     else
     (if m.scenario == Watch then [] else [promptedEquation QuickInput]
