@@ -25,8 +25,8 @@ import Format.GraphInfo exposing (activeGraphModifHelper)
 import Msg exposing (defaultModifId)
 import IntDict
 import CommandCodec exposing (protocolSend)
-import Modes exposing (BendComponentState, ShiftComponentState)
 import Modes exposing (CaptureState)
+import ArrowStyle exposing (ExtremePart)
 
 
 -- ask js a marker
@@ -99,7 +99,7 @@ initialise m =
             pos = InputPosMouse,                                 
             chosen = Graph.empty, -- GraphDefs.selectedGraph modelGraph,
             kind = kind,
-            mode = NewArrowPart MainEdgePart,
+            mode = NewArrowMain,
             inverted = False,
             isAdjunction = False,
             merge = False
@@ -165,11 +165,11 @@ update state msg model =
         case msg of
                 KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
                 KeyChanged False _ (Control "Escape")
-                    -> noCmd <| updateState model { state | mode = NewArrowPart MainEdgePart }
+                    -> noCmd <| updateState model { state | mode = NewArrowMain }
                 KeyChanged False _ k ->                              
                     case ArrowStyle.keyMaybeUpdateColor k part state.style of
                         Just newStyle -> 
-                           let st2 = { state | style = newStyle, mode = NewArrowPart MainEdgePart } in
+                           let st2 = { state | style = newStyle, mode = NewArrowMain } in
                              updateState model st2
                               |> noCmd
                         _ -> noCmd model                               
@@ -177,42 +177,9 @@ update state msg model =
     in
 
    case state.mode of
-      NewArrowPart MainEdgePart -> updateNormal state msg model
-      NewArrowPart HeadPart -> updateHeadOrTail HeadPart
-      NewArrowPart TailPart -> updateHeadOrTail TailPart
-      NewArrowBend b -> updateBend b state msg model
-      NewArrowShift isSource s -> updateShift s isSource state msg model
-
-updateComponentBaseCases : NewArrowState -> UpdateResult -> Model -> (Model, Cmd Msg)
-updateComponentBaseCases state result model =
-    case result of
-        NewState -> noCmd model -- should be handled elsewhere
-        NoChange ->
-            noCmd model
-        Finalise ->
-            let newState = { state | mode = NewArrowPart MainEdgePart,
-                         style = getStyle state } 
-            in
-            noCmd <| updateState model newState
-        Cancel ->
-            let newState = { state | mode = NewArrowPart MainEdgePart } in
-            noCmd <| updateState model newState
-        ToggleHelp ->
-            noCmd <| toggleHelpOverlay model
-        
--- TODO: factor updateShift and updateBend
-updateShift : ShiftComponentState -> Bool -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
-updateShift shiftState isSource state msg model =
-    let (result, newCompState) = Modes.Customize.updateComponent shiftState msg in
-    let newState = { state | mode = NewArrowShift isSource newCompState } in
-            updateComponentBaseCases state result <| updateState  model newState
-    
-
-updateBend : BendComponentState -> NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
-updateBend bendState state msg model =
-    let (result, newCompState) = Modes.Bend.updateComponent bendState msg in
-    let newState = { state | mode = NewArrowBend newCompState } in
-    updateComponentBaseCases state result <| updateState  model newState
+      NewArrowPart ArrowStyle.Head -> updateHeadOrTail HeadPart
+      NewArrowPart ArrowStyle.Tail -> updateHeadOrTail TailPart
+      _ -> updateNormal state msg model
 
 getRawDirection : Model -> NewArrowState -> Geometry.Point.Point
 getRawDirection model state =
@@ -226,11 +193,11 @@ getRawDirection model state =
     in
        mayDir |> Maybe.withDefault (20, 0)
 
-initialiseShiftMode : Bool -> NewArrowState -> Model -> Model
-initialiseShiftMode isSource state model =
+initialiseShiftMode : ExtremePart -> NewArrowState -> Model -> Model
+initialiseShiftMode part state model =
     let modelGraph = getActiveGraph model in
     let odir = 
-            if isSource then
+            if part == ArrowStyle.Tail then
                 case state.kind of 
                     CreateArrow id ->
                         GraphDefs.getEdgeDirectionFromId modelGraph id
@@ -244,32 +211,69 @@ initialiseShiftMode isSource state model =
     case odir of
         Nothing -> model
         Just dir ->
-            updateState model { state | mode = NewArrowShift isSource
-            <|  Modes.Customize.initialiseComponent isSource
+            updateState model { state | mode = NewArrowShift part
+            <|  Modes.Customize.initialiseComponent part
             dir
-            {shift = 0.5} } -- , merge = state.merge || not isSource }
+            {shift = 0.5} , merge = state.merge || part == ArrowStyle.Head }
 
 initialiseBendMode : NewArrowState -> Model -> Model
 initialiseBendMode state model =
      let bend = ArrowStyle.getStyle state |> .bend in
                     updateState model { state | mode = NewArrowBend
-                      <|  Modes.Bend.initialiseComponent 
+                      <|  Modes.Bend.initialiseCapture 
                       (getRawDirection model state)
-                      {
-                           bend = bend,
-                           origBend = bend
-                      } } 
+                      bend
+                    --   {
+                    --        bend = bend,
+                    --        origBend = bend
+                    --   }
+                       } 
    
 
 getStyle : NewArrowState -> ArrowStyle.ArrowStyle
 getStyle state = 
     let style = ArrowStyle.getStyle state in
-    case state.mode of 
-        NewArrowBend b -> { style | bend = Modes.Bend.componentGetBend b }
-        NewArrowShift isSource s -> 
-            let shift = Modes.Customize.componentGetShift s in
-            ArrowStyle.updateShift {isSource=isSource, shift=shift} style
-        _ -> style 
+    style
+
+updateBendState : Model -> NewArrowState -> CaptureState -> Model
+updateBendState model state captureState =
+    let newBend = Modes.Bend.captureValue captureState in
+    let style = state.style in
+    updateState model 
+        { state | style = { style | bend = newBend } , mode = NewArrowBend captureState }
+
+updateShiftState : ArrowStyle.ExtremePart -> Model -> NewArrowState -> CaptureState -> Model
+updateShiftState part model state componentState =
+    let shift = componentState.value in
+    let style = state.style in
+    let newStyle = 
+            ArrowStyle.updateShift { part = part, shift = shift } style
+    in
+    updateState model 
+        { state | style = newStyle , mode = NewArrowShift part componentState }
+
+handleCapture : Model -> CaptureState -> Msg ->
+    (CaptureState -> Model) ->
+    Maybe ( Model, Cmd Msg )
+handleCapture model captureState msg updateFunc =
+    let result = Modes.Capture.update captureState msg in
+    case result of
+        NoChange -> Nothing
+        Cancel -> Just <| switch_Default model
+        NewState newCaptureState -> 
+            Just <| noCmd <| updateFunc newCaptureState
+
+
+updateCapture : NewArrowState -> Msg -> Model -> Maybe ( Model, Cmd Msg )
+updateCapture state msg model = 
+    case state.mode of
+        NewArrowBend b -> 
+            handleCapture model b msg 
+                (updateBendState model state)
+        NewArrowShift part s ->
+            handleCapture model s msg 
+                (updateShiftState part model state)
+        _ -> Nothing
 
 updateNormal : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
 updateNormal state msg model =
@@ -296,6 +300,7 @@ updateNormal state msg model =
       
         KeyChanged True _ (Control "Control") -> next {finish = False, merge = True}
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
+        KeyChanged False _ (Character 'g') -> noCmd <| updateState model { state | mode = NewArrowMain }
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next {finish = False, merge = state.merge}
         KeyChanged False _ (Character ' ') -> next {finish = True, merge = state.merge || state.isAdjunction}
@@ -310,8 +315,8 @@ updateNormal state msg model =
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.merge || state.isAdjunction}
         KeyChanged False _ (Character 'a') -> next {finish = True, merge = True}
         KeyChanged False _ (Character 'b') -> noCmd <| initialiseBendMode state model
-        KeyChanged False _ (Character 's') -> noCmd <| initialiseShiftMode True state model
-        KeyChanged False _ (Character 'e') -> noCmd <| initialiseShiftMode False state model
+        KeyChanged False _ (Character 's') -> noCmd <| initialiseShiftMode ArrowStyle.Tail state model
+        KeyChanged False _ (Character 'e') -> noCmd <| initialiseShiftMode ArrowStyle.Head state model
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         KeyChanged False _ (Character 'f') -> 
               noCmd <| updateState model { state | pos = truncateInputPosition model state.chosen }
@@ -320,8 +325,8 @@ updateNormal state msg model =
         KeyChanged False _ (Character 'P') -> pullshoutMode Pushout
         -- KeyChanged False _ (Character 's') -> noCmd <| initialiseShifts model state
         KeyChanged False _ (Character 'm') -> noCmd <| updateState model { state | merge = not state.merge} 
-        KeyChanged False _ (Character 'H') -> changePart <| HeadPart
-        KeyChanged False _ (Character 'T') -> changePart <| TailPart
+        KeyChanged False _ (Character 'H') -> changePart <| ArrowStyle.Head
+        KeyChanged False _ (Character 'T') -> changePart <| ArrowStyle.Tail
         KeyChanged False _ (Character 'C') -> 
               let kind = nextPossibleKind state
                       |> Maybe.withDefault state.kind
@@ -329,24 +334,27 @@ updateNormal state msg model =
               noCmd <| updateState model { state | kind = kind}             
 
         _ ->
-            let newStyle =  case msg of
-                       KeyChanged False _ k -> 
-                            ArrowStyle.keyMaybeUpdateStyle k state.style
-                           |> Maybe.withDefault 
-                             ((ArrowStyle.keyMaybeUpdateColor k MainEdgePart state.style)
-                               
-                        --    |> Maybe.withDefault
-                        --    (ArrowStyle.keyUpdateShiftBend k state.style
-                             |> Maybe.withDefault state.style
-                           -- )
-                             )
-                       _ -> state.style 
-            in
-            let st2 = { state | style = newStyle } in
-            let st3 = { st2 | pos = InputPosition.update st2.pos msg} in
-               st3            
-               |> updateState model 
-               |> noCmd
+            case updateCapture state msg model of
+                Just res -> res
+                Nothing -> 
+                    let newStyle =  case msg of
+                            KeyChanged False _ k -> 
+                                ArrowStyle.keyMaybeUpdateStyle k state.style
+                                |> Maybe.withDefault 
+                                ((ArrowStyle.keyMaybeUpdateColor k MainEdgePart state.style)
+                                
+                            --    |> Maybe.withDefault
+                            --    (ArrowStyle.keyUpdateShiftBend k state.style
+                                |> Maybe.withDefault state.style
+                            -- )
+                                )
+                            _ -> state.style 
+                    in
+                    let st2 = { state | style = newStyle } in
+                    let st3 = { st2 | pos = InputPosition.update st2.pos msg} in
+                    st3            
+                    |> updateState model 
+                    |> noCmd
                   
                 
             
@@ -419,9 +427,9 @@ moveNodeInfo merge emptyLabel model state =
 getMerge : NewArrowState -> Bool
 getMerge state =
     state.merge || state.isAdjunction
-    || case state.mode of
-        NewArrowShift b _ -> not b
-        _ -> False
+    -- || case state.mode of
+    --     NewArrowShift p _ -> p == ArrowStyle.Head
+    --     _ -> False
 
 graphDrawing : Model -> NewArrowState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing m s =
@@ -436,12 +444,8 @@ graphDrawing m s =
          
 help : NewArrowState -> String
 help s =
-    case s.mode of        
-        NewArrowPart MainEdgePart ->
---  case s of
---         NewArrowMoveNode _ ->
-            -- Debug.toString st ++
-            HtmlDefs.overlayHelpMsg ++
+    let mainMsg = 
+          HtmlDefs.overlayHelpMsg ++
             ", [ESC] cancel, [click, TAB] name the point (if new) and arrow, "
             ++ "[hjkl] position the new point with the keyboard "
             ++ "([f] to move by a multiple of the grid size), "
@@ -461,10 +465,17 @@ help s =
              ++ "[p]ullback/[P]ushout mode.\n"
              ++ "Colors: " ++ Color.helpMsg
              ++ ", color [H]ead/[T]ail"
+    in
+    case s.mode of        
+        NewArrowMain -> mainMsg
+--  case s of
+--         NewArrowMoveNode _ ->
+            -- Debug.toString st ++
+          
         NewArrowPart p -> "Submode color "
-            ++ (if p == HeadPart then "head" else "tail")
+            ++ (if p == ArrowStyle.Head then "head" else "tail")
             ++ " of the arrow: [ESC] to cancel, "
             ++ Color.helpMsg ++ ", "
             ++ HtmlDefs.overlayHelpMsg
-        NewArrowBend _ -> "new arrow " ++ Modes.Bend.help 
-        NewArrowShift isSource _ -> "New arrow " ++ Modes.Customize.helpShift isSource
+        NewArrowBend _ -> "bend using mouse, [g] to validate, " ++ mainMsg
+        NewArrowShift part _ -> "shift using mouse, [g] to validate, " ++ mainMsg

@@ -10,7 +10,7 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -}
     keyMaybeUpdateColor, isPartColorable, TailStyle(..), HeadStyle(..), ArrowKind(..),
     -- keyMaybeUpdateHeadColor, keyMaybeUpdateTailColor,
     makeHeadShape, shiftRatioFromPart, -- keyUpdateShiftBend,
-    makeTailShape, getStyle, isNone, simpleLineStyle
+    makeTailShape, getStyle, isNone, simpleLineStyle, ExtremePart(..)
     , invert, updateShift)
 
 import HtmlDefs exposing (Key(..))
@@ -54,17 +54,19 @@ type alias Style = { tail : TailStyle,
 -- shiftRatio : Int -> Float 
 -- shiftRatio s = 0.5 + toFloat s / (2 * maxShift)
 
-shiftRatioFromPart : Style -> EdgePart -> Float
+type ExtremePart = Head | Tail 
+
+shiftRatioFromPart : Style -> ExtremePart -> Float
 shiftRatioFromPart s part = 
   case part of 
-    HeadPart -> s.shiftTarget
-    TailPart -> s.shiftSource
+    Head -> s.shiftTarget
+    Tail -> s.shiftSource
     -- should not occur
-    MainEdgePart -> 0.5
+    -- MainEdgePart -> 0.5
 
-updateShift : {isSource : Bool, shift : Float} -> Style -> Style
-updateShift {isSource, shift} s =
-    if isSource then
+updateShift : {part : ExtremePart, shift : Float} -> Style -> Style
+updateShift {part, shift} s =
+    if part == Tail then
        { s | shiftSource = shift }
     else
        { s | shiftTarget = shift }
@@ -294,12 +296,12 @@ keyMaybeUpdateColor k p s =
 --     _ -> Nothing
 
 
-isPartColorable : EdgePart -> Style -> Bool
+isPartColorable : ExtremePart -> Style -> Bool
 isPartColorable part s = 
   case part of
-    HeadPart -> s.head /= NoHead
-    TailPart -> s.tail /= DefaultTail
-    MainEdgePart -> True
+    Head -> s.head /= NoHead
+    Tail -> s.tail /= DefaultTail
+    -- MainEdgePart -> True
 
 
    

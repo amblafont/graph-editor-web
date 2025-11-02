@@ -35,7 +35,7 @@ type Mode
     | LatexPreamble String
 type alias BendState =
   { edge : Graph.Edge EdgeLabel
-  , componentState : BendComponentState
+  , captureState : CaptureState
   }
 
 -- only the bend component is going to change
@@ -153,11 +153,10 @@ type alias CustomizeModeState =
       -- style : Maybe ArrowStyle
     }
 
-type alias ShiftComponentState = CaptureState
     -- { captureState : CaptureState, origShift : Float }
 type alias CustomizeModeShiftState =
-    { isSource : Bool
-    , componentState : ShiftComponentState
+    { part : ArrowStyle.ExtremePart
+    , componentState : CaptureState
     -- , edge : Graph.Edge EdgeLabel
     }
 type CustomizeMode =
@@ -172,9 +171,10 @@ type alias NewLineState = {
     }
 
 type NewArrowMode = 
-    NewArrowPart EdgePart
-  | NewArrowBend BendComponentState
-  | NewArrowShift Bool ShiftComponentState
+    NewArrowPart ArrowStyle.ExtremePart
+  | NewArrowMain 
+  | NewArrowBend CaptureState
+  | NewArrowShift ArrowStyle.ExtremePart CaptureState
 
 type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,

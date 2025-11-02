@@ -1,9 +1,9 @@
 module Modes.Customize exposing (computeFlags,initialise, fixModel, update, help, graphDrawing,
-    initialiseComponent, updateComponent, componentGetShift, updateShift, helpShift)
+    initialiseComponent)
 
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import GraphDrawing exposing (NodeDrawingLabel,EdgeDrawingLabel)
-import Modes exposing (Mode(..), CustomizeModeState, ShiftComponentState, CustomizeModeShiftState)
+import Modes exposing (Mode(..), CustomizeModeState, CustomizeModeShiftState)
 import Model exposing (noCmd, Model, collageGraphFromGraph, getActiveGraph, toggleHelpOverlay, switch_Default, setMode)
 import Polygraph as Graph exposing (Graph, Edge)
 import Msg exposing (Msg(..))
@@ -69,8 +69,8 @@ updateEdgeShift : List (Edge EdgeLabel) -> CustomizeModeShiftState -> List (Edge
 updateEdgeShift edges state =
     let applyStyle label =
             let newStyle = 
-                    ArrowStyle.updateShift { isSource = state.isSource,
-                     shift = componentGetShift state.componentState }
+                    ArrowStyle.updateShift { part = state.part,
+                     shift = state.componentState.value }
                       label.style
             in
             { label | style = newStyle}
@@ -80,37 +80,35 @@ updateEdgeShift edges state =
 
 updateShift : CustomizeModeState -> CustomizeModeShiftState -> Msg -> Model -> (Model, Cmd Msg)
 updateShift state shiftState msg model =
-    let (result, newCompState) = updateComponent shiftState.componentState msg in
-    case result of
-        NewState ->
+    case Modes.Capture.update shiftState.componentState msg of
+        Cancel -> switch_Default model
+        NewState newCompState ->
             let newState = 
                     { state | mode = 
                     CustomizeModeShift { shiftState | componentState = newCompState } } 
             in
             noCmd <| updateState model newState
         NoChange ->
-            noCmd model
-        Finalise ->
-            api.finalise model state
-        Cancel ->
-            switch_Default model
-        ToggleHelp ->
-            noCmd <| toggleHelpOverlay model
-            -- noCmd <| updateState model { state | mode = CustomizeModePart MainEdgePart }
+            case msg of 
+                KeyChanged False _ (Control "Escape") -> switch_Default model
+                KeyChanged False _ (Character ' ') -> api.finalise model state
+                MouseClick -> api.finalise model state
+                KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
+                _ -> noCmd model
 
-initialiseShiftMode : Bool -> CustomizeModeState -> Model -> Model
-initialiseShiftMode isSource state model =
+initialiseShiftMode : ArrowStyle.ExtremePart -> CustomizeModeState -> Model -> Model
+initialiseShiftMode part state model =
     case state.edges of
         [] -> model
         edge :: _ ->
-            let id = if isSource then edge.from else edge.to in
+            let id = if part == ArrowStyle.Tail then edge.from else edge.to in
             let odir = GraphDefs.getEdgeDirectionFromId (getActiveGraph model) id in
             case odir of
                 Nothing -> model
                 Just dir ->
                     updateState model { state | mode = 
-                    CustomizeModeShift { isSource = isSource,
-                        componentState = initialiseComponent isSource dir {shift = 0.5} } }
+                    CustomizeModeShift { part = part,
+                        componentState = initialiseComponent part dir {shift = 0.5} } }
     
 
 -- applyShiftToEdges : List (Edge EdgeLabel) -> CustomizeModeShiftState -> List (Edge EdgeLabel)
@@ -143,10 +141,10 @@ mainUpdate state edgepart msg model =
         KeyChanged False _ (Character 'T') ->
              checkColorable TailPart
         KeyChanged False _ (Character 's') ->
-            initialiseShiftMode True state model |> 
+            initialiseShiftMode ArrowStyle.Tail state model |> 
             noCmd
         KeyChanged False _ (Character 'e') ->
-            initialiseShiftMode False state model |> 
+            initialiseShiftMode ArrowStyle.Head state model |> 
             noCmd
         KeyChanged False _ (Character ' ') -> api.finalise model state
         KeyChanged False _ (Character c) ->
@@ -168,8 +166,8 @@ help state =
       "Mode customise. "
       ++ 
       case state.mode of
-        CustomizeModeShift {isSource} ->
-                helpShift isSource
+        CustomizeModeShift {part} ->
+                helpShift part
         CustomizeModePart part ->      
             (case part of
                 MainEdgePart -> "." 
@@ -202,26 +200,14 @@ It requires the Model.CmdFlag pointerLock to be true while active
 
 
 
-helpShift : Bool -> String
-helpShift source = "Shift " ++ (if source then "source" else "target") ++ 
-        " mode: " ++ Modes.Capture.help
-
-componentGetShift : ShiftComponentState -> Float
-componentGetShift state =
-    -- let delta = state.captureState.value in
-    -- let newBend = state.origBend + delta in
-    -- let finalBend = toFloat (round (newBend * 10)) / 10 in
-    max state.value 0 |> min 1
-
-updateComponent : ShiftComponentState -> Msg -> (Modes.Capture.UpdateResult, ShiftComponentState )
-updateComponent state msg = Modes.Capture.update state msg
-    -- let (result, newState) = Modes.Capture.update state.captureState msg in
-    -- (result, {state | captureState = newState } )
+helpShift : ArrowStyle.ExtremePart -> String
+helpShift part = "Shift " ++ (if part == ArrowStyle.Tail then "source" else "target") ++ 
+        " use mouse, [ESC] to cancel, [SPC} or [click] to confirm. " ++ HtmlDefs.overlayHelpMsg
 
 
-initialiseComponent : Bool -> Point -> { shift : Float } -> 
-   ShiftComponentState
-initialiseComponent isSource dir0 ini =
+initialiseComponent : ArrowStyle.ExtremePart -> Point -> { shift : Float } -> 
+   CaptureState
+initialiseComponent part dir0 ini =
     let dir = if dir0 == (0,0) then (10,0) else Geometry.Point.resize 0.0001 dir0 in
      { value = ini.shift, 
        direction = -- (if isSource then Geometry.Point.flip dir else dir)

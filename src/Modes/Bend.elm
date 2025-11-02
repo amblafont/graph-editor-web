@@ -1,4 +1,5 @@
-module Modes.Bend exposing (fixModel, computeFlags, update, graphDrawing, help, initialise, updateComponent, initialiseComponent, componentGetBend)
+module Modes.Bend exposing (fixModel, computeFlags, update, graphDrawing, help, initialise, captureValue, initialiseCapture)
+ -- updateComponent,, componentGetBend) -- initialiseComponent
 
 import Modes.Capture exposing (UpdateResult(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel)
@@ -16,6 +17,7 @@ import ArrowStyle exposing (ArrowStyle)
 import CommandCodec exposing (updateModifHelper)
 import Geometry.Point as Point
 import Modes.Lib 
+import Model exposing (switch_Default)
 
 -- State for BendMode
 -- edge: the edge being bent
@@ -33,18 +35,19 @@ fixModel m state = initialise_with_state m (Just state)
 
 update : BendState -> Msg -> Model -> (Model, Cmd Msg)
 update state msg m =
-            let (result, newCompState) = updateComponent state.componentState msg in
-            case result of
-                NewState ->
-                    let newState = { state | componentState = newCompState } in
-                    noCmd <| setMode (BendMode newState) m
-                NoChange ->
-                    noCmd m
-                Finalise ->
-                    api.finalise m state
-                ToggleHelp -> noCmd <| toggleHelpOverlay m
-                Cancel ->
-                    noCmd <| setMode DefaultMode m
+    let result = Modes.Capture.update  state.captureState msg in
+    case result of
+        Cancel -> switch_Default m
+        NewState newCompState ->
+            let newState = { state | captureState = newCompState } in
+            noCmd <| setMode (BendMode newState) m
+        NoChange ->
+            case msg of 
+                KeyChanged False _ (Control "Escape") -> switch_Default m
+                KeyChanged False _ (Character ' ') -> api.finalise m state
+                MouseClick -> api.finalise m state
+                KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay m
+                _ -> noCmd m
 
 
 initialise : Model -> Model
@@ -59,7 +62,7 @@ createModif : Graph NodeLabel EdgeLabel -> BendState -> Graph.ModifHelper NodeLa
 createModif modelGraph state =
 
             GraphDefs.updateStyleEdges
-            (\ style -> Just <| { style | bend = componentGetBend state.componentState }) [state.edge] modelGraph
+            (\ style -> Just <| { style | bend = captureValue state.captureState }) [state.edge] modelGraph
 
 
 api = Modes.Lib.makeApi createModif 
@@ -81,15 +84,15 @@ initialise_with_state model mayState =
                                 |> Maybe.withDefault (1, 0)
                     in
                     
-                    let iniState = 
+                    let iniState = initialiseCapture dir <| 
                             case mayState of
-                                Nothing -> { bend = l.style.bend, origBend = l.style.bend }
-                                Just s -> { bend = componentGetBend s.componentState, origBend = s.componentState.origBend}
+                                Nothing -> l.style.bend
+                                Just s -> s.captureState.value
                     in                   
                     -- if from == to then failedRet else
                     setMode (BendMode { edge = e,
-                                componentState = 
-                                initialiseComponent dir iniState                                    
+                                captureState = iniState
+                                -- initialiseCapture dir iniState                                    
                                 }) model
                 
 
@@ -107,30 +110,33 @@ It requires the Model.CmdFlag pointerLock to be true while active
 
 
 help : String
-help = "Bend mode: " ++ Modes.Capture.help
+help = "Bend mode: move mouse to bend, [Click] or [SPC] to confirm, [ESC] to cancel. " ++ HtmlDefs.overlayHelpMsg
 
-componentGetBend : BendComponentState -> Float
-componentGetBend state =
-    let newBend = state.captureState.value in
+
+captureValue : Modes.CaptureState -> Float
+captureValue state =
+    let newBend = state.value in
     -- let newBend = state.origBend + delta in
     let finalBend = toFloat (round (newBend * 10)) / 10 in
     finalBend
 
-updateComponent : BendComponentState -> Msg -> (Modes.Capture.UpdateResult, BendComponentState )
-updateComponent state msg =
-    let (result, newState) = Modes.Capture.update state.captureState msg in
-    (result, {state | captureState = newState } )
-
-
-initialiseComponent : Point -> { bend : Float, origBend : Float } -> 
-   BendComponentState
-initialiseComponent dir0 ini =
-    let dir = if dir0 == (0,0) then (1,0) else dir0 in
-     { -- bend = ini.bend
-       origBend = ini.origBend
-      , captureState = 
-         { value = ini.bend, 
+initialiseCapture : Point -> Float -> Modes.CaptureState
+initialiseCapture dir0 iniBend =
+      { value = iniBend, 
     --   , origMouse = ini.origMouse
-       direction = Point.orthoVectPx (0, 0) dir 0.01,
+       direction = Point.orthoVectPx (0, 0) dir0 0.01,
          bounds = Nothing
-      } }
+      }
+
+-- initialiseComponent : Point -> { bend : Float, origBend : Float } -> 
+--    BendComponentState
+-- initialiseComponent dir0 ini =
+--     let dir = if dir0 == (0,0) then (1,0) else dir0 in
+--      { -- bend = ini.bend
+--        origBend = ini.origBend
+--       , captureState = 
+--          { value = ini.bend, 
+--     --   , origMouse = ini.origMouse
+--        direction = Point.orthoVectPx (0, 0) dir 0.01,
+--          bounds = Nothing
+--       } }

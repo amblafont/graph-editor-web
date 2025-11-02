@@ -754,8 +754,8 @@ posGraph g =
                   --  let dims = (padding, padding) |> Point.resize 4 in
                    let computePosDims isSource = 
                         let (n, part) = 
-                                 if isSource then (n1, ArrowStyle.TailPart)
-                                 else (n2, ArrowStyle.HeadPart)
+                                 if isSource then (n1, ArrowStyle.Tail)
+                                 else (n2, ArrowStyle.Head)
                         in
                         if not n.isArrow then n.posDims else
                         let oldPosDims = n.posDims in
