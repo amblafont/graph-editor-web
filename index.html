@@ -171,6 +171,7 @@ if ('serviceWorker' in navigator) {
         File: <span id="filename">(no file)</span>
         <button id="install" hidden>Install for offline use</button>
         <button id="connect" onclick="tryConnect()">Connect to server</button>
+        <button id="connect-ide" onclick="tryConnectIDE()">Connect to IDE</button>
         <span id="connect-status"></span>
    
      
@@ -227,16 +228,54 @@ function disableInAppInstallPrompt() {
 
         const isFileAPI = typeof showDirectoryPicker != 'undefined';
         const configFilename = "yade-config.json";
-        var vscode = undefined;
-        if (typeof acquireVsCodeApi != 'undefined') {
-            vscode = acquireVsCodeApi();
+        var ide = undefined;
+        const urlParams = new URLSearchParams(window.location.search);
+        // var vscode = undefined;
+        if (urlParams.has('ide')) {
+            var wsIde = connectToIDE(urlParams.get('ide'));
+            ide = { postMessage : (msg) => wsIde.send(JSON.stringify(msg)),
+                    vscode : false,
+                    onMessage : (callback) => {
+                        wsIde.onmessage = (event) => {
+                            try {
+                                var data = JSON.parse(event.data);
+                            } catch(e) {
+                                console.error("Error parsing message from IDE:", event.data);
+                                return;
+                            }   
+                            callback(data);                         
+                        };
+                    }
+            };
         }
+        if (typeof acquireVsCodeApi != 'undefined') {
+            var vscode = acquireVsCodeApi();
+            // remove button to connect to ide
+            var connectIdeButton = document.getElementById("connect-ide");
+            connectIdeButton.parentNode.removeChild(connectIdeButton);
+            // ideInterface is now a fresh object with a method called 
+            // postMessage
+            ide = {
+                postMessage: function(msg) {
+                    vscode.postMessage(msg);
+                },
+                onMessage: function(callback) {
+                    window.addEventListener('message', event => {
+                        callback(event.data);
+                    });
+                },
+                vscode : true
+            };
+        }
+        // check if there is a portIde GET parameter
+        // const urlParams = new URLSearchParams(window.location.search);
+     
         var currentFileHandle = undefined;
 
 
         // copied from index.ts
         function sendExternalMsg(key, content) {
-                vscode.postMessage({key:key, content:content})
+                ide.postMessage({key:key, content:content})
         }
 
         var appDiv = document.getElementById('myapp');
@@ -326,7 +365,7 @@ function disableInAppInstallPrompt() {
          var app = Elm.Main.init({
              node: appDiv,
              flags: { defaultGridSize : gridSize, rulerMargin : rulerMargin
-                , saveLoadButtons : vscode == undefined
+                , saveLoadButtons : ide == undefined
               }
          });
 
@@ -398,8 +437,8 @@ function disableInAppInstallPrompt() {
             app.ports["loadedGraph" + version].send(args);
          }
         
-         const queryString = window.location.search;
-         const urlParams = new URLSearchParams(queryString);
+        //  const queryString = window.location.search;
+        //  const urlParams = new URLSearchParams(queryString);
          var tutoData = {"graph" : tutorial, "scenario" : "standard", "clipboard" : false, 
         setFirstTab : false };
 
@@ -910,10 +949,9 @@ function disableInAppInstallPrompt() {
                 });
             });
 
-         const err = "This feature is only enabled with the webview version embedded in the appropriate vscode extension";
-
+         const err = "This feature is only enabled when connected to an IDE";
        
-         if (vscode) {
+         if (ide) {
             
             app.ports.applyProof.subscribe(function(data){ 
                 sendExternalMsg("apply-proof", data)
@@ -1066,7 +1104,8 @@ function disableInAppInstallPrompt() {
                 // so that it knows what is our last seen id
                 intervalId = setInterval(() => Bundle.requestSnapshot(ws), 30000);
             });
-
+            
+            
             // Écouter les messages
             ws.addEventListener("message", function (event) {
                 // console.log("Voici un message du serveur", event.data);
@@ -1081,6 +1120,45 @@ function disableInAppInstallPrompt() {
             });
             // customAlert("go");
          };
+         // copied from connectTo. TODO: factor common
+          function connectToIDE(rep) {
+            console.log("connecting to IDE " + rep);
+            var wsIde = new WebSocket(rep);
+           
+            wsIde.onclose = function(event) {
+                document.getElementById("connect-status").textContent = "";
+                if (event.wasClean) {
+                    customAlert(`[close] Connection to IDE closed cleanly, code=${event.code} reason=${event.reason}`);
+                } else {
+                    // par exemple : processus serveur arrêté ou réseau en panne
+                    // event.code est généralement 1006 dans ce cas
+                    customAlert('[close] Connection to IDE died');
+                }                
+            };
+            // La connexion est ouverte
+            wsIde.addEventListener("open", function (event) {
+            // socket.send("Coucou le serveur !");
+                // online = true;
+                
+                document.getElementById("connect-status").textContent = "(connected to IDE)";
+                let msg = "YADE is connected to IDE.";
+                if (currentFileHandle) {
+                    if (!confirm(msg + 
+                        " Keep editing " + getFileName() + "?")) {
+                        currentFileHandle = undefined;
+                        resetFileName();
+                    }
+                }
+                else {
+                    customAlert(msg);
+                }                
+                
+            });
+
+            return wsIde;
+            // customAlert("go");
+         };
+
         //  const connectButton = document.querySelector("#connect");
          function tryConnect() {
             customPrompt("connect to what?",defaultServer,
@@ -1091,9 +1169,19 @@ function disableInAppInstallPrompt() {
                     // customAlert("c'est parti");
                     connectToServer(rep);
                 });
-           
-
-
+         };
+         function tryConnectIDE() {
+            customPrompt("address of IDE server?","ws://localhost:9000",
+                function (rep) {
+                    if (rep === null) {
+                        return;
+                    }
+                    // customAlert("c'est parti");
+                    // redirect to the same page with a ide GET parameter
+                    const url = new URL(window.location);
+                    url.searchParams.set("ide", rep);
+                    window.location.href = url.href;
+                });
          };
          // get the GET parameter server
          if (urlParams.has("server")) {
@@ -1118,15 +1206,18 @@ function disableInAppInstallPrompt() {
 
         */
        var promptCallback = undefined;
-       if (vscode) {            
-            console.log("vscode detected");
-            customPrompt = function (question, defaut, callback) {
-                promptCallback = (ret) => callback(ret);
-                vscode.postMessage({key:"prompt", content: {question: question, default: defaut}});
-            };
-            customAlert = function (message) {
-                vscode.postMessage({key:"alert", content: message});
-            };
+       if (ide) {            
+            console.log("ide detected. ");
+            if (ide.vscode) {
+                console.log("vscode detected. ");
+                customPrompt = function (question, defaut, callback) {
+                    promptCallback = (ret) => callback(ret);
+                    ide.postMessage({key:"prompt", content: {question: question, default: defaut}});
+                };
+                customAlert = function (message) {
+                    ide.postMessage({key:"alert", content: message});
+                };
+            }
             app.ports.generateProofJs.subscribe(function(script){
                 sendExternalMsg("generate-proof",processProof(script));
             });
@@ -1134,10 +1225,9 @@ function disableInAppInstallPrompt() {
 
 
          // copied from configureIpc()
-
-         window.addEventListener("message", evt => 
-     { const msg = evt.data;
-       const validMsg = msg && typeof msg === "object" 
+     function handleExternalMsg(msg) {
+        //   const msg = evt.data;
+          const validMsg = msg && typeof msg === "object" 
                          && "key" in msg
                          && "content" in msg;
        if (!validMsg) {
@@ -1169,8 +1259,10 @@ function disableInAppInstallPrompt() {
                 connectToServer(msg.content);
             break;
        }
-      }
-  );
+    }
+    if (ide)
+        ide.onMessage(handleExternalMsg);
+        
 
   /*
 
