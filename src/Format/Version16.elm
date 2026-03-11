@@ -9,9 +9,9 @@ import Format.GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color
 import Codec
-import Format.Version17 as NextVersion exposing
-  (dashedFlag, wavyFlag, textFlag, coqValidatedFlag,
-  prefixes, bendFlag, positionFlag)
+import Format.Version17 as NextVersion
+import Format.Version18 as NextNextVersion exposing (dashedFlag, wavyFlag, textFlag, coqValidatedFlag,
+  prefixes, bendFlag, positionFlag, addFlag)
 import GraphDefs
 
 version = 16
@@ -50,12 +50,12 @@ toNextEdge : Edge -> NextVersion.Edge
 toNextEdge {label, style, kind, zindex} = 
   let style2 = toNextStyle style in
   let style3 = if kind == keys.pullshout then
-                 NextVersion.addFlag 
-                 (NextVersion.Pullshout {offset1 = style.position, offset2 = style.bend}) style2 
+                 addFlag 
+                 (NextNextVersion.Pullshout {offset1 = style.position, offset2 = style.bend}) style2 
                else style2 
   in
   let style4 = if kind == keys.adjunction then
-                 NextVersion.addFlag NextVersion.Adjunction style3
+                 addFlag NextNextVersion.Adjunction style3
                else style3
   in
   {label = label, 

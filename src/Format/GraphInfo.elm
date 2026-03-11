@@ -1,8 +1,7 @@
 module Format.GraphInfo exposing (GraphInfo, Tab, TabId, emptyTab, isActiveTab, normalise, 
     getActiveTab, getActiveTabOption, getActiveSizeGrid, applyModif, applyModifSimple, Modif(..), ModifInfo
     , activeGraphModif, activeGraphModifHelper, getActiveGraph, getGraph, updateGraph
-    , ModifResult, makeGraphChange, getTabById --, getActiveGraphOption
-    -- getActiveGraphOption
+    , ModifResult, makeGraphChange, getTabById
     )
 -- the data that we want to copy/save
 import Polygraph as Graph exposing (Graph)
@@ -10,17 +9,20 @@ import GraphDefs exposing (EdgeLabel, NodeLabel)
 import List.Extra as ListExtra
 import ListExtraExtra as ListExtra
 import Modif
-import IntDict exposing (IntDict)
+import Geometry.Point exposing (Point)
 
+import FreeHandDrawings as FreeHand
 -- defaultGridSize : Int
 -- defaultGridSize = 200
+
 
 type alias Tab = 
   { graph : Graph.Graph NodeLabel EdgeLabel,
     title : String,
     -- active : Bool,
     id : TabId,
-    sizeGrid : Int }
+    sizeGrid : Int,
+    freehandDrawings : FreeHand.Drawings }
 
 type alias TabId = Int
 
@@ -31,7 +33,7 @@ type alias GraphInfo = { tabs : List Tab,
 
 emptyTab : Int -> Tab
 emptyTab id = { id = id,
-           title = "1", sizeGrid = 200, graph = Graph.empty}
+           title = "1", sizeGrid = 200, graph = Graph.empty, freehandDrawings = FreeHand.empty }
 
 isActiveTab : {a | activeTabId : TabId} -> Tab -> Bool
 isActiveTab gi tab = tab.id == gi.activeTabId
@@ -98,6 +100,8 @@ type Modif =
   | GraphChange {tabId : TabId,
                  modif : Graph.Modif NodeLabel EdgeLabel }
   | LatexPreamble String
+  | FreehandAdd TabId (List Point)
+  | FreehandRemove TabId (List FreeHand.DrawingId)
   | Noop
 
 
@@ -140,7 +144,8 @@ nextTabName m =
 
 initialiseNewTab : GraphInfo ->
                      { a | graph : Graph.Graph NodeLabel EdgeLabel, 
-                            sizeGrid : Int} -> GraphInfo
+                            sizeGrid : Int,
+                            freehandDrawings : FreeHand.Drawings} -> GraphInfo
 initialiseNewTab m tab =
   let title = nextTabName m in
   { m | tabs = m.tabs ++ 
@@ -148,7 +153,8 @@ initialiseNewTab m tab =
     { graph = tab.graph ,
         sizeGrid = tab.sizeGrid ,
         title = title ,
-        id = m.nextTabId
+        id = m.nextTabId,
+        freehandDrawings = tab.freehandDrawings
       }
     ],
     nextTabId = m.nextTabId + 1
@@ -162,7 +168,8 @@ getActiveSizeGrid m = getActiveTab m |> .sizeGrid
 createNewTab : GraphInfo -> GraphInfo
 createNewTab m =
   let sizeGrid = getActiveSizeGrid m in
-  initialiseNewTab m { graph = Graph.empty, sizeGrid = sizeGrid, title = nextTabName m }
+  initialiseNewTab m { 
+    graph = Graph.empty, sizeGrid = sizeGrid, title = nextTabName m, freehandDrawings = FreeHand.empty }
   
 
 duplicateTab : GraphInfo -> Tab -> GraphInfo
@@ -253,3 +260,23 @@ applyModif gi modif =
                  )
                 (\m -> makeGraphChange arg.tabId m)
                 )
+    FreehandAdd tabId points ->
+       mapTabModifInfo gi tabId <| retTabModif <<
+          (\tab ->
+              let idx = tab.freehandDrawings.nextFreehandId in
+              Just { next = { tab | freehandDrawings = FreeHand.add tab.freehandDrawings points }
+                   , undo = FreehandRemove tabId [idx] })
+    FreehandRemove tabId ids ->
+       mapTabModifInfo gi tabId <| retTabModif <<
+          (\tab ->
+              let points =
+                    List.filterMap 
+                    (\ id -> 
+                        FreeHand.get tab.freehandDrawings id
+                    ) ids
+                    |> List.concat 
+              in
+              if points == [] then Nothing
+              else               
+                  Just { next = { tab | freehandDrawings = FreeHand.remove tab.freehandDrawings ids }
+                       , undo = FreehandAdd tabId points })

@@ -1,4 +1,4 @@
-module IntDictExtra exposing (filterMap, removeList, getList, any, codec)
+module IntDictExtra exposing (filterMap, removeList, getList, any, codec, fromBareList)
 
 import IntDict exposing (IntDict)
 import Codec exposing (Codec)
@@ -21,5 +21,8 @@ any : (a -> Bool) -> IntDict a -> Bool
 any f d = IntDict.filter (always f) d |> IntDict.isEmpty |> not
 
 codec : Codec (IntDict a) (List (Int, a))
-codec = 
+codec =
    Codec.build IntDict.toList IntDict.fromList
+
+fromBareList : List a -> IntDict a
+fromBareList l = List.indexedMap Tuple.pair l |> IntDict.fromList

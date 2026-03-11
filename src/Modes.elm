@@ -31,6 +31,8 @@ type Mode
     | PullshoutMode PullshoutState
     | CustomizeMode CustomizeModeState
     | BendMode BendState
+    | FreeHandMode FreeHandState
+    | DeleteFreeHandMode DeleteFreeHandState
     | MakeSaveMode
     | LatexPreamble String
 type alias BendState =
@@ -62,6 +64,8 @@ toString m = case m of
   PullshoutMode _ -> "Pullshout"
   CustomizeMode _ -> "Color"
   BendMode _ -> "Bend"
+  FreeHandMode _ -> "FreeHand"
+  DeleteFreeHandMode _ -> "DeleteFreeHand"
   MakeSaveMode -> "MakeSave"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
@@ -207,3 +211,9 @@ type alias SquareState =
     -- should it guess the position of the new node
     , guessPos : Bool
     }
+
+type alias FreeHandState =
+    { points : List Point }
+
+type alias DeleteFreeHandState =
+    { ids : List Int }

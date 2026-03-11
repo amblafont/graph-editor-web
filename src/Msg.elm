@@ -20,6 +20,7 @@ import Browser.Dom as Dom
 import ArrowStyle exposing (ArrowStyle)
 import GraphDefs exposing (NodeLabel, EdgeLabel)
 import Html.Events.Extra.Mouse as MouseEvents
+import Html.Events.Extra.Pointer as PointerEvents
 import Html
 import Format.GraphInfoCodec
 import Format.GraphInfo exposing (Modif, TabId)
@@ -153,6 +154,8 @@ type Msg
   | MouseClick 
   | MouseDown MouseEvents.Event -- is Shift selected?
   | MouseUp
+  | PenDown PointerEvents.Event
+  | PenUp
   -- | NodeEnter NodeId
   -- | NodeLeave NodeId
   | NodeClick NodeId MouseEvents.Event
@@ -172,6 +175,7 @@ type Msg
   | NodeRendered NodeId Point
   | EdgeRendered EdgeId Point
   | MouseOn Graph.Id
+  | MouseOnHandFree Int
   | Clear { scenario : Scenario, preamble : String}
   | SizeGrid Int
   | RulerMargin Int

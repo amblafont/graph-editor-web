@@ -28,7 +28,7 @@ import Time
 import Codec
 import Browser.Dom as Dom
 import Process
-
+import FreeHandDrawings as FreeHand
 
 import Json.Decode as D
 import Json.Encode as JE
@@ -71,6 +71,8 @@ import Modes.CutHead
 import Modes.Move
 import Modes.Rename
 import Modes.Customize
+import Modes.Freehand
+import Modes.Delfreehand
 import Drawing.Color as Color
 import Modes exposing (Mode(..), SelectState, MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
@@ -104,6 +106,7 @@ import Format.Version14
 import Format.Version15
 import Format.Version16
 import Format.Version17
+import Format.Version18
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo as GraphInfo exposing (Tab)
@@ -122,9 +125,10 @@ import Command
 import Platform.Sub as Sub
 import Msg exposing (defaultModifId)
 import GraphDefs exposing (isPullshout)
+import Base64 exposing (toBytes)
+-- import Bytes exposing (Bytes)
 
-
-port test : Maybe () -> Cmd a
+-- port test : Bytes -> Cmd a
 port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
@@ -170,6 +174,7 @@ port loadedGraph14 : (LoadGraphInfo Format.Version14.Graph -> a) -> Sub a
 port loadedGraph15 : (LoadGraphInfo Format.Version15.Graph -> a) -> Sub a
 port loadedGraph16 : (LoadGraphInfo Format.Version16.Graph -> a) -> Sub a
 port loadedGraph17 : (LoadGraphInfo Format.Version17.Graph -> a) -> Sub a
+port loadedGraph18 : (LoadGraphInfo Format.Version18.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -280,6 +285,7 @@ subscriptions m =
       loadedGraph15 (mapLoadGraphInfo Format.Version15.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph16 (mapLoadGraphInfo Format.Version16.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph17 (mapLoadGraphInfo Format.Version17.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph18 (mapLoadGraphInfo Format.Version18.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
@@ -386,7 +392,10 @@ switch_RenameMode model =
              {model | mode = RenameMode l}, Cmd.none {- focusLabelInput -})
  -}
 -- Now, deal with incoming messages
-
+-- Note that this is the only place we normalise 
+-- ids of the graph, and this function is only called
+-- when saving or exporting for copy and paste
+-- i.e., during an online collaborative session, there is no normalisation happening until the end.
 toJsGraphInfo : Model -> JsGraphInfo
 toJsGraphInfo model= { graph = LastFormat.toJSGraph 
                                <| GraphInfo.normalise  <| Model.toGraphInfo model,
@@ -444,9 +453,13 @@ textNodesToLatex nodes =
     String.join "\n\n"
 
 graphToTikz : Model -> Graph NodeLabel EdgeLabel -> String
-graphToTikz model graph =
-    let nodes = Graph.nodes graph |> List.map .label in
-    if List.all (.isMath >> not) nodes 
+graphToTikz model graph = allToTikz model graph FreeHand.empty
+   
+
+allToTikz : Model -> Graph NodeLabel EdgeLabel -> FreeHand.Drawings -> String
+allToTikz model graph drawings =
+   let nodes = Graph.nodes graph |> List.map .label in
+   if List.all (.isMath >> not) nodes 
         && Graph.edges graph == [] then
        -- return the text
       textNodesToLatex nodes
@@ -454,14 +467,16 @@ graphToTikz model graph =
      let d = toDrawing model 
             <| GraphDrawing.toDrawingGraph graph
      in
-     Drawing.tikz d
+     Drawing.tikz <| Drawing.group [d, drawFreeHand (always []) drawings]
 
 makeExports : Model -> ExportFormats
 makeExports model = 
-    let modelGraph = getActiveGraph model in
+    let tab = getActiveTab model in
+    let modelGraph = tab.graph in
+    let freehand = tab.freehandDrawings in
     -- let sizeGrid = getActiveSizeGrid model in
-     {tex = graphToTikz model modelGraph -- sizeGrid modelGraph
-    , svg = svgExport model modelGraph
+     {tex = allToTikz model modelGraph freehand -- sizeGrid modelGraph
+    , svg = svgExport model modelGraph freehand
     , coq = coqExport model modelGraph }
 
 -- TODO change the name
@@ -652,6 +667,8 @@ update msg modeli =
       case currentMode model of
         MakeSaveMode -> noCmd model
         NewLine state -> Modes.NewLine.update state msg model
+        FreeHandMode state -> Modes.Freehand.update state msg model
+        DeleteFreeHandMode state -> Modes.Delfreehand.update state msg model
         DefaultMode -> update_DefaultMode msg model
         RectSelect state -> update_RectSelect msg state model.specialKeys.shift model
         EnlargeMode state -> update_Enlarge msg state model
@@ -939,8 +956,11 @@ update_DefaultMode msg model =
             (model, Cmd.batch [copyCmd, removeCmd])
         KeyChanged False _ (Character 'b') ->
             noCmd <| Modes.Bend.initialise model
-        KeyChanged False _ (Character 'd') ->
-            noCmd <| setMode DebugMode model
+        PenDown e -> noCmd <| Modes.Freehand.initialise model model.mousePos
+        KeyChanged True _ (Character 'd') ->
+            noCmd <| Modes.Freehand.initialise model model.mousePos
+        KeyChanged True _ (Character ',') ->
+            noCmd <| Modes.Delfreehand.initialise model model.mousePos
         KeyChanged True _ (Character 'g') -> 
             let pressTimeoutMs = 100 in
             (Modes.Move.initialise defaultModifId UndefinedMove model,
@@ -1102,7 +1122,9 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
               (model, cmd)
             -- fillBottom latex "No diagram found!"
         KeyChanged False _ (Character 'V') ->
-            let s = GraphDefs.selectedGraph modelGraph |> svgExport model in
+            let s = svgExport model (GraphDefs.selectedGraph modelGraph) 
+                     FreeHand.empty
+            in
             (model, generateSvg s)          
         
         {- NodeClick n e ->
@@ -1225,8 +1247,8 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                 --  Just g -> setSaveGraph model g
         _ -> noCmd model              
 
-svgExport : Model -> Graph NodeLabel EdgeLabel -> String
-svgExport model graph = 
+svgExport : Model -> Graph NodeLabel EdgeLabel -> FreeHand.Drawings -> String
+svgExport model graph freehandDrawings = 
    let g = graph
                    |> GraphDefs.clearSelection 
                    |> GraphDefs.clearWeakSelection 
@@ -1237,9 +1259,15 @@ svgExport model graph =
    in
             (Drawing.toString  
               [String.Svg.viewBox box]
+              <| 
+              Drawing.group [
               (g |> 
                GraphDrawing.toDrawingGraph |>
-              toDrawing model))
+              toDrawing model),
+              drawFreeHand (always []) freehandDrawings
+              ]
+              
+              )
 
 
 coqExport : Model -> Graph NodeLabel EdgeLabel -> String
@@ -1280,10 +1308,6 @@ update_DebugMode msg model =
     case msg of
         KeyChanged False _ (Control "Escape") -> switch_Default model
         _ -> noCmd model
-
-
-
-
 
 update_Resize : ResizeState -> Msg -> Model -> (Model, Cmd Msg)
 update_Resize st msg m =
@@ -1416,6 +1440,8 @@ graphDrawingFromModel m =
            (\id n ->  {n | label = String.fromInt id}) 
            (\id -> GraphDrawing.mapNormalEdge (\ e -> {e | label = String.fromInt id}) )
     NewLine astate -> Modes.NewLine.graphDrawing m astate  
+    FreeHandMode astate -> Modes.Freehand.graphDrawing m astate
+    DeleteFreeHandMode astate -> Modes.Delfreehand.graphDrawing m astate
     NewArrow astate -> Modes.NewArrow.graphDrawing m astate
     SquareMode state -> Modes.Square.graphDrawing m state
     SplitArrow state -> Modes.SplitArrow.graphDrawing m state
@@ -1546,13 +1572,16 @@ helpMsg model =
                 ++ ", [C-v] paste"                
 
                 ++ "\n Basic editing: "
-                ++ "new [p]oint ([m] to create a point snapped to grid)"
+                ++ "[d]raw freehand (hold 'd' and move mouse) or use pen"
+                ++ ", hold [,] to erase existing freehand drawings"
+                ++ ", new [p]oint ([m] to create a point snapped to grid)"
                 -- ++ ", new [P]roof node"
                 ++ ", new [t]ext"               
                 ++ ", [del]ete selected object (also [x])"               
                 ++ ", [q] find and replace in selection"                 
                 ++ ", [r]ename selected object (or double click)" 
                 ++ ", new (commutative) [s]quare on selected point (with two already connected edges)"
+                
 
                 ++ "\nArrows: "
                 ++ "new [a]rrow/cylinder/cone from selected objects"                
@@ -1588,7 +1617,6 @@ helpMsg model =
                 
                 ++ "\n\nMiscelleanous: "
                 ++ "[R]esize canvas and grid size" 
-                ++ ", [d]ebug mode"                 
                 ++ ", [G]enerate Coq script ([T]: generate test Coq script)"
                 ++ ", [v] if a proof node is selected, check the proof, if a chain of arrows is selected, ask for a proof, if a subdiagram is selected, generate a proof goal in vscode."
                 ++ " (only works with the coreact-yade vscode extension)"
@@ -1606,6 +1634,7 @@ helpMsg model =
         DebugMode ->
             "Debug Mode. [ESC] to cancel and come back to the default mode. " ++ 
              "" |> Html.text 
+        FreeHandMode _ -> Modes.Freehand.help |> msg
               --  Debug.toString model |> Html.text |> List.singleton |> makeHelpDiv
             {- QuickInputMode ch ->
             makeHelpDiv [
@@ -1666,6 +1695,13 @@ helpMsg model =
              in
                 makeHelpDiv [ Html.text txt ]
 
+drawFreeHand : (FreeHand.DrawingId -> List (Html.Attribute a) ) -> FreeHand.Drawings -> Drawing a
+drawFreeHand attrs drawings = 
+    List.map (\(id,points) -> Drawing.singlePolyLine { color = Color.black
+                                 , points = points } 
+                                 (attrs id)   )
+                (IntDict.toList <| FreeHand.getDrawings drawings)
+        |> Drawing.group
 additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m =
    let drawSelPoint pointPos orig =
@@ -1681,18 +1717,64 @@ additionnalDrawing m =
                       (getActiveSizeGrid m) p) orig
               _ -> drawSelPoint m.mousePos orig
    in
-   case currentMode m of
-      RectSelect {orig} -> drawSel InputPosMouse orig
-      EnlargeMode state -> 
-         case (state.pos, state.direction) of
-              (InputPosMouse, Vertical) -> 
-                  drawSelPoint (first state.orig, second m.mousePos) state.orig
-              (InputPosMouse, Horizontal) ->
-                  drawSelPoint (first m.mousePos, second state.orig) state.orig
-              _ -> drawSel state.pos state.orig
+   let freehandDrawingsPoints =
+        let freehandDrawings = getActiveTab m |> .freehandDrawings in
+        case m.mode of  
+          FreeHandMode st -> 
+              
+               FreeHand.add
+               freehandDrawings 
+              -- dummy idx
+                st.points
+                -- |> FreeHand.getDrawings
+          DeleteFreeHandMode st -> 
+              FreeHand.remove freehandDrawings st.ids 
+              -- |> FreeHand.getDrawings
+          _ -> freehandDrawings
+   in
+   let attrs = 
+            case currentMode m of 
+              DeleteFreeHandMode _ -> 
+                  \ id -> 
+                    [HtmlDefs.simpleOn "mousemove" (MouseOnHandFree id),
+                     Html.Attributes.style "stroke-width" "10px"]
+              _ -> \ id -> []
+   in       
+      
+   let freehandDrawings = drawFreeHand attrs freehandDrawingsPoints
+           
+           
+            --  List.map (\ (id,points) -> 
+            --     Drawing.singlePolyLine { color = Color.black
+            --                      , points = points } 
+            --                      (attrs id)   )
+            --     (IntDict.toList freehandDrawingsPoints)
         
-      _ -> --GraphDrawing.make_input (100.0,100.0) "coucou" (always Msg.noOp)
-          Drawing.empty
+             
+   in
+  
+   let artefact = 
+        (case currentMode m of
+        RectSelect {orig} -> drawSel InputPosMouse orig
+        EnlargeMode state -> 
+          case (state.pos, state.direction) of
+                (InputPosMouse, Vertical) -> 
+                    drawSelPoint (first state.orig, second m.mousePos) state.orig
+                (InputPosMouse, Horizontal) ->
+                    drawSelPoint (first m.mousePos, second state.orig) state.orig
+                _ -> drawSel state.pos state.orig
+        -- !! pas necessaire 
+        -- FreeHandMode state -> 
+        --      Drawing.polyLine { zindex = foregroundZ, color = Color.black
+        --                       , points = List.reverse state.points } []
+        _ -> --GraphDrawing.make_input (100.0,100.0) "coucou" (always Msg.noOp)
+            Drawing.empty)
+  in
+   Drawing.group
+   <| 
+    [artefact,  freehandDrawings]
+
+
 
 view : Model -> Html Msg
 view m =
@@ -1767,11 +1849,12 @@ viewGraph model =
                           --   Html.Attributes.height 4000,
                              Html.Attributes.id HtmlDefs.canvasId,
                              Html.Attributes.style "border-style" "solid",
-                             Html.Events.on "mousemove"
+                             Html.Events.on "pointermove"
                                (D.map2 MouseMoveRaw D.value HtmlDefs.keysDecoder),
                              Html.Events.onMouseLeave MouseLeaveCanvas                               
-                            ,                 
-                           MouseEvents.onWithOptions "mousedown" 
+                          , HtmlDefs.onPenDown Msg.noOp PenDown
+                          , HtmlDefs.onPenUp Msg.noOp (always PenUp)
+                          , MouseEvents.onWithOptions "mousedown" 
                             { stopPropagation = False, preventDefault = False }
                             MouseDown
                             -- MouseEvents.onDown MouseDown

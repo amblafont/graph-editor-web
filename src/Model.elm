@@ -12,6 +12,7 @@ import HtmlDefs
 import List.Extra
 import ArrowStyle exposing (EdgePart)
 import Drawing.Color as Color
+import FreeHandDrawings as FreeHand
 
 import Modes exposing (Mode(..))
 
@@ -295,7 +296,7 @@ createModel : Flags -> Model
 createModel {defaultGridSize, rulerMargin, saveLoadButtons} =
     let g = Graph.empty in
     { 
-      graphInfo = {tabs = [ { graph = g, sizeGrid = defaultGridSize, title = "1", id = 0 } ]
+      graphInfo = {tabs = [ { graph = g, sizeGrid = defaultGridSize, title = "1", id = 0, freehandDrawings = FreeHand.empty } ]
     , nextTabId = 1
     , activeTabId = 0
     , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
@@ -495,7 +496,8 @@ restrictSelection model =
        { model | graphInfo = {gi |
                            tabs = [ {graph = GraphDefs.selectedGraph modelGraph
                                , sizeGrid = sizeGrid, title = getActiveTitle model, 
-                               id = 0 }]
+                               id = 0,
+                               freehandDrawings = FreeHand.empty }]
                                , activeTabId = 0
                                , nextTabId = 1 }
       }

@@ -75,6 +75,8 @@ fixModel modeli =
       PullshoutMode state -> ifTabChanged <| \ _ -> Modes.Pullshout.fixModel model state
       SquareMode state ->  ifTabChanged <| \ _ -> Modes.Square.fixModel model state
       LatexPreamble _ -> model
+      FreeHandMode _ -> defaultIfTabChanged
+      DeleteFreeHandMode _ -> defaultIfTabChanged
       
 
 undo : Model -> (Model, Cmd Msg.Msg)

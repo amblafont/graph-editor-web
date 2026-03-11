@@ -1,6 +1,7 @@
 module Drawing exposing (Drawing,   
   group, arrow, rect,
   polyLine,
+  singlePolyLine,
   -- Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} -- color,
   svg, tikz,
   -- class, 
@@ -89,6 +90,7 @@ onMouseLeave = simpleOn "mouseleave"  -}
 type Drawing a
     = Drawing (List { shape : Shape a, zindex : Int, key : Maybe String})
 
+type alias PolylineArg = {points : List Point, color : Color}
 type alias LineArg = {from : Point, to : Point, color: Color, strokeWidth : Int}
 type alias NodeArg = {label : String, angle : Float, preamble : String, pos : Point, scale: Float, dims : Point}
 type alias ArrowArg = {style : ArrowStyle, bezier : QuadraticBezier, strokeWidth : Int}
@@ -255,12 +257,30 @@ arrowToSvg args attrs0 =
                     mkall [ q ]
     in lines ++ imgs |> Svg.g []
 
+singlePolylineToSvg : PolylineArg -> List (Html.Attribute a) -> Svg a
+singlePolylineToSvg arg attrs =
+     let coordToString x = String.fromInt <| truncate x in
+     Svg.polyline ([
+       Svg.fill "none",
+       Svg.strokeFromColor arg.color, 
+      Svg.points <| 
+         String.join " " (List.map (\(x,y) -> coordToString x ++ "," ++ coordToString y) arg.points)
+     ] ++ List.map ghostAttribute attrs) []
+
+singlePolylineToTikz : PolylineArg -> String
+singlePolylineToTikz arg =
+    -- let pointsToTikz (x,y) = pointToTikz (x,y) in
+    "\\draw[" ++ Color.toString arg.color ++ "] "
+    ++ String.join " -- " (List.map pointToTikz arg.points)
+    ++ ";"
+
 tikzShapeToSvg : TikzShape -> List (Html.Attribute a) -> Svg a
 tikzShapeToSvg shape attrs  =
     case shape of
         Node arg -> nodeToSvg arg attrs
         Line arg -> lineToSvg arg attrs
         Arrow arg -> arrowToSvg arg attrs
+        Polyline arg -> singlePolylineToSvg arg attrs
 
 tikzShapeToTikz : TikzShape -> String
 tikzShapeToTikz shape =
@@ -268,11 +288,15 @@ tikzShapeToTikz shape =
         Node arg -> nodeToTikz arg
         Line arg -> lineToTikz arg
         Arrow arg -> arrowToTikz arg
+        Polyline arg -> singlePolylineToTikz arg 
+
+
 
 type TikzShape =
      Node NodeArg
    | Line LineArg
    | Arrow ArrowArg
+   | Polyline PolylineArg
 
 type Shape a =
       TikzShape (List (Html.Attribute a)) TikzShape
@@ -443,6 +467,10 @@ makeVerbatim arg attrs =
 
 shadowWidth = 4
 
+singlePolyLine : {points:List Point, color: Color} -> List (Html.Attribute a) -> Drawing a
+singlePolyLine args attrs = 
+   Drawing [ {shape = TikzShape attrs (Polyline args), zindex = defaultZ, key = Nothing  }  ]  
+-- type alias PolylineArg = {points : Point, color : Color}
 polyLine : {zindex:Int, color: Color, points : List Point} -> List (Html.Attribute a) -> Drawing a
 polyLine args attrs =
    let pairs = ListExtra.succPairs args.points in

@@ -353,7 +353,7 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
           onClick (EdgeClick edgeId),
           onDoubleClick (EltDoubleClick edgeId),
           -- Drawing.onHover (EltHover edgeId),
-           simpleOn "mousemove" (MouseOn edgeId)
+           HtmlDefs.simpleOn "mousemove" (MouseOn edgeId)
           ] 
           )
     in
@@ -411,8 +411,6 @@ type alias Extrem =
 onClick : (MouseEvents.Event -> a) -> Html.Attribute a --  String.Html.Attribute a
 onClick = MouseEvents.onClick -- >> ghostAttribute
 
-simpleOn : String -> a -> Html.Attribute a
-simpleOn event = Json.Decode.succeed >> Html.Events.on event -- >> ghostAttribute
 
 
 onDoubleClick : (MouseEvents.Event -> a) -> Html.Attribute a

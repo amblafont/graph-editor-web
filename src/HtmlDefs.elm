@@ -1,9 +1,10 @@
 port module HtmlDefs exposing (onRendered, idInput, canvasId,
-   Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider
+   Key(..), Keys, keyDecoder, keysDecoder, makeLatex, checkbox, slider,
+   simpleOn
    , preventsDefaultOnKeyDown,
    --computeLayout, 
    select, introHtml, overlayHelpMsg
-   , focusPosition, renderedClass, dimsAttribute)
+   , focusPosition, renderedClass, dimsAttribute, onPenDown, onPenUp)
 import Html
 import Html.Attributes
 import Html.Events
@@ -11,7 +12,8 @@ import Geometry.Point exposing (Point)
 import Json.Decode as D
 import Html.Parser
 import Html.Parser.Util
-
+import Html.Events.Extra.Pointer as PointerEvents
+import Json.Decode
 
 port focusPosition : Point -> Cmd a
 -- port computeLayout : () -> Cmd a
@@ -64,6 +66,9 @@ latexElement = "math-latex"
 renderedClass = "rendered-callback"
 renderedEvent = "rendered"
 
+simpleOn : String -> a -> Html.Attribute a
+simpleOn event = Json.Decode.succeed >> Html.Events.on event -- >> ghostAttribute
+
 
 renderedDecoder : D.Decoder Point
 renderedDecoder = 
@@ -76,7 +81,19 @@ onRendered : (Point -> msg) -> Html.Attribute msg
 onRendered onRender =
      Html.Events.on renderedEvent (D.map onRender renderedDecoder)
     
-      
+
+isPenEvent : PointerEvents.Event -> Bool 
+isPenEvent e = e.pointerType == PointerEvents.PenType 
+
+onPenDown : msg -> (PointerEvents.Event -> msg) -> Html.Attribute msg
+onPenDown default f = 
+   PointerEvents.onWithOptions "pointerdown" 
+                            { stopPropagation = True, preventDefault = True }
+       (\e -> if isPenEvent e then f e else default)
+
+onPenUp : msg -> (PointerEvents.Event -> msg) -> Html.Attribute msg
+onPenUp default f = 
+   PointerEvents.onUp (\e -> if isPenEvent e then f e else default)
 
 
 -- From https://github.com/elm/browser/blob/1.0.2/notes/keyboard.md

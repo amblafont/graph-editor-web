@@ -14,6 +14,7 @@ module Codec exposing
     , variant2,variant0, prefixVariant0
     , maybeCustom, maybeBuildVariant, maybeVariant0, maybeVariant1
     , maybeList, boolList
+    , charInt
    -- , maybe
     -- , variant0, variant2
     )
@@ -450,3 +451,9 @@ maybeVariant1 constr proj cxy (MaybeCustomCodec c) =
                    (\g -> f (g Nothing))
                    (f << c.make << Just << encoder cxy)
   }
+
+middleChar = truncate (0x10FFFF / 2)
+charInt : Codec Char Int
+charInt =
+    build (\ c -> Char.toCode c - middleChar)
+        (\n -> Char.fromCode (n + middleChar))

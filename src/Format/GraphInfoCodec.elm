@@ -6,7 +6,7 @@ import Codec exposing (Codec)
 import Polygraph as Graph exposing (Graph)
 import GraphDefs exposing (EdgeLabel, NodeLabel)
 import Polygraph exposing (modifCodec)
-import IntDictExtra
+import FreeHandDrawings as FreeHand
 
 
 defaultGraphModifJS : Graph.ModifJS LastVersion.NodeLabel LastVersion.EdgeLabel
@@ -79,8 +79,9 @@ codecGraphChange =
 type alias ModifJS = 
    { tag : String, size : Int, tab : LastVersion.Tab, string : String, 
      tabId : TabId, 
-     graphModif : Polygraph.ModifJS LastVersion.NodeLabel LastVersion.EdgeLabel  
-    
+     graphModif : Polygraph.ModifJS LastVersion.NodeLabel LastVersion.EdgeLabel,
+     newFreeHand : FreeHand.DrawingJS,
+     removeFreeHand : List Int
    }
 
 
@@ -88,7 +89,8 @@ defaultModifJS : ModifJS
 defaultModifJS = {tag = "", tabId = 0, string = "", size = 0
          , tab = emptyTab 0 |> Codec.encoder tabCodec
          , graphModif = defaultGraphModifJS
-            
+         , newFreeHand = FreeHand.emptyDrawingJS
+         , removeFreeHand = []
              }
 
 codecModif : Codec Modif ModifJS
@@ -100,7 +102,7 @@ codecModif =
     (\ tabRename tabSizeGrid
         tabMoveLeft tabMoveRight
         tabRemove tabUnremove tabDuplicate 
-        tabNew  latexPreamble graphChange noop v ->
+        tabNew  latexPreamble graphChange freehandAdd freehandRemove noop v ->
         case v of
             TabRename id s -> tabRename id s
             TabSizeGrid id size -> tabSizeGrid id size
@@ -112,6 +114,8 @@ codecModif =
             TabNew -> tabNew
             LatexPreamble s -> latexPreamble s
             GraphChange arg -> graphChange arg
+            FreehandAdd tabId points -> freehandAdd tabId points
+            FreehandRemove tabId idx -> freehandRemove tabId idx
             Noop -> noop
     )
     defaultModifJS
@@ -140,5 +144,12 @@ codecModif =
               |> Codec.fields .tabId .tabId Codec.identity
               |> Codec.buildObject
             )
+    |> Codec.variant2 "freehandAdd" FreehandAdd
+       (\tabId points r -> { r | tabId = tabId, newFreeHand = FreeHand.drawingToJS points })
+       .tabId (.newFreeHand >> FreeHand.drawingFromJS)
+    |> Codec.variant2 "freehandRemove" FreehandRemove
+       (\tabId idx r -> { r | tabId = tabId, removeFreeHand = idx })
+       .tabId -- .freehandIdx
+       .removeFreeHand -- >> Maybe.withDefault 0)
     |> Codec.variant0 "noop" Noop
     |> Codec.buildVariant (always Noop)
