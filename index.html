@@ -119,13 +119,14 @@ document.addEventListener("pointerdown", function(e){
   } else {
     isPen = false;
   }
-  e.preventDefault();
+//   e.preventDefault();
 }, {
   capture: true
 });
 
 document.addEventListener("touchstart", function(e){
   if(isPen){
+    // avoid scrolling when using the stylus
      e.preventDefault();
      }
 }, {

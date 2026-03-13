@@ -88,7 +88,7 @@ isPenEvent e = e.pointerType == PointerEvents.PenType
 onPenDown : msg -> (PointerEvents.Event -> msg) -> Html.Attribute msg
 onPenDown default f = 
    PointerEvents.onWithOptions "pointerdown" 
-                            { stopPropagation = True, preventDefault = True }
+                         { stopPropagation = False, preventDefault = False }
        (\e -> if isPenEvent e then f e else default)
 
 onPenUp : msg -> (PointerEvents.Event -> msg) -> Html.Attribute msg
