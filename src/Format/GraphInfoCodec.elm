@@ -81,7 +81,7 @@ type alias ModifJS =
      tabId : TabId, 
      graphModif : Polygraph.ModifJS LastVersion.NodeLabel LastVersion.EdgeLabel,
      newFreeHand : FreeHand.DrawingJS,
-     removeFreeHand : List Int
+     removeFreeHand : Int
    }
 
 
@@ -90,7 +90,7 @@ defaultModifJS = {tag = "", tabId = 0, string = "", size = 0
          , tab = emptyTab 0 |> Codec.encoder tabCodec
          , graphModif = defaultGraphModifJS
          , newFreeHand = FreeHand.emptyDrawingJS
-         , removeFreeHand = []
+         , removeFreeHand = 0
              }
 
 codecModif : Codec Modif ModifJS

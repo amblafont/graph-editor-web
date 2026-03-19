@@ -1,10 +1,13 @@
 module FreeHandDrawings exposing (codec, drawingToJS, drawingFromJS, Drawing, DrawingId, DrawingJS, Drawings, DrawingsJS,
-  getDrawings, get, add, remove, empty, emptyDrawingJS)
+  getDrawings, get, add, remove, empty, emptyDrawingJS, draw)
 
 import Geometry.Point as Point exposing (Point)
 import IntDict exposing (IntDict)
 import IntDictExtra
 import Codec
+import Html
+import Drawing.Color as Color
+import Drawing exposing (Drawing)
 
 import Base64
 
@@ -40,9 +43,9 @@ add fhd points =
   { freehandDrawings = IntDict.insert fhd.nextFreehandId points fhd.freehandDrawings, 
      nextFreehandId = 1 + fhd.nextFreehandId }
 
-remove : Drawings -> List DrawingId -> Drawings
-remove fhd ids =
-  { fhd | freehandDrawings = IntDictExtra.removeList ids fhd.freehandDrawings }
+remove : Drawings -> DrawingId -> Drawings
+remove fhd id =
+  { fhd | freehandDrawings = IntDict.remove id fhd.freehandDrawings }
 
 get : Drawings -> DrawingId -> Maybe Drawing
 get fhd id =
@@ -130,3 +133,11 @@ codec =
          |> IntDictExtra.fromBareList ,
         nextFreehandId = List.length listDrawings }
       )
+
+draw : (DrawingId -> List (Html.Attribute a) ) -> Drawings -> Drawing.Drawing a
+draw attrs drawings = 
+    List.map (\(id,points) -> Drawing.singlePolyLine { color = Color.black
+                                 , points = points } 
+                                 (attrs id)   )
+                (IntDict.toList <| getDrawings drawings)
+        |> Drawing.group

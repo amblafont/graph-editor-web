@@ -1,6 +1,6 @@
 
 KATEX= katex/katex.min.js katex/katex.min.css.js fonts
-.PHONY: server all elm js site vscode http service-worker
+.PHONY: server all elm fastelm debugelm js site vscode http service-worker
 
 all: js elm $(KATEX) service-worker
 
@@ -19,6 +19,12 @@ $(KATEX):
 elm:
 	elm make src/Main.elm --output=js/elm.js
 
+fastelm:
+	elm make --optimize src/Main.elm --output=js/elm.js
+
+debugelm:
+	elm make --debug src/Main.elm --output=js/elm.js
+
 js:
 	npx esbuild --outfile=js/bundle.js ts/bundle.ts --bundle --global-name=Bundle --format=iife
 
@@ -34,3 +40,17 @@ server.js: ts/interface.d.ts ts/server.ts
 
 service-worker:
 	node swbuilder.js
+
+
+
+site:
+	cp service-worker.js index.html ~/site/graph-editor/
+	cp js/*.js ~/site/graph-editor/js
+
+vscode:
+	cp index.html ~/yade/code-ext-yade/media/
+	cp js/*.js ~/yade/code-ext-yade/media/js
+	cd ~/yade/code-ext-yade/media; find . -type f > files.txt
+	# cp katex/* ~/yade/code-ext-yade/media/katex/
+	# cp -r fonts ~/yade/code-ext-yade/media/
+	# cp server.js ts/server.ts ts/interface.d.ts ~/yade/code-ext-yade/src/

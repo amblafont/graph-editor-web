@@ -101,7 +101,7 @@ type Modif =
                  modif : Graph.Modif NodeLabel EdgeLabel }
   | LatexPreamble String
   | FreehandAdd TabId (List Point)
-  | FreehandRemove TabId (List FreeHand.DrawingId)
+  | FreehandRemove TabId FreeHand.DrawingId
   | Noop
 
 
@@ -265,18 +265,12 @@ applyModif gi modif =
           (\tab ->
               let idx = tab.freehandDrawings.nextFreehandId in
               Just { next = { tab | freehandDrawings = FreeHand.add tab.freehandDrawings points }
-                   , undo = FreehandRemove tabId [idx] })
-    FreehandRemove tabId ids ->
+                   , undo = FreehandRemove tabId idx })
+    FreehandRemove tabId id ->
        mapTabModifInfo gi tabId <| retTabModif <<
           (\tab ->
-              let points =
-                    List.filterMap 
-                    (\ id -> 
-                        FreeHand.get tab.freehandDrawings id
-                    ) ids
-                    |> List.concat 
-              in
-              if points == [] then Nothing
-              else               
-                  Just { next = { tab | freehandDrawings = FreeHand.remove tab.freehandDrawings ids }
-                       , undo = FreehandAdd tabId points })
+              case FreeHand.get tab.freehandDrawings id of
+                 Nothing -> Nothing
+                 Just points ->
+                    Just { next = { tab | freehandDrawings = FreeHand.remove tab.freehandDrawings id }
+                        , undo = FreehandAdd tabId points })

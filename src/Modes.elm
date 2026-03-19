@@ -32,7 +32,7 @@ type Mode
     | CustomizeMode CustomizeModeState
     | BendMode BendState
     | FreeHandMode FreeHandState
-    | DeleteFreeHandMode DeleteFreeHandState
+    -- | DeleteFreeHandMode DeleteFreeHandState
     | MakeSaveMode
     | LatexPreamble String
 type alias BendState =
@@ -65,7 +65,7 @@ toString m = case m of
   CustomizeMode _ -> "Color"
   BendMode _ -> "Bend"
   FreeHandMode _ -> "FreeHand"
-  DeleteFreeHandMode _ -> "DeleteFreeHand"
+  -- DeleteFreeHandMode _ -> "DeleteFreeHand"
   MakeSaveMode -> "MakeSave"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
@@ -212,8 +212,11 @@ type alias SquareState =
     , guessPos : Bool
     }
 
-type alias FreeHandState =
-    { points : List Point }
+type FreeHandState =
+      -- TemporaryFreeHandState { points : List Point }
+      DefaultFreeHandState -- { delete : Bool }
+    | DownFreeHandState { temporary : Bool, points : List Point }
+    -- | EraseFreeHandState
 
-type alias DeleteFreeHandState =
-    { ids : List Int }
+-- type alias DeleteFreeHandState =
+--     { ids : List Int }

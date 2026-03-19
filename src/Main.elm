@@ -72,7 +72,6 @@ import Modes.Move
 import Modes.Rename
 import Modes.Customize
 import Modes.Freehand
-import Modes.Delfreehand
 import Drawing.Color as Color
 import Modes exposing (Mode(..), SelectState, MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
@@ -467,7 +466,7 @@ allToTikz model graph drawings =
      let d = toDrawing model 
             <| GraphDrawing.toDrawingGraph graph
      in
-     Drawing.tikz <| Drawing.group [d, drawFreeHand (always []) drawings]
+     Drawing.tikz <| Drawing.group [d, FreeHand.draw (always []) drawings]
 
 makeExports : Model -> ExportFormats
 makeExports model = 
@@ -668,7 +667,7 @@ update msg modeli =
         MakeSaveMode -> noCmd model
         NewLine state -> Modes.NewLine.update state msg model
         FreeHandMode state -> Modes.Freehand.update state msg model
-        DeleteFreeHandMode state -> Modes.Delfreehand.update state msg model
+        -- DeleteFreeHandMode state -> Modes.Delfreehand.update state msg model
         DefaultMode -> update_DefaultMode msg model
         RectSelect state -> update_RectSelect msg state model.specialKeys.shift model
         EnlargeMode state -> update_Enlarge msg state model
@@ -956,11 +955,9 @@ update_DefaultMode msg model =
             (model, Cmd.batch [copyCmd, removeCmd])
         KeyChanged False _ (Character 'b') ->
             noCmd <| Modes.Bend.initialise model
-        PenDown e -> noCmd <| Modes.Freehand.initialise model model.mousePos
-        KeyChanged True _ (Character 'd') ->
-            noCmd <| Modes.Freehand.initialise model model.mousePos
-        KeyChanged True _ (Character ',') ->
-            noCmd <| Modes.Delfreehand.initialise model model.mousePos
+        PenDown e -> noCmd <| Modes.Freehand.initialiseTemporary model
+        KeyChanged False _ (Character 'd') ->
+            noCmd <| Modes.Freehand.initialise model
         KeyChanged True _ (Character 'g') -> 
             let pressTimeoutMs = 100 in
             (Modes.Move.initialise defaultModifId UndefinedMove model,
@@ -1248,7 +1245,7 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
         _ -> noCmd model              
 
 svgExport : Model -> Graph NodeLabel EdgeLabel -> FreeHand.Drawings -> String
-svgExport model graph freehandDrawings = 
+svgExport model graph drawings = 
    let g = graph
                    |> GraphDefs.clearSelection 
                    |> GraphDefs.clearWeakSelection 
@@ -1264,7 +1261,7 @@ svgExport model graph freehandDrawings =
               (g |> 
                GraphDrawing.toDrawingGraph |>
               toDrawing model),
-              drawFreeHand (always []) freehandDrawings
+              FreeHand.draw (always []) drawings
               ]
               
               )
@@ -1441,7 +1438,7 @@ graphDrawingFromModel m =
            (\id -> GraphDrawing.mapNormalEdge (\ e -> {e | label = String.fromInt id}) )
     NewLine astate -> Modes.NewLine.graphDrawing m astate  
     FreeHandMode astate -> Modes.Freehand.graphDrawing m astate
-    DeleteFreeHandMode astate -> Modes.Delfreehand.graphDrawing m astate
+    -- DeleteFreeHandMode astate -> Modes.Delfreehand.graphDrawing m astate
     NewArrow astate -> Modes.NewArrow.graphDrawing m astate
     SquareMode state -> Modes.Square.graphDrawing m state
     SplitArrow state -> Modes.SplitArrow.graphDrawing m state
@@ -1572,8 +1569,7 @@ helpMsg model =
                 ++ ", [C-v] paste"                
 
                 ++ "\n Basic editing: "
-                ++ "[d]raw freehand (hold 'd' and move mouse) or use pen"
-                ++ ", hold [,] to erase existing freehand drawings"
+                ++ "[d]raw freehand mode (or use stylus)"
                 ++ ", new [p]oint ([m] to create a point snapped to grid)"
                 -- ++ ", new [P]roof node"
                 ++ ", new [t]ext"               
@@ -1634,7 +1630,7 @@ helpMsg model =
         DebugMode ->
             "Debug Mode. [ESC] to cancel and come back to the default mode. " ++ 
              "" |> Html.text 
-        FreeHandMode _ -> Modes.Freehand.help |> msg
+        FreeHandMode st -> Modes.Freehand.help st |> msg
               --  Debug.toString model |> Html.text |> List.singleton |> makeHelpDiv
             {- QuickInputMode ch ->
             makeHelpDiv [
@@ -1695,13 +1691,15 @@ helpMsg model =
              in
                 makeHelpDiv [ Html.text txt ]
 
-drawFreeHand : (FreeHand.DrawingId -> List (Html.Attribute a) ) -> FreeHand.Drawings -> Drawing a
-drawFreeHand attrs drawings = 
-    List.map (\(id,points) -> Drawing.singlePolyLine { color = Color.black
-                                 , points = points } 
-                                 (attrs id)   )
-                (IntDict.toList <| FreeHand.getDrawings drawings)
-        |> Drawing.group
+
+
+freehandDrawings : Model -> Drawing Msg
+freehandDrawings m =
+  case currentMode m of 
+    FreeHandMode st -> Modes.Freehand.freehandDrawings m st
+    _ -> let drawings = getActiveTab m |> .freehandDrawings in
+          FreeHand.draw (always []) drawings
+    
 additionnalDrawing : Model -> Drawing Msg
 additionnalDrawing m =
    let drawSelPoint pointPos orig =
@@ -1717,31 +1715,7 @@ additionnalDrawing m =
                       (getActiveSizeGrid m) p) orig
               _ -> drawSelPoint m.mousePos orig
    in
-   let freehandDrawingsPoints =
-        let freehandDrawings = getActiveTab m |> .freehandDrawings in
-        case m.mode of  
-          FreeHandMode st -> 
-              
-               FreeHand.add
-               freehandDrawings 
-              -- dummy idx
-                st.points
-                -- |> FreeHand.getDrawings
-          DeleteFreeHandMode st -> 
-              FreeHand.remove freehandDrawings st.ids 
-              -- |> FreeHand.getDrawings
-          _ -> freehandDrawings
-   in
-   let attrs = 
-            case currentMode m of 
-              DeleteFreeHandMode _ -> 
-                  \ id -> 
-                    [HtmlDefs.simpleOn "mousemove" (MouseOnHandFree id),
-                     Html.Attributes.style "stroke-width" "10px"]
-              _ -> \ id -> []
-   in       
       
-   let freehandDrawings = drawFreeHand attrs freehandDrawingsPoints
            
            
             --  List.map (\ (id,points) -> 
@@ -1751,7 +1725,6 @@ additionnalDrawing m =
             --     (IntDict.toList freehandDrawingsPoints)
         
              
-   in
   
    let artefact = 
         (case currentMode m of
@@ -1772,7 +1745,7 @@ additionnalDrawing m =
   in
    Drawing.group
    <| 
-    [artefact,  freehandDrawings]
+    [artefact,  freehandDrawings m]
 
 
 
