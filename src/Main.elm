@@ -953,8 +953,8 @@ update_DefaultMode msg model =
                     <| GraphDefs.removeSelected modelGraph
             in
             (model, Cmd.batch [copyCmd, removeCmd])
-        KeyChanged False _ (Character 'b') ->
-            noCmd <| Modes.Bend.initialise model
+        -- KeyChanged False _ (Character 'b') ->
+        --     noCmd <| Modes.Bend.initialise model
         PenDown e -> noCmd <| Modes.Freehand.initialiseTemporary model
         KeyChanged False _ (Character 'd') ->
             noCmd <| Modes.Freehand.initialise model
@@ -1215,27 +1215,31 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                                 , selIds = selIds
                                 })
         KeyChanged False _ k ->
-             let edges = (GraphDefs.selectedEdges modelGraph) in
-             let updNormal () =
-                  updateModifHelper model <|
-                        returnUpdateStyle 
-                      (ArrowStyle.keyMaybeUpdateStyle k)
-                      model   
-                      edges
-             in
-             let updPullshout () =
-                   updateModifHelper model <|
-                        returnUpdatePullshout k
-                      model   
-                      edges 
-             in
-             
-             case edges of
-               [ edge ] -> 
-                   if isPullshout edge.label
-                   then updPullshout ()
-                   else updNormal ()
-               _ -> updNormal ()
+           case (if k /= Character 'b' then Nothing else Modes.Bend.initialise model) of
+             Just m -> noCmd m
+        -- KeyChanged False _ (Character 'b') ->
+             Nothing ->
+                let edges = (GraphDefs.selectedEdges modelGraph) in
+                let updNormal () =
+                      updateModifHelper model <|
+                            returnUpdateStyle 
+                          (ArrowStyle.keyMaybeUpdateStyle k)
+                          model   
+                          edges
+                in
+                let updPullshout () =
+                      updateModifHelper model <|
+                            returnUpdatePullshout k
+                          model   
+                          edges 
+                in
+                
+                case edges of
+                  [ edge ] -> 
+                      if isPullshout edge.label
+                      then updPullshout ()
+                      else updNormal ()
+                  _ -> updNormal ()
                   
              
           --  case

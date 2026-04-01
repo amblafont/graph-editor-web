@@ -29,7 +29,10 @@ computeFlags : BendState -> Model.CmdFlags
 computeFlags _ = { pointerLock = True }
 
 fixModel : Model -> BendState -> Model
-fixModel m state = initialise_with_state m (Just state)
+fixModel m state =
+   initialise_with_state m (Just state)
+   |> Maybe.withDefault 
+        (setMode DefaultMode m)
 
 
 
@@ -50,7 +53,7 @@ update state msg m =
                 _ -> noCmd m
 
 
-initialise : Model -> Model
+initialise : Model -> Maybe Model
 initialise model = initialise_with_state model Nothing
 
 graphDrawing : Model -> BendState -> Graph NodeDrawingLabel EdgeDrawingLabel
@@ -68,11 +71,11 @@ createModif modelGraph state =
 api = Modes.Lib.makeApi createModif 
 
 
-initialise_with_state : Model -> Maybe BendState -> Model
+initialise_with_state : Model -> Maybe BendState -> Maybe Model
 -- if mayBend is nothing, then we are initialising for the first time, otherwise, we are trying to fix it
 initialise_with_state model mayState =
     let modelGraph = getActiveGraph model in
-    let failedRet = setMode DefaultMode model in
+    let failedRet = Nothing in
     
     case GraphDefs.selectedEdge modelGraph of
         Nothing -> failedRet
@@ -90,10 +93,10 @@ initialise_with_state model mayState =
                                 Just s -> s.captureState.value
                     in                   
                     -- if from == to then failedRet else
-                    setMode (BendMode { edge = e,
+                    Just (setMode (BendMode { edge = e,
                                 captureState = iniState
                                 -- initialiseCapture dir iniState                                    
-                                }) model
+                                }) model)
                 
 
 
