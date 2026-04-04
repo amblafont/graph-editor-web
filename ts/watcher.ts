@@ -100,6 +100,15 @@ function outputFileName(config:Config, content:string):string {
   }
 
 async function getFilehandleFromPath(d:FileSystemDirectoryHandle, filePath:string, options?:FileSystemGetFileOptions):Promise<FileSystemFileHandle>{
+    let handles = await getFilehandlesFromPath(d, filePath, options);
+    if (handles.length == 0) {
+      // return failed 
+        throw new Error("No file found for path " + filePath);
+    }
+    return handles[0];
+}
+
+async function getFilehandlesFromPath(d:FileSystemDirectoryHandle, filePath:string, options?:FileSystemGetFileOptions):Promise<FileSystemFileHandle[]>{
     let parts = filePath.split('/'); // Split the path into parts
     let currentHandle = d;
     while (parts.length > 1) {
@@ -108,7 +117,21 @@ async function getFilehandleFromPath(d:FileSystemDirectoryHandle, filePath:strin
             continue;
         currentHandle = await currentHandle.getDirectoryHandle(part);        
     }
-    return currentHandle.getFileHandle(parts[0],options);
+    let name = parts[0];
+    if (!name.includes("*")) 
+      return currentHandle.getFileHandle(name,options).then((fh) => [fh]);
+    let regex = new RegExp((
+        "^" + name.split("*").map(escapeStringRegexp).join(".*") + "$"));
+    let fileHandles:FileSystemFileHandle[] = [];
+    for await (const [key, value] of currentHandle.entries()) {
+      // console.log("checking " + key + " against " + regex);
+      if (regex.test(key)) {
+        console.log("matched " + key + " against " + regex);
+        let fh = await currentHandle.getFileHandle(key,options);
+        fileHandles.push(fh);
+      }
+    }
+    return fileHandles;
 }
 
 async function checkFileExistsFromPath(d:FileSystemDirectoryHandle, filePath:string):Promise<boolean>{
@@ -121,14 +144,22 @@ async function checkFileExistsFromPath(d:FileSystemDirectoryHandle, filePath:str
     }
 }
 
+async function getTextFromFilehandle(fileHandle:FileSystemFileHandle):Promise<string> {
+    let file = await fileHandle.getFile();
+    return file.text();
+}
+
 export async function getTextFromFilepath(d:FileSystemDirectoryHandle, filePath : string):Promise<string>{
     let filehandle = await getFilehandleFromPath(d,filePath);
-    let file = await filehandle.getFile();
-    return file.text();
+    return getTextFromFilehandle(filehandle);
 }
 
 function getLinesFromFilepath(d:FileSystemDirectoryHandle, filePath : string):Promise<string[]>{
     return  getTextFromFilepath(d,filePath).then((text) => text.split('\n'));
+}
+
+function getLinesFromFilehandle(fileHandle:FileSystemFileHandle):Promise<string[]>{
+    return getTextFromFilehandle(fileHandle).then((text) => text.split('\n'));
 }
 
 function readLine(s:string[]):string|false {
@@ -319,22 +350,41 @@ async function getContent(d:FileSystemDirectoryHandle, config:Config, diagFile:s
   }
   return content;
 }
-  // undefined means error
+
+ // undefined means error
   // false means no update
 export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandle):Promise<undefined|false|HandleFileConfig> {
 //    resetOnFocus();
    let watchedFile = config.watchedFile;
    if (typeof watchedFile != "string")
       return undefined;
-   let file_lines:string[];
+   let fileHandles = await getFilehandlesFromPath(d, watchedFile);
+   for (let fileHandle of fileHandles) {
+     let res = await checkSingleFile(config, d, fileHandle);
+     if (res !== false) {
+       return res;
+     }
+   }
+   return false;
+   
+}
+
+// undefined means error
+  // false means no update
+async function checkSingleFile(config:Config, d:FileSystemDirectoryHandle, file:FileSystemFileHandle):Promise<undefined|false|HandleFileConfig> {
+  let file_lines:string[];
    try {
-   file_lines = await getLinesFromFilepath(d,watchedFile);
+   file_lines = await getLinesFromFilehandle(file);
    }
    catch (e) {
        alert("Unable to read " + config.watchedFile);
        console.log(e);
        return undefined;
    }
+   let relPath = await d.resolve(file);
+   let watchedFile:string = ""
+   if (relPath) 
+      watchedFile = relPath.join('/');
     
   
     let remainder:string[]|null = [];
@@ -419,4 +469,4 @@ export async function checkWatchedFile(config:Config, d:FileSystemDirectoryHandl
    //  handleSave({"graph":{"edges":[],"latexPreamble":"","nodes":[{"id":0,"label":{"isMath":true,"label":"","pos":[277,89.13333129882812]}}],"sizeGrid":200},"version":8});
     
     // return true;
-  }
+}
