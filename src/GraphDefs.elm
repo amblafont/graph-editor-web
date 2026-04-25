@@ -26,7 +26,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    rectEnveloppe, updateStyleEdges, updatePullshoutEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
-   ,invertEdges
+   ,invertEdges, loopOnSourceEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
    , getEdgeDirection, getEdgeDirectionFromId
@@ -764,9 +764,27 @@ posGraph g =
                            ArrowStyle.shiftRatioFromPart l.style part
                         }
                    in
-                   let q = Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend in
+                   let (isLoop, q) = 
+                        if n1.id == n2.id && not n1.isArrow then
+                            (True, Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend)
+                        else
+                            (False, Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend)
+                   in
+                   let shape = 
+                        if isLoop then
+                           let center = Point.diamondPx q.from q.to 0.5 in -- approximation
+                           let d = Point.distance q.from q.to in
+                           let (apexX, apexY) = Bez.middle q in
+                           let (mx, my) = center in
+                           let bDist = Point.distance (apexX, apexY) (mx, my) in
+                           let r = if bDist < 0.1 then d / 2 else bDist / 2 + (d * d) / (8 * bDist) in
+                           let rClamp = max (d / 2) r in
+                           EdgeShape.LoopShape {p1 = q.from, p2 = q.to, r = rClamp, center = center, q = q}
+                        else
+                           Bezier q
+                   in
                    {label = e, 
-                    shape = Bezier q,
+                    shape = shape,
                     acc = {
                      id = id,
                      isArrow = True,
@@ -893,6 +911,10 @@ invertEdges g ids =
       <| Graph.newModif g
    )
    ids
+
+loopOnSourceEdges : Graph NodeLabel EdgeLabel -> List EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
+loopOnSourceEdges g ids =
+   List.foldl (Graph.md_loopOnSource) (Graph.newModif g) ids
    
    
 

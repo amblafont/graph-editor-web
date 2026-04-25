@@ -104,7 +104,10 @@ segmentRectBent r1 r2 bent =
               --  let offset = max ((min w1 w2) / 3) 7 in
               let offset = 7 in
                let new_w w = 2 in -- max 1 (w - offset) in
-               let newBent = -40 / offset in
+               let radius = 40 - bent * 20 in
+               let sign = if radius >= 0 then -1 else 1 in
+               let hBez = max 10 (abs radius * 2) in
+               let newBent = sign * hBez / (2 * offset) in
                ({pos = Point.add r1.pos (-offset, 0), dims = (new_w w1, h1)},
                 {pos = Point.add r2.pos ( offset, 0), dims = (new_w w2, h2)},
                 newBent)

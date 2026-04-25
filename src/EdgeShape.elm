@@ -1,14 +1,16 @@
-module EdgeShape exposing (Hat, EdgeShape(..), pullshoutHat)
+module EdgeShape exposing (Hat, Loop, EdgeShape(..), pullshoutHat)
 
 
 import Geometry.Point as Point exposing (Point)
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 
 type alias Hat = {p1 : Point, p2 : Point, summit : Point}
+type alias Loop = {p1 : Point, p2 : Point, r : Float, center : Point, q : QuadraticBezier}
 
 type EdgeShape =
     Bezier QuadraticBezier
   | HatShape Hat
+  | LoopShape Loop
   | None
 
 -- posOfShape : EdgeShape -> Point

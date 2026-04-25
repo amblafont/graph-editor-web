@@ -369,6 +369,33 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
           segmentLabel cfg q edgeId activity label style.marker curve,
           drawMarker style.color style.marker q]
 
+loopEdgeDrawing : Config -> Graph.EdgeId 
+     -> Activity 
+     -> Int
+     -> NormalEdgeDrawingLabel -> EdgeShape.Loop -> Float -> Drawing Msg
+loopEdgeDrawing cfg edgeId activity z label loop curve =
+    let style = ArrowStyle.getStyle label in
+    let classes =  
+         if label.isAdjunction then 
+            activityToClasses activity 
+         else
+            activityToEdgeClasses activity 
+    in
+    let attrs = (class classes ::
+            [
+          onClick (EdgeClick edgeId),
+          onDoubleClick (EltDoubleClick edgeId),
+           HtmlDefs.simpleOn "mousemove" (MouseOn edgeId)
+          ] 
+          )
+    in
+    let q = loop.q in
+    Drawing.group [
+         Drawing.loopArrow {zindex = z, style = style, loop = loop}
+          attrs,
+          segmentLabel cfg q edgeId activity label style.marker curve,
+          drawMarker style.color style.marker q]
+
 {- type alias DrawingDims msg =
     { drawing : Drawing msg
     , posDims : Geometry.PosDims    
@@ -452,8 +479,9 @@ graphDrawing cfg g0 =
                                 drawHat id e.isActive e.zindex pullshoutStyle hat
                               
                (NormalEdge l, Bezier q) ->
-                  
                         normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend
+               (NormalEdge l, EdgeShape.LoopShape loop) ->
+                        loopEdgeDrawing cfg id e.isActive e.zindex l loop l.style.bend
                   
                _ -> Drawing.empty
                

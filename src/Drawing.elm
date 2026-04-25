@@ -1,5 +1,5 @@
 module Drawing exposing (Drawing,   
-  group, arrow, rect,
+  group, arrow, loopArrow, rect,
   polyLine,
   singlePolyLine,
   -- Attribute, simpleOn, on, onClick, onDoubleClick, {- onMouseEnter, onMouseLeave, -} -- color,
@@ -17,6 +17,7 @@ import Geometry
 import Html 
 import ArrowStyle exposing (ArrowStyle)
 import Drawing.ArrowStyle
+import EdgeShape exposing (Loop)
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 -- import Geometry
 import String.Html exposing (ghostAttribute)
@@ -94,6 +95,7 @@ type alias PolylineArg = {points : List Point, color : Color}
 type alias LineArg = {from : Point, to : Point, color: Color, strokeWidth : Int}
 type alias NodeArg = {label : String, angle : Float, preamble : String, pos : Point, scale: Float, dims : Point}
 type alias ArrowArg = {style : ArrowStyle, bezier : QuadraticBezier, strokeWidth : Int}
+type alias LoopArg = {style : ArrowStyle, loop : Loop, strokeWidth : Int}
 
 lineToSvg : LineArg -> List (Html.Attribute a) -> Svg a
 lineToSvg arg attrs = 
@@ -210,6 +212,56 @@ arrowToTikz args =
     ++ pointToTikz bez.to
     ++ ";"
 
+loopToTikz : LoopArg -> String
+loopToTikz args =
+    let width =  
+          if args.strokeWidth == 1 then "" else
+          "line width=" ++ dimToTikz (toFloat args.strokeWidth)
+    in
+    let loop = args.loop in
+    let (x1, y1) = loop.p1 in
+    let (x2, y2) = loop.p2 in
+    let dx = x2 - x1 in
+    let dy = y2 - y1 in
+    let d = sqrt (dx * dx + dy * dy) in
+    let r = max loop.r (d / 2) in
+    let h = sqrt (max 0 (r * r - (d / 2) * (d / 2))) in
+    
+    let mx = (x1 + x2) / 2 in
+    let my = (y1 + y2) / 2 in
+    let (apexX, apexY) = Bez.middle loop.q in
+    let bx = apexX - mx in
+    let by = apexY - my in
+    let bDist = sqrt (bx * bx + by * by) in
+    
+    let cross = dx * by - dy * bx in
+    let (cx, cy) = 
+         if bDist < 0.01 then (mx, my) 
+         else (mx - h * bx / bDist, my - h * by / bDist)
+    in
+    
+    -- Math coordinates (Y is negated)
+    let my1 = -y1 in
+    let my2 = -y2 in
+    let mcy = -cy in
+    let startAngle = atan2 (my1 - mcy) (x1 - cx) * 180 / pi in
+    let endAngleRaw = atan2 (my2 - mcy) (x2 - cx) * 180 / pi in
+    
+    -- Sweep direction: cross > 0 means clockwise in SVG, which means clockwise in math.
+    -- Clockwise means angle should decrease.
+    let endAngle = 
+          if cross > 0 then
+              if endAngleRaw > startAngle then endAngleRaw - 360 else endAngleRaw
+          else
+              if endAngleRaw < startAngle then endAngleRaw + 360 else endAngleRaw
+    in
+    
+    "\\draw[" ++ ArrowStyle.tikzStyle args.style ++ width ++ "] "
+    ++ pointToTikz loop.p1
+    ++ " arc [start angle=" ++ String.fromFloat startAngle 
+    ++ ", end angle=" ++ String.fromFloat endAngle 
+    ++ ", radius=" ++ dimToTikz r ++ "];"
+
 
 lineToTikz : LineArg -> String
 lineToTikz arg =
@@ -244,18 +296,67 @@ arrowToSvg args attrs0 =
     let mkall l = -- List.map mkshadow l ++ 
                   List.map mkl l in
     let lines = if ArrowStyle.isDouble arrowStyle then
-                -- let delta = Point.subtract q.to q.controlPoint 
-                --             |> Point.orthogonal
-                --             |> Point.normalise ArrowStyle.doubleSize
-                -- in
-              
-                mkall [ (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
-                    (Bez.orthoVectPx ArrowStyle.doubleSize q)
-                ]
-        
-                else
-                    mkall [ q ]
-    in lines ++ imgs |> Svg.g []
+                    [ (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
+                      (Bez.orthoVectPx ArrowStyle.doubleSize q) ]
+                else [q] 
+    in
+    Svg.g []
+      <| mkall lines ++ [Svg.g attrs imgs]
+
+loopArrowToSvg : LoopArg -> List (Html.Attribute a) -> Svg a
+loopArrowToSvg args attrs0 =
+    let arrowStyle = args.style in
+    let loop = args.loop in
+    let attrs = List.map ghostAttribute attrs0 in
+    if ArrowStyle.isNone arrowStyle then
+        Svg.g [] []
+    else
+    let (x1, y1) = loop.p1 in
+    let (x2, y2) = loop.p2 in
+    let dx = x2 - x1 in
+    let dy = y2 - y1 in
+    let d = sqrt (dx * dx + dy * dy) in
+    let r = max loop.r (d / 2) in
+    let h = sqrt (max 0 (r * r - (d / 2) * (d / 2))) in
+    
+    let mx = (x1 + x2) / 2 in
+    let my = (y1 + y2) / 2 in
+    let (apexX, apexY) = Bez.middle loop.q in
+    let bx = apexX - mx in
+    let by = apexY - my in
+    let bDist = sqrt (bx * bx + by * by) in
+    
+    -- Sweep flag: depends on whether apex is to the "left" or "right" of p1->p2
+    let cross = dx * by - dy * bx in
+    let sweepFlag = if cross > 0 then "1" else "0" in
+    
+    -- Center of the circle
+    let (cx, cy) = 
+         if bDist < 0.01 then (mx, my) 
+         else (mx - h * bx / bDist, my - h * by / bDist)
+    in
+    
+    -- Tangents
+    let sign = if cross > 0 then 1 else -1 in
+    let angleFrom = Point.pointToAngle (-sign * (y1 - cy), sign * (x1 - cx)) * 180 / pi in
+    let angleTo = Point.pointToAngle (-sign * (y2 - cy), sign * (x2 - cx)) * 180 / pi in
+    
+    let imgs = Drawing.ArrowStyle.makeHeadTailImgsWithAngles loop.p1 loop.p2 angleFrom angleTo arrowStyle in    
+    let mkgen l = 
+            let dAttr = Svg.d ("M " ++ String.fromFloat x1 ++ " " ++ String.fromFloat y1 ++ 
+                               " A " ++ String.fromFloat r ++ " " ++ String.fromFloat r ++ 
+                               " 0 1 " ++ sweepFlag ++ " " ++ 
+                               String.fromFloat x2 ++ " " ++ String.fromFloat y2) 
+            in
+            Svg.path 
+              ( dAttr :: Svg.fill "none" :: Svg.strokeFromColor arrowStyle.color :: l ++ attrs ++
+                dashedToAttrs arrowStyle.dashed ++
+                (if args.strokeWidth /= 1 then [Svg.strokeWidthPx args.strokeWidth] else [])
+              ) []
+    in
+    let mkl = mkgen [] in
+    Svg.g []
+      <| [mkl, Svg.g attrs imgs]
 
 singlePolylineToSvg : PolylineArg -> List (Html.Attribute a) -> Svg a
 singlePolylineToSvg arg attrs =
@@ -280,6 +381,7 @@ tikzShapeToSvg shape attrs  =
         Node arg -> nodeToSvg arg attrs
         Line arg -> lineToSvg arg attrs
         Arrow arg -> arrowToSvg arg attrs
+        LoopArrow arg -> loopArrowToSvg arg attrs
         Polyline arg -> singlePolylineToSvg arg attrs
 
 tikzShapeToTikz : TikzShape -> String
@@ -288,14 +390,14 @@ tikzShapeToTikz shape =
         Node arg -> nodeToTikz arg
         Line arg -> lineToTikz arg
         Arrow arg -> arrowToTikz arg
+        LoopArrow arg -> loopToTikz arg
         Polyline arg -> singlePolylineToTikz arg 
-
-
 
 type TikzShape =
      Node NodeArg
    | Line LineArg
    | Arrow ArrowArg
+   | LoopArrow LoopArg
    | Polyline PolylineArg
 
 type Shape a =
@@ -497,6 +599,13 @@ arrow args attrs0 =
     let normalArg = { bezier = args.bezier, style = args.style,  strokeWidth = 1} in
     let shadowArg = { bezier = args.bezier, style = ArrowStyle.shadow args.style, strokeWidth = shadowWidth} in
     let makeShape arg = Arrow arg |> TikzShape attrs0 |> ofShape args.zindex in
+    group [makeShape shadowArg, makeShape normalArg]
+
+loopArrow : {zindex : Int, style : ArrowStyle, loop : Loop} -> List (Html.Attribute a) -> Drawing a
+loopArrow args attrs0 =
+    let normalArg = { loop = args.loop, style = args.style,  strokeWidth = 1} in
+    let shadowArg = { loop = args.loop, style = ArrowStyle.shadow args.style, strokeWidth = shadowWidth} in
+    let makeShape arg = LoopArrow arg |> TikzShape attrs0 |> ofShape args.zindex in
     group [makeShape shadowArg, makeShape normalArg]
 {-
     let arrowStyle = args.style in
