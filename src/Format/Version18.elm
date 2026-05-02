@@ -72,6 +72,8 @@ type EdgeFlag =
     | Position Float
     | ShiftSource Float
     | ShiftTarget Float
+    | LoopRadius Float
+    | LoopAngle Float
 
 dashedFlag : Codec Bool (List String)
 dashedFlag = edgeMaybeFlagCodecFalse Dashed
@@ -90,12 +92,27 @@ wavyFlag = edgeMaybeFlagCodecFalse Wavy
 
 bendFlag : Codec Float (List String)
 bendFlag =
-       edgeMaybeFlagCodec 0.0 Bend
+       edgeMaybeFlagCodec 0 Bend
     (\ flag -> case flag of 
         Bend a -> Just a
         _ -> Nothing
     )
 
+loopRadiusFlag : Codec Float (List String)
+loopRadiusFlag =
+       edgeMaybeFlagCodec GraphDefs.defaultLoopRadius LoopRadius
+    (\ flag -> case flag of 
+        LoopRadius a -> Just a
+        _ -> Nothing
+    )
+
+loopAngleFlag : Codec Float (List String)
+loopAngleFlag =
+       edgeMaybeFlagCodec 0 LoopAngle
+    (\ flag -> case flag of 
+        LoopAngle a -> Just a
+        _ -> Nothing
+    )
 
 positionFlag : Codec Float (List String)
 positionFlag =
@@ -138,14 +155,16 @@ prefixes =
     bend = "bend ",
     position = "position ",
     shiftSource = "shiftSource ",
-    shiftTarget = "shiftTarget "
+    shiftTarget = "shiftTarget ",
+    loopRadius = "loopRadius ",
+    loopAngle = "loopAngle "
   }
 
     
 
 edgeFlagCodec : Codec EdgeFlag String
 edgeFlagCodec =
-    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor shiftSource shiftTarget unrecognized v =
+    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor shiftSource shiftTarget loopRadius loopAngle unrecognized v =
                     case v of
                         Dashed -> dashed
                         Marker s -> marker s
@@ -164,6 +183,8 @@ edgeFlagCodec =
                         TailColor c -> tailcolor c
                         ShiftSource c -> shiftSource c
                         ShiftTarget c -> shiftTarget c
+                        LoopRadius c -> loopRadius c
+                        LoopAngle c -> loopAngle c
    in
    Codec.customEnum split
    |> Codec.variant0 prefixes.dashed Dashed
@@ -183,6 +204,8 @@ edgeFlagCodec =
     |> Codec.prefixVariant0 prefixes.tailColor TailColor Color.codec
     |> Codec.prefixVariant0 prefixes.shiftSource ShiftSource floatCodec
     |> Codec.prefixVariant0 prefixes.shiftTarget ShiftTarget floatCodec
+    |> Codec.prefixVariant0 prefixes.loopRadius LoopRadius floatCodec
+    |> Codec.prefixVariant0 prefixes.loopAngle LoopAngle floatCodec
     |> Codec.variant0 prefixes.unrecognized Unrecognized
     |> Codec.buildVariant (always Unrecognized)
 
@@ -449,9 +472,13 @@ fromEdgeLabel e =
               -- kind = if isAdjunction then adjunctionKey else normalKey,       
               style = 
                 let convertedStyle = Codec.encoder arrowStyleCodec style in 
+                let withLoop = 
+                      -- if e.from /= e.to then [] else
+                      Codec.encoder loopRadiusFlag l.loopRadius ++ Codec.encoder loopAngleFlag l.loopAngle ++ convertedStyle 
+                in
                 if isAdjunction then
-                addFlag Adjunction convertedStyle
-                else convertedStyle
+                addFlag Adjunction withLoop
+                else withLoop
                 ,
               zindex = e.zindex 
               -- , selected = e.selected              
@@ -475,6 +502,8 @@ toEdgeLabel { label, style, zindex } =
                 , isAdjunction = getFlag Adjunction style
                 , style = Codec.decoder arrowStyleCodec style
               , dims = Nothing
+              , loopRadius = Codec.decoder loopRadiusFlag style
+              , loopAngle = Codec.decoder loopAngleFlag style
               }
    }
 

@@ -316,28 +316,14 @@ loopArrowToSvg args attrs0 =
     let dx = x2 - x1 in
     let dy = y2 - y1 in
     let d = sqrt (dx * dx + dy * dy) in
-    let r = max loop.r (d / 2) in
-    let h = sqrt (max 0 (r * r - (d / 2) * (d / 2))) in
+    let r = abs loop.r in
+    let sweepFlag = if loop.r < 0 then "0" else "1" in
+    let largeArcFlag = "1" in
     
-    let mx = (x1 + x2) / 2 in
-    let my = (y1 + y2) / 2 in
-    let (apexX, apexY) = Bez.middle loop.q in
-    let bx = apexX - mx in
-    let by = apexY - my in
-    let bDist = sqrt (bx * bx + by * by) in
-    
-    -- Sweep flag: depends on whether apex is to the "left" or "right" of p1->p2
-    let cross = dx * by - dy * bx in
-    let sweepFlag = if cross > 0 then "1" else "0" in
-    
-    -- Center of the circle
-    let (cx, cy) = 
-         if bDist < 0.01 then (mx, my) 
-         else (mx - h * bx / bDist, my - h * by / bDist)
-    in
+    let (cx, cy) = loop.center in
     
     -- Tangents
-    let sign = if cross > 0 then 1 else -1 in
+    let sign = if loop.r < 0 then -1 else 1 in
     let angleFrom = Point.pointToAngle (-sign * (y1 - cy), sign * (x1 - cx)) * 180 / pi in
     let angleTo = Point.pointToAngle (-sign * (y2 - cy), sign * (x2 - cx)) * 180 / pi in
     
@@ -345,7 +331,7 @@ loopArrowToSvg args attrs0 =
     let mkgen l = 
             let dAttr = Svg.d ("M " ++ String.fromFloat x1 ++ " " ++ String.fromFloat y1 ++ 
                                " A " ++ String.fromFloat r ++ " " ++ String.fromFloat r ++ 
-                               " 0 1 " ++ sweepFlag ++ " " ++ 
+                               " 0 " ++ largeArcFlag ++ " " ++ sweepFlag ++ " " ++ 
                                String.fromFloat x2 ++ " " ++ String.fromFloat y2) 
             in
             Svg.path 

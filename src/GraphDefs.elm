@@ -22,11 +22,11 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    centerOfNodes, --mergeWithSameLoc,
    findReplaceInSelected, {- closestUnnamed, -} unselect, closest,
    makeSelection, addWeaklySelected, weaklySelect, weaklySelectMany,
-   getSurroundingDiagrams, updateNormalEdge,
+   getSurroundingDiagrams, updateNormalEdge, md_updateNormalEdge,
    rectEnveloppe, updateStyleEdges, updatePullshoutEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
-   ,invertEdges, loopOnSourceEdges
+   ,invertEdges, loopOnSourceEdges, defaultLoopRadius
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
    , getEdgeDirection, getEdgeDirectionFromId
@@ -70,7 +70,10 @@ type alias NormalEdgeLabel =
   { label : String, style : ArrowStyle, dims : Maybe Point
   -- ArrowStyle.getStyle should be systematically applied to the style
   -- (TODO: remove this restriction)
-  , isAdjunction : Bool}
+  , isAdjunction : Bool
+  , loopRadius : Float
+  , loopAngle : Float
+  }
 
 
 edgeScaleFactor : Float
@@ -440,13 +443,15 @@ newGenericLabel d = { details = d,
                       weaklySelected = False,
                       zindex = defaultZ}
 
-
+defaultLoopRadius = 20
 
 newEdgeLabelVerbatimAdj : Bool -> Bool -> String -> ArrowStyle -> EdgeLabel
 newEdgeLabelVerbatimAdj isVerbatim isAdjunction s style = 
    newGenericLabel 
     <| NormalEdge 
-    { label = makeVerbatimLabel isVerbatim s, style = style, dims = Nothing, isAdjunction = isAdjunction}
+    { label = makeVerbatimLabel isVerbatim s, style = style, dims = Nothing, isAdjunction = isAdjunction
+    , loopRadius = defaultLoopRadius, loopAngle = 0
+    }
 
 newEdgeLabelAdj : String -> ArrowStyle -> Bool -> EdgeLabel
 newEdgeLabelAdj s style isAdjunction = 
@@ -772,16 +777,31 @@ posGraph g =
                    in
                    let shape = 
                         if isLoop then
-                           let center = Point.diamondPx q.from q.to 0.5 in -- approximation
-                           let d = Point.distance q.from q.to in
-                           let (apexX, apexY) = Bez.middle q in
-                           let (mx, my) = center in
-                           let bDist = Point.distance (apexX, apexY) (mx, my) in
-                           let r = if bDist < 0.1 then d / 2 else bDist / 2 + (d * d) / (8 * bDist) in
-                           let rClamp = max (d / 2) r in
-                           EdgeShape.LoopShape {p1 = q.from, p2 = q.to, r = rClamp, center = center, q = q}
+                           let nodeCenter = (computePosDims True).pos
+                               radius = l.loopRadius
+                               angle = l.loopAngle
+                               center = Point.add nodeCenter (abs radius * cos angle, abs radius * sin angle)
+                               fromAngle = angle - 0.5
+                               toAngle = angle + 0.5
+                               (actualFromAngle, actualToAngle) = 
+                                    if radius < 0 then (toAngle, fromAngle) else (fromAngle, toAngle)
+                               p1 = Point.add nodeCenter (20 * cos actualFromAngle, 20 * sin actualFromAngle)
+                               p2 = Point.add nodeCenter (20 * cos actualToAngle, 20 * sin actualToAngle)
+                               apex = Point.add center (abs radius * cos angle, abs radius * sin angle)
+                               p1p2mid = Point.middle p1 p2
+                               controlPoint = Point.add apex (Point.subtract apex p1p2mid)
+                               --  fake loop bezier. Needs to be fixed if we plan to 
+                               -- support arrows between loops.
+                               qLoop = { from = p1, to = p2, controlPoint = controlPoint }
+                           in
+                           EdgeShape.LoopShape {p1 = p1, p2 = p2, r = radius, center = center, q = qLoop}
                         else
                            Bezier q
+                   in
+                   let finalQ = case shape of
+                                   EdgeShape.LoopShape loop -> loop.q
+                                   Bezier bq -> bq
+                                   _ -> q
                    in
                    {label = e, 
                     shape = shape,
@@ -790,11 +810,11 @@ posGraph g =
                      isArrow = True,
                      posDims = 
                          {
-                             pos = Bez.middle q,
+                             pos = Bez.middle finalQ,
                              dims = (padding, padding) |> Point.resize 4 
                          },
                      extrems = { fromId = n1.id, 
-                                 bez = q,
+                                 bez = finalQ,
                                  fromPos = n1.posDims.pos, 
                                  toPos = n2.posDims.pos
                                  -- controlPoint = q.controlPoint

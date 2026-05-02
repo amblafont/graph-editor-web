@@ -33,8 +33,18 @@ type Mode
     | BendMode BendState
     | FreeHandMode FreeHandState
     -- | DeleteFreeHandMode DeleteFreeHandState
+    | LoopMode LoopState
     | MakeSaveMode
     | LatexPreamble String
+
+
+type alias LoopState =
+  { edge : Graph.Edge EdgeLabel
+  -- no good reason to keep this in the state, as it is already 
+  -- in the model (this was vibe-coded).
+  , mousePos : Point
+  }
+
 type alias BendState =
   { edge : Graph.Edge EdgeLabel
   , captureState : CaptureState
@@ -66,6 +76,7 @@ toString m = case m of
   BendMode _ -> "Bend"
   FreeHandMode _ -> "FreeHand"
   -- DeleteFreeHandMode _ -> "DeleteFreeHand"
+  LoopMode _ -> "Loop"
   MakeSaveMode -> "MakeSave"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel

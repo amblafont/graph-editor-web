@@ -220,6 +220,49 @@ nodeDrawing cfg node =
         
 
 
+drawLabelAt : Config -> Graph.EdgeId -> Activity -> NormalEdgeDrawingLabel -> Point -> Float -> Drawing Msg
+drawLabelAt cfg edgeId activity label labelpos angle =
+    if label.editable then
+         make_input (idToKey edgeId) labelpos label.label
+         (EdgeLabelEdit edgeId)
+    else
+     if  label.label == "" then
+         Drawing.empty
+     else 
+         let finalLabel = label.label in
+         let attrs =    [   MouseEvents.onClick (EdgeClick edgeId),
+                  MouseEvents.onDoubleClick (EltDoubleClick edgeId),
+                  MouseEvents.onMove  (always (MouseOn edgeId))
+                , HtmlDefs.renderedClass :: activityToClasses activity |> class                    
+                , HtmlDefs.onRendered (Msg.EdgeRendered edgeId)]
+                ++ HtmlDefs.dimsAttribute 
+                (Point.resize (1 / GraphDefs.edgeScaleFactor) label.dims)
+         in
+         case Verbatim.extractVerbatim finalLabel of 
+          Just vLabel -> 
+                Drawing.makeVerbatim
+                   {
+                    zindex = foregroundZ,
+                    label = vLabel,
+                    pos = labelpos,
+                    dims = label.dims,
+                    angle = angle,
+                    scale = GraphDefs.edgeScaleFactor,
+                    key = idToKey edgeId
+                } attrs
+          Nothing ->
+                Drawing.makeLatex 
+                {
+                    zindex = foregroundZ,
+                    label = finalLabel,
+                    preamble = cfg.latexPreamble,
+                    pos = labelpos,
+                    dims = label.dims,
+                    angle = angle,
+                    scale = GraphDefs.edgeScaleFactor,
+                    key = idToKey edgeId
+                } attrs
+
 segmentLabel : Config -> QuadraticBezier -> Graph.EdgeId -> Activity -> NormalEdgeDrawingLabel -> MarkerStyle -> Float -> Drawing Msg
 segmentLabel cfg q edgeId activity label marker curve =
     let offset = 
@@ -227,90 +270,32 @@ segmentLabel cfg q edgeId activity label marker curve =
           if ArrowStyle.isMarker marker then 5 else
           0
     in
-      
     let edge_width = 2 + offset in
-    let labelpos =              
-              -- Quiver algorithm, following redraw_label
-              -- https://github.com/varkor/quiver/blob/2c62d40b820cadc3c7f9d0816a33121f389b6240/src/arrow.js#L1219
-              let diffP = Point.subtract q.to q.from in
-              let angle = Point.pointToAngle diffP in
-              let length = Point.radius diffP in
+    let diffP = Point.subtract q.to q.from in
+    let baseAngle = Point.pointToAngle diffP in
+    let length = Point.radius diffP in
+    -- Quiver algorithm, following redraw_label
+    -- https://github.com/varkor/quiver/blob/2c62d40b820cadc3c7f9d0816a33121f389b6240/src/arrow.js#L1219
+    let labelpos =
                Geometry.determine_label_position
                  length
-                 angle
-                 edge_width -- edge_width
+                 baseAngle
+                 edge_width 
                  0 -- start
                  1 -- end
                  (curve * length)
-                 label.style.labelPosition -- label_position
+                 label.style.labelPosition
                  label.style.labelAlignment
                  (if label.editable then (2,2) else label.dims)
-                 |> Point.rotate angle
+                 |> Point.rotate baseAngle
                  |> Point.add q.from
-         {-  -- previous algorithm 
-           if Bez.isLine q then
-              Point.diamondPx q.from q.to offset
-              
-            else 
-              let m = Bez.middle q in
-              Point.add m <|
-              Point.normalise offset <|        
-               Point.subtract q.controlPoint <| m
-               -}
-      
     in
-        if label.editable then
-             make_input (idToKey edgeId) labelpos label.label
-             (EdgeLabelEdit edgeId)
-        else
-         if  label.label == "" then
-             Drawing.empty
-         else 
-             let finalLabel = label.label in --  " \\scriptstyle " ++ label.label in
-             let angle =
-                  if label.style.labelAlignment == Geometry.Over then
-                   Point.pointToAngle <| Point.subtract q.to q.from 
-                  else 0
-             in
-             let attrs =    [   MouseEvents.onClick (EdgeClick edgeId),
-                      MouseEvents.onDoubleClick (EltDoubleClick edgeId),
-                      MouseEvents.onMove  (always (MouseOn edgeId))
-                    , HtmlDefs.renderedClass :: activityToClasses activity |> class                    
-                    , HtmlDefs.onRendered (Msg.EdgeRendered edgeId)]
-                    ++ HtmlDefs.dimsAttribute -- label.dims
-                    (Point.resize (1 / GraphDefs.edgeScaleFactor) label.dims)
-                    
-             in
-                          -- makeLatex cfg labelpos edgeId label.dims finalLabel foregroundZ
-             case Verbatim.extractVerbatim finalLabel of 
-              Just vLabel -> 
-                    Drawing.makeVerbatim
-                       {
-                        zindex = foregroundZ,
-                        label = vLabel,
-                        -- preamble = cfg.latexPreamble,
-                        pos = labelpos,
-                        dims = label.dims,
-                        angle = angle,
-                        scale = GraphDefs.edgeScaleFactor,
-                        key = idToKey edgeId
-                    } attrs
-              Nothing ->
-                    Drawing.makeLatex 
-                    {
-                        zindex = foregroundZ,
-                        label = finalLabel,
-                        preamble = cfg.latexPreamble,
-                        pos = labelpos,
-                        dims = label.dims,
-                        angle = angle,
-                        scale = GraphDefs.edgeScaleFactor,
-                        key = idToKey edgeId
-                    } attrs  -- -}          
-          
-            
-            {- Drawing.fromString [Drawing.onClick (EdgeClick edgeId)]
-              labelpos label.label  -}
+    let angle =
+         if label.style.labelAlignment == Geometry.Over then
+          baseAngle
+         else 0
+    in
+    drawLabelAt cfg edgeId activity label labelpos angle
 
 
 {-
@@ -390,10 +375,51 @@ loopEdgeDrawing cfg edgeId activity z label loop curve =
           )
     in
     let q = loop.q in
+    let t = label.style.labelPosition in
+    -- Compute the true SVG arc center from p1, p2, and r.
+    -- loop.center is NOT the SVG arc center (p1/p2 are not on that circle).
+    -- The SVG arc "M p1 A r r 0 1 sweep p2" has its center determined by the
+    -- W3C SVG arc spec formula (F.6.5.2 for rx=ry=r, x-rotation=0):
+    --   dx = (x1-x2)/2,  dy = (y1-y2)/2
+    --   sign = -1 if sweep==large-arc (both 1 when r>=0, so sign=-1 for r>=0)
+    --   factor = sign * sqrt(max 0 ((r²-d²)/d²))
+    --   cx = factor*dy + mx,  cy = -factor*dx + my
+    -- p1 and p2 are guaranteed on this circle, so gap is exact to endpoints.
+    let (x1, y1) = loop.p1 in
+    let (x2, y2) = loop.p2 in
+    let mx = (x1 + x2) / 2 in
+    let my = (y1 + y2) / 2 in
+    let hdx = (x1 - x2) / 2 in
+    let hdy = (y1 - y2) / 2 in
+    let d_sq = hdx * hdx + hdy * hdy in
+    let r = abs loop.r in
+    let signCenter = if loop.r >= 0 then -1 else 1 in
+    let factor = signCenter * sqrt (max 0 ((r * r - d_sq) / d_sq)) in
+    let svgCenter = (factor * hdy + mx, -factor * hdx + my) in
+
+    let angle1 = Point.subtract loop.p1 svgCenter |> Point.pointToAngle in
+    let angle2 = Point.subtract loop.p2 svgCenter |> Point.pointToAngle in
+    let spanShort = Point.distanceAngleSigned angle1 angle2 in
+    let span = if spanShort >= 0 then spanShort - 2 * pi else spanShort + 2 * pi in
+    let theta = angle1 + t * span in
+    let outward = (cos theta, sin theta) in
+    let curvePos = Point.add svgCenter (Point.resize r outward) in
+
+    -- label.dims is already the SVG-space size (rawDims * edgeScaleFactor, stored in
+    -- Main.elm; the label renders with scale=edgeScaleFactor, so SVG size = label.dims).
+    let (dw, dh) = if label.editable then (20, 20) else label.dims in
+    let (ox, oy) = outward in
+    -- Support function of the axis-aligned label box in the outward direction:
+    -- ensures a constant 5px gap between the label edge and the arc regardless
+    -- of the label's angular position around the loop.
+    let halfExtent = (dw / 2) * abs ox + (dh / 2) * abs oy in
+    -- before 0 was 5
+    let pushDist = 5 + halfExtent in
+    let labelpos = Point.add curvePos (Point.resize pushDist outward) in
     Drawing.group [
          Drawing.loopArrow {zindex = z, style = style, loop = loop}
           attrs,
-          segmentLabel cfg q edgeId activity label style.marker curve,
+          drawLabelAt cfg edgeId activity label labelpos 0,
           drawMarker style.color style.marker q]
 
 {- type alias DrawingDims msg =

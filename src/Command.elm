@@ -23,6 +23,7 @@ import Modes.SplitArrow
 import Modes.Pullshout
 import Modes.Square
 import Modes.Bend
+import Modes.Loop
 import CommandCodec exposing (protocolSendMsg)
 import HtmlDefs -- exposing (computeLayout)
 import Maybe.Extra
@@ -74,6 +75,7 @@ fixModel modeli =
       SplitArrow state -> ifTabChanged <| \ _ -> Modes.SplitArrow.fixModel model state
       PullshoutMode state -> ifTabChanged <| \ _ -> Modes.Pullshout.fixModel model state
       SquareMode state ->  ifTabChanged <| \ _ -> Modes.Square.fixModel model state
+      LoopMode state -> ifTabChanged <| \ _ -> Modes.Loop.fixModel model state
       LatexPreamble _ -> model
       FreeHandMode _ -> defaultIfTabChanged
       -- DeleteFreeHandMode _ -> defaultIfTabChanged
