@@ -38,6 +38,7 @@ import Zindex exposing (defaultZ)
 import Geometry.Point as Point exposing (Point)
 import Geometry exposing (LabelAlignment(..))
 import Geometry.QuadraticBezier as Bez
+import Geometry.Curve as Curve exposing (Curve(..))
 import EdgeShape exposing (EdgeShape(..), pullshoutHat)
 import ArrowStyle exposing (ArrowStyle, EdgePart)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
@@ -275,7 +276,7 @@ toProofGraph =
     posGraph >>
     Graph.filterMap Just (
       \e -> case (filterLabelNormal e.label, e.shape) of 
-             (Just l, Bezier b) -> Just { details = l.details, bezier = b }
+             (Just l, ArrowShape (CurveBezier b))  -> Just { details = l.details, bezier = b }
              (_ , _) -> Nothing
       )
     >>
@@ -734,11 +735,11 @@ posGraph : Graph NodeLabel EdgeLabel ->
          {label : EdgeLabel, shape : EdgeShape, pos : Point}
 posGraph g = 
       let padding = 5 in
-      let dummyBez =  {from = (0, 0), to = (2,2), controlPoint = (1,1)} in
+      let dummyCurve =  CurveBezier {from = (0, 0), to = (2,2), controlPoint = (1,1)} in
       -- ca c'est utile pour calculer les coordonnes du symbole de pullback
       let dummyExtrem = { fromId = 0,
            fromPos = (0,0), toPos = (2,2),
-           bez = dummyBez} in
+           curve = dummyCurve} in
       let dummyAcc id pos = {
                       id = id,
                       posDims = 
@@ -765,17 +766,18 @@ posGraph g =
                         if not n.isArrow then n.posDims else
                         let oldPosDims = n.posDims in
                         { oldPosDims | 
-                          pos = Bez.point n.extrems.bez <| 
+                          pos = Curve.point n.extrems.curve <| 
                            ArrowStyle.shiftRatioFromPart l.style part
                         }
                    in
-                   let (isLoop, q) = 
-                        if n1.id == n2.id && not n1.isArrow then
-                            (True, Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend)
-                        else
-                            (False, Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend)
-                   in
-                   let shape = 
+                   let isLoop = n1.id == n2.id in
+                  --  let (isLoop, q) = 
+                  --       if n1.id == n2.id then
+                  --           (True, Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend)
+                  --       else
+                  --           (False, Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend)
+                  --  in
+                   let curve = 
                         if isLoop then
                            let nodeCenter = (computePosDims True).pos
                                radius = l.loopRadius
@@ -792,29 +794,26 @@ posGraph g =
                                controlPoint = Point.add apex (Point.subtract apex p1p2mid)
                                --  fake loop bezier. Needs to be fixed if we plan to 
                                -- support arrows between loops.
-                               qLoop = { from = p1, to = p2, controlPoint = controlPoint }
                            in
-                           EdgeShape.LoopShape {p1 = p1, p2 = p2, r = radius, center = center, q = qLoop}
+                           (CurveArc {from = p1, to = p2, r = radius, center = center })
+                              -- Point.add nodeCenter (Point.resize 20 (Point.subtract center nodeCenter)))
                         else
-                           Bezier q
-                   in
-                   let finalQ = case shape of
-                                   EdgeShape.LoopShape loop -> loop.q
-                                   Bezier bq -> bq
-                                   _ -> q
+                           let q = Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend in
+                           CurveBezier q
+                           -- (CurveBezier q, Bez.middle q)
                    in
                    {label = e, 
-                    shape = shape,
+                    shape = ArrowShape curve,
                     acc = {
                      id = id,
                      isArrow = True,
                      posDims = 
                          {
-                             pos = Bez.middle finalQ,
+                             pos = Curve.middle curve,
                              dims = (padding, padding) |> Point.resize 4 
                          },
                      extrems = { fromId = n1.id, 
-                                 bez = finalQ,
+                                 curve = curve,
                                  fromPos = n1.posDims.pos, 
                                  toPos = n2.posDims.pos
                                  -- controlPoint = q.controlPoint
