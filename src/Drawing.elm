@@ -442,7 +442,7 @@ makeVerbatimString s =
              (List.map String.fromChar verbatimDelimiters)
             of 
             Nothing -> "\\text{Err: unable to find a verbatim delimiter}"
-            Just d -> "\\verb" ++ d ++ s ++ d 
+            Just d -> "\\verb" ++ d ++ String.filter ((/=) '\n') s ++ d 
 
 makeVerbatim : { zindex:Int,
               label : String, pos : Point, dims : Point
