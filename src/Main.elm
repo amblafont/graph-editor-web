@@ -1600,6 +1600,7 @@ helpMsg model =
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, "
+                ++ "[b] bend arrow/reshape looping arrow, "
                 ++ "[.] customise arrow marker, "
                 ++  "[\"bB][\"] to customize the pullback/pushout sign, "
                 ++  "[i]nvert arrow, "
