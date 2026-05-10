@@ -26,7 +26,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    rectEnveloppe, updateStyleEdges, updatePullshoutEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
-   ,invertEdges, loopOnSourceEdges
+   ,invertEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
    , getEdgeDirection, getEdgeDirectionFromId
@@ -924,10 +924,6 @@ invertEdges g ids =
       <| Graph.newModif g
    )
    ids
-
-loopOnSourceEdges : Graph NodeLabel EdgeLabel -> List EdgeId -> Graph.ModifHelper NodeLabel EdgeLabel
-loopOnSourceEdges g ids =
-   List.foldl (Graph.md_loopOnSource) (Graph.newModif g) ids
    
    
 

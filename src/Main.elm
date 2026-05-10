@@ -972,11 +972,6 @@ update_DefaultMode msg model =
                       [] -> noCmd model
                       edges -> updateModifHelper model 
                           <| GraphDefs.invertEdges modelGraph <| List.map .id edges
-        KeyChanged False _ (Character 'N') -> 
-                  case GraphDefs.selectedEdges modelGraph of
-                      [] -> noCmd model
-                      edges -> updateModifHelper model 
-                          <| GraphDefs.loopOnSourceEdges modelGraph <| List.map .id edges
         {- KeyChanged False _ (Character 'I') -> noCmd <| selectInitial model -}
         {- KeyChanged False _ (Character 'E') -> 
            noCmd <| { model | graph = 

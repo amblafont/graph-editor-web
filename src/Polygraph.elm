@@ -1,7 +1,7 @@
 module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds, nodeIds,
      newNode, newEdge, isEmpty, exists, existsAll,
      update, updateNode, updateEdge, updateNodes, updateList,
-     invertEdge, md_invertEdge, md_loopOnSource, md_merge, md_recursiveMerge, makeCylinder, makeCone,
+     invertEdge, md_invertEdge, md_merge, md_recursiveMerge, makeCylinder, makeCone,
      getNode, getNodes, getEdge, getEdges, get, removeNode, removeEdge,
      md_removeEdge, emptyModifHelper,
      map, mapRecAll, invalidEdges,
@@ -637,17 +637,7 @@ md_invertEdge id (ModifHelper m) =
       )) m.graph
    }
 
-md_loopOnSource : EdgeId -> ModifHelper n e -> ModifHelper n e
-md_loopOnSource id (ModifHelper m) =
-   ModifHelper {
-      m | 
-      graph = mapRep
-  (IntDict.update id 
-     (\ e -> case e of
-              Just (EdgeObj i1 i2 l) -> Just (EdgeObj i1 i1 {l|edit = updateStatus l.edit})
-              _ -> e
-      )) m.graph
-   }
+
 
 updateStatus : EditStatus -> EditStatus
 updateStatus s = case s of
