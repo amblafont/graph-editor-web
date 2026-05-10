@@ -1,4 +1,4 @@
-module Modes.Loop exposing (fixModel, update, graphDrawing, help, initialise)
+module Modes.Loop exposing (fixModel, update, graphDrawing, help, initialise, updateLoopStyle)
 
 import Modes exposing (Mode(..), LoopState)
 import Model exposing (Model, noCmd, toggleHelpOverlay, getActiveGraph, setMode, collageGraphFromGraph)
@@ -12,6 +12,7 @@ import Geometry.Point exposing (Point)
 import Geometry.Point as Point
 import Modes.Lib 
 import Model exposing (switch_Default)
+import ArrowStyle
 
 -- computeFlags : LoopState -> Model.CmdFlags
 -- computeFlags _ = { pointerLock = False }
@@ -25,7 +26,7 @@ fixModel m state =
 update : LoopState -> Msg -> Model -> (Model, Cmd Msg)
 update state msg m =
     case msg of 
-        MouseMove p -> noCmd <| setMode (LoopMode { state | mousePos = p }) m
+        -- MouseMove p -> noCmd <| setMode (LoopMode { state | mousePos = p }) m
         KeyChanged False _ (Control "Escape") -> switch_Default m
         KeyChanged False _ (Character ' ') -> api.finalise m state
         MouseClick -> api.finalise m state
@@ -38,21 +39,24 @@ initialise model = initialise_with_state model Nothing
 graphDrawing : Model -> LoopState -> Graph NodeDrawingLabel EdgeDrawingLabel
 graphDrawing = api.graphDrawing
 
-createModif : Graph NodeLabel EdgeLabel -> LoopState -> Graph.ModifHelper NodeLabel EdgeLabel 
-createModif modelGraph state =
-    let modelNode = Graph.getNode state.edge.from modelGraph in
-    case modelNode of
-        Nothing -> Graph.newModif modelGraph
-        Just node ->
-            let nodePos = GraphDefs.getNodePos node in
-            let diff = Point.subtract state.mousePos nodePos in
-            let angle = Point.pointToAngle diff in
-            let radius = Point.distance (0,0) diff / 2 in
-            GraphDefs.md_updateNormalEdge state.edge.id
-                (\l -> { l | loopAngle = angle, loopRadius = radius })
-                (Graph.newModif modelGraph)
+updateLoopStyle : Model -> Point -> ArrowStyle.ArrowStyle -> ArrowStyle.ArrowStyle
+updateLoopStyle model pos oldStyle =
+    let diff = Point.subtract model.mousePos pos in
+    let angle = Point.pointToAngle diff in
+    let radius = Point.distance (0,0) diff / 2 in
+    { oldStyle | loopAngle = angle, loopRadius = radius }
 
-api = Modes.Lib.makeApi createModif 
+createModif : Model -> LoopState -> Graph.ModifHelper NodeLabel EdgeLabel 
+createModif model state =
+    let modelGraph = getActiveGraph model in
+    -- GraphDefs.updateStyleEdges (updateLoopStyle model state.initialPos >> Just) 
+    --          [state.id] modelGraph
+    GraphDefs.md_updateNormalEdge state.id
+          ( \ l -> { l | style = updateLoopStyle model state.initialPos l.style })
+          (Graph.newModif modelGraph)
+  
+
+api = Modes.Lib.makeModelApi createModif
 
 initialise_with_state : Model -> Maybe LoopState -> Maybe Model
 initialise_with_state model mayState =
@@ -66,7 +70,11 @@ initialise_with_state model mayState =
             case e.label.details of
                 GraphDefs.PullshoutEdge _ -> failedRet
                 GraphDefs.NormalEdge l ->
-                    Just (setMode (LoopMode { edge = e, mousePos = model.mousePos }) model)
+                    let posGraph = GraphDefs.posGraph modelGraph in
+                    case Graph.get e.from .pos .pos posGraph of
+                        Nothing -> failedRet
+                        Just pos -> 
+                            Just (setMode (LoopMode { id = e.id, initialPos = pos }) model)
 
 help : String
 help = "Loop mode: move mouse to adjust angle and radius, [Click] or [SPC] to confirm, [ESC] to cancel. " ++ HtmlDefs.overlayHelpMsg

@@ -26,7 +26,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    rectEnveloppe, updateStyleEdges, updatePullshoutEdges,
    getSelectedProofDiagram, MaybeProofDiagram(..), selectedChain, MaybeChain(..),
    createValidProofAtBarycenter, isProofLabel, makeProofString, posGraph
-   ,invertEdges, loopOnSourceEdges, defaultLoopRadius
+   ,invertEdges, loopOnSourceEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
    , getEdgeDirection, getEdgeDirectionFromId
@@ -72,8 +72,6 @@ type alias NormalEdgeLabel =
   -- ArrowStyle.getStyle should be systematically applied to the style
   -- (TODO: remove this restriction)
   , isAdjunction : Bool
-  , loopRadius : Float
-  , loopAngle : Float
   }
 
 
@@ -444,15 +442,11 @@ newGenericLabel d = { details = d,
                       weaklySelected = False,
                       zindex = defaultZ}
 
-defaultLoopRadius = 20
-
 newEdgeLabelVerbatimAdj : Bool -> Bool -> String -> ArrowStyle -> EdgeLabel
 newEdgeLabelVerbatimAdj isVerbatim isAdjunction s style = 
    newGenericLabel 
     <| NormalEdge 
-    { label = makeVerbatimLabel isVerbatim s, style = style, dims = Nothing, isAdjunction = isAdjunction
-    , loopRadius = defaultLoopRadius, loopAngle = 0
-    }
+    { label = makeVerbatimLabel isVerbatim s, style = style, dims = Nothing, isAdjunction = isAdjunction }
 
 newEdgeLabelAdj : String -> ArrowStyle -> Bool -> EdgeLabel
 newEdgeLabelAdj s style isAdjunction = 
@@ -780,8 +774,8 @@ posGraph g =
                    let curve = 
                         if isLoop then
                            let nodeCenter = (computePosDims True).pos
-                               radius = l.loopRadius
-                               angle = l.loopAngle
+                               radius = l.style.loopRadius
+                               angle = l.style.loopAngle
                                center = Point.add nodeCenter (abs radius * cos angle, abs radius * sin angle)
                                fromAngle = angle - 0.5
                                toAngle = angle + 0.5

@@ -100,7 +100,7 @@ bendFlag =
 
 loopRadiusFlag : Codec Float (List String)
 loopRadiusFlag =
-       edgeMaybeFlagCodec GraphDefs.defaultLoopRadius LoopRadius
+       edgeMaybeFlagCodec ArrowStyle.defaultLoopRadius LoopRadius
     (\ flag -> case flag of 
         LoopRadius a -> Just a
         _ -> Nothing
@@ -411,16 +411,17 @@ arrowStyleCodec =
         Codec.fields f1 Basics.identity codec
   in
   Codec.object
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy ->
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle ->
       { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, labelAlignment = alignment, 
    shiftSource = shiftSource, shiftTarget = shiftTarget,
    labelPosition = position, color = colors.main, marker = marker,
-   headColor = colors.head, tailColor = colors.tail, wavy = wavy }
+   headColor = colors.head, tailColor = colors.tail, wavy = wavy,
+   loopRadius = loopRadius, loopAngle = loopAngle }
     
   )
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy  ->
-     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle  ->
+     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy ++ loopRadius ++ loopAngle
     
   )
   |> flagField .tail tailFlag
@@ -437,6 +438,8 @@ arrowStyleCodec =
                   colorsFlag
   |> flagField .marker markerFlag
   |> flagField .wavy wavyFlag
+  |> flagField .loopRadius loopRadiusFlag
+  |> flagField .loopAngle loopAngleFlag
   |> Codec.buildObject
 
 
@@ -472,19 +475,15 @@ fromEdgeLabel e =
               -- kind = if isAdjunction then adjunctionKey else normalKey,       
               style = 
                 let convertedStyle = Codec.encoder arrowStyleCodec style in 
-                let withLoop = 
-                      -- if e.from /= e.to then [] else
-                      Codec.encoder loopRadiusFlag l.loopRadius ++ Codec.encoder loopAngleFlag l.loopAngle ++ convertedStyle 
-                in
                 if isAdjunction then
-                addFlag Adjunction withLoop
-                else withLoop
-                ,
+                    addFlag Adjunction convertedStyle
+                else
+                    convertedStyle
+              ,
               zindex = e.zindex 
               -- , selected = e.selected              
             }
-     
-toEdgeLabel : Edge -> EdgeLabel
+
 toEdgeLabel { label, style, zindex } = 
     let dec codec = Codec.decoder codec style in
    { selected = False -- selected
@@ -501,9 +500,7 @@ toEdgeLabel { label, style, zindex } =
               NormalEdge { label = label
                 , isAdjunction = getFlag Adjunction style
                 , style = Codec.decoder arrowStyleCodec style
-              , dims = Nothing
-              , loopRadius = Codec.decoder loopRadiusFlag style
-              , loopAngle = Codec.decoder loopAngleFlag style
+                , dims = Nothing
               }
    }
 

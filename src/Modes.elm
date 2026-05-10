@@ -39,10 +39,8 @@ type Mode
 
 
 type alias LoopState =
-  { edge : Graph.Edge EdgeLabel
-  -- no good reason to keep this in the state, as it is already 
-  -- in the model (this was vibe-coded).
-  , mousePos : Point
+  { initialPos : Point,
+    id : EdgeId
   }
 
 type alias BendState =
@@ -158,6 +156,7 @@ type ArrowStateKind =
     CreateArrow Graph.Id
   | CreateCylinder
   | CreateCone
+  | CreateLoop { id : Graph.Id, pos : Point }
 
 
 type alias CustomizeModeState = 
