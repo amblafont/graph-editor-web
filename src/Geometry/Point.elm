@@ -4,7 +4,7 @@ module Geometry.Point exposing (Point, radius, orthoVectPx, towards, diamondPx, 
   countRounds, countRoundsAngle, name, unname, NamedPoint, isInPoly,
   -- from quiver
   lerp, lendir, rotate, scale, inv_scale, normaliseAngle, barycenter,
-  towardsBentDiagonal, scalarProduct)
+  towardsBentDiagonal, scalarProduct, fromPolar)
 
 import ListExtraExtra as List
 -- import Geometry.QuadraticBezier exposing (orthoVectPx)
@@ -106,6 +106,8 @@ pointToAngle ( x, y ) =
     else
         2 * atan (y / (x + radius ( x, y )))
 
+fromPolar : Float -> Float -> Point
+fromPolar r a = (r * cos a, r * sin a)
 
 
 toList : Point -> List Float

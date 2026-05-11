@@ -26,6 +26,7 @@ import List.Extra
 import Codec exposing (Codec)
 import IntDict exposing (update)
 import Modif
+import ListExtraExtra
 
 
 type alias Id = Int
@@ -150,6 +151,11 @@ md_removeEdge :  EdgeId -> ModifHelper n e -> ModifHelper n e
 md_removeEdge id (ModifHelper m) =
     ModifHelper { m | 
         graph = removeEdge id m.graph, removeIds = id :: m.removeIds}
+
+md_removeList : List Id -> ModifHelper n e -> ModifHelper n e
+md_removeList l (ModifHelper m) =
+    ModifHelper { m | 
+        graph = removeList l m.graph, removeIds = l ++ m.removeIds}
 
 removeNode : NodeId -> Graph n e -> Graph n e
 removeNode = remove
@@ -631,6 +637,8 @@ md_invertEdge id (ModifHelper m) =
       )) m.graph
    }
 
+
+
 updateStatus : EditStatus -> EditStatus
 updateStatus s = case s of
    New -> New
@@ -1032,6 +1040,13 @@ type ModifHelper n e = ModifHelper
          -- , baseGraph : Graph n e
          }
 
+-- mapModifHelper : (n -> n2) -> (e -> e2) -> ModifHelper n e -> ModifHelper n2 e2
+-- mapModifHelper fn fe (ModifHelper m) =
+--    ModifHelper { baseId = m.baseId, 
+--                removeIds = m.removeIds,
+--                  graph = map (\ _ { label, edit } -> { label = fn label, edit = edit }) 
+--                              (\ _ { label, edit } -> { label = fe label, edit = edit }) m.graph }
+
 debugModifHelperGraph : ModifHelper n e -> GraphHelper n e
 debugModifHelperGraph (ModifHelper {graph}) = graph
 
@@ -1069,7 +1084,6 @@ applyModifHelper (ModifHelper m) =
    -- |> Tuple.first
 {-applyModifHelper (ModifHelper m) = 
    map (\ _ { label } -> label) (\ _ { label } -> label) m.graph
-   -- |> removeLoops |> sanitise
    -- -}
 
 md_graphMap : (GraphHelper n e -> GraphHelper n e)
@@ -1140,7 +1154,7 @@ doModif merge (Modif t) g =
    let newNextId = nextId g + t.nextId - baseId in
    let finalGraph =  Graph { graph = prunedGraph, nextId = newNextId } 
    in
-   (finalGraph, trans) -- |> removeLoops |> sanitise
+   (finalGraph, trans) 
    -- removeList t.removeIds finalGraph
 
 -- remove the objects that depends on a removed object
@@ -1166,7 +1180,6 @@ reverseModif g (Modif t) =
    -- let graph = IntDict.union dep allNone in
    Modif {  editGraph = modifiedGraph , 
                   newGraph = dep
-               --   |> sanitise |> removeLoops
                 , nextId = t.nextId
                 , baseId = t.nextId
                 , removeIds = createdIds }
@@ -1288,12 +1301,14 @@ md_updateEdgesId : List EdgeId -> (b -> b) -> ModifHelper a b -> ModifHelper a b
 md_updateEdgesId l f g =
   List.foldl (\ id g2 -> md_updateEdge id f g2) g l
 
+md_loopIds : ModifHelper n e -> List Id
+md_loopIds (ModifHelper m) = loopsIds <| graphRep m.graph
 
-md_removeLoops : ModifHelper a b -> ModifHelper a b
-md_removeLoops (ModifHelper m) = 
-   let loops = loopsIds <| graphRep m.graph in
-   ModifHelper 
-       { m | graph = removeList loops m.graph, removeIds = loops ++ m.removeIds }
+-- md_removeLoops : ModifHelper a b -> ModifHelper a b
+-- md_removeLoops (ModifHelper m) = 
+--    let loops = md_loopIds (ModifHelper m) in
+--    ModifHelper 
+--        { m | graph = removeList loops m.graph, removeIds = loops ++ m.removeIds }
 
 -- no need to say that the invalid edges must be removed
 md_sanitise : ModifHelper a b -> ModifHelper a b
@@ -1320,8 +1335,14 @@ md_rawMerge i1 i2 (ModifHelper m) =
 -- if i1 is a vertex and i2 is an edge, we merge the source and the target of i2 with i1
 md_recursiveMerge : Id -> Id -> ModifHelper n e -> ModifHelper n e
 md_recursiveMerge i1 i2 g =
-   if i1 == i2 then g else 
-   md_recursiveMergeAux i1 i2 g |> md_removeLoops |> md_sanitise
+   if i1 == i2 then  g else 
+   let loops = md_loopIds g in
+   let g2 = md_recursiveMergeAux i1 i2 g in
+   let loops2 = md_loopIds g2 in
+   -- O(n^2)
+   let newLoops = ListExtraExtra.subtract loops2 loops in
+   md_removeList newLoops g2 |> md_sanitise
+   -- md_recursiveMergeAux i1 i2 g |> md_removeLoops |> md_sanitise
 
 md_getObj : Id -> ModifHelper n e -> Maybe (Object n e)
 md_getObj i m =

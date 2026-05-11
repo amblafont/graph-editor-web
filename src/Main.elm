@@ -63,6 +63,7 @@ import Maybe exposing (withDefault)
 
 import Modes.Square
 import Modes.Bend
+import Modes.Loop
 import Modes.NewArrow 
 import Modes.NewLine
 import Modes.SplitArrow
@@ -405,6 +406,7 @@ computeFlags : Mode -> Model.CmdFlags
 computeFlags mode =
     case mode of
         BendMode state -> Modes.Bend.computeFlags state
+        -- LoopMode state -> Modes.Loop.computeFlags state
         NewArrow state -> Modes.NewArrow.computeFlags state
         CustomizeMode state -> Modes.Customize.computeFlags state
         _ -> { pointerLock = False }
@@ -682,6 +684,7 @@ update msg modeli =
         ResizeMode s -> update_Resize s msg model
         CustomizeMode ids -> Modes.Customize.update ids msg model
         BendMode state -> Modes.Bend.update state msg model
+        LoopMode state -> Modes.Loop.update state msg model
         LatexPreamble s -> update_LatexPreamble s msg model
 
 update_LatexPreamble : String -> Msg -> Model -> (Model, Cmd Msg)
@@ -1215,7 +1218,11 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                                 , selIds = selIds
                                 })
         KeyChanged False _ k ->
-           case (if k /= Character 'b' then Nothing else Modes.Bend.initialise model) of
+           case (if k /= Character 'b' then Nothing else 
+                 case Modes.Loop.initialise model of
+                   Just m -> Just m
+                   Nothing -> Modes.Bend.initialise model
+                ) of
              Just m -> noCmd m
         -- KeyChanged False _ (Character 'b') ->
              Nothing ->
@@ -1452,6 +1459,7 @@ graphDrawingFromModel m =
                 |> Graph.applyModifHelper
                 |> GraphDrawing.toDrawingGraph
     BendMode state -> Modes.Bend.graphDrawing m state
+    LoopMode state -> Modes.Loop.graphDrawing m state
     LatexPreamble _ -> collageGraphFromGraph m modelGraph
         
 
@@ -1592,6 +1600,7 @@ helpMsg model =
                 ++ ", if an arrow is selected: [\""
                 ++ ArrowStyle.controlChars
                 ++ "\"] alternate between different arrow styles, "
+                ++ "[b] bend arrow/reshape looping arrow, "
                 ++ "[.] customise arrow marker, "
                 ++  "[\"bB][\"] to customize the pullback/pushout sign, "
                 ++  "[i]nvert arrow, "

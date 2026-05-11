@@ -33,8 +33,16 @@ type Mode
     | BendMode BendState
     | FreeHandMode FreeHandState
     -- | DeleteFreeHandMode DeleteFreeHandState
+    | LoopMode LoopState
     | MakeSaveMode
     | LatexPreamble String
+
+
+type alias LoopState =
+  { initialPos : Point,
+    id : EdgeId
+  }
+
 type alias BendState =
   { edge : Graph.Edge EdgeLabel
   , captureState : CaptureState
@@ -66,6 +74,7 @@ toString m = case m of
   BendMode _ -> "Bend"
   FreeHandMode _ -> "FreeHand"
   -- DeleteFreeHandMode _ -> "DeleteFreeHand"
+  LoopMode _ -> "Loop"
   MakeSaveMode -> "MakeSave"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
@@ -147,6 +156,7 @@ type ArrowStateKind =
     CreateArrow Graph.Id
   | CreateCylinder
   | CreateCone
+  | CreateLoop { id : Graph.Id, pos : Point }
 
 
 type alias CustomizeModeState = 

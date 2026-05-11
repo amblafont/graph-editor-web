@@ -1,6 +1,6 @@
 module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -} 
    tikzStyle,
-   isDouble, doubleSize, updateEdgeColor, EdgePart(..),
+   isDouble, doubleSize, defaultLoopRadius, updateEdgeColor, EdgePart(..),
    controlChars, MarkerStyle, isMarker,
    kindCodec, tailCodec, headCodec, alignmentCodec, markerCodec,
    toggleDashed, dashedStr, -- PosLabel(..),
@@ -27,6 +27,8 @@ import Codec exposing (Codec)
 
 doubleSize = 2.5
 
+defaultLoopRadius = 20
+
 {-}
 type PosLabel =
      DefaultPosLabel
@@ -45,7 +47,9 @@ type alias Style = { tail : TailStyle,
                      headColor : Color,
                      tailColor : Color,
                      marker : MarkerStyle,
-                     wavy : Bool
+                     wavy : Bool,
+                     loopRadius : Float,
+                     loopAngle : Float
                     } 
 
 -- maxShift = 5
@@ -76,7 +80,8 @@ simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, 
           bend = bend, labelAlignment = Left, marker = noMarker,
           labelPosition = 0.5, color = Color.black,
           shiftSource = 0.5, shiftTarget = 0.5,
-          headColor = Color.black, tailColor = Color.black, wavy = False }
+          headColor = Color.black, tailColor = Color.black, wavy = False,
+          loopRadius = defaultLoopRadius, loopAngle = 0 }
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
 
@@ -163,7 +168,7 @@ empty = { tail = DefaultTail, head = DefaultHead, dashed = False,
           labelPosition = 0.5, color = Color.black, kind = NormalArrow,
           marker = noMarker, shiftSource = 0.5, shiftTarget = 0.5,
           headColor = Color.black, tailColor = Color.black ,
-          wavy = False }
+          wavy = False, loopRadius = defaultLoopRadius, loopAngle = 0 }
 isDouble : Style -> Basics.Bool
 isDouble { kind } = kind == DoubleArrow
   

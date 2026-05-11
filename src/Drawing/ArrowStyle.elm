@@ -1,4 +1,4 @@
-module Drawing.ArrowStyle exposing (makeHeadTailImgs)
+module Drawing.ArrowStyle exposing (makeHeadTailImgs, makeHeadTailImgsWithAngles)
 import Geometry.Point as Point exposing (Point)
 
 import String.Svg as Svg
@@ -50,3 +50,9 @@ makeHeadTailImgs {from, to, controlPoint} style =
       makeTheImg from (angle <| Point.subtract controlPoint from) 
        imgTailWidth <|  makeTailShape style
        ]
+
+makeHeadTailImgsWithAngles : Point -> Point -> Float -> Float -> Style -> List (Svg a)
+makeHeadTailImgsWithAngles from to angleFrom angleTo style =
+    [ makeTheImg to angleTo imgHeadWidth <| makeHeadShape style,
+      makeTheImg from angleFrom imgTailWidth <| makeTailShape style
+    ]

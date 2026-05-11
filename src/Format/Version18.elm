@@ -72,6 +72,8 @@ type EdgeFlag =
     | Position Float
     | ShiftSource Float
     | ShiftTarget Float
+    | LoopRadius Float
+    | LoopAngle Float
 
 dashedFlag : Codec Bool (List String)
 dashedFlag = edgeMaybeFlagCodecFalse Dashed
@@ -90,12 +92,27 @@ wavyFlag = edgeMaybeFlagCodecFalse Wavy
 
 bendFlag : Codec Float (List String)
 bendFlag =
-       edgeMaybeFlagCodec 0.0 Bend
+       edgeMaybeFlagCodec 0 Bend
     (\ flag -> case flag of 
         Bend a -> Just a
         _ -> Nothing
     )
 
+loopRadiusFlag : Codec Float (List String)
+loopRadiusFlag =
+       edgeMaybeFlagCodec ArrowStyle.defaultLoopRadius LoopRadius
+    (\ flag -> case flag of 
+        LoopRadius a -> Just a
+        _ -> Nothing
+    )
+
+loopAngleFlag : Codec Float (List String)
+loopAngleFlag =
+       edgeMaybeFlagCodec 0 LoopAngle
+    (\ flag -> case flag of 
+        LoopAngle a -> Just a
+        _ -> Nothing
+    )
 
 positionFlag : Codec Float (List String)
 positionFlag =
@@ -138,14 +155,16 @@ prefixes =
     bend = "bend ",
     position = "position ",
     shiftSource = "shiftSource ",
-    shiftTarget = "shiftTarget "
+    shiftTarget = "shiftTarget ",
+    loopRadius = "loopRadius ",
+    loopAngle = "loopAngle "
   }
 
     
 
 edgeFlagCodec : Codec EdgeFlag String
 edgeFlagCodec =
-    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor shiftSource shiftTarget unrecognized v =
+    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor shiftSource shiftTarget loopRadius loopAngle unrecognized v =
                     case v of
                         Dashed -> dashed
                         Marker s -> marker s
@@ -164,6 +183,8 @@ edgeFlagCodec =
                         TailColor c -> tailcolor c
                         ShiftSource c -> shiftSource c
                         ShiftTarget c -> shiftTarget c
+                        LoopRadius c -> loopRadius c
+                        LoopAngle c -> loopAngle c
    in
    Codec.customEnum split
    |> Codec.variant0 prefixes.dashed Dashed
@@ -183,6 +204,8 @@ edgeFlagCodec =
     |> Codec.prefixVariant0 prefixes.tailColor TailColor Color.codec
     |> Codec.prefixVariant0 prefixes.shiftSource ShiftSource floatCodec
     |> Codec.prefixVariant0 prefixes.shiftTarget ShiftTarget floatCodec
+    |> Codec.prefixVariant0 prefixes.loopRadius LoopRadius floatCodec
+    |> Codec.prefixVariant0 prefixes.loopAngle LoopAngle floatCodec
     |> Codec.variant0 prefixes.unrecognized Unrecognized
     |> Codec.buildVariant (always Unrecognized)
 
@@ -388,16 +411,17 @@ arrowStyleCodec =
         Codec.fields f1 Basics.identity codec
   in
   Codec.object
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy ->
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle ->
       { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, labelAlignment = alignment, 
    shiftSource = shiftSource, shiftTarget = shiftTarget,
    labelPosition = position, color = colors.main, marker = marker,
-   headColor = colors.head, tailColor = colors.tail, wavy = wavy }
+   headColor = colors.head, tailColor = colors.tail, wavy = wavy,
+   loopRadius = loopRadius, loopAngle = loopAngle }
     
   )
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy  ->
-     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle  ->
+     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy ++ loopRadius ++ loopAngle
     
   )
   |> flagField .tail tailFlag
@@ -414,6 +438,8 @@ arrowStyleCodec =
                   colorsFlag
   |> flagField .marker markerFlag
   |> flagField .wavy wavyFlag
+  |> flagField .loopRadius loopRadiusFlag
+  |> flagField .loopAngle loopAngleFlag
   |> Codec.buildObject
 
 
@@ -450,14 +476,14 @@ fromEdgeLabel e =
               style = 
                 let convertedStyle = Codec.encoder arrowStyleCodec style in 
                 if isAdjunction then
-                addFlag Adjunction convertedStyle
-                else convertedStyle
-                ,
+                    addFlag Adjunction convertedStyle
+                else
+                    convertedStyle
+              ,
               zindex = e.zindex 
               -- , selected = e.selected              
             }
-     
-toEdgeLabel : Edge -> EdgeLabel
+
 toEdgeLabel { label, style, zindex } = 
     let dec codec = Codec.decoder codec style in
    { selected = False -- selected
@@ -474,7 +500,7 @@ toEdgeLabel { label, style, zindex } =
               NormalEdge { label = label
                 , isAdjunction = getFlag Adjunction style
                 , style = Codec.decoder arrowStyleCodec style
-              , dims = Nothing
+                , dims = Nothing
               }
    }
 

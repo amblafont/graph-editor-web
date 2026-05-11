@@ -10,10 +10,12 @@ module Drawing exposing (Drawing,
    emptyForeign, toString --, shadowClass
   )
 
+
 import Zindex exposing (defaultZ, backgroundZ)
 import String.Svg as Svg exposing (Svg)
 import Geometry.Point as Point exposing (Point)
 import Geometry
+import Geometry.Curve exposing (Curve(..))
 import Html 
 import ArrowStyle exposing (ArrowStyle)
 import Drawing.ArrowStyle
@@ -93,7 +95,8 @@ type Drawing a
 type alias PolylineArg = {points : List Point, color : Color}
 type alias LineArg = {from : Point, to : Point, color: Color, strokeWidth : Int}
 type alias NodeArg = {label : String, angle : Float, preamble : String, pos : Point, scale: Float, dims : Point}
-type alias ArrowArg = {style : ArrowStyle, bezier : QuadraticBezier, strokeWidth : Int}
+
+type alias ArrowArg = {style : ArrowStyle, curve : Curve, strokeWidth : Int}
 
 lineToSvg : LineArg -> List (Html.Attribute a) -> Svg a
 lineToSvg arg attrs = 
@@ -193,22 +196,56 @@ nodeToSvg arg attrs =
 
 arrowToTikz : ArrowArg -> String
 arrowToTikz args =
-    let width =  
-          if args.strokeWidth == 1 then "" else
-          "line width=" ++ dimToTikz (toFloat args.strokeWidth)
-    in
-    let bez = Bez.toCubic args.bezier in
-    "\\draw[" ++ ArrowStyle.tikzStyle args.style ++ width ++ "] "
-    ++ pointToTikz bez.from
-    ++ " .. controls "
-    -- ++ "to[quadratic="
-    ++ pointToTikz bez.controlPoint1
-    -- ++ "] "
-    ++ " and "
-    ++ pointToTikz bez.controlPoint2
-    ++ " .. "
-    ++ pointToTikz bez.to
-    ++ ";"
+    case args.curve of
+        CurveBezier bezier ->
+            let width =  
+                  if args.strokeWidth == 1 then "" else
+                  "line width=" ++ dimToTikz (toFloat args.strokeWidth)
+            in
+            let bez = Bez.toCubic bezier in
+            "\\draw[" ++ ArrowStyle.tikzStyle args.style ++ width ++ "] "
+            ++ pointToTikz bez.from
+            ++ " .. controls "
+            -- ++ "to[quadratic="
+            ++ pointToTikz bez.controlPoint1
+            -- ++ "] "
+            ++ " and "
+            ++ pointToTikz bez.controlPoint2
+            ++ " .. "
+            ++ pointToTikz bez.to
+            ++ ";"
+        CurveArc loop ->
+            let width =  
+                  if args.strokeWidth == 1 then "" else
+                  "line width=" ++ dimToTikz (toFloat args.strokeWidth)
+            in
+            let (x1, y1) = loop.from in
+            let (x2, y2) = loop.to in
+            let r = abs loop.r in
+            let (cx, cy) = loop.center in
+            
+            -- Math coordinates (Y is negated for TikZ)
+            let my1 = -y1 in
+            let my2 = -y2 in
+            let mcy = -cy in
+            
+            let startAngle = atan2 (my1 - mcy) (x1 - cx) * 180 / pi in
+            let endAngleRaw = atan2 (my2 - mcy) (x2 - cx) * 180 / pi in
+            
+            -- loop.r > 0 means clockwise in SVG (Y down), which is clockwise in Math (Y up) -> decreasing angle
+            -- loop.r < 0 means counter-clockwise in SVG -> increasing angle
+            let endAngle = 
+                  if loop.r > 0 then
+                      if endAngleRaw > startAngle then endAngleRaw - 360 else endAngleRaw
+                  else
+                      if endAngleRaw < startAngle then endAngleRaw + 360 else endAngleRaw
+            in
+            
+            "\\draw[" ++ ArrowStyle.tikzStyle args.style ++ width ++ "] "
+            ++ pointToTikz loop.from
+            ++ " arc [start angle=" ++ String.fromFloat startAngle 
+            ++ ", end angle=" ++ String.fromFloat endAngle 
+            ++ ", radius=" ++ dimToTikz r ++ "];"
 
 
 lineToTikz : LineArg -> String
@@ -223,39 +260,65 @@ lineToTikz arg =
 arrowToSvg : ArrowArg -> List (Html.Attribute a) -> Svg a
 arrowToSvg args attrs0 =
     let arrowStyle = args.style in
-    let q = args.bezier in
     let attrs = List.map ghostAttribute attrs0 in
-    if ArrowStyle.isNone arrowStyle then
-        Svg.g [] []
-    else
-    -- let zindex = attributesToZIndex attrs in
-    let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    
-    let mkgen l = mkPath {wavy=arrowStyle.wavy, dashed = arrowStyle.dashed, color = arrowStyle.color,
-                            strokeWidth = args.strokeWidth }
-                      (l ++ attrs) 
-    in
-    let mkl = mkgen [] in
-    -- let mkshadow = mkgen False [Svg.class shadowClass] in
-    
-    -- let mkshadow = mkgen False [style "stroke-width : 4;  stroke: white;"] in
-    -- overriding the black color with style attribute 
-    -- TODO: do it more properly
-    -- let mkshadow = mkgen False [style "stroke: white;", strokeWidth "4"] in
-    let mkall l = -- List.map mkshadow l ++ 
-                  List.map mkl l in
-    let lines = if ArrowStyle.isDouble arrowStyle then
-                -- let delta = Point.subtract q.to q.controlPoint 
-                --             |> Point.orthogonal
-                --             |> Point.normalise ArrowStyle.doubleSize
-                -- in
-              
-                mkall [ (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
-                    (Bez.orthoVectPx ArrowStyle.doubleSize q)
-                ]
-        
-                else
-                    mkall [ q ]
-    in lines ++ imgs |> Svg.g []
+    if ArrowStyle.isNone arrowStyle then Svg.g [] [] else
+    case args.curve of
+        CurveBezier q ->
+            -- let zindex = attributesToZIndex attrs in
+            let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    
+            let mkgen l = mkPath {wavy=arrowStyle.wavy, dashed = arrowStyle.dashed, color = arrowStyle.color,
+                                    strokeWidth = args.strokeWidth }
+                              (l ++ attrs) 
+            in
+            let mkl = mkgen [] in
+            -- let mkshadow = mkgen False [Svg.class shadowClass] in
+            
+            -- let mkshadow = mkgen False [style "stroke-width : 4;  stroke: white;"] in
+            -- overriding the black color with style attribute 
+            -- TODO: do it more properly
+            -- let mkshadow = mkgen False [style "stroke: white;", strokeWidth "4"] in
+            let mkall l = -- List.map mkshadow l ++ 
+                          List.map mkl l in
+            let lines = if ArrowStyle.isDouble arrowStyle then
+                            [ (Bez.orthoVectPx (0 - ArrowStyle.doubleSize ) q),
+                              (Bez.orthoVectPx ArrowStyle.doubleSize q) ]
+                        else [q] 
+            in
+            Svg.g []
+              <| mkall lines ++ [Svg.g attrs imgs]
+        CurveArc loop ->
+            let (x1, y1) = loop.from in
+            let (x2, y2) = loop.to in
+            let dx = x2 - x1 in
+            let dy = y2 - y1 in
+            let d = sqrt (dx * dx + dy * dy) in
+            let r = abs loop.r in
+            let sweepFlag = if loop.r < 0 then "0" else "1" in
+            let largeArcFlag = "1" in
+            
+            let (cx, cy) = loop.center in
+            
+            -- Tangents
+            let sign = if loop.r < 0 then -1 else 1 in
+            let angleFrom = Point.pointToAngle (-sign * (y1 - cy), sign * (x1 - cx)) * 180 / pi in
+            let angleTo = Point.pointToAngle (-sign * (y2 - cy), sign * (x2 - cx)) * 180 / pi in
+            
+            let imgs = Drawing.ArrowStyle.makeHeadTailImgsWithAngles loop.from loop.to angleFrom angleTo arrowStyle in    
+            let mkgen l = 
+                    let dAttr = Svg.d ("M " ++ String.fromFloat x1 ++ " " ++ String.fromFloat y1 ++ 
+                                       " A " ++ String.fromFloat r ++ " " ++ String.fromFloat r ++ 
+                                       " 0 " ++ largeArcFlag ++ " " ++ sweepFlag ++ " " ++ 
+                                       String.fromFloat x2 ++ " " ++ String.fromFloat y2) 
+                    in
+                    Svg.path 
+                      ( dAttr :: Svg.fill "none" :: Svg.strokeFromColor arrowStyle.color :: l ++ attrs ++
+                        dashedToAttrs arrowStyle.dashed ++
+                        (if args.strokeWidth /= 1 then [Svg.strokeWidthPx args.strokeWidth] else [])
+                      ) []
+            in
+            let mkl = mkgen [] in
+            Svg.g []
+              <| [mkl, Svg.g attrs imgs]
 
 singlePolylineToSvg : PolylineArg -> List (Html.Attribute a) -> Svg a
 singlePolylineToSvg arg attrs =
@@ -289,8 +352,6 @@ tikzShapeToTikz shape =
         Line arg -> lineToTikz arg
         Arrow arg -> arrowToTikz arg
         Polyline arg -> singlePolylineToTikz arg 
-
-
 
 type TikzShape =
      Node NodeArg
@@ -492,12 +553,19 @@ line args attrs from to =
   group [makeShape shadowArg, makeShape normalArg]
 -}
 
-arrow : {zindex : Int, style : ArrowStyle, bezier : QuadraticBezier} -> List (Html.Attribute a) -> Drawing a
+arrow : {zindex : Int, style : ArrowStyle, curve : Curve} -> List (Html.Attribute a) -> Drawing a
 arrow args attrs0 =
-    let normalArg = { bezier = args.bezier, style = args.style,  strokeWidth = 1} in
-    let shadowArg = { bezier = args.bezier, style = ArrowStyle.shadow args.style, strokeWidth = shadowWidth} in
+    let normalArg = { curve = args.curve, style = args.style,  strokeWidth = 1} in
+    let shadowArg = { curve = args.curve, style = ArrowStyle.shadow args.style, strokeWidth = shadowWidth} in
     let makeShape arg = Arrow arg |> TikzShape attrs0 |> ofShape args.zindex in
     group [makeShape shadowArg, makeShape normalArg]
+
+-- loopArrow : {zindex : Int, style : ArrowStyle, loop : Loop} -> List (Html.Attribute a) -> Drawing a
+-- loopArrow args attrs0 =
+--     let normalArg = { curve = CurveArc args.loop, style = args.style,  strokeWidth = 1} in
+--     let shadowArg = { curve = CurveArc args.loop, style = ArrowStyle.shadow args.style, strokeWidth = shadowWidth} in
+--     let makeShape arg = Arrow arg |> TikzShape attrs0 |> ofShape args.zindex in
+--     group [makeShape shadowArg, makeShape normalArg]
 {-
     let arrowStyle = args.style in
     let q = args.bezier in

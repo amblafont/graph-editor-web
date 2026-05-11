@@ -1,4 +1,4 @@
-module ListExtraExtra exposing (succPairs, succCyclePairs, nextInList, moveLeftCycle, moveRightCycle, prevInList, move)
+module ListExtraExtra exposing (succPairs, succCyclePairs, nextInList, moveLeftCycle, moveRightCycle, prevInList, move, subtract)
 import List.Extra as List
 
 permute : List a -> List a
@@ -56,3 +56,7 @@ moveLeftCycle f l =
       t :: q -> if f t then q ++ [t] else
                  move False f l
       [] -> []
+
+subtract : List a -> List a -> List a
+subtract l1 l2 =
+   List.filter (\x -> not (List.member x l2)) l1
