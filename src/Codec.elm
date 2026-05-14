@@ -4,10 +4,11 @@ module Codec exposing
     , identity 
     , decoder 
     , encoder
+    -- , invert
     -- , enum
     , customEnum
     , customStringTag
-    , list
+    , list, filter
     , ObjectCodec, object, compose, composite
     , fields, buildObject 
     , custom,  variant1, buildVariant
@@ -15,6 +16,14 @@ module Codec exposing
     , maybeCustom, maybeBuildVariant, maybeVariant0, maybeVariant1
     , maybeList, boolList
     , charInt
+    , trueJs
+    , stringJs
+    , objectJs
+    , floatJs
+    , customPair
+    , variant1Pair
+    , variantTruePair
+    
    -- , maybe
     -- , variant0, variant2
     )
@@ -26,7 +35,8 @@ two ways of encoding custom types: custom and maybeCustom
 import List.Extra as List
 import Dict exposing (Dict)
 import Maybe.Extra
-
+import Json.Decode as JDecode
+import Json.Encode as JEncode
 
 
 -- DEFINITION
@@ -117,10 +127,20 @@ compose dec enc =
         , decoder = decoder dec >> decoder enc
         }
 
+-- invert : Codec a b -> Codec b a
+-- invert (Codec c) =
+--     Codec
+--         { encoder = c.decoder
+--         , decoder = c.encoder
+--         }
 
 list : Codec a b -> Codec (List a) (List b)
 list =
     composite List.map List.map
+
+filter : (a -> Bool) -> Codec (List a) (List a)
+filter f =
+    build (List.filter f) (List.filter f)
 
 
 -- OBJECTS
@@ -194,6 +214,34 @@ buildObject (ObjectCodec om) =
         , decoder = om.decoder
         }
 
+-- returns trus only if it is true.
+trueJs : Codec Bool JDecode.Value 
+trueJs =
+    Codec
+        { encoder = \ _ -> JEncode.bool True
+        , decoder = \ v -> Result.withDefault False <| JDecode.decodeValue JDecode.bool v 
+        }
+stringJs : Codec String JDecode.Value
+stringJs =
+    Codec
+        { encoder = JEncode.string
+        , decoder = \ v -> Result.withDefault "" <| JDecode.decodeValue JDecode.string v 
+        }
+floatJs : Codec Float JDecode.Value
+floatJs =
+    Codec
+        { encoder = JEncode.float
+        , decoder = \ v -> Result.withDefault 0 <| JDecode.decodeValue JDecode.float v 
+        }
+objectJs : Codec (List (String, JEncode.Value)) JEncode.Value
+objectJs =
+    Codec
+        { encoder = JEncode.object -- Basics.identity Basics.identity
+        , decoder = \ v -> 
+              Dict.toList <| 
+              Result.withDefault Dict.empty <| JDecode.decodeValue (JDecode.dict JDecode.value) v
+        }
+
 {-
 Codec with {tag, snapshot, clear, load, modif}
   let splitMsg snapshot clear load modif v = 
@@ -252,6 +300,29 @@ customStringTag : a -> { b | tag : String} ->
 customStringTag a common =
     custom a common .tag (\ tag r -> {r | tag = tag})
 
+customPair : a -> (tag, b) -> CustomCodec v tag (tag, b) a
+customPair a common =
+    custom a common Tuple.first (\ tag ( _, b) -> (tag, b))
+
+variant1Pair : comparable -> (arg -> v)
+            --  -> (arg2 -> (common -> common))
+            --  -> (common -> arg2)
+             -> Codec arg common
+             -> CustomCodec v comparable (comparable, common) 
+                          ((arg -> (comparable, common)) -> a)
+             -> CustomCodec v comparable (comparable, common) a
+variant1Pair tag constr   =
+    variant1 tag constr (\ arg (tag2, _ ) -> (tag2, arg)) Tuple.second 
+
+
+
+variantTruePair tag  v default c = 
+    variant1Pair 
+         tag 
+         ( \b -> if b then v else default) 
+         c
+
+
 maybeList : a -> (a -> b) -> (b -> Maybe a) -> Codec a (List b)
 maybeList defaultA enc dec =
     build 
@@ -261,6 +332,7 @@ maybeList defaultA enc dec =
 boolList : b -> Codec Bool (List b)
 boolList b =
     maybeList False (always b) (\ b2 -> if b == b2 then Just True else Nothing) 
+
 
 
 customEnum : a 
@@ -315,6 +387,28 @@ variant2 tag constr enc dec1 dec2 (CustomCodec c) =
                 (CustomCodec cc2)
                 
 
+
+-- fieldVariant0 : String -> (arg -> v) -> Codec arg (String, JDecode.Value)
+--             ->   CustomCodec v (String, JDecode.Value) common 
+--                           ((arg -> common) -> a)
+--             -> CustomCodec v (String, JDecode.Value) common a
+-- fieldVariant0 prefixStr constr codec (CustomCodec c) =
+--     CustomCodec  {
+--               encoder = c.encoder ( \ arg -> c.defaultCommon 
+--                 |> c.setTag (prefixStr ++ encoder codec arg)
+--                 )
+--             , decoder = \ r -> 
+--                     let tag = c.getTag r in
+--                     if not <| String.startsWith prefixStr tag then
+--                         c.decoder r
+--                     else
+--                         Just <| constr <| 
+--                         decoder codec <| 
+--                           String.dropLeft (String.length prefixStr) tag
+--             , defaultCommon = c.defaultCommon
+--             , getTag = c.getTag
+--             , setTag = c.setTag
+--              }
 
 prefixVariant0 : String -> (arg -> v) -> Codec arg String 
             ->   CustomCodec v String common 

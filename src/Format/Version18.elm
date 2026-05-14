@@ -1,5 +1,5 @@
-module Format.Version18 exposing (Graph, Node,  nodeCodec, edgeCodec, Tab, ArrowStyle, Edge, toJSGraph, fromJSGraph, version, tabCodec, graphInfoCodec, defaultGraph
-  , EdgeFlag(..), tailFlag, headFlag, addFlag
+module Format.Version18 exposing (Graph, Node, Tab, ArrowStyle, Edge, fromJSGraph, version, 
+  tailFlag, headFlag, addFlag
   , dashedFlag, wavyFlag,  textFlag, coqValidatedFlag, prefixes,
   bendFlag, positionFlag)
 {- 
@@ -16,8 +16,8 @@ import Format.GraphInfo as GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color exposing (Color)
 import Codec exposing (Codec)
-import List.Extra
 import FreeHandDrawings as FreeHand
+import Format.Version19 as NextVersion exposing (EdgeFlag(..), NodeFlag(..))
 -- import Format.Version17 exposing (textFlag, wavyFlag, coqValidatedFlag, dashedFlag, prefixes, bendFlag, positionFlag)
 -- import Codec exposing (FinalCustomCodec)
 -- import Format.Keys exposing (normalKey, pullshoutKey, adjunctionKey)
@@ -54,26 +54,7 @@ floatCodec =
 --     String.fromInt
 --     (String.toInt >> Maybe.withDefault 0)
 
-type EdgeFlag = 
-      Dashed
-    | Wavy
-    | Kind ArrowKind
-    | HeadStyle HeadStyle
-    | TailStyle TailStyle
-    | Alignment LabelAlignment
-    | Pullshout PullshoutOffsets
-    | Adjunction
-    | Unrecognized
-    | Color Color
-    | TailColor Color
-    | HeadColor Color
-    | Marker String
-    | Bend Float
-    | Position Float
-    | ShiftSource Float
-    | ShiftTarget Float
-    | LoopRadius Float
-    | LoopAngle Float
+
 
 dashedFlag : Codec Bool (List String)
 dashedFlag = edgeMaybeFlagCodecFalse Dashed
@@ -98,21 +79,8 @@ bendFlag =
         _ -> Nothing
     )
 
-loopRadiusFlag : Codec Float (List String)
-loopRadiusFlag =
-       edgeMaybeFlagCodec ArrowStyle.defaultLoopRadius LoopRadius
-    (\ flag -> case flag of 
-        LoopRadius a -> Just a
-        _ -> Nothing
-    )
 
-loopAngleFlag : Codec Float (List String)
-loopAngleFlag =
-       edgeMaybeFlagCodec 0 LoopAngle
-    (\ flag -> case flag of 
-        LoopAngle a -> Just a
-        _ -> Nothing
-    )
+
 
 positionFlag : Codec Float (List String)
 positionFlag =
@@ -231,13 +199,7 @@ nodeMaybeFlagCodecFalse : NodeFlag -> Codec Bool (List String)
 nodeMaybeFlagCodecFalse flag = 
   Codec.boolList flag |> nodeFlagsCodec
 
-alignmentFlag : Codec LabelAlignment (List String)
-alignmentFlag =
-    edgeMaybeFlagCodec Left Alignment
-    (\ flag -> case flag of 
-        Alignment a -> Just a
-        _ -> Nothing
-    )
+
   
 
 tailFlag : Codec TailStyle (List String)
@@ -248,13 +210,7 @@ tailFlag =
         _ -> Nothing
     )
 
-markerFlag : Codec String (List String)
-markerFlag =
-       edgeMaybeFlagCodec "" Marker
-    (\ flag -> case flag of 
-        Marker a -> Just a
-        _ -> Nothing
-    )
+
   
 headFlag : Codec HeadStyle (List String)
 headFlag =
@@ -265,52 +221,7 @@ headFlag =
     )
 
 
--- for backwards compatibility, we add conversion between 
--- the range [0,1] and [-5,5]
-shiftSourceFlag : Codec Float (List String)
-shiftSourceFlag =
-       edgeMaybeFlagCodec 0.5 (\ x -> ShiftSource <| (x - 0.5) * 10)
-    (\ flag -> case flag of 
-        ShiftSource a -> Just <| (a + 5) / 10
-        _ -> Nothing
-    )
 
-shiftTargetFlag : Codec Float (List String)
-shiftTargetFlag =
-       edgeMaybeFlagCodec 0.5 (\ x -> ShiftTarget <| (x - 0.5) * 10)
-    (\ flag -> case flag of 
-        ShiftTarget a -> Just <| (a + 5) / 10
-        _ -> Nothing
-    )
-
-pullshoutFlag : Codec (Maybe PullshoutOffsets) (List String)
-pullshoutFlag =
-       edgeMaybeFlagCodec Nothing (Maybe.map Pullshout >> Maybe.withDefault Unrecognized)
-    (\ flag -> case flag of 
-        Pullshout a -> Just (Just a)
-        _ -> Nothing
-    )
-
-kindFlag : Codec ArrowKind (List String)
-kindFlag =
-  let dec = (\ flag -> case flag of 
-        Kind a -> Just a
-        _ -> Nothing
-       )
-  in
-  edgeFlagsCodec <|
-  Codec.build 
-    (\ a -> if a == NormalArrow then [] else [ Kind a ])
-    (\ bs ->  List.Extra.findMap dec bs |> Maybe.withDefault NormalArrow)
-    --    Codec.buildBetween NormalArrow Kind
-    -- (\ flag -> case flag of 
-    --     Kind a -> Just a
-    --     _ -> Nothing
-    -- )
-
-getFlag : EdgeFlag -> ArrowStyle -> Bool
-getFlag flag l =
-  List.member (Codec.encoder edgeFlagCodec flag) l
 
 addFlag : EdgeFlag -> ArrowStyle -> ArrowStyle
 addFlag flag l =
@@ -320,29 +231,15 @@ type alias ArrowStyle = --{ -- bend : Float, -- alignment : String,
    List String
   --  }
 
-pullshoutStyle : GraphDefs.PullshoutEdgeLabel -> ArrowStyle
-pullshoutStyle {color, offset1, offset2} =
-  -- { 
-  --   flags = 
-    Codec.encoder edgeFlagCodec (Pullshout {offset1 = offset1, offset2 = offset2})
-        -- :: Codec.encoder flagCodec (Bend offset1)
-        :: Codec.encoder colorsFlag
-               { main = color, tail = color, head = color }
                --}
 
-type alias Edge = { label : String, style : ArrowStyle,
+type alias Edgeo o = { label : String, style : List o,
        zindex : Int
       --  , selected : Bool 
        }
+type alias Edge = Edgeo String
 
-pullshoutEdge : Int -> GraphDefs.PullshoutEdgeLabel -> Edge
-pullshoutEdge z label = 
-    Edge "" (pullshoutStyle label) z -- False
 
-type NodeFlag = 
-      CoqValidated
-    | Text
-    | UnrecognizedNodeFlag
 
 nodeFlagCodec : Codec NodeFlag String
 nodeFlagCodec =
@@ -357,210 +254,100 @@ nodeFlagCodec =
    |> Codec.variant0 "" UnrecognizedNodeFlag
    |> Codec.buildVariant (always UnrecognizedNodeFlag)
 
-type alias Node = { pos : Point , label : String, zindex: Int,
-   flags : List String
+type alias Nodeo o = { pos : Point , label : String, zindex: Int,
+   flags : List o
   -- , selected : Bool
   }
-type alias Tab = { 
+type alias Node = Nodeo String
+type alias Tabo n e = { 
       title: String,
       sizeGrid : Int,
       id : Int,
-      nodes: List (Graph.Node Node),
-      edges: List (Graph.Edge Edge),
+      nodes: List (Graph.Node (Nodeo n)),
+      edges: List (Graph.Edge (Edgeo e)),
       nextGraphId : Int,
       freehandDrawings : FreeHand.DrawingsJS
    }
-type alias Graph = { 
-      tabs : List Tab,
+type alias Tab = Tabo String String
+
+type alias Grapho n e = { 
+      tabs : List (Tabo n e),
       latexPreamble : String,
       nextTabId : Int,
       activeTabId : Int}
 
-defaultGraph : Graph
-defaultGraph = { tabs = [], latexPreamble = "", nextTabId = 0, activeTabId = 0}
+type alias Graph = Grapho String String
+
+-- auxiliary functions to define graphoMap
+nodeoMap : (n1 -> n2) -> (Nodeo n1 -> Nodeo n2)
+nodeoMap fnNode {pos, label, zindex, flags} =
+  { pos = pos, label = label, zindex = zindex, flags = List.map fnNode flags }
+
+edgeoMap : (e1 -> e2) -> (Edgeo e1 -> Edgeo e2)
+edgeoMap fnEdge {label, style, zindex} =
+  { label = label, style = List.map fnEdge style, zindex = zindex }
 
 
-colorsFlag : Codec {main : Color, head : Color, tail : Color} (List String)
-colorsFlag =
-    edgeFlagsCodec <| Codec.build 
-    ( \ {main, head, tail} -> 
-       (if main == Color.black then [] else [Color main])
-       ++
-       (if head == main then [] else [HeadColor head])
-       ++
-       (if tail == main then [] else [TailColor tail])      
-    )
-    ( \ l -> 
-       case 
-        (List.Extra.findMap (\ v -> case v of Color c -> Just c 
-                                              _ -> Nothing) l,
-         List.Extra.findMap (\ v -> case v of HeadColor c -> Just c
-                                              _ -> Nothing) l,
-         List.Extra.findMap (\ v -> case v of TailColor c -> Just c
-                                              _ -> Nothing) l)
-        of 
-        (mc, hc, tc) ->
-            let c = mc |> Maybe.withDefault Color.black in
-            { main = c, head = hc |> Maybe.withDefault c, tail = tc |> Maybe.withDefault c }
-    )
-
-
-arrowStyleCodec : Codec ArrowStyle.ArrowStyle ArrowStyle
-arrowStyleCodec =
-  let flagField f1 codec = 
-        Codec.fields f1 Basics.identity codec
-  in
-  Codec.object
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle ->
-      { tail = tail, head = head, kind = kind
-   , dashed = dashed, bend = bend, labelAlignment = alignment, 
-   shiftSource = shiftSource, shiftTarget = shiftTarget,
-   labelPosition = position, color = colors.main, marker = marker,
-   headColor = colors.head, tailColor = colors.tail, wavy = wavy,
-   loopRadius = loopRadius, loopAngle = loopAngle }
-    
-  )
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle  ->
-     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy ++ loopRadius ++ loopAngle
-    
-  )
-  |> flagField .tail tailFlag
-  |> flagField .head headFlag
-  |> flagField .kind kindFlag
-  |> flagField .dashed dashedFlag
-  |> flagField  .bend bendFlag
-  |> flagField .labelAlignment alignmentFlag
-  |> flagField .labelPosition positionFlag
-  |> flagField .shiftSource shiftSourceFlag
-  |> flagField .shiftTarget shiftTargetFlag
-  -- |> Codec.fields .labelPosition (.position >> min 0.9 >> max 0.1) Codec.identity
-  |> flagField (\{color, headColor, tailColor} -> {main = color, head = headColor, tail = tailColor})
-                  colorsFlag
-  |> flagField .marker markerFlag
-  |> flagField .wavy wavyFlag
-  |> flagField .loopRadius loopRadiusFlag
-  |> flagField .loopAngle loopAngleFlag
-  |> Codec.buildObject
-
-
-nodeCodec : Codec NodeLabel Node
-nodeCodec =
-   Codec.object
-   (\ pos label isText zindex isCoqValidated ->
-   { pos = pos, label = label
-   , dims = Nothing,  weaklySelected = False, isMath = not isText,
-     zindex = zindex, isCoqValidated = isCoqValidated , selected = False
-     }
-    )
-    (\ pos label isText zindex isCoqValidated ->
-    { pos = pos, label = label, flags = isText ++ isCoqValidated, zindex = zindex
-      --, selected = selected
-      })
-    |> Codec.fields .pos .pos Codec.identity
-    |> Codec.fields .label .label Codec.identity
-    |> Codec.fields (.isMath >> not) .flags textFlag
-    |> Codec.fields .zindex .zindex Codec.identity
-    |> Codec.fields .isCoqValidated .flags coqValidatedFlag
-    -- |> Codec.fields .selected .selected Codec.identity
-    |> Codec.buildObject
-
-
-fromEdgeLabel : EdgeLabel -> Edge
-fromEdgeLabel e = 
-   case e.details of
-       PullshoutEdge l -> pullshoutEdge e.zindex l
-       NormalEdge ({label, isAdjunction} as l)->
-            let style = ArrowStyle.getStyle l in
-            { label = label,
-              -- kind = if isAdjunction then adjunctionKey else normalKey,       
-              style = 
-                let convertedStyle = Codec.encoder arrowStyleCodec style in 
-                if isAdjunction then
-                    addFlag Adjunction convertedStyle
-                else
-                    convertedStyle
-              ,
-              zindex = e.zindex 
-              -- , selected = e.selected              
-            }
-
-toEdgeLabel { label, style, zindex } = 
-    let dec codec = Codec.decoder codec style in
-   { selected = False -- selected
-     , weaklySelected = False,
-     zindex = zindex,
-     details = 
-       case dec pullshoutFlag of
-          Just {offset1, offset2} ->
-              PullshoutEdge {color = 
-                          dec colorsFlag
-                          |> .main,
-                         offset1 = offset1, offset2 = offset2}
-          Nothing ->
-              NormalEdge { label = label
-                , isAdjunction = getFlag Adjunction style
-                , style = Codec.decoder arrowStyleCodec style
-                , dims = Nothing
-              }
+taboMap : (n1 -> n2) -> (e1 -> e2) -> Tabo n1 e1 -> Tabo n2 e2
+taboMap fnNode fnEdge {title, sizeGrid, id, nodes, edges, nextGraphId, freehandDrawings} =
+  { title = title, sizeGrid = sizeGrid, id = id, nextGraphId = nextGraphId, freehandDrawings = freehandDrawings,
+    nodes = List.map (Graph.nodeMap (nodeoMap fnNode)) nodes,
+    edges = List.map (Graph.edgeMap (edgeoMap fnEdge)) edges
    }
 
-edgeCodec : Codec EdgeLabel Edge
-edgeCodec = 
-   Codec.build fromEdgeLabel toEdgeLabel
+graphoMap : (n1 -> n2) -> (e1 -> e2) -> Grapho n1 e1 -> Grapho n2 e2
+graphoMap fnNode fnEdge {tabs, latexPreamble, nextTabId, activeTabId} =
+  { tabs = List.map (taboMap fnNode fnEdge) tabs,
+    latexPreamble = latexPreamble,
+    nextTabId = nextTabId,
+    activeTabId = activeTabId
+  }
+-----------
+-- auxiliary function to define toNextGraphFlags
 
+toNextNodeFlags : Nodeo NodeFlag -> NextVersion.Nodeo (List NodeFlag)
+toNextNodeFlags {pos, label, zindex, flags} =
+  { pos = pos, label = label, zindex = zindex, options = flags }
 
+toNextEdgeFlags : Edgeo EdgeFlag -> NextVersion.Edgeo (List EdgeFlag)
+toNextEdgeFlags {label, style, zindex} =
+  { label = label, options = style, zindex = zindex }
 
-tabCodec : Codec  GraphInfo.Tab Tab 
-tabCodec =
-  Codec.object
-  (\ graph title sizeGrid tabId freehandDrawings ->
-    { graph = graph,
-      title = title, sizeGrid = sizeGrid,
-      id = tabId,
+toNextTabFlags : Tabo NodeFlag EdgeFlag -> NextVersion.Tabo (List NodeFlag) (List EdgeFlag)
+toNextTabFlags {id, title, sizeGrid, nodes, edges, nextGraphId, freehandDrawings} =
+    { title = title, 
+      id = id,
+      sizeGrid = sizeGrid,
+      nodes = List.map (Graph.nodeMap toNextNodeFlags) nodes,
+      edges = List.map (Graph.edgeMap toNextEdgeFlags) edges,
+      nextGraphId = nextGraphId,
       freehandDrawings = freehandDrawings
     }
-  )
-  (\ graph title sizeGrid tabId freehandDrawings ->
-    { nodes = graph.nodes,
-      edges = graph.edges,
-      nextGraphId = graph.nextId,
-      title = title, sizeGrid = sizeGrid,
-      id = tabId,
-      freehandDrawings = freehandDrawings
-    }
-  )
-  |> Codec.fields .graph (\e -> { nextId = e.nextGraphId, nodes = e.nodes, edges = e.edges}) 
-     ( -- Codec.compose (Graph.nextIdCodec)
-       (Codec.compose Graph.codec (Graph.mapCodec nodeCodec edgeCodec))
-        )
-  |> Codec.fields .title .title Codec.identity
-  -- |> Codec.fields .active .active Codec.identity
-  |> Codec.fields .sizeGrid .sizeGrid Codec.identity
-  |> Codec.fields .id .id Codec.identity
-  |> Codec.fields .freehandDrawings .freehandDrawings FreeHand.codec
-  |> Codec.buildObject
+
+toNextGraphFlags : Grapho NodeFlag EdgeFlag -> NextVersion.Grapho (List NodeFlag) (List EdgeFlag)
+toNextGraphFlags g =
+  { tabs = List.map toNextTabFlags g.tabs,
+    latexPreamble = g.latexPreamble,
+    nextTabId = g.nextTabId,
+    activeTabId = g.activeTabId
+  }
 
 
 
-graphInfoCodec : Codec GraphInfo Graph
-graphInfoCodec = 
-  Codec.object
-  (\tabs nextTabId latexPreamble activeTabId ->
-    { tabs = tabs, nextTabId = nextTabId, activeTabId = activeTabId, latexPreamble = latexPreamble }
-  )
-  (\tabs nextTabId latexPreamble activeTabId ->
-    { tabs = tabs, nextTabId = nextTabId, activeTabId = activeTabId, latexPreamble = latexPreamble }
-  )
-  |> Codec.fields .tabs .tabs (Codec.list tabCodec)
-  |> Codec.fields .nextTabId .nextTabId Codec.identity
-  |> Codec.fields .latexPreamble .latexPreamble Codec.identity
-  |> Codec.fields .activeTabId .activeTabId Codec.identity
-  |> Codec.buildObject
 
+-- fromJSGraph : Graph -> GraphInfo
+-- fromJSGraph = Codec.decoder graphInfoCodec
 
+fromJSGraphFlags : Grapho NodeFlag EdgeFlag -> GraphInfo
+fromJSGraphFlags g = 
+     g |> toNextGraphFlags |> NextVersion.fromJSGraphFlags
 
-toJSGraph : GraphInfo -> Graph
-toJSGraph  g = Codec.encoder graphInfoCodec g
+stringToNodeFlag : String -> NodeFlag
+stringToNodeFlag = Codec.decoder nodeFlagCodec
+
+stringToEdgeFlag : String -> EdgeFlag
+stringToEdgeFlag = Codec.decoder edgeFlagCodec
 
 fromJSGraph : Graph -> GraphInfo
-fromJSGraph = Codec.decoder graphInfoCodec
+fromJSGraph g =
+    g |> graphoMap stringToNodeFlag stringToEdgeFlag |> fromJSGraphFlags

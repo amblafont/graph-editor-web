@@ -107,6 +107,7 @@ import Format.Version15
 import Format.Version16
 import Format.Version17
 import Format.Version18
+import Format.Version19
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo as GraphInfo exposing (Tab)
@@ -128,7 +129,7 @@ import GraphDefs exposing (isPullshout)
 import Base64 exposing (toBytes)
 -- import Bytes exposing (Bytes)
 
--- port test : Bytes -> Cmd a
+-- port test : ({ a : Maybe Int} -> b) -> Sub b
 port preventDefault : JE.Value -> Cmd a
 port onKeyDownActive : (JE.Value -> a) -> Sub a
 
@@ -175,6 +176,7 @@ port loadedGraph15 : (LoadGraphInfo Format.Version15.Graph -> a) -> Sub a
 port loadedGraph16 : (LoadGraphInfo Format.Version16.Graph -> a) -> Sub a
 port loadedGraph17 : (LoadGraphInfo Format.Version17.Graph -> a) -> Sub a
 port loadedGraph18 : (LoadGraphInfo Format.Version18.Graph -> a) -> Sub a
+port loadedGraph19 : (LoadGraphInfo Format.Version19.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -252,6 +254,7 @@ subscriptions m =
     Sub.batch 
      <|
     [
+      -- test (\ x -> let _ = Debug.log "recu" x in Msg.noOp),
       protocolReceive ProtocolReceive,
       protocolRequestSnapshot (always ProtocolRequestSnapshot),
       Modes.NewArrow.returnMarker Marker,
@@ -286,6 +289,7 @@ subscriptions m =
       loadedGraph16 (mapLoadGraphInfo Format.Version16.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph17 (mapLoadGraphInfo Format.Version17.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph18 (mapLoadGraphInfo Format.Version18.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph19 (mapLoadGraphInfo Format.Version19.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
