@@ -48,6 +48,7 @@ type EdgeFlag =
     | Color Color
     | TailColor Color
     | HeadColor Color
+    | LabelColor Color
     | Marker String
     | Bend Float
     | Position Float
@@ -161,6 +162,7 @@ optionNames =
     color = "color ",
     tailColor = "tailColor",
     headColor = "headColor",
+    labelColor = "labelColor",
     marker = "marker",
     bend = "bend",
     position = "position",
@@ -180,7 +182,7 @@ edgeFlagCodec =
     let variantString tag v c =
             Codec.variant1Pair tag v (Codec.compose Codec.stringJs c)
     in
-    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor shiftSource shiftTarget loopRadius loopAngle unrecognized v =
+    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor labelcolor shiftSource shiftTarget loopRadius loopAngle unrecognized v =
                     case v of
                         Dashed -> dashed True
                         Marker s -> marker s
@@ -197,6 +199,7 @@ edgeFlagCodec =
                         Color c -> color c
                         HeadColor c -> headcolor c
                         TailColor c -> tailcolor c
+                        LabelColor c -> labelcolor c
                         ShiftSource c -> shiftSource c
                         ShiftTarget c -> shiftTarget c
                         LoopRadius c -> loopRadius c
@@ -218,6 +221,7 @@ edgeFlagCodec =
     |> variantString optionNames.color Color Color.codec
     |> variantString optionNames.headColor HeadColor Color.codec
     |> variantString optionNames.tailColor TailColor Color.codec
+    |> variantString optionNames.labelColor LabelColor Color.codec
     |> Codec.variant1Pair optionNames.shiftSource ShiftSource Codec.floatJs
     |> Codec.variant1Pair optionNames.shiftTarget ShiftTarget Codec.floatJs
     |> Codec.variant1Pair optionNames.loopRadius LoopRadius Codec.floatJs
@@ -347,7 +351,7 @@ pullshoutStyle {color, offset1, offset2} =
     (Pullshout {offset1 = offset1, offset2 = offset2})
         -- :: Codec.encoder flagCodec (Bend offset1)
         :: Codec.encoder colorsFlag
-               { main = color, tail = color, head = color }
+               { main = color, tail = color, head = color, label = color }
     -- |> JEncode.object
                --}
 
@@ -470,29 +474,35 @@ defaultGraph : Graph
 defaultGraph = { tabs = [], latexPreamble = "", nextTabId = 0, activeTabId = 0}
 
 
-colorsFlag : Codec {main : Color, head : Color, tail : Color} (List EdgeFlag)
+colorsFlag : Codec {main : Color, head : Color, tail : Color, label : Color} (List EdgeFlag)
 colorsFlag =
     -- edgeFlagsCodec <|
      Codec.build 
-    ( \ {main, head, tail} -> 
+    ( \ {main, head, tail, label} -> 
        (if main == Color.black then [] else [Color main])
        ++
        (if head == main then [] else [HeadColor head])
        ++
-       (if tail == main then [] else [TailColor tail])      
+       (if tail == main then [] else [TailColor tail])
+       ++
+       (if label == main then [] else [LabelColor label])    
     )
     ( \ l -> 
        case 
-        (List.Extra.findMap (\ v -> case v of Color c -> Just c 
-                                              _ -> Nothing) l,
+        ((List.Extra.findMap (\ v -> case v of Color c -> Just c 
+                                               _ -> Nothing) l,
          List.Extra.findMap (\ v -> case v of HeadColor c -> Just c
-                                              _ -> Nothing) l,
-         List.Extra.findMap (\ v -> case v of TailColor c -> Just c
+                                              _ -> Nothing) l),
+         (List.Extra.findMap (\ v -> case v of TailColor c -> Just c
+                                               _ -> Nothing) l,
+         List.Extra.findMap (\ v -> case v of LabelColor c -> Just c
                                               _ -> Nothing) l)
+                                              )
         of 
-        (mc, hc, tc) ->
+        ((mc, hc), (tc, lc)) ->
             let c = mc |> Maybe.withDefault Color.black in
-            { main = c, head = hc |> Maybe.withDefault c, tail = tc |> Maybe.withDefault c }
+            { main = c, head = hc |> Maybe.withDefault c, tail = tc |> Maybe.withDefault c,
+            label = Maybe.withDefault c lc }
     )
 
 
@@ -508,7 +518,7 @@ arrowStyleCodec =
    , dashed = dashed, bend = bend, labelAlignment = alignment, 
    shiftSource = shiftSource, shiftTarget = shiftTarget,
    labelPosition = position, color = colors.main, marker = marker,
-   headColor = colors.head, tailColor = colors.tail, wavy = wavy,
+   headColor = colors.head, tailColor = colors.tail, labelColor = colors.label,  wavy = wavy,
    loopRadius = loopRadius, loopAngle = loopAngle }
     
   )
@@ -526,7 +536,7 @@ arrowStyleCodec =
   |> flagField .shiftSource shiftSourceFlag
   |> flagField .shiftTarget shiftTargetFlag
   -- |> Codec.fields .labelPosition (.position >> min 0.9 >> max 0.1) Codec.identity
-  |> flagField (\{color, headColor, tailColor} -> {main = color, head = headColor, tail = tailColor})
+  |> flagField (\{color, headColor, tailColor, labelColor} -> {main = color, head = headColor, tail = tailColor, label = labelColor})
                   colorsFlag
   |> flagField .marker markerFlag
   |> flagField .wavy wavyFlag

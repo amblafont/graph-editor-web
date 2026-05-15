@@ -46,6 +46,7 @@ type alias Style = { tail : TailStyle,
                      color : Color,
                      headColor : Color,
                      tailColor : Color,
+                     labelColor : Color,
                      marker : MarkerStyle,
                      wavy : Bool,
                      loopRadius : Float,
@@ -81,6 +82,7 @@ simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, 
           labelPosition = 0.5, color = Color.black,
           shiftSource = 0.5, shiftTarget = 0.5,
           headColor = Color.black, tailColor = Color.black, wavy = False,
+          labelColor = Color.black,
           loopRadius = defaultLoopRadius, loopAngle = 0 }
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
@@ -167,7 +169,7 @@ empty = { tail = DefaultTail, head = DefaultHead, dashed = False,
           bend = 0, labelAlignment = Left,
           labelPosition = 0.5, color = Color.black, kind = NormalArrow,
           marker = noMarker, shiftSource = 0.5, shiftTarget = 0.5,
-          headColor = Color.black, tailColor = Color.black ,
+          headColor = Color.black, tailColor = Color.black , labelColor = Color.black,
           wavy = False, loopRadius = defaultLoopRadius, loopAngle = 0 }
 isDouble : Style -> Basics.Bool
 isDouble { kind } = kind == DoubleArrow

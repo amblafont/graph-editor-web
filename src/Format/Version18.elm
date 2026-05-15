@@ -153,6 +153,7 @@ edgeFlagCodec =
                         ShiftTarget c -> shiftTarget c
                         LoopRadius c -> loopRadius c
                         LoopAngle c -> loopAngle c
+                        LabelColor _ -> unrecognized
    in
    Codec.customEnum split
    |> Codec.variant0 prefixes.dashed Dashed
@@ -311,7 +312,7 @@ toNextNodeFlags {pos, label, zindex, flags} =
 
 toNextEdgeFlags : Edgeo EdgeFlag -> NextVersion.Edgeo (List EdgeFlag)
 toNextEdgeFlags {label, style, zindex} =
-  { label = label, options = style, zindex = zindex }
+  { label = label, options = LabelColor Color.black :: style, zindex = zindex }
 
 toNextTabFlags : Tabo NodeFlag EdgeFlag -> NextVersion.Tabo (List NodeFlag) (List EdgeFlag)
 toNextTabFlags {id, title, sizeGrid, nodes, edges, nextGraphId, freehandDrawings} =
