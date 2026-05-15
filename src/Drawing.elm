@@ -484,17 +484,21 @@ mkPath arg attrs q =
   )
   []
 
-makeLatex : { zindex:Int,
+makeLatex : { zindex:Int, color : Color,
               label : String, preamble : String, pos : Point, dims : Point
               , angle : Float
               , scale : Float
               , key : Maybe String} 
               -> List (Html.Attribute a) -> Drawing a
 makeLatex arg attrs = 
-  Node {angle = arg.angle, label = arg.label, preamble = arg.preamble, pos = arg.pos, dims = arg.dims
+  Node {angle = arg.angle, label = makeColorString arg.color arg.label, preamble = arg.preamble, pos = arg.pos, dims = arg.dims
     , scale = arg.scale}
   |> TikzShape attrs
   |> ofShapeWithKey arg.zindex arg.key
+
+makeColorString : Color -> String -> String
+makeColorString c s = if c == Color.black then s else  
+          "\\color{" ++ Color.toString c ++ "}" ++ s
 
 makeVerbatimString : String -> String
 makeVerbatimString s =
@@ -505,7 +509,7 @@ makeVerbatimString s =
             Nothing -> "\\text{Err: unable to find a verbatim delimiter}"
             Just d -> "\\verb" ++ d ++ String.filter ((/=) '\n') s ++ d 
 
-makeVerbatim : { zindex:Int,
+makeVerbatim : { zindex:Int, color : Color,
               label : String, pos : Point, dims : Point
               , angle : Float
               , scale : Float
@@ -522,6 +526,7 @@ makeVerbatim arg attrs =
     , angle = arg.angle
     , scale = arg.scale
     , key = arg.key
+    , color = arg.color
     }
     attrs 
 

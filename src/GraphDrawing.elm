@@ -179,6 +179,7 @@ nodeDrawing cfg node =
                     {
                         zindex = n.zindex,
                         label = vLabel,
+                        color = Color.black,
                         -- preamble = cfg.latexPreamble,
                         pos = n.pos,
                         dims = n.dims,
@@ -197,6 +198,7 @@ nodeDrawing cfg node =
                 {
                     zindex = n.zindex,
                     label = label,
+                    color = Color.black,
                     preamble = cfg.latexPreamble,
                     pos = n.pos,
                     dims = n.dims,
@@ -243,6 +245,7 @@ drawLabelAt cfg edgeId activity label labelpos angle =
           Just vLabel -> 
                 Drawing.makeVerbatim
                    {
+                    color = label.style.labelColor,
                     zindex = foregroundZ,
                     label = vLabel,
                     pos = labelpos,
@@ -254,6 +257,7 @@ drawLabelAt cfg edgeId activity label labelpos angle =
           Nothing ->
                 Drawing.makeLatex 
                 {
+                    color = label.style.labelColor,
                     zindex = foregroundZ,
                     label = finalLabel,
                     preamble = cfg.latexPreamble,
@@ -495,8 +499,9 @@ drawStringMarker color marker q =
              {
                 zindex = foregroundZ,
                 label = marker,
-                preamble = "\\color{" ++ Color.toString color ++ "}",
+                preamble = "",
                 pos = pos,
+                color = color,
                 dims = (12,18),
                 angle = angle,
                 scale = GraphDefs.edgeScaleFactor,

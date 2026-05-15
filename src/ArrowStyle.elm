@@ -336,7 +336,8 @@ updateEdgeColor part c s =
     MainEdgePart ->
         { s | color = c,
           headColor = if s.headColor == s.color then c else s.headColor,
-          tailColor = if s.tailColor == s.color then c else s.tailColor }
+          tailColor = if s.tailColor == s.color then c else s.tailColor,
+          labelColor = if s.labelColor == s.color then c else s.labelColor }
           
 
 shadow : ArrowStyle -> ArrowStyle
