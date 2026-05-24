@@ -1,4 +1,4 @@
-module Polygraph exposing (Graph, Id, EdgeId, NodeId, empty, allIds, nodeIds,
+module Polygraph exposing (Graph, GraphJS, Id, EdgeId, NodeId, empty, allIds, nodeIds,
      newNode, newEdge, isEmpty, exists, existsAll,
      update, updateNode, updateEdge, updateNodes, updateList,
      invertEdge, md_invertEdge, md_merge, md_recursiveMerge, makeCylinder, makeCone,
@@ -289,8 +289,9 @@ codecRep =
   )
   (\ r -> repFromNodesAndEdges r.nodes r.edges)
 
+type alias GraphJS n e = { nextId : Id, nodes : List (Node n), edges : List (Edge e) }
 codec : Codec (Graph n e) 
-    { nextId : Id, nodes : List (Node n), edges : List (Edge e) }
+    (GraphJS n e)
 codec =
   Codec.build 
   (\ g -> 

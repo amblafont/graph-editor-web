@@ -145,7 +145,6 @@ edgeFlagCodec =
                         HeadStyle s -> headstyle s
                         TailStyle s -> tailstyle s
                         Alignment s -> alignment s
-                        Unrecognized -> unrecognized
                         Color c -> color c
                         HeadColor c -> headcolor c
                         TailColor c -> tailcolor c
@@ -153,7 +152,10 @@ edgeFlagCodec =
                         ShiftTarget c -> shiftTarget c
                         LoopRadius c -> loopRadius c
                         LoopAngle c -> loopAngle c
-                        LabelColor _ -> unrecognized
+                        _ -> unrecognized
+                        -- Unrecognized -> unrecognized
+                        -- LabelColor _ -> unrecognized
+                        -- Dependency -> unrecognized
    in
    Codec.customEnum split
    |> Codec.variant0 prefixes.dashed Dashed
@@ -248,7 +250,7 @@ nodeFlagCodec =
                     case v of
                         CoqValidated -> coq
                         Text -> text
-                        UnrecognizedNodeFlag -> unrecognized
+                        _ -> unrecognized
    )
    |> Codec.variant0 "coqValidated" CoqValidated
    |> Codec.variant0 "text" Text

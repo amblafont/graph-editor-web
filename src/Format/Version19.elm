@@ -1,7 +1,6 @@
 module Format.Version19 exposing (Graph, Nodeo, Tabo, Tab, ArrowStyle, Edgeo, toJSGraph, fromJSGraph, version, tabCodec, graphInfoCodec, defaultGraph
-  , Grapho, tailFlag, headFlag, Node, Edge, edgeCodec, nodeCodec
-  , dashedFlag, wavyFlag,  textFlag, coqValidatedFlag, optionNames,
-  bendFlag, positionFlag, NodeFlag(..), EdgeFlag(..), fromJSGraphFlags)
+  , Grapho,  Node, Edge, edgeCodec, nodeCodec
+  ,  NodeFlag(..), EdgeFlag(..), fromJSGraphFlags)
 {- 
 Changes from Version 18:
 - instead of flags being a list of strings, a field 'options' of type JSon.value
@@ -20,7 +19,9 @@ import List.Extra
 import FreeHandDrawings as FreeHand
 import Json.Decode as JDecode
 import Json.Encode as JEncode
+import Dict exposing (Dict)
 import Polygraph exposing (Edge)
+import SpecialLabels exposing (SpecialLabel)
 -- import Format.Version17Verbatim exposing (EdgeFlag(..))
 -- import Format.Version17 exposing (textFlag, wavyFlag, coqValidatedFlag, dashedFlag, optionNames, bendFlag, positionFlag)
 -- import Codec exposing (FinalCustomCodec)
@@ -32,8 +33,27 @@ version = 19
 type NodeFlag = 
       CoqValidated
     | Text
+    | Dependencies DepsArg
     | UnrecognizedNodeFlag
 
+type alias DepsArg = List (String, Graph.Id)
+
+depsArgsCodec : Codec DepsArg JDecode.Value
+depsArgsCodec =
+  let c =  (Codec.filterMap
+        (\ (s, id) -> Just (s, JEncode.int id))
+        (\ (s, id) -> 
+              case JDecode.decodeValue JDecode.int id of
+                    Ok i -> Just (s, i)
+                    Err _ -> Nothing)) 
+  in
+  Codec.compose Codec.objectJs c
+
+
+
+                
+
+--  (Codec.compose depsArgsCodec Codec.objectJs)
 
 type EdgeFlag = 
       Dashed
@@ -56,6 +76,7 @@ type EdgeFlag =
     | ShiftTarget Float
     | LoopRadius Float
     | LoopAngle Float
+    | Dependency
 
 type alias PullshoutOffsets = { offset1 : Float, offset2 : Float }
 type alias DictValue = List (String, JDecode.Value)
@@ -153,6 +174,7 @@ optionNames =
     unrecognized = "unrecognized",
     wavy = "wavy",
     adjunction = "adjunction",
+    dependency = "dependency",
 
     kind = "kind",
     head = "head",
@@ -182,7 +204,7 @@ edgeFlagCodec =
     let variantString tag v c =
             Codec.variant1Pair tag v (Codec.compose Codec.stringJs c)
     in
-    let split dashed marker pullshout bend position adjunction wavy kind headstyle tailstyle alignment color headcolor tailcolor labelcolor shiftSource shiftTarget loopRadius loopAngle unrecognized v =
+    let split dashed marker pullshout bend position adjunction dependency wavy kind headstyle tailstyle alignment color headcolor tailcolor labelcolor shiftSource shiftTarget loopRadius loopAngle unrecognized v =
                     case v of
                         Dashed -> dashed True
                         Marker s -> marker s
@@ -190,6 +212,7 @@ edgeFlagCodec =
                         Bend f -> bend f
                         Position f -> position f
                         Adjunction -> adjunction True
+                        Dependency -> dependency True
                         Wavy -> wavy True
                         Kind k -> kind k
                         HeadStyle s -> headstyle s
@@ -213,6 +236,7 @@ edgeFlagCodec =
    |> Codec.variant1Pair optionNames.position Position Codec.floatJs
   --  TODO: faire de variant0 un sous cas de subvariant0
    |> variantTrue optionNames.adjunction Adjunction 
+   |> variantTrue optionNames.dependency Dependency 
     |> variantTrue optionNames.wavy Wavy
     |> variantString optionNames.kind Kind kindCodec    
     |> variantString optionNames.head HeadStyle headCodec
@@ -362,21 +386,23 @@ pullshoutEdge : Int -> GraphDefs.PullshoutEdgeLabel -> Edgeo (List EdgeFlag)
 pullshoutEdge z label = 
     Edgeo "" (pullshoutStyle label) z -- False
 
-
 nodeFlagCodec : Codec NodeFlag (String, JDecode.Value)
 nodeFlagCodec =
     let variantTrue  = genericVariantTrue UnrecognizedNodeFlag
     in
-    Codec.customPair (\ coq text unrecognized v ->
+    Codec.customPair (\ coq text deps unrecognized v ->
                     case v of
                         CoqValidated -> coq True
                         Text -> text True
+                        Dependencies d -> deps d
                         UnrecognizedNodeFlag -> unrecognized
    ) ("", JEncode.null) 
    |> variantTrue "coqValidated" CoqValidated
    |> variantTrue "text" Text
+   |> Codec.variant1Pair "dependencies" Dependencies depsArgsCodec
    |> Codec.variant0 "" UnrecognizedNodeFlag
    |> Codec.buildVariant (always UnrecognizedNodeFlag)
+
 
 
 type alias Edge = Edgeo JDecode.Value
@@ -399,24 +425,24 @@ nodeMap : (o1 -> o2) -> Nodeo o1 -> Nodeo o2
 nodeMap f {pos, label, zindex, options} =
   { pos = pos, label = label, zindex = zindex, options = f options }
 
-mapNodeCodec : Codec o1 o2 -> Codec (Nodeo o1) (Nodeo o2)
-mapNodeCodec optionsCodec =
-  Codec.build (nodeMap (Codec.encoder optionsCodec)) (nodeMap (Codec.decoder optionsCodec))
+-- mapNodeCodec : Codec o1 o2 -> Codec (Nodeo o1) (Nodeo o2)
+-- mapNodeCodec optionsCodec =
+--   Codec.build (nodeMap (Codec.encoder optionsCodec)) (nodeMap (Codec.decoder optionsCodec))
 
-nodeCodecDict : Codec (Nodeo DictValue) (Nodeo JDecode.Value)
-nodeCodecDict = mapNodeCodec Codec.objectJs
+-- nodeCodecDict : Codec (Nodeo DictValue) (Nodeo JDecode.Value)
+-- nodeCodecDict = mapNodeCodec Codec.objectJs
 
 edgeMap : (o1 -> o2) -> Edgeo o1 -> Edgeo o2
 edgeMap f {label, options, zindex} =
   { label = label, zindex = zindex, options = f options }
 
-mapEdgeCodec : Codec o1 o2 -> Codec (Edgeo o1) (Edgeo o2)
-mapEdgeCodec optionsCodec =
-  Codec.build (edgeMap (Codec.encoder optionsCodec))
-    (edgeMap (Codec.decoder optionsCodec))
+-- mapEdgeCodec : Codec o1 o2 -> Codec (Edgeo o1) (Edgeo o2)
+-- mapEdgeCodec optionsCodec =
+--   Codec.build (edgeMap (Codec.encoder optionsCodec))
+--     (edgeMap (Codec.decoder optionsCodec))
 
-edgeCodecDict : Codec (Edgeo DictValue) (Edgeo JDecode.Value)
-edgeCodecDict = mapEdgeCodec (Codec.objectJs)
+-- edgeCodecDict : Codec (Edgeo DictValue) (Edgeo JDecode.Value)
+-- edgeCodecDict = mapEdgeCodec (Codec.objectJs)
 
 type alias Tabo n e = { 
       title: String,
@@ -547,30 +573,45 @@ arrowStyleCodec =
 
 
 
+depsFlag : Codec (List (String, Graph.Id)) (List NodeFlag)
+depsFlag = Codec.maybeList [] Dependencies 
+   (\ c -> case c of
+             Dependencies l -> Just l
+             _ -> Nothing
+   )
 
-
-
-nodeFCodec : Codec NodeLabel (Nodeo (List NodeFlag))
-nodeFCodec =
-   Codec.object
-   (\ pos label isText zindex isCoqValidated ->
-   { pos = pos, label = label
+nodeFCodecWithDeps : Codec {node : NodeLabel, deps : List (String, Graph.Id) }
+                       (Nodeo (List NodeFlag))
+nodeFCodecWithDeps =
+ let node x = .node >> x in
+ Codec.object
+   (\ deps pos label isText zindex isCoqValidated ->
+   { deps = deps,
+     node = { pos = pos, label = label
    , dims = Nothing,  weaklySelected = False, isMath = not isText,
      zindex = zindex, isCoqValidated = isCoqValidated , selected = False
-     }
+     } }
     )
-    (\ pos label isText zindex isCoqValidated ->
-    { pos = pos, label = label, options = (isText ++ isCoqValidated), zindex = zindex
+    (\ deps pos label isText zindex isCoqValidated ->
+    { pos = pos, label = label, options = (deps ++ isText ++ isCoqValidated), zindex = zindex
       --, selected = selected
       })
-    |> Codec.fields .pos .pos Codec.identity
-    |> Codec.fields .label .label Codec.identity
-    |> Codec.fields (.isMath >> not) .options textFlag
-    |> Codec.fields .zindex .zindex Codec.identity
-    |> Codec.fields .isCoqValidated .options coqValidatedFlag
+    |> Codec.fields .deps .options depsFlag
+    |> Codec.fields (node .pos) .pos Codec.identity
+    |> Codec.fields (node .label) .label Codec.identity
+    |> Codec.fields (node (.isMath >> not)) .options textFlag
+    |> Codec.fields (node .zindex) .zindex Codec.identity
+    |> Codec.fields (node .isCoqValidated) .options coqValidatedFlag
     -- |> Codec.fields .selected .selected Codec.identity
     |> Codec.buildObject
-    -- |> Codec.compose nodeCodecDict
+
+
+-- nodeFCodec : Codec NodeLabel (Nodeo (List NodeFlag))
+-- nodeFCodec =
+--    Codec.build 
+--      (\n -> Codec.encoder nodeFCodecWithDeps { node = n, deps = []})
+--      (Codec.decoder nodeFCodecWithDeps >> .node)
+   
 
 -- nodeCodec : Codec NodeLabel (Nodeo JDecode.Value)
 -- nodeCodec =
@@ -600,15 +641,15 @@ fromEdgeLabel e =
    case e.details of
        PullshoutEdge l -> pullshoutEdge e.zindex l
        NormalEdge ({label, isAdjunction} as l)->
+            let isDependency = SpecialLabels.isDependency label in
             let style = ArrowStyle.getStyle l in
             { label = label,
               -- kind = if isAdjunction then adjunctionKey else normalKey,       
               options = 
                 let convertedStyle = Codec.encoder arrowStyleCodec style in 
-                if isAdjunction then
-                    Adjunction :: convertedStyle
-                else
-                    convertedStyle
+                (if isAdjunction then [Adjunction] else [])
+                ++ (if isDependency then [Dependency] else [])
+                ++ convertedStyle
               ,
               zindex = e.zindex 
               -- , selected = e.selected              
@@ -630,6 +671,7 @@ toEdgeLabel { label, options, zindex } =
           Nothing ->
               NormalEdge { label = label
                 , isAdjunction = List.member Adjunction options
+                -- , isDependency = List.member Dependency options
                 , style = Codec.decoder arrowStyleCodec options
                 , dims = Nothing
               }
@@ -650,19 +692,41 @@ edgeCodec =
     )
    edgeFCodec
 
-nodeCodec : Codec NodeLabel Node
-nodeCodec = 
+
+-- nodeFCodec : Codec NodeLabel (Nodeo (List NodeFlag))
+-- nodeFCodec =
+--    Codec.build 
+--      (\n -> Codec.encoder nodeFCodecWithDeps { node = n, deps = []})
+--      (Codec.decoder nodeFCodecWithDeps >> .node)
+
+nodeCodecWithDeps : Codec { node : NodeLabel, deps : DepsArg } Node
+nodeCodecWithDeps = 
    Codec.compose 
    (Codec.build 
       (nodeMap (Codec.encoder codecNodeFlagsJs))
       (nodeMap (Codec.decoder codecNodeFlagsJs))
     )
-   nodeFCodec
+   nodeFCodecWithDeps
+
+nodeCodec : Codec NodeLabel Node
+nodeCodec = 
+   Codec.build 
+     (\n -> Codec.encoder nodeCodecWithDeps { node = n, deps = []})
+     (Codec.decoder nodeCodecWithDeps >> .node)
 
 -- edgeCodec : Codec EdgeLabel (Edgeo JDecode.Value)
 -- edgeCodec = 
 --    Codec.build fromEdgeLabel toEdgeLabel
 --    |> Codec.compose edgeCodecDict
+
+graphCodec : Codec
+   -- (Graph.Graph {node : NodeLabel, deps : DepsArg} EdgeLabel) 
+                 (Graph.Graph NodeLabel EdgeLabel)
+                 (Graph.GraphJS (Nodeo (List NodeFlag)) (Edgeo (List EdgeFlag) ))
+graphCodec = 
+   Codec.compose
+   (Codec.compose Graph.codec (Graph.mapCodec nodeFCodecWithDeps edgeFCodec))
+    GraphDefs.depsCodec
 
 tabFlagsCodec : Codec  GraphInfo.Tab (Tabo (List NodeFlag) (List EdgeFlag))
 tabFlagsCodec =
@@ -684,9 +748,7 @@ tabFlagsCodec =
     }
   )
   |> Codec.fields .graph (\e -> { nextId = e.nextGraphId, nodes = e.nodes, edges = e.edges}) 
-     ( -- Codec.compose (Graph.nextIdCodec)
-       (Codec.compose Graph.codec (Graph.mapCodec nodeFCodec edgeFCodec))
-        )
+       graphCodec
   |> Codec.fields .title .title Codec.identity
   -- |> Codec.fields .active .active Codec.identity
   |> Codec.fields .sizeGrid .sizeGrid Codec.identity

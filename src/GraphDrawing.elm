@@ -12,7 +12,7 @@ import Geometry.Point as Point exposing (Point)
 import Msg exposing (Msg(..))
 import GraphDefs exposing (NodeLabel, EdgeLabel, NormalEdgeLabel)
 import Geometry 
-import Verbatim
+import SpecialLabels
 import Geometry.QuadraticBezier as Bez exposing (QuadraticBezier)
 import HtmlDefs
 import Html.Events.Extra.Mouse as MouseEvents
@@ -173,7 +173,7 @@ nodeDrawing cfg node =
         --  if n.label == "" then
             --  (Drawing.circle (Drawing.zindexAttr foregroundZ :: Drawing.color color :: attrs ) n.pos 5)
         --  else 
-            case Verbatim.extractVerbatim n.label of 
+            case SpecialLabels.extractVerbatim n.label of 
               Just vLabel -> 
                     Drawing.makeVerbatim
                     {
@@ -197,7 +197,7 @@ nodeDrawing cfg node =
                 Drawing.makeLatex 
                 {
                     zindex = n.zindex,
-                    label = label,
+                    label = SpecialLabels.removeAny label ,
                     color = Color.black,
                     preamble = cfg.latexPreamble,
                     pos = n.pos,
@@ -241,7 +241,7 @@ drawLabelAt cfg edgeId activity label labelpos angle =
                 ++ HtmlDefs.dimsAttribute 
                 (Point.resize (1 / GraphDefs.edgeScaleFactor) label.dims)
          in
-         case Verbatim.extractVerbatim finalLabel of 
+         case SpecialLabels.extractVerbatim finalLabel of 
           Just vLabel -> 
                 Drawing.makeVerbatim
                    {
@@ -259,7 +259,7 @@ drawLabelAt cfg edgeId activity label labelpos angle =
                 {
                     color = label.style.labelColor,
                     zindex = foregroundZ,
-                    label = finalLabel,
+                    label = SpecialLabels.removeAny finalLabel,
                     preamble = cfg.latexPreamble,
                     pos = labelpos,
                     dims = label.dims,

@@ -8,7 +8,7 @@ module Codec exposing
     -- , enum
     , customEnum
     , customStringTag
-    , list, filter
+    , list, filter, filterMap
     , ObjectCodec, object, compose, composite
     , fields, buildObject 
     , custom,  variant1, buildVariant
@@ -142,6 +142,9 @@ filter : (a -> Bool) -> Codec (List a) (List a)
 filter f =
     build (List.filter f) (List.filter f)
 
+filterMap : (a -> Maybe b) -> (b -> Maybe a) -> Codec (List a) (List b)
+filterMap f g =
+    build (List.filterMap f) (List.filterMap g)
 
 -- OBJECTS
 

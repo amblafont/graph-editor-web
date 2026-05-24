@@ -13,7 +13,7 @@ import Tuple exposing (first, second)
 import IntDict exposing (IntDict)
 import Set exposing (Set)
 import Maybe.Extra as Maybe
-import Verbatim
+import SpecialLabels
 import Parser exposing (Step(..))
 
 type alias LoopEdge = { pos : Point, from : Point, to : Point, angleIn : Float, angleOut : Float, label : String, identity : Bool }
@@ -319,7 +319,7 @@ statementToString : Diagram -> String
 statementToString d = 
   let expand s =  if s == "" then "{_}" else s in
   let edgeToString = List.map (.label >> .label >> expand >>
-                               Verbatim.removeVerbatim) >> String.join " · " in
+                               SpecialLabels.removeVerbatim) >> String.join " · " in
    "<YADE> " ++ 
   edgeToString d.lhs ++ " = " ++ edgeToString d.rhs 
    ++ " </YADE>"

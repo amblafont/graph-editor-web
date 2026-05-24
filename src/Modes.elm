@@ -197,6 +197,7 @@ type alias NewArrowState =
       style : ArrowStyle,
       pos : InputPosition, inverted : Bool,
       isAdjunction : Bool,
+      -- isDependency : Bool,
       merge : Bool
        }
 

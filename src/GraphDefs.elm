@@ -29,10 +29,12 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    ,invertEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
-   , getEdgeDirection, getEdgeDirectionFromId
+   , getEdgeDirection, getEdgeDirectionFromId, depsCodec, nextDepLabel
    )
 
-import IntDict
+import IntDict exposing (IntDict)
+import IntDictExtra as IntDict
+import Codec
 import Drawing.Color as Color
 import Zindex exposing (defaultZ)
 import Geometry.Point as Point exposing (Point)
@@ -43,8 +45,7 @@ import EdgeShape exposing (EdgeShape(..), pullshoutHat)
 import ArrowStyle exposing (ArrowStyle, EdgePart)
 import Polygraph as Graph exposing (Graph, NodeId, EdgeId, Node, Edge)
 import GraphProof exposing (LoopNode, LoopEdge, Diagram)
-import Verbatim exposing (makeVerbatimLabel)
-import Json.Encode as JEncode
+import SpecialLabels exposing (makeVerbatimLabel, SpecialLabel)
 import List.Extra as List
 import Maybe.Extra as Maybe
 import Geometry.Point
@@ -72,6 +73,7 @@ type alias NormalEdgeLabel =
   -- ArrowStyle.getStyle should be systematically applied to the style
   -- (TODO: remove this restriction)
   , isAdjunction : Bool
+--   , isDependency : Bool
   }
 
 
@@ -442,19 +444,33 @@ newGenericLabel d = { details = d,
                       weaklySelected = False,
                       zindex = defaultZ}
 
-newEdgeLabelVerbatimAdj : Bool -> Bool -> String -> ArrowStyle -> EdgeLabel
-newEdgeLabelVerbatimAdj isVerbatim isAdjunction s style = 
+
+
+newEdgeLabelVerbatimStuff : {special : SpecialLabel, isAdjunction: Bool
+                             } -> String -> ArrowStyle 
+                             -> EdgeLabel
+newEdgeLabelVerbatimStuff {special, isAdjunction} s style =
    newGenericLabel 
     <| NormalEdge 
-    { label = makeVerbatimLabel isVerbatim s, style = style, dims = Nothing, isAdjunction = isAdjunction }
+    { label = SpecialLabels.makeSpecial special s, style = style, dims = Nothing, 
+     isAdjunction = isAdjunction }                          
 
-newEdgeLabelAdj : String -> ArrowStyle -> Bool -> EdgeLabel
-newEdgeLabelAdj s style isAdjunction = 
-   newEdgeLabelVerbatimAdj False isAdjunction s style
+newEdgeLabelVerbatimAdj : Bool -> Bool -> String -> ArrowStyle -> EdgeLabel
+newEdgeLabelVerbatimAdj isVerbatim isAdjunction = 
+   newEdgeLabelVerbatimStuff 
+      {special = if isVerbatim then SpecialLabels.Verbatim else SpecialLabels.Normal, 
+       isAdjunction = isAdjunction } 
+
+newEdgeLabelAdj : String -> ArrowStyle -> {isAdjunction : Bool, isDependency : Bool } -> EdgeLabel
+newEdgeLabelAdj s style {isAdjunction, isDependency} = 
+   newEdgeLabelVerbatimStuff { isAdjunction = isAdjunction,
+         special = if isDependency then SpecialLabels.Dependency else SpecialLabels.Normal
+         } s style
 
 
 newEdgeLabel : String -> ArrowStyle -> EdgeLabel
-newEdgeLabel s style = newEdgeLabelAdj s style False
+newEdgeLabel s style = newEdgeLabelAdj s style
+    {isAdjunction = False, isDependency = False}
 
 newPullshout : PullshoutEdgeLabel -> EdgeLabel
 newPullshout l = newGenericLabel <| PullshoutEdge l
@@ -953,4 +969,62 @@ getEdgeDirection g e =
       (_, Nothing) -> Nothing
       (Just from, Just to) -> Just <| Point.subtract to from
             -- if from == to then failedRet else
+
+
+isDepEdge : NormalEdgeLabel -> Bool
+isDepEdge = .label >> SpecialLabels.isDependency
+
+getDependencyName : NormalEdgeLabel -> String
+getDependencyName l = l.label |> SpecialLabels.removeSpecial SpecialLabels.Dependency
+
+dependencyEdges : Graph NodeLabel EdgeLabel -> List (Edge NormalEdgeLabel)
+dependencyEdges g =
+   Graph.edges g 
+            |> List.filterMap filterEdgeNormal 
+            |> List.map (Graph.edgeMap .details)
+            |> List.filter (.label >> isDepEdge)
+            
+
+
+dependencyDict : Graph NodeLabel EdgeLabel -> IntDict (List (String, Graph.Id))
+dependencyDict graph =
+  let depEdges = dependencyEdges graph in
+  List.foldl (\e -> IntDict.cons e.from (getDependencyName e.label, e.to)
+              ) IntDict.empty depEdges
+     
+
+depGraph : Graph.Graph NodeLabel EdgeLabel
+                   -> Graph.Graph {node : NodeLabel, deps : List (String, Graph.Id )} EdgeLabel
+depGraph =  (\ g -> 
+      let dict = dependencyDict g in 
+      Graph.map (\id n -> { node = n, deps = IntDict.getDictList id dict}) 
+         (always Basics.identity)
+         g
+    )
+
+getDepLabels : NodeId -> Graph.Graph NodeLabel EdgeLabel -> Maybe (List String)
+getDepLabels id graphi =
+
+   let graph = graphi |> depGraph in
+   case Graph.getNode id graph of
+         Nothing -> Nothing
+         Just { deps } -> List.map Tuple.first deps |> Just
+
+nextDepLabel : NodeId -> Graph.Graph NodeLabel EdgeLabel -> Maybe String
+nextDepLabel id graphi =
+   case getDepLabels id graphi of 
+      Nothing -> Nothing
+      Just l -> 
+         List.filterMap String.toInt l |> List.maximum |>
+         Maybe.map ((+) 1) |> Maybe.withDefault 0
+         |> String.fromInt |> Just
+
           
+depsCodec : Codec.Codec 
+                 
+                 (Graph.Graph NodeLabel EdgeLabel)
+                  (Graph.Graph {node : NodeLabel, deps : List (String, Graph.Id )} EdgeLabel) 
+depsCodec = 
+  Codec.build 
+    depGraph
+    (Graph.map (always .node) (always identity))
