@@ -2,7 +2,6 @@
     "short_name": "YADE",
     "name": "Yet Another Diagram Editor",
     "start_url": "./index.html",
-    "navigateFallback": "./index.html",
     "description": "This is a diagram editor",
     "display": "standalone",
     "icons": [

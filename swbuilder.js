@@ -3,13 +3,14 @@ const { generateSW } = require("workbox-build");
 
 generateSW({
   globDirectory: ".",
-  globPatterns: ["index.html", "js/*.js", "katex/*", "fonts/*"],
+  globPatterns: ["index.html", "js/*.js", "katex/*", "fonts/*", "manifest.json", "icon.png"],
   // so that it does not generate some additional workbox-*.js
   inlineWorkboxRuntime: true,
   swDest: "service-worker.js",
   sourcemap: false,
   skipWaiting: true,
-  clientsClaim: true
+  clientsClaim: true,
+  navigateFallback: "index.html"
 }).then(({ count, size, warnings }) => {
   if (warnings.length > 0) {
     console.warn(
