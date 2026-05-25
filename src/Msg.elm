@@ -181,6 +181,7 @@ type Msg
   | RulerMargin Int
   | ToggleHideGrid
   | ToggleHideRuler
+  | ToggleShowDependency
   | ToggleAutosave
   | SaveRulerGridSize
   | OptimalGridSize

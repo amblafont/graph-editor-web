@@ -57,6 +57,11 @@ One could also inline the diagram data in the main latex file by writing  `% YAD
 
 (or download the latest [elm.js](https://amblafont.github.io/graph-editor/js/elm.js) and [bundle.js](https://amblafont.github.io/graph-editor/js/bundle.js).
 
+# Coreact features
+
+To turn an arrow into a dependency edge, simply prefix the label with "%dep ". When creating an arrow, pressing 'D' will automatically create a dependency edge. 
+ Dependency edges are used to construct the dependencies field of nodes in the exported json.
+ Dependency edges can be hidden by unchecking the "Show dependencies" checkbox. When this checkbox is unchecked, only the dependency edges of the selected nodes are shown (if any).
 
 # Known issues
 

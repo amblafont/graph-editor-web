@@ -88,6 +88,8 @@ type alias Model = {
     -- margin for the rule
     , rulerMargin : Int
     , rulerShow : Bool
+     -- when false, only the dependency edges of the selected nodes are shown
+    , showDependencies : Bool
     
     }
 
@@ -323,6 +325,8 @@ createModel {defaultGridSize, rulerMargin, saveLoadButtons} =
     , squareModeProof = False
     , rulerMargin = rulerMargin
     , rulerShow = False
+    -- when false, only the dependency edges of the selected nodes are shown
+    , showDependencies = False
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse

@@ -24,19 +24,24 @@ import Geometry.Curve as Curve exposing (Curve(..))
 -- these are extended node and edge labels used for drawing (discarded for saving)
 type alias NormalEdgeDrawingLabel = 
    { label : String, editable : Bool,
-     style : ArrowStyle, dims : Point, isAdjunction : Bool }
+     style : ArrowStyle, dims : Point, isAdjunction : Bool,
+     isDependency : Bool}
 
 type EdgeType = 
     PullshoutEdge {color : Color.Color}
   | NormalEdge NormalEdgeDrawingLabel
 
-type alias EdgeDrawingLabel = { details : EdgeType, shape : EdgeShape, isActive : Activity, zindex : Int}
+type alias EdgeDrawingLabel = { details : EdgeType, shape : EdgeShape, isActive : Activity, 
+    -- this is useful for dependency edges, to know if we should draw them
+    sourceIsActive : Activity, 
+    zindex : Int}
 
 mapNormalEdge : (NormalEdgeDrawingLabel -> NormalEdgeDrawingLabel) -> EdgeDrawingLabel -> EdgeDrawingLabel
 mapNormalEdge f e = 
   {isActive = e.isActive,
    zindex = e.zindex,
    shape = e.shape,
+   sourceIsActive = e.sourceIsActive,
    details = case e.details of
                PullshoutEdge x -> PullshoutEdge x
                NormalEdge l -> NormalEdge <| f l
@@ -58,7 +63,7 @@ type alias NodeDrawingLabel =
           -- watchEnterLeave : Bool
     }
 
-type alias Config = { latexPreamble : String }
+type alias Config = { latexPreamble : String, showDependencies : Bool }
 
 type Activity = 
      MainActive
@@ -73,14 +78,15 @@ toDrawingGraph g =
            else NoActive
     in
     let graphWithPos = GraphDefs.posGraph g in
-    Graph.map
+    Graph.mapRecAll .isActive .isActive
         (\ _ n ->  make_nodeDrawingLabel
           { editable = False
          , isActive = makeActivity n
           } n)
-        (\ _ e ->  make_edgeDrawingLabel
+        (\ _ sourceIsActive _ e ->  make_edgeDrawingLabel
                     { editable = False, 
                       isActive = makeActivity e.label,
+                      sourceIsActive = sourceIsActive,
                       shape = e.shape
                     } e.label
         )
@@ -92,16 +98,18 @@ makeActive l = Graph.updateList l
              (\ e -> { e | isActive = MainActive})
              
 
-make_edgeDrawingLabel : {editable : Bool, isActive : Activity, shape : EdgeShape} 
+make_edgeDrawingLabel : {editable : Bool, isActive : Activity, sourceIsActive : Activity, shape : EdgeShape} 
                       -> EdgeLabel -> EdgeDrawingLabel
-make_edgeDrawingLabel {editable, isActive, shape} e =
+make_edgeDrawingLabel {editable, isActive, shape, sourceIsActive} e =
    { isActive = isActive, zindex = e.zindex, shape = shape,
+     sourceIsActive = sourceIsActive,
      details = case e.details of 
         GraphDefs.PullshoutEdge x -> PullshoutEdge { color = x.color}
         GraphDefs.NormalEdge ({label, style, isAdjunction} as l) ->
            NormalEdge { label = label, editable = editable, 
               isAdjunction = isAdjunction,
               style = style,
+              isDependency = GraphDefs.isDepEdge l,
               dims = GraphDefs.getEdgeDims l
               -- bezier = bezier |> Maybe.withDefault Bez.dummy
             }
@@ -562,7 +570,11 @@ graphDrawing cfg g0 =
                                 drawHat id e.isActive e.zindex pullshoutStyle hat
                               
                (NormalEdge l, ArrowShape q) ->
-                        normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend
+                       if not cfg.showDependencies && l.isDependency 
+                          && e.isActive /= MainActive 
+                          && e.sourceIsActive /= MainActive then
+                           Drawing.empty                        
+                       else normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend
               --  (NormalEdge l, EdgeShape.LoopShape loop) ->
               --           loopEdgeDrawing cfg id e.isActive e.zindex l loop l.style.bend
                   

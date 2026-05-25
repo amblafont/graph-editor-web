@@ -628,6 +628,7 @@ update msg modeli =
          --  (iniModel, Task.attempt (always Msg.noyarn comOp) (Dom.focus HtmlDefs.canvasId))
      ToggleHideGrid -> noCmd {model | hideGrid = not model.hideGrid}     
      ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
+     ToggleShowDependency -> noCmd {model | showDependencies = not model.showDependencies}
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n (x,y) ->
@@ -1774,13 +1775,15 @@ view m =
 
 toDrawing : Model -> Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 toDrawing model graph = 
-    let cfg = { latexPreamble = case model.scenario of
-                                   Exercise1 -> 
-                                       "\\newcommand{\\depthHistory}{"
-                                       ++ String.fromInt (List.length model.history)
-                                       ++ "}"                                       
-                                   _ -> model.graphInfo.latexPreamble 
-              } 
+    let cfg = 
+          {  showDependencies = model.showDependencies,
+             latexPreamble = case model.scenario of
+                                      Exercise1 -> 
+                                        "\\newcommand{\\depthHistory}{"
+                                        ++ String.fromInt (List.length model.history)
+                                        ++ "}"                                       
+                                      _ -> model.graphInfo.latexPreamble            
+          } 
     in
     graphDrawing cfg graph
 
@@ -1890,7 +1893,7 @@ viewGraph model =
                    Html.Attributes.title "Should not be necessary"
             ] [Html.text "Recompute labels"] -}
            --  , Html.button [Html.Events.onClick FindInitial] [Html.text "Initial"]
-           , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)           
+           , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)  
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 
@@ -1923,7 +1926,10 @@ viewGraph model =
                 Html.Events.onInput LatexPreambleEdit
                ] [ ]]
             _ ->
-              [ Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Edit latex preamble"],                
+              [ Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Edit latex preamble"],
+                HtmlDefs.checkbox ToggleShowDependency "Show dependencies" 
+                  "(Coreact feature) If false, only the dependency edges of the selected nodes are shown"
+                  (model.showDependencies),
                 Html.p [Html.Attributes.class "tabs"] (renderTabs model),          
                 Html.p [] [ Html.text <| if nmissings > 0 then 
                   String.fromInt nmissings ++ " nodes or edges could not be rendered."

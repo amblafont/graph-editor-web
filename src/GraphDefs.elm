@@ -29,7 +29,7 @@ module GraphDefs exposing (defaultPullshoutShift, EdgeLabel, NodeLabel, allDimsR
    ,invertEdges
    , edgeScaleFactor
    , keyMaybeUpdatePullshout
-   , getEdgeDirection, getEdgeDirectionFromId, depsCodec, nextDepLabel
+   , getEdgeDirection, getEdgeDirectionFromId, depsCodec, nextDepLabel, isDepEdge
    )
 
 import IntDict exposing (IntDict)
