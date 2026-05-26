@@ -572,7 +572,8 @@ graphDrawing cfg g0 =
                (NormalEdge l, ArrowShape q) ->
                        if not cfg.showDependencies && l.isDependency 
                           && e.isActive /= MainActive 
-                          && e.sourceIsActive /= MainActive then
+                          && e.sourceIsActive /= MainActive
+                          && not l.editable then
                            Drawing.empty                        
                        else normalEdgeDrawing cfg id e.isActive e.zindex l q l.style.bend
               --  (NormalEdge l, EdgeShape.LoopShape loop) ->
