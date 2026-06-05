@@ -30,7 +30,7 @@ js:
 
 # run http server
 http:
-	npx esbuild --servedir=.
+	npx esbuild --servedir=. --serve=127.0.0.1:8765
 
 server: server.js
 	node server.js
