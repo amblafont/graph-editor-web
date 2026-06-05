@@ -90,6 +90,8 @@ type alias Model = {
     , rulerShow : Bool
      -- when false, only the dependency edges of the selected nodes are shown
     , showDependencies : Bool
+    -- whether to update label colors when edge colors change
+    , labelColorUpdateEnabled : Bool
     
     }
 
@@ -327,6 +329,7 @@ createModel {defaultGridSize, rulerMargin, saveLoadButtons} =
     , rulerShow = False
     -- when false, only the dependency edges of the selected nodes are shown
     , showDependencies = False
+    , labelColorUpdateEnabled = True
     --, hoverId = Nothing
     -- whether we should select the closest object 
     -- when moving the mouse

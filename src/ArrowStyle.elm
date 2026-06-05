@@ -278,7 +278,7 @@ keyToNewColor oldColor k =
 keyMaybeUpdateColor : Key -> EdgePart -> Style -> Maybe Style
 keyMaybeUpdateColor k p s = 
   keyToNewColor (getEdgeColor p s) k 
-  |> Maybe.map (\ c -> updateEdgeColor p c s)
+  |> Maybe.map (\ c -> updateEdgeColor True p c s)
 
 -- keyUpdateShiftBend : Key -> Style -> Maybe Style
 -- keyUpdateShiftBend k s =
@@ -328,8 +328,8 @@ getEdgeColor part s =
     TailPart -> s.tailColor
     MainEdgePart -> s.color
 
-updateEdgeColor : EdgePart -> Color -> Style -> Style
-updateEdgeColor part c s = 
+updateEdgeColor : Bool -> EdgePart -> Color -> Style -> Style
+updateEdgeColor updateLabels part c s = 
   case part of    
     HeadPart -> { s | headColor = c }
     TailPart -> { s | tailColor = c }
@@ -337,7 +337,7 @@ updateEdgeColor part c s =
         { s | color = c,
           headColor = if s.headColor == s.color then c else s.headColor,
           tailColor = if s.tailColor == s.color then c else s.tailColor,
-          labelColor = if s.labelColor == s.color then c else s.labelColor }
+          labelColor = if updateLabels && s.labelColor == s.color then c else s.labelColor }
           
 
 shadow : ArrowStyle -> ArrowStyle

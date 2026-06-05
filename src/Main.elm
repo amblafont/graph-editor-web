@@ -630,6 +630,7 @@ update msg modeli =
      ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
      ToggleShowDependency -> noCmd {model | showDependencies = not model.showDependencies}
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
+     ToggleLabelColorUpdate -> noCmd {model | labelColorUpdateEnabled = not model.labelColorUpdateEnabled}
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n (x,y) ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
@@ -1896,6 +1897,7 @@ viewGraph model =
            , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)  
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
+           , HtmlDefs.checkbox ToggleLabelColorUpdate "Update label color with edge color" "" model.labelColorUpdateEnabled
            , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 
            , Html.button [Html.Events.onClick OptimalGridSize, 
               Html.Attributes.title "Select two nodes. The new grid size is the max of the coordinate differences."] 

@@ -58,11 +58,9 @@ api = Modes.Lib.makeApi createModif
 
 
 
-updateEdgeColor : List (Edge EdgeLabel) -> EdgePart -> Color -> List (Edge EdgeLabel)
-updateEdgeColor edges part color =
-    -- case Color.fromChar c of 
-        -- Nothing -> edges
-    List.map (Graph.edgeMap (GraphDefs.setColor color part )) edges
+updateEdgeColor : Bool -> List (Edge EdgeLabel) -> EdgePart -> Color -> List (Edge EdgeLabel)
+updateEdgeColor updateLabels edges part color =
+    List.map (Graph.edgeMap (GraphDefs.setColor updateLabels color part )) edges
 
 
 updateEdgeShift : List (Edge EdgeLabel) -> CustomizeModeShiftState -> List (Edge EdgeLabel)
@@ -150,7 +148,7 @@ mainUpdate state edgepart msg model =
         KeyChanged False _ (Character c) ->
             case Color.fromChar c of
                 Just color -> api.finalise model 
-                            { state | edges = updateEdgeColor state.edges edgepart color }
+                            { state | edges = updateEdgeColor model.labelColorUpdateEnabled state.edges edgepart color }
                 Nothing ->
                         noCmd model
               

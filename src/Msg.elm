@@ -183,6 +183,7 @@ type Msg
   | ToggleHideRuler
   | ToggleShowDependency
   | ToggleAutosave
+  | ToggleLabelColorUpdate
   | SaveRulerGridSize
   | OptimalGridSize
   | SwitchTab Int

@@ -350,12 +350,12 @@ md_updatePullshoutEdge id f =
 
 
 
-setColor : Color.Color -> EdgePart -> EdgeLabel -> EdgeLabel
-setColor color part e = 
+setColor : Bool -> Color.Color -> EdgePart -> EdgeLabel -> EdgeLabel
+setColor updateLabels color part e = 
    case e.details of
    NormalEdge l -> 
       let oldStyle = l.style in
-      let newStyle = ArrowStyle.updateEdgeColor part color oldStyle in
+      let newStyle = ArrowStyle.updateEdgeColor updateLabels part color oldStyle in
       { e | details = NormalEdge { l | style = newStyle }}
    PullshoutEdge x -> {e | details = PullshoutEdge { x | color = color}} 
 
