@@ -1897,7 +1897,7 @@ viewGraph model =
            , HtmlDefs.checkbox ToggleHideGrid "Show grid" "" (not model.hideGrid)  
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
-           , HtmlDefs.checkbox ToggleLabelColorUpdate "Update label color with edge color" "" model.labelColorUpdateEnabled
+           
            , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 
            , Html.button [Html.Events.onClick OptimalGridSize, 
               Html.Attributes.title "Select two nodes. The new grid size is the max of the coordinate differences."] 
@@ -1932,6 +1932,7 @@ viewGraph model =
                 HtmlDefs.checkbox ToggleShowDependency "Show dependencies" 
                   "(Coreact feature) If false, only the dependency edges of the selected nodes are shown"
                   (model.showDependencies),
+                HtmlDefs.checkbox ToggleLabelColorUpdate "Sync edge label color" "If checked, updating the color edge also updates the color of the label" model.labelColorUpdateEnabled,
                 Html.p [Html.Attributes.class "tabs"] (renderTabs model),          
                 Html.p [] [ Html.text <| if nmissings > 0 then 
                   String.fromInt nmissings ++ " nodes or edges could not be rendered."

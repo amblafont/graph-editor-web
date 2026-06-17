@@ -337,7 +337,7 @@ updateEdgeColor updateLabels part c s =
         { s | color = c,
           headColor = if s.headColor == s.color then c else s.headColor,
           tailColor = if s.tailColor == s.color then c else s.tailColor,
-          labelColor = if updateLabels && s.labelColor == s.color then c else s.labelColor }
+          labelColor = if updateLabels then c else s.labelColor }
           
 
 shadow : ArrowStyle -> ArrowStyle
