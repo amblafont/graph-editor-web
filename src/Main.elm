@@ -242,6 +242,7 @@ port promptedTabTitle : (String -> a) -> Sub a
 
 
 port saveRulerGridSize : {gridSize:Int, rulerMargin:Int} -> Cmd a
+port saveLabelColorUpdateEnabled : Bool -> Cmd a
 
 
 -- number of ms between autosaves
@@ -630,7 +631,8 @@ update msg modeli =
      ToggleHideRuler -> noCmd {model | rulerShow = not model.rulerShow}  
      ToggleShowDependency -> noCmd {model | showDependencies = not model.showDependencies}
      ToggleAutosave -> noCmd {model | autoSave = not model.autoSave}     
-     ToggleLabelColorUpdate -> noCmd {model | labelColorUpdateEnabled = not model.labelColorUpdateEnabled}
+     ToggleLabelColorUpdate -> let enabled = not model.labelColorUpdateEnabled in
+                               ({model | labelColorUpdateEnabled = enabled}, saveLabelColorUpdateEnabled enabled)
      MouseMoveRaw v _ -> (model, onMouseMove v)
      NodeRendered n (x,y) ->
                 -- let _ = Debug.log "nouvelle dims !" (n, dims) in
@@ -1898,7 +1900,7 @@ viewGraph model =
            , HtmlDefs.checkbox ToggleHideRuler "Show ruler" "" model.rulerShow           
            , HtmlDefs.checkbox ToggleAutosave "Autosave" "Quicksave every minute" (model.autoSave)
            
-           , Html.button [Html.Events.onClick SaveRulerGridSize] [Html.text "Save ruler & grid size preferences"] 
+           , Html.button [Html.Events.onClick SaveRulerGridSize, Html.Attributes.title "Ruler, Grid size"] [Html.text "Save preferences"] 
            , Html.button [Html.Events.onClick OptimalGridSize, 
               Html.Attributes.title "Select two nodes. The new grid size is the max of the coordinate differences."] 
               [Html.text "Calibrate grid size"] 
