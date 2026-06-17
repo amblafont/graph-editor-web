@@ -34,6 +34,7 @@ type NodeFlag =
       CoqValidated
     | Text
     | Dependencies DepsArg
+    | NodeColor Color
     | UnrecognizedNodeFlag
 
 type alias DepsArg = List (String, Graph.Id)
@@ -116,6 +117,13 @@ textFlag = nodeMaybeFlagCodecFalse Text
 coqValidatedFlag : Codec Bool (List NodeFlag)
 coqValidatedFlag = nodeMaybeFlagCodecFalse CoqValidated
 
+nodeColorFlag : Codec Color (List NodeFlag)
+nodeColorFlag =
+  Codec.maybeList Color.black NodeColor
+    (\ flag -> case flag of 
+        NodeColor c -> Just c
+        _ -> Nothing
+    )
 
 wavyFlag : Codec Bool (List EdgeFlag)
 wavyFlag = edgeMaybeFlagCodecFalse Wavy
@@ -389,17 +397,21 @@ pullshoutEdge z label =
 nodeFlagCodec : Codec NodeFlag (String, JDecode.Value)
 nodeFlagCodec =
     let variantTrue  = genericVariantTrue UnrecognizedNodeFlag
+        variantString tag v c =
+            Codec.variant1Pair tag v (Codec.compose Codec.stringJs c)
     in
-    Codec.customPair (\ coq text deps unrecognized v ->
+    Codec.customPair (\ coq text deps nodeColor unrecognized v ->
                     case v of
                         CoqValidated -> coq True
                         Text -> text True
                         Dependencies d -> deps d
+                        NodeColor c -> nodeColor c
                         UnrecognizedNodeFlag -> unrecognized
    ) ("", JEncode.null) 
    |> variantTrue "coqValidated" CoqValidated
    |> variantTrue "text" Text
    |> Codec.variant1Pair "dependencies" Dependencies depsArgsCodec
+   |> variantString "nodeColor" NodeColor Color.codec
    |> Codec.variant0 "" UnrecognizedNodeFlag
    |> Codec.buildVariant (always UnrecognizedNodeFlag)
 
@@ -581,19 +593,20 @@ depsFlag = Codec.maybeList [] Dependencies
    )
 
 nodeFCodecWithDeps : Codec {node : NodeLabel, deps : List (String, Graph.Id) }
-                       (Nodeo (List NodeFlag))
+                        (Nodeo (List NodeFlag))
 nodeFCodecWithDeps =
  let node x = .node >> x in
  Codec.object
-   (\ deps pos label isText zindex isCoqValidated ->
+   (\ deps pos label isText zindex isCoqValidated color ->
    { deps = deps,
      node = { pos = pos, label = label
    , dims = Nothing,  weaklySelected = False, isMath = not isText,
-     zindex = zindex, isCoqValidated = isCoqValidated , selected = False
+     zindex = zindex, isCoqValidated = isCoqValidated , selected = False,
+     color = color
      } }
     )
-    (\ deps pos label isText zindex isCoqValidated ->
-    { pos = pos, label = label, options = (deps ++ isText ++ isCoqValidated), zindex = zindex
+    (\ deps pos label isText zindex isCoqValidated color ->
+    { pos = pos, label = label, options = (deps ++ isText ++ isCoqValidated ++ color), zindex = zindex
       --, selected = selected
       })
     |> Codec.fields .deps .options depsFlag
@@ -602,6 +615,7 @@ nodeFCodecWithDeps =
     |> Codec.fields (node (.isMath >> not)) .options textFlag
     |> Codec.fields (node .zindex) .zindex Codec.identity
     |> Codec.fields (node .isCoqValidated) .options coqValidatedFlag
+    |> Codec.fields (node .color) .options nodeColorFlag
     -- |> Codec.fields .selected .selected Codec.identity
     |> Codec.buildObject
 

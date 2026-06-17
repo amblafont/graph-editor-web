@@ -55,7 +55,8 @@ import HtmlDefs exposing (Key(..))
 defaultPullshoutShift = 10
 type alias NodeLabel = { pos : Point , label : String, dims : Maybe Point, 
                          selected : Bool, weaklySelected : Bool,
-                         isMath : Bool, zindex: Int, isCoqValidated: Bool}
+                         isMath : Bool, zindex: Int, isCoqValidated: Bool,
+                         color : Color.Color}
 
 type alias EdgeLabel = GenericEdge EdgeType
 type alias GenericEdge a = { details : a, selected : Bool,
@@ -106,11 +107,11 @@ coqProofTexCommand = "coqproof"
 
 mergeFunctions : Graph.MergeFunctions NodeLabel EdgeLabel
 mergeFunctions = 
-  {  mergeNode = \ n1 {pos, label, dims, isMath, zindex, isCoqValidated} -> 
+  {  mergeNode = \ n1 {pos, label, dims, isMath, zindex, isCoqValidated, color} -> 
          {n1 | 
             pos = pos, label = label, dims = dims 
             , isMath = isMath, zindex = zindex
-            , isCoqValidated = isCoqValidated
+            , isCoqValidated = isCoqValidated, color = color
          }
     , mergeEdge = \ e1 {details, zindex} -> {e1 | details = details, zindex = zindex}
   }
@@ -118,8 +119,9 @@ mergeFunctions =
 edgeToNodeLabel : Point -> EdgeLabel -> NodeLabel
 edgeToNodeLabel pos l = 
    let nodeLabel = { pos = pos, label = "", dims = Nothing,
-                 selected = l.selected, weaklySelected = l.weaklySelected,
-                 zindex = l.zindex, isMath = True, isCoqValidated = False}
+                  selected = l.selected, weaklySelected = l.weaklySelected,
+                  zindex = l.zindex, isMath = True, isCoqValidated = False,
+                  color = Color.black}
    in
    case l.details of 
      PullshoutEdge _ -> nodeLabel
@@ -428,7 +430,8 @@ updateStyleEdges update edges g =
 newNodeLabel : Point -> String -> Bool -> Int -> NodeLabel
 newNodeLabel p s isMath zindex = 
     { pos = p , label = s, dims = Nothing, selected = False, weaklySelected = False,
-                         isMath = isMath, zindex = zindex, isCoqValidated = False}
+                          isMath = isMath, zindex = zindex, isCoqValidated = False,
+                          color = Color.black}
                      
 
 makeProofString : String -> String

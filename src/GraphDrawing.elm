@@ -57,7 +57,8 @@ type alias NodeDrawingLabel =
      label : String, editable : Bool, isActive : Activity,
       isMath : Bool,
           dims : Point,
-          zindex : Int
+          zindex : Int,
+          color : Color
           -- whether I should watch entering and leaving 
           -- node
           -- watchEnterLeave : Bool
@@ -127,7 +128,8 @@ make_nodeDrawingLabel {editable, isActive} ({label, pos, isMath} as l) =
     , isValidated = l.isCoqValidated
     , editable = editable, isActive = isActive, isMath = isMath,
       dims = if editable then (0,0) else GraphDefs.getNodeDims l
-    , zindex = l.zindex }
+    , zindex = l.zindex
+    , color = l.color }
 
 
 -- create an input with id curIdInput
@@ -187,7 +189,7 @@ nodeDrawing cfg node =
                     {
                         zindex = n.zindex,
                         label = vLabel,
-                        color = Color.black,
+                        color = n.color,
                         -- preamble = cfg.latexPreamble,
                         pos = n.pos,
                         dims = n.dims,
@@ -206,7 +208,7 @@ nodeDrawing cfg node =
                 {
                     zindex = n.zindex,
                     label = SpecialLabels.removeAny label ,
-                    color = Color.black,
+                    color = n.color,
                     preamble = cfg.latexPreamble,
                     pos = n.pos,
                     dims = n.dims,
