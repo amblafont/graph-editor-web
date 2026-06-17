@@ -76,6 +76,7 @@ fixModel modeli =
       PullshoutMode state -> ifTabChanged <| \ _ -> Modes.Pullshout.fixModel model state
       SquareMode state ->  ifTabChanged <| \ _ -> Modes.Square.fixModel model state
       LoopMode state -> ifTabChanged <| \ _ -> Modes.Loop.fixModel model state
+      NodeColorMode -> defaultIfTabChanged
       LatexPreamble _ -> model
       FreeHandMode _ -> defaultIfTabChanged
       -- DeleteFreeHandMode _ -> defaultIfTabChanged

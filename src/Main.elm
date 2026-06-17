@@ -73,6 +73,7 @@ import Modes.Move
 import Modes.Rename
 import Modes.Customize
 import Modes.Freehand
+import Modes.NodeColor
 import Drawing.Color as Color
 import Modes exposing (Mode(..), SelectState, MoveDirection(..), isResizeMode, ResizeState, EnlargeState)
 
@@ -693,6 +694,7 @@ update msg modeli =
         CustomizeMode ids -> Modes.Customize.update ids msg model
         BendMode state -> Modes.Bend.update state msg model
         LoopMode state -> Modes.Loop.update state msg model
+        NodeColorMode -> Modes.NodeColor.update msg model
         LatexPreamble s -> update_LatexPreamble s msg model
 
 update_LatexPreamble : String -> Msg -> Model -> (Model, Cmd Msg)
@@ -1013,6 +1015,8 @@ s                  (GraphDefs.clearSelection modelGraph) } -}
                 --   <| GraphDefs.clearWeakSelection modelGraph }              
         KeyChanged False _ (Character 'n') -> 
            Modes.NewLine.initialise model
+        KeyChanged False _ (Character 'N') -> 
+           noCmd <| Modes.NodeColor.initialise model
         KeyChanged False _ (Character 'v') -> 
                -- do not interfere with the paste event
                if model.specialKeys.ctrl then noCmd model else
@@ -1468,6 +1472,7 @@ graphDrawingFromModel m =
                 |> GraphDrawing.toDrawingGraph
     BendMode state -> Modes.Bend.graphDrawing m state
     LoopMode state -> Modes.Loop.graphDrawing m state
+    NodeColorMode -> collageGraphFromGraph m modelGraph
     LatexPreamble _ -> collageGraphFromGraph m modelGraph
         
 
@@ -1611,10 +1616,13 @@ helpMsg model =
                 ++ "[b] bend arrow/reshape looping arrow, "
                 ++ "[.] customise arrow marker, "
                 ++  "[\"bB][\"] to customize the pullback/pushout sign, "
-                ++  "[i]nvert arrow, "
-                ++ "[+<] move to the foreground/background (also for vertices)."
+                 ++  "[i]nvert arrow, "
+                 ++ "[+<] move to the foreground/background (also for vertices)."
 
-                ++ "\nMoving objects:"
+                 ++ "\nNodes: "
+                 ++ "[N]ode color (select one or more vertices first)"
+
+                 ++ "\nMoving objects:"
                 ++ "[g] move selected objects with possible merge (hold g for "
                 ++ "stopping the move on releasing the key)"
                 ++ ", [f]ix (snap) selected objects on the grid" 
@@ -1707,6 +1715,7 @@ helpMsg model =
                          else "[s] to select without holding the mouse, [click] to confirm."
 
         BendMode _ -> msg Modes.Bend.help
+        NodeColorMode -> msg Modes.NodeColor.help
         _ -> let txt = "Mode: " ++ Modes.toString (currentMode model) ++ ". [ESC] to cancel and come back to the default"
                    ++ " mode."
              in

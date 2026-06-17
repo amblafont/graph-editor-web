@@ -36,6 +36,7 @@ type Mode
     | LoopMode LoopState
     | MakeSaveMode
     | LatexPreamble String
+    | NodeColorMode
 
 
 type alias LoopState =
@@ -76,6 +77,7 @@ toString m = case m of
   -- DeleteFreeHandMode _ -> "DeleteFreeHand"
   LoopMode _ -> "Loop"
   MakeSaveMode -> "MakeSave"
+  NodeColorMode -> "Node color"
 
 type alias CutHeadState = { edge: Graph.Edge EdgeLabel
     , head : Bool -- the head or the tail?
