@@ -7,13 +7,12 @@ import Polygraph as Graph exposing (Graph)
 import Geometry.Point exposing (Point)
 import Format.GraphInfo exposing (GraphInfo)
 import GraphDefs exposing (EdgeType(..))
-import Drawing.Color as Color
 import Codec
 import Format.Version17 as NextVersion
-import Format.Version18 as Future exposing (dashedFlag, wavyFlag, textFlag, coqValidatedFlag,
+import Format.Version18 exposing (dashedFlag, wavyFlag, textFlag, coqValidatedFlag,
   prefixes, bendFlag, positionFlag, addFlag)
-import Format.Version19 as Future
-import GraphDefs
+-- import Format.Version20 as Future
+import Format.Flags 
 
 version = 16
 
@@ -52,11 +51,11 @@ toNextEdge {label, style, kind, zindex} =
   let style2 = toNextStyle style in
   let style3 = if kind == keys.pullshout then
                  addFlag 
-                 (Future.Pullshout {offset1 = style.position, offset2 = style.bend}) style2 
+                 (Format.Flags.Pullshout {offset1 = style.position, offset2 = style.bend}) style2 
                else style2 
   in
   let style4 = if kind == keys.adjunction then
-                 addFlag Future.Adjunction style3
+                 addFlag Format.Flags.Adjunction style3
                else style3
   in
   {label = label, 

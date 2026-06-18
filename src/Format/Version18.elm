@@ -17,7 +17,9 @@ import GraphDefs exposing (EdgeType(..))
 import Drawing.Color as Color exposing (Color)
 import Codec exposing (Codec)
 import FreeHandDrawings as FreeHand
-import Format.Version19 as NextVersion exposing (EdgeFlag(..), NodeFlag(..))
+import Format.Flags exposing (EdgeFlag(..), NodeFlag(..))
+import Format.Version19 as NextVersion
+-- import Format.Version20 as NextVersion
 -- import Format.Version17 exposing (textFlag, wavyFlag, coqValidatedFlag, dashedFlag, prefixes, bendFlag, positionFlag)
 -- import Codec exposing (FinalCustomCodec)
 -- import Format.Keys exposing (normalKey, pullshoutKey, adjunctionKey)
@@ -344,6 +346,7 @@ toNextGraphFlags g =
 fromJSGraphFlags : Grapho NodeFlag EdgeFlag -> GraphInfo
 fromJSGraphFlags g = 
      g |> toNextGraphFlags |> NextVersion.fromJSGraphFlags
+
 
 stringToNodeFlag : String -> NodeFlag
 stringToNodeFlag = Codec.decoder nodeFlagCodec

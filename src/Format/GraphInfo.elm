@@ -29,7 +29,8 @@ type alias TabId = Int
 type alias GraphInfo = { tabs : List Tab,
                          nextTabId : TabId,
                          activeTabId : TabId,
-                         latexPreamble : String}
+                         latexPreamble : String,
+                         latexBackgroundColor : String}
 
 emptyTab : Int -> Tab
 emptyTab id = { id = id,
@@ -100,6 +101,7 @@ type Modif =
   | GraphChange {tabId : TabId,
                  modif : Graph.Modif NodeLabel EdgeLabel }
   | LatexPreamble String
+  | LatexBackgroundColorEdit String
   | FreehandAdd TabId (List Point)
   | FreehandRemove TabId FreeHand.DrawingId
   | Noop
@@ -214,6 +216,9 @@ applyModif gi modif =
     LatexPreamble s -> 
       if s == gi.latexPreamble then Nothing else
       retModif <| Just { next = { gi | latexPreamble = s }, undo = LatexPreamble gi.latexPreamble }
+    LatexBackgroundColorEdit s ->
+      if s == gi.latexBackgroundColor then Nothing else
+      retModif <| Just { next = { gi | latexBackgroundColor = s }, undo = LatexBackgroundColorEdit gi.latexBackgroundColor }
     TabMoveLeft id ->
       retModif <| applyTabMove False id gi
     TabMoveRight id ->

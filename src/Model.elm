@@ -304,6 +304,7 @@ createModel {defaultGridSize, rulerMargin, saveLoadButtons, labelColorUpdateEnab
     , nextTabId = 1
     , activeTabId = 0
     , latexPreamble = "\\newcommand{\\" ++ coqProofTexCommand ++ "}[1]{\\checkmark}"
+    , latexBackgroundColor = "white"
       }
     , saveLoadButtons = saveLoadButtons
     , defaultGridSize = defaultGridSize

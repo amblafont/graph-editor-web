@@ -102,7 +102,7 @@ codecModif =
     (\ tabRename tabSizeGrid
         tabMoveLeft tabMoveRight
         tabRemove tabUnremove tabDuplicate 
-        tabNew  latexPreamble graphChange freehandAdd freehandRemove noop v ->
+        tabNew  latexPreamble latexBackgroundColor graphChange freehandAdd freehandRemove noop v ->
         case v of
             TabRename id s -> tabRename id s
             TabSizeGrid id size -> tabSizeGrid id size
@@ -113,6 +113,7 @@ codecModif =
             TabDuplicate id -> tabDuplicate id
             TabNew -> tabNew
             LatexPreamble s -> latexPreamble s
+            LatexBackgroundColorEdit s -> latexBackgroundColor s
             GraphChange arg -> graphChange arg
             FreehandAdd tabId points -> freehandAdd tabId points
             FreehandRemove tabId idx -> freehandRemove tabId idx
@@ -134,6 +135,7 @@ codecModif =
     |> Codec.variant1 "tabDuplicate" TabDuplicate updTabId .tabId Codec.identity
     |> Codec.variant0 "tabNew" TabNew
     |> Codec.variant1 "latexPreamble" LatexPreamble (\ s r -> { r | string = s }) .string Codec.identity
+    |> Codec.variant1 "latexBackgroundColor" LatexBackgroundColorEdit (\ s r -> { r | string = s }) .string Codec.identity
     |> Codec.variant1 "graphChange" GraphChange 
             (\ s r -> { r | graphModif = s.modif, tabId = s.tabId })
             ( \{graphModif, tabId} -> {modif = graphModif, tabId = tabId})

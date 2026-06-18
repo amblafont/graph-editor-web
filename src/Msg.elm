@@ -200,6 +200,7 @@ type Msg
   | PressTimeout
   | LatexPreambleSwitch
   | LatexPreambleEdit String
+  | LatexBackgroundColorEdit String
   | SimpleMsg String
   | AppliedProof { statement : String, script : String, isVerbatim : Bool}
   | ProtocolReceive (List {isSender : Bool, msg : ProtocolMsg})

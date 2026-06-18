@@ -340,8 +340,8 @@ updateEdgeColor updateLabels part c s =
           labelColor = if updateLabels then c else s.labelColor }
           
 
-shadow : ArrowStyle -> ArrowStyle
-shadow st = { st | color = Color.white, dashed = False, head = NoHead, tail = DefaultTail }
+shadow : Color -> ArrowStyle -> ArrowStyle
+shadow bgColor st = { st | color = bgColor, dashed = False, head = NoHead, tail = DefaultTail }
 
 -- from Quiver
 {-type LabelAlignment =
@@ -371,10 +371,11 @@ headTikzStyle hd =
 dashedStr : String
 dashedStr = "7, 3"
 
-tikzStyle : ArrowStyle -> String
-tikzStyle stl =
+tikzStyle : Color -> ArrowStyle -> String
+tikzStyle bgColor stl =
     Color.toString stl.color ++ "," ++
-      (case (stl.head, stl.kind) of
+      (if stl.kind == DoubleArrow then "double=" ++ Color.toString bgColor ++ "," else "")
+    ++ (case (stl.head, stl.kind) of
             (NoHead, DoubleArrow) -> "identity,"
             (hd, DoubleArrow) -> (headTikzStyle hd) ++ "cell=0.05, "
             (hd, NormalArrow) -> (headTikzStyle hd)

@@ -93,10 +93,10 @@ type Drawing a
     = Drawing (List { shape : Shape a, zindex : Int, key : Maybe String})
 
 type alias PolylineArg = {points : List Point, color : Color}
-type alias LineArg = {from : Point, to : Point, color: Color, strokeWidth : Int}
+type alias LineArg = {from : Point, to : Point, color: Color, shadow:Bool, strokeWidth : Int}
 type alias NodeArg = {label : String, angle : Float, preamble : String, pos : Point, scale: Float, dims : Point}
 
-type alias ArrowArg = {style : ArrowStyle, curve : Curve, strokeWidth : Int}
+type alias ArrowArg = {style : ArrowStyle, curve : Curve, shadow:Bool, strokeWidth : Int, backgroundColor : Color}
 
 lineToSvg : LineArg -> List (Html.Attribute a) -> Svg a
 lineToSvg arg attrs = 
@@ -108,7 +108,7 @@ lineToSvg arg attrs =
             , Svg.y1 <| f fromy
             , Svg.x2 <| f tox
             , Svg.y2 <| f toy
-            , Svg.strokeFromColor arg.color
+            , Svg.strokeFromColor (if arg.shadow then Color.white else arg.color)
             , Svg.strokeWidthPx arg.strokeWidth
       ] ++ List.map ghostAttribute attrs
       ) []
@@ -203,7 +203,7 @@ arrowToTikz args =
                   "line width=" ++ dimToTikz (toFloat args.strokeWidth)
             in
             let bez = Bez.toCubic bezier in
-            "\\draw[" ++ ArrowStyle.tikzStyle args.style ++ width ++ "] "
+            "\\draw[" ++ ArrowStyle.tikzStyle args.backgroundColor args.style ++ width ++ "] "
             ++ pointToTikz bez.from
             ++ " .. controls "
             -- ++ "to[quadratic="
@@ -241,7 +241,7 @@ arrowToTikz args =
                       if endAngleRaw < startAngle then endAngleRaw + 360 else endAngleRaw
             in
             
-            "\\draw[" ++ ArrowStyle.tikzStyle args.style ++ width ++ "] "
+            "\\draw[" ++ ArrowStyle.tikzStyle args.backgroundColor args.style ++ width ++ "] "
             ++ pointToTikz loop.from
             ++ " arc [start angle=" ++ String.fromFloat startAngle 
             ++ ", end angle=" ++ String.fromFloat endAngle 
@@ -262,11 +262,13 @@ arrowToSvg args attrs0 =
     let arrowStyle = args.style in
     let attrs = List.map ghostAttribute attrs0 in
     if ArrowStyle.isNone arrowStyle then Svg.g [] [] else
+    let color = (if args.shadow then Color.white else arrowStyle.color) in
     case args.curve of
         CurveBezier q ->
             -- let zindex = attributesToZIndex attrs in
             let imgs = Drawing.ArrowStyle.makeHeadTailImgs q arrowStyle in    
-            let mkgen l = mkPath {wavy=arrowStyle.wavy, dashed = arrowStyle.dashed, color = arrowStyle.color,
+            let mkgen l = mkPath {wavy=arrowStyle.wavy, dashed = arrowStyle.dashed, 
+                  color = color,
                                     strokeWidth = args.strokeWidth }
                               (l ++ attrs) 
             in
@@ -311,7 +313,7 @@ arrowToSvg args attrs0 =
                                        String.fromFloat x2 ++ " " ++ String.fromFloat y2) 
                     in
                     Svg.path 
-                      ( dAttr :: Svg.fill "none" :: Svg.strokeFromColor arrowStyle.color :: l ++ attrs ++
+                      ( dAttr :: Svg.fill "none" :: Svg.strokeFromColor color :: l ++ attrs ++
                         dashedToAttrs arrowStyle.dashed ++
                         (if args.strokeWidth /= 1 then [Svg.strokeWidthPx args.strokeWidth] else [])
                       ) []
@@ -537,11 +539,11 @@ singlePolyLine : {points:List Point, color: Color} -> List (Html.Attribute a) ->
 singlePolyLine args attrs = 
    Drawing [ {shape = TikzShape attrs (Polyline args), zindex = defaultZ, key = Nothing  }  ]  
 -- type alias PolylineArg = {points : Point, color : Color}
-polyLine : {zindex:Int, color: Color, points : List Point} -> List (Html.Attribute a) -> Drawing a
+polyLine : {zindex:Int, color: Color, points : List Point, backgroundColor : Color} -> List (Html.Attribute a) -> Drawing a
 polyLine args attrs =
    let pairs = ListExtra.succPairs args.points in
-   let normalArg (from, to) = {from = from, to = to, color = args.color, strokeWidth = 1} in
-   let shadowArg (from, to) = {from = from, to = to, color = Color.white, strokeWidth = shadowWidth} in
+   let normalArg (from, to) = {from = from, to = to, shadow = False, color = args.color, strokeWidth = 1} in
+   let shadowArg (from, to) = {from = from, to = to, shadow = True, color = args.backgroundColor, strokeWidth = shadowWidth} in
    let makeShape arg = Line arg |> TikzShape attrs |> ofShape args.zindex in
    let shadow = List.map shadowArg pairs |> List.map makeShape in
    let normal = List.map normalArg pairs |> List.map makeShape in
@@ -558,10 +560,10 @@ line args attrs from to =
   group [makeShape shadowArg, makeShape normalArg]
 -}
 
-arrow : {zindex : Int, style : ArrowStyle, curve : Curve} -> List (Html.Attribute a) -> Drawing a
+arrow : {zindex : Int, style : ArrowStyle, curve : Curve, backgroundColor : Color} -> List (Html.Attribute a) -> Drawing a
 arrow args attrs0 =
-    let normalArg = { curve = args.curve, style = args.style,  strokeWidth = 1} in
-    let shadowArg = { curve = args.curve, style = ArrowStyle.shadow args.style, strokeWidth = shadowWidth} in
+    let normalArg = { shadow = False, curve = args.curve, style = args.style, strokeWidth = 1, backgroundColor = args.backgroundColor } in
+    let shadowArg = { shadow = True, curve = args.curve, style = ArrowStyle.shadow args.backgroundColor args.style, strokeWidth = shadowWidth, backgroundColor = args.backgroundColor } in
     let makeShape arg = Arrow arg |> TikzShape attrs0 |> ofShape args.zindex in
     group [makeShape shadowArg, makeShape normalArg]
 

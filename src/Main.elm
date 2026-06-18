@@ -109,6 +109,7 @@ import Format.Version16
 import Format.Version17
 import Format.Version18
 import Format.Version19
+import Format.Version20
 import Format.LastVersion as LastFormat
 
 import Format.GraphInfo as GraphInfo exposing (Tab)
@@ -178,6 +179,7 @@ port loadedGraph16 : (LoadGraphInfo Format.Version16.Graph -> a) -> Sub a
 port loadedGraph17 : (LoadGraphInfo Format.Version17.Graph -> a) -> Sub a
 port loadedGraph18 : (LoadGraphInfo Format.Version18.Graph -> a) -> Sub a
 port loadedGraph19 : (LoadGraphInfo Format.Version19.Graph -> a) -> Sub a
+port loadedGraph20 : (LoadGraphInfo Format.Version20.Graph -> a) -> Sub a
 
 
 -- port setFirstTabGrph : ()
@@ -241,6 +243,9 @@ port setFirstTabEquation : ({ statement :String, isVerbatim : Bool} -> a) -> Sub
 port promptTabTitle : String -> Cmd a
 port promptedTabTitle : (String -> a) -> Sub a
 
+-- ask js to prompt latex background color
+port promptLatexBackgroundColor : String -> Cmd a
+port promptedLatexBackgroundColor : (String -> a) -> Sub a
 
 port saveRulerGridSize : {gridSize:Int, rulerMargin:Int} -> Cmd a
 port saveLabelColorUpdateEnabled : Bool -> Cmd a
@@ -267,6 +272,7 @@ subscriptions m =
       findReplace FindReplace,
       simpleMsg SimpleMsg,
       promptedTabTitle RenameTab,
+      promptedLatexBackgroundColor LatexBackgroundColorEdit,
       clear (\ {scenario, preamble} ->
           Clear {scenario = scenarioOfString scenario
                , preamble = preamble }),
@@ -292,6 +298,7 @@ subscriptions m =
       loadedGraph17 (mapLoadGraphInfo Format.Version17.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph18 (mapLoadGraphInfo Format.Version18.fromJSGraph >> loadGraphInfoToMsg),
       loadedGraph19 (mapLoadGraphInfo Format.Version19.fromJSGraph >> loadGraphInfoToMsg),
+      loadedGraph20 (mapLoadGraphInfo Format.Version20.fromJSGraph >> loadGraphInfoToMsg),
       setFirstTabEquation SetFirstTabEquation,
       -- decodedGraph (LastFormat.fromJSGraph >> PasteGraph),
       E.onClick (D.succeed MouseClick),
@@ -584,6 +591,7 @@ update msg modeli =
     --     noCmd <| { model | graphInfo = g}
      RenameTab s -> returnModif <| GraphInfo.TabRename activeTabId s
        --irenameActiveTab { modeli | mode = DefaultMode} s
+     LatexBackgroundColorEdit s -> returnModif <| GraphInfo.LatexBackgroundColorEdit s
      RemoveTab -> returnModif <| GraphInfo.TabRemove activeTabId
      NewTab -> returnModif <| GraphInfo.TabNew
      DuplicateTab -> returnModif <| GraphInfo.TabDuplicate activeTabId
@@ -1787,6 +1795,7 @@ view m =
 
 toDrawing : Model -> Graph NodeDrawingLabel EdgeDrawingLabel -> Drawing Msg
 toDrawing model graph = 
+    let bgColor = Codec.decoder Color.codec model.graphInfo.latexBackgroundColor in
     let cfg = 
           {  showDependencies = model.showDependencies,
              latexPreamble = case model.scenario of
@@ -1794,7 +1803,8 @@ toDrawing model graph =
                                         "\\newcommand{\\depthHistory}{"
                                         ++ String.fromInt (List.length model.history)
                                         ++ "}"                                       
-                                      _ -> model.graphInfo.latexPreamble            
+                                      _ -> model.graphInfo.latexPreamble,
+             latexBackgroundColor = bgColor            
           } 
     in
     graphDrawing cfg graph
@@ -1940,6 +1950,9 @@ viewGraph model =
                ] [ ]]
             _ ->
               [ Html.button [Html.Events.onClick LatexPreambleSwitch] [Html.text "Edit latex preamble"],
+                Html.button [Html.Events.onClick (Do (promptLatexBackgroundColor model.graphInfo.latexBackgroundColor)),
+                             Html.Attributes.title "Color of the shadows of lines/arrows, in exported LaTeX"]
+                   [Html.text <| "Latex background color: " ++ model.graphInfo.latexBackgroundColor],
                 HtmlDefs.checkbox ToggleShowDependency "Show dependencies" 
                   "(Coreact feature) If false, only the dependency edges of the selected nodes are shown"
                   (model.showDependencies),

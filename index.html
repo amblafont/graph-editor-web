@@ -956,6 +956,12 @@ function disableInAppInstallPrompt() {
             })
          );
 
+         answerElmRequestCallback('promptLatexBackgroundColor', 'promptedLatexBackgroundColor', (a, callback) =>
+            customPrompt("Latex background color", 
+                  a, function (rep) {
+                    callback(rep);
+            })
+         );
 
          app.ports.clipboardWriteGraph.subscribe(function(g) {
             navigator.clipboard.writeText(JSON.stringify(g));                                     

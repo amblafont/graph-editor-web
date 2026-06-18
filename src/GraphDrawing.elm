@@ -64,7 +64,7 @@ type alias NodeDrawingLabel =
           -- watchEnterLeave : Bool
     }
 
-type alias Config = { latexPreamble : String, showDependencies : Bool }
+type alias Config = { latexPreamble : String, latexBackgroundColor : Color, showDependencies : Bool }
 
 type Activity = 
      MainActive
@@ -415,7 +415,7 @@ normalEdgeDrawing cfg edgeId activity z {- from to -} label q curve =
     --     -- Drawing.adjunctionArrow attrs style q
     -- else
         Drawing.group [
-         Drawing.arrow {zindex = z, style = style, curve = q}
+         Drawing.arrow {zindex = z, style = style, curve = q, backgroundColor = cfg.latexBackgroundColor}
           attrs,
           segmentLabel cfg q edgeId activity label style.marker curve,
           drawMarker style.color style.marker q]
@@ -545,12 +545,13 @@ class = Html.Attributes.attribute "class" << String.join " "
 
 
 
-drawHat : Graph.EdgeId -> Activity -> Int -> {color: Color.Color} -> Hat -> Drawing Msg
-drawHat edgeId a z {color} hat =
+drawHat : Config -> Graph.EdgeId -> Activity -> Int -> {color: Color.Color} -> Hat -> Drawing Msg
+drawHat cfg edgeId a z {color} hat =
     let classes = class <| activityToEdgeClasses a in
     Drawing.polyLine 
                 {zindex = z, color = color
-                , points = [hat.p1, hat.summit, hat.p2] }
+                , points = [hat.p1, hat.summit, hat.p2]
+                , backgroundColor = cfg.latexBackgroundColor }
                [classes, onClick (EdgeClick edgeId) 
                  ]
 
@@ -569,7 +570,7 @@ graphDrawing cfg g0 =
       let drawEdge id e = 
              case (e.details, e.shape) of
                (PullshoutEdge pullshoutStyle, HatShape hat) -> 
-                                drawHat id e.isActive e.zindex pullshoutStyle hat
+                                drawHat cfg id e.isActive e.zindex pullshoutStyle hat
                               
                (NormalEdge l, ArrowShape q) ->
                        if not cfg.showDependencies && l.isDependency 
