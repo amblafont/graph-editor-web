@@ -28,6 +28,8 @@ type EdgeFlag =
     | ShiftTarget Float
     | LoopRadius Float
     | LoopAngle Float
+    | ShortenHead Float
+    | ShortenTail Float
     | Dependency
 
 

@@ -11,7 +11,7 @@ module ArrowStyle exposing (ArrowStyle, empty, {- keyUpdateStyle, -}
     -- keyMaybeUpdateHeadColor, keyMaybeUpdateTailColor,
     makeHeadShape, shiftRatioFromPart, -- keyUpdateShiftBend,
     makeTailShape, getStyle, isNone, simpleLineStyle, ExtremePart(..)
-    , invert, updateShift)
+    , invert, updateShift, updateShorten)
 
 import HtmlDefs exposing (Key(..))
 
@@ -49,9 +49,11 @@ type alias Style = { tail : TailStyle,
                      labelColor : Color,
                      marker : MarkerStyle,
                      wavy : Bool,
-                     loopRadius : Float,
-                     loopAngle : Float
-                    } 
+                      loopRadius : Float,
+                      loopAngle : Float,
+                      shortenHead : Float,
+                      shortenTail : Float
+                     } 
 
 -- maxShift = 5
 -- minShift = -5   
@@ -76,6 +78,13 @@ updateShift {part, shift} s =
     else
        { s | shiftTarget = shift }
 
+updateShorten : {part : ExtremePart, shorten : Float} -> Style -> Style
+updateShorten {part, shorten} s =
+    if part == Tail then
+       { s | shortenTail = shorten }
+    else
+       { s | shortenHead = shorten }
+
 simpleLineStyle : Float -> Style
 simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, dashed = False,
           bend = bend, labelAlignment = Left, marker = noMarker,
@@ -83,7 +92,7 @@ simpleLineStyle bend = { tail = DefaultTail, head = NoHead, kind = NormalArrow, 
           shiftSource = 0.5, shiftTarget = 0.5,
           headColor = Color.black, tailColor = Color.black, wavy = False,
           labelColor = Color.black,
-          loopRadius = defaultLoopRadius, loopAngle = 0 }
+           loopRadius = defaultLoopRadius, loopAngle = 0, shortenHead = 0, shortenTail = 0 }
 type alias ArrowStyle = Style
 type ArrowKind = NormalArrow | NoneArrow | DoubleArrow
 
@@ -170,7 +179,7 @@ empty = { tail = DefaultTail, head = DefaultHead, dashed = False,
           labelPosition = 0.5, color = Color.black, kind = NormalArrow,
           marker = noMarker, shiftSource = 0.5, shiftTarget = 0.5,
           headColor = Color.black, tailColor = Color.black , labelColor = Color.black,
-          wavy = False, loopRadius = defaultLoopRadius, loopAngle = 0 }
+           wavy = False, loopRadius = defaultLoopRadius, loopAngle = 0, shortenHead = 0, shortenTail = 0 }
 isDouble : Style -> Basics.Bool
 isDouble { kind } = kind == DoubleArrow
   
@@ -358,6 +367,8 @@ invert st = { st | labelAlignment = case st.labelAlignment of
                                 _ -> st.labelAlignment
                   , bend = 0 - st.bend
                   , labelPosition = 1 - st.labelPosition
+                  , shortenHead = st.shortenTail
+                  , shortenTail = st.shortenHead
              }
 
 headTikzStyle : HeadStyle -> String

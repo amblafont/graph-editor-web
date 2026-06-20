@@ -772,18 +772,22 @@ posGraph g =
                NormalEdge l ->
                   --  let dims = (padding, padding) |> Point.resize 4 in
                    let computePosDims isSource = 
-                        let (n, part) = 
-                                 if isSource then (n1, ArrowStyle.Tail)
-                                 else (n2, ArrowStyle.Head)
-                        in
-                        if not n.isArrow then n.posDims else
-                        let oldPosDims = n.posDims in
-                        { oldPosDims | 
-                          pos = Curve.point n.extrems.curve <| 
-                           ArrowStyle.shiftRatioFromPart l.style part
-                        }
-                   in
-                   let isLoop = n1.id == n2.id in
+                         let (n, part) = 
+                                  if isSource then (n1, ArrowStyle.Tail)
+                                  else (n2, ArrowStyle.Head)
+                             shorten = if isSource then l.style.shortenTail else l.style.shortenHead
+                         in
+                         let base =
+                               let base2 = n.posDims in
+                               if n.isArrow then
+                                  { base2 | pos = Curve.point n.extrems.curve <| ArrowStyle.shiftRatioFromPart l.style part }
+                               else
+                                  n.posDims
+                         in
+                         let adjustDim d = max 0 (d + shorten * 2) in
+                         { base | dims = (adjustDim (Tuple.first base.dims), adjustDim (Tuple.second base.dims)) }
+                    in
+                    let isLoop = n1.id == n2.id in
                   --  let (isLoop, q) = 
                   --       if n1.id == n2.id then
                   --           (True, Geometry.segmentRectBent (computePosDims True) (computePosDims False) l.style.bend)

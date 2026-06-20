@@ -122,6 +122,22 @@ loopAngleFlag =
         _ -> Nothing
     )
 
+shortenHeadFlag : Codec Float (List EdgeFlag)
+shortenHeadFlag =
+       edgeMaybeFlagCodec 0 ShortenHead
+    (\ flag -> case flag of 
+        ShortenHead a -> Just a
+        _ -> Nothing
+    )
+
+shortenTailFlag : Codec Float (List EdgeFlag)
+shortenTailFlag =
+       edgeMaybeFlagCodec 0 ShortenTail
+    (\ flag -> case flag of 
+        ShortenTail a -> Just a
+        _ -> Nothing
+    )
+
 
 positionFlag : Codec Float (List EdgeFlag)
 positionFlag =
@@ -168,7 +184,9 @@ optionNames =
     shiftSource = "shiftSource",
     shiftTarget = "shiftTarget",
     loopRadius = "loopRadius",
-    loopAngle = "loopAngle"
+    loopAngle = "loopAngle",
+    shortenHead = "shortenHead",
+    shortenTail = "shortenTail"
   }
 
 genericVariantTrue default tag v = Codec.variantTruePair tag v default Codec.trueJs
@@ -181,7 +199,7 @@ edgeFlagCodec =
     let variantString tag v c =
             Codec.variant1Pair tag v (Codec.compose Codec.stringJs c)
     in
-    let split dashed marker pullshout bend position adjunction dependency wavy kind headstyle tailstyle alignment color headcolor tailcolor labelcolor shiftSource shiftTarget loopRadius loopAngle unrecognized v =
+    let split dashed marker pullshout bend position adjunction dependency wavy kind headstyle tailstyle alignment color headcolor tailcolor labelcolor shiftSource shiftTarget loopRadius loopAngle shortenHead shortenTail unrecognized v =
                     case v of
                         Dashed -> dashed True
                         Marker s -> marker s
@@ -204,6 +222,8 @@ edgeFlagCodec =
                         ShiftTarget c -> shiftTarget c
                         LoopRadius c -> loopRadius c
                         LoopAngle c -> loopAngle c
+                        ShortenHead a -> shortenHead a
+                        ShortenTail a -> shortenTail a
    in
    Codec.customPair split ("", JEncode.null) 
    |> variantTrue optionNames.dashed Dashed
@@ -227,6 +247,8 @@ edgeFlagCodec =
     |> Codec.variant1Pair optionNames.shiftTarget ShiftTarget Codec.floatJs
     |> Codec.variant1Pair optionNames.loopRadius LoopRadius Codec.floatJs
     |> Codec.variant1Pair optionNames.loopAngle LoopAngle Codec.floatJs
+    |> Codec.variant1Pair optionNames.shortenHead ShortenHead Codec.floatJs
+    |> Codec.variant1Pair optionNames.shortenTail ShortenTail Codec.floatJs
     |> Codec.variant0 optionNames.unrecognized Unrecognized
     |> Codec.buildVariant (always Unrecognized)
 
@@ -539,17 +561,17 @@ arrowStyleCodec =
         Codec.fields f1 Basics.identity codec
   in
   Codec.object
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle ->
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle shortenHead shortenTail ->
       { tail = tail, head = head, kind = kind
    , dashed = dashed, bend = bend, labelAlignment = alignment, 
    shiftSource = shiftSource, shiftTarget = shiftTarget,
    labelPosition = position, color = colors.main, marker = marker,
    headColor = colors.head, tailColor = colors.tail, labelColor = colors.label,  wavy = wavy,
-   loopRadius = loopRadius, loopAngle = loopAngle }
+   loopRadius = loopRadius, loopAngle = loopAngle, shortenHead = shortenHead, shortenTail = shortenTail }
     
   )
-  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle  ->
-     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy ++ loopRadius ++ loopAngle
+  (\tail head kind dashed bend alignment position shiftSource shiftTarget colors marker wavy loopRadius loopAngle shortenHead shortenTail  ->
+     shiftSource ++ shiftTarget ++ position ++ bend ++ marker ++ colors ++ dashed ++ alignment ++ tail ++ head ++ kind ++ wavy ++ loopRadius ++ loopAngle ++ shortenHead ++ shortenTail
     
   )
   |> flagField .tail tailFlag
@@ -568,6 +590,8 @@ arrowStyleCodec =
   |> flagField .wavy wavyFlag
   |> flagField .loopRadius loopRadiusFlag
   |> flagField .loopAngle loopAngleFlag
+  |> flagField .shortenHead shortenHeadFlag
+  |> flagField .shortenTail shortenTailFlag
   |> Codec.buildObject
   -- |> Codec.compose Codec.objectJs
 

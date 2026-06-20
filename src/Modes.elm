@@ -175,10 +175,13 @@ type alias CustomizeModeShiftState =
     , componentState : CaptureState
     -- , edge : Graph.Edge EdgeLabel
     }
+
+type alias CustomizeModeShortenState = CustomizeModeShiftState
 type CustomizeMode =
     CustomizeModePart EdgePart
                        -- true if source, false if target
   | CustomizeModeShift CustomizeModeShiftState
+  | CustomizeModeShorten CustomizeModeShortenState
   
 
 type alias NewLineState = {
@@ -191,6 +194,7 @@ type NewArrowMode =
   | NewArrowMain 
   | NewArrowBend CaptureState
   | NewArrowShift ArrowStyle.ExtremePart CaptureState
+  | NewArrowShorten ArrowStyle.ExtremePart CaptureState
 
 type alias NewArrowState =
     { chosen : Graph.Graph NodeLabel EdgeLabel,

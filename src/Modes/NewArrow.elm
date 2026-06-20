@@ -4,7 +4,7 @@ port module Modes.NewArrow exposing (graphDrawing, fixModel, initialise, update,
 import Modes.Loop
 import Modes.Capture exposing (UpdateResult(..))
 import GraphDrawing exposing (..)
-import Geometry.Point
+import Geometry.Point as Point
 import Polygraph as Graph exposing (Graph)
 import Msg exposing (Msg(..))
 import ArrowStyle exposing (EdgePart(..))
@@ -44,6 +44,7 @@ computeFlags state =
     case state.mode of
         NewArrowBend _ -> { pointerLock = True }
         NewArrowShift _ _ -> { pointerLock = True }
+        NewArrowShorten _ _ -> { pointerLock = True }
         _ -> { pointerLock = False }
 
 updateState : Model -> NewArrowState  -> Model
@@ -189,13 +190,13 @@ update state msg model =
       NewArrowPart ArrowStyle.Tail -> updateHeadOrTail TailPart
       _ -> updateNormal state msg model
 
-getRawDirection : Model -> NewArrowState -> Geometry.Point.Point
+getRawDirection : Model -> NewArrowState -> Point.Point
 getRawDirection model state =
     let mayDir =
             case state.kind of 
                 CreateArrow id ->
                     Maybe.map 
-                    (\ from -> Geometry.Point.subtract model.mousePos from)
+                    (\ from -> Point.subtract model.mousePos from)
                     (Graph.get id .pos .pos <| GraphDefs.posGraph state.chosen)
                 _ -> Nothing
     in
@@ -220,10 +221,24 @@ initialiseShiftMode part state model =
         Nothing -> model
         Just dir ->
             updateState model { state | mode = NewArrowShift part
-            <|  Modes.Customize.initialiseComponent part
+            <|  Modes.Customize.initialiseShiftComponent part
             dir
             {shift = 0.5} , merge = state.merge || part == ArrowStyle.Head }
 
+initialiseShortenMode : ExtremePart -> NewArrowState -> Model -> Model
+initialiseShortenMode part state model =
+    let dir = getRawDirection model state 
+            -- if part == ArrowStyle.Head then Point.flip 
+            -- else identity
+    in
+    let initVal = if part == ArrowStyle.Tail then state.style.shortenTail else state.style.shortenHead in
+    let comp = Modes.Customize.initialiseShortenComponent part dir {shorten = initVal} in
+    -- let dir2 = if dir == (0,0) then (10,0) else Point.resize 0.001 dir in
+    updateState model { state | mode = NewArrowShorten part
+    <|  comp
+    -- , merge = state.merge || part == ArrowStyle.Head 
+    }
+ 
 initialiseBendMode : NewArrowState -> Model -> Model
 initialiseBendMode state model =
      let bend = ArrowStyle.getStyle state |> .bend in
@@ -260,6 +275,16 @@ updateShiftState part model state componentState =
     updateState model 
         { state | style = newStyle , mode = NewArrowShift part componentState }
 
+updateShortenState : ArrowStyle.ExtremePart -> Model -> NewArrowState -> CaptureState -> Model
+updateShortenState part model state componentState =
+    let shorten = componentState.value in
+    let style = state.style in
+    let newStyle =
+            ArrowStyle.updateShorten { part = part, shorten = shorten } style
+    in
+    updateState model
+        { state | style = newStyle , mode = NewArrowShorten part componentState }
+
 handleCapture : Model -> CaptureState -> Msg ->
     (CaptureState -> Model) ->
     Maybe ( Model, Cmd Msg )
@@ -281,6 +306,9 @@ updateCapture state msg model =
         NewArrowShift part s ->
             handleCapture model s msg 
                 (updateShiftState part model state)
+        NewArrowShorten part s ->
+            handleCapture model s msg
+                (updateShortenState part model state)
         _ -> Nothing
 
 updateNormal : NewArrowState -> Msg -> Model -> ( Model, Cmd Msg )
@@ -344,6 +372,8 @@ updateNormal state msg model =
         KeyChanged False _ (Character 'b') -> noCmd <| initialiseBendMode state model
         KeyChanged False _ (Character 's') -> noCmd <| initialiseShiftMode ArrowStyle.Tail state model
         KeyChanged False _ (Character 'e') -> noCmd <| initialiseShiftMode ArrowStyle.Head state model
+        KeyChanged False _ (Character 'S') -> noCmd <| initialiseShortenMode ArrowStyle.Tail state model
+        KeyChanged False _ (Character 'E') -> noCmd <| initialiseShortenMode ArrowStyle.Head state model
         KeyChanged False _ (Character 'd') -> noCmd <| updateState model { state | isAdjunction = not state.isAdjunction}         
         
         KeyChanged False _ (Character 'f') -> 
@@ -550,9 +580,10 @@ help s =
              ++ "[RET] or space to terminate the arrow creation, "
              ++ "[\""
              ++ ArrowStyle.controlChars
-             ++ "\"] alternate between different arrow styles, "
-             ++ "shift [s]ource/targ[e]t, "
-            --  ++ ArrowStyle.shiftHelpMsg
+              ++ "\"] alternate between different arrow styles, "
+              ++ "shift [s]ource/targ[e]t, "
+              ++ "shorten [S]ource/targ[E]t, "
+             --  ++ ArrowStyle.shiftHelpMsg
             --  ++ ", "
              ++ "[.] customise the marker"
              ++ "[i]nvert arrow, "
@@ -577,3 +608,4 @@ help s =
             ++ HtmlDefs.overlayHelpMsg
         NewArrowBend _ -> "bend using mouse, [g] to validate, " ++ mainMsg
         NewArrowShift part _ -> "shift using mouse, [g] to validate, " ++ mainMsg
+        NewArrowShorten part _ -> "shorten using mouse, [g] to validate, " ++ mainMsg
