@@ -113,17 +113,19 @@ kindCodec =
 
 tailCodec : Codec TailStyle String
 tailCodec = 
-  let split hook hookalt mapsto default v =
+  let split hook hookalt mapsto arrowtail default v =
           case v of 
             Hook -> hook 
             HookAlt -> hookalt 
             Mapsto -> mapsto
+            ArrowTail -> arrowtail
             DefaultTail -> default 
   in
   Codec.customEnum split
   |> Codec.variant0 "hook" Hook
   |> Codec.variant0 "hookalt" HookAlt
   |> Codec.variant0 "mapsto" Mapsto
+  |> Codec.variant0 "arrowtail" ArrowTail
   |> Codec.variant0 "none" DefaultTail
   |> Codec.buildVariant (always DefaultTail)
 
@@ -203,7 +205,7 @@ noMarker = ""
 
 
 type HeadStyle = DefaultHead | TwoHeads | NoHead
-type TailStyle = DefaultTail | Hook | HookAlt | Mapsto
+type TailStyle = DefaultTail | Hook | HookAlt | Mapsto | ArrowTail
 
 -- toggleMarker : Style -> Style
 -- toggleMarker s =  { s | marker = nextInList [NoMarker, BulletMarker, BarMarker] s.marker }
@@ -219,7 +221,7 @@ toggleHead s =  { s | head = nextInList [DefaultHead, NoHead, TwoHeads] s.head }
 
 toggleHook : Style -> Style
 toggleHook s =  
-        { s | tail = nextInList [Hook, HookAlt, DefaultTail] s.tail }
+        { s | tail = nextInList [Hook, HookAlt, ArrowTail, DefaultTail] s.tail }
 
 toggleMapsto : Style -> Style
 toggleMapsto s =  { s | tail = nextInList [Mapsto, DefaultTail] s.tail }
@@ -402,7 +404,8 @@ tikzStyle bgColor stl =
          DefaultTail -> ""
          Mapsto -> "mapsto,"
          Hook -> "into, "
-         HookAlt -> "linto, ")
+         HookAlt -> "linto, "
+         ArrowTail -> ">->, ")
 
         
 -- the original svg code comes from from https://github.com/yishn/tikzcd-editor/tree/master/img/arrow
@@ -579,5 +582,22 @@ makeTailShape style =
                   [ Svg.path [ Svg.d "M1.71 3.243h1.38", Svg.transform "translate(0 -1.25)" ] []
                   , Svg.path [ Svg.d "M1.71 3.243h1.38", Svg.transform "translate(0 1.25)" ] []
                   , Svg.path [ Svg.d "M1.544 5.783 V 0.7", Svg.strokeLinecap "round" ] []
+                  ]
+        --  (False, ArrowTail) ->
+        --  {-
+        --    <g fill="none" stroke="#000" stroke-width=".498" stroke-miterlimit="10">
+        --      <path d="M2.043.253c.473 1.794 1.528 2.64 2.59 2.99-1.062.348-2.117 1.194-2.59 2.988" stroke-linecap="round" stroke-linejoin="round" transform="translate(-2 0)"/>
+        --      <path d="M0 3.243H2" transform="translate(-2 0)"/>
+        --    </g>
+        --  -}
+        --        Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+        --           [ Svg.path [ Svg.d "M2.043.253c.473 1.794 1.528 2.64 2.59 2.99-1.062.348-2.117 1.194-2.59 2.988", Svg.strokeLinecap "round", Svg.strokeLinejoin "round", Svg.transform "translate(-2 0)" ] []
+        --           , Svg.path [ Svg.d "M0 3.243H2", Svg.transform "translate(-2 0)" ] []
+        --           ]
+         (_, ArrowTail) ->
+               Svg.g [ Svg.fill "none", strokeAttr, Svg.strokeWidth ".498", Svg.strokeMiterlimit "10" ]
+                  [ Svg.path [ Svg.d "M2.043.253c.473 1.794 1.528 2.64 2.59 2.99-1.062.348-2.117 1.194-2.59 2.988", Svg.strokeLinecap "round", Svg.strokeLinejoin "round", Svg.transform "translate(-2 0)" ] []
+                  -- , Svg.path [ Svg.d "M0 3.243H2", Svg.transform "translate(-2 0)" ]
+                  --  []
                   ]
          (_, _) -> Svg.g [] []
