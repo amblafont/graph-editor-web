@@ -50,6 +50,10 @@ You must pick a directory which includes a file "yade-config.json". This file mu
 
 One could also inline the diagram data in the main latex file by writing  `% YADE DIAGRAM` (without a yade filename) to create a new diagram. The generated latex code can also be inlined by removing the `externalOutput` field.
 
+## LaTeX features locally
+
+After compiling the web app (see below), you can use the web app by opening index.html. However, for (weird?) security reasons, the browser will not allow the web app to read files, so you cannot use the LaTeX features directly. For that, you need to serve index.html on a local http server. You can launch a http server with `make http`, and then access localhost/index.html: in that case the  browser will not complain about security anymore.
+
 # Compiling the web app
 
 - `npm install` (the first time, or if needed)
