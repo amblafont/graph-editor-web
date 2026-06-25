@@ -32,13 +32,13 @@ jobs:
         run: npm install # Or whatever command you use to install JS/TS deps
 
       - name: Build with Make
-        run: make build # Replace "build" with your specific Makefile target
+        run: make # Replace "build" with your specific Makefile target
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Replace 'dist' with the folder your Makefile generates (e.g., public, build)
-          path: './dist'
+          path: '.'
 
   deploy:
     needs: build
