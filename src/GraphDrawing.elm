@@ -347,7 +347,13 @@ computeLabelPos q label marker curve =
             -- of the label's angular position around the loop.
             let halfExtent = (dw / 2) * abs ox + (dh / 2) * abs oy in
             -- before 0 was 5
-            let pushDist = 5 + halfExtent in
+            let pushDist =
+                  let offset = 5 + halfExtent in
+                  case label.style.labelAlignment of
+                    Geometry.Over -> 0
+                    Geometry.Right -> -offset
+                    _ ->  offset
+            in
             let labelpos = Point.add curvePos (Point.resize pushDist outward) in
             labelpos            
 
