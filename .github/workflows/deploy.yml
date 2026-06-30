@@ -2,7 +2,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: ["main"] # Change to your default branch name (e.g., master)
+    branches: ["master"] # Change to your default branch name (e.g., master)
   workflow_dispatch:   # Allows manual triggers
 
 permissions:
