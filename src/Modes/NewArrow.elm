@@ -335,11 +335,13 @@ updateNormal state msg model =
                     noCmd <| updateState model { state | mode = NewArrowPart m } 
                 else noCmd model
     in
+    let backToMain () = updateState model { state | mode = NewArrowMain } in 
     case msg of
       
         KeyChanged True _ (Control "Control") -> next {finish = False, merge = True}
         KeyChanged False _ (Character '?') -> noCmd <| toggleHelpOverlay model
-        KeyChanged False _ (Character 'g') -> noCmd <| updateState model { state | mode = NewArrowMain }
+        KeyChanged False _ (Character 'g') -> noCmd <| backToMain ()
+        KeyChanged False _ (Character '.') -> (backToMain(), requestMarkerDefault state.style.marker)
         KeyChanged False _ (Control "Escape") -> switch_Default model
         MouseClick -> next {finish = False, merge = state.merge}
         KeyChanged False _ (Character ' ') -> next {finish = True, merge = state.merge || state.isAdjunction}
@@ -349,7 +351,6 @@ updateNormal state msg model =
                     noCmd <| updateState model { state | style = 
                                    {style | marker = s}
                                 }
-        KeyChanged False _ (Character '.') -> (model, requestMarkerDefault state.style.marker)
     --     TabInput -> Just <| ValidateNext
         KeyChanged False _ (Control "Tab") -> next {finish = False, merge = state.merge || state.isAdjunction}
         KeyChanged False _ (Character '0') -> 
