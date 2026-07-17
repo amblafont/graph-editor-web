@@ -1,4 +1,4 @@
-A diagram editor in your browser (with collaborating features). Try it out: https://amblafont.github.io/graph-editor/index.html.
+A diagram editor in your browser (with collaborating features). Try it out: https://amblafont.github.io/graph-editor-web/index.html.
 See https://www.youtube.com/watch?v=iWSw4RK8wEk and https://amblafont.github.io/articles/yade.pdf for a short presentation. 
 
 To test offline: open index.html in your browser. The button "open directory" might not work because of the file system API security restrictions, unless you open the page on a local web server. Alternatively you can install the web application (an install button will show up at the top of the html file if your browser allows it).
@@ -59,7 +59,7 @@ After compiling the web app (see below), you can use the web app by opening inde
 - `npm install` (the first time, or if needed)
 - `make`
 
-(or download the latest [elm.js](https://amblafont.github.io/graph-editor/js/elm.js) and [bundle.js](https://amblafont.github.io/graph-editor/js/bundle.js).
+(or download the latest [elm.js](https://amblafont.github.io/graph-editor-web/js/elm.js) and [bundle.js](https://amblafont.github.io/graph-editor-web/js/bundle.js).
 
 # Coreact features
 
