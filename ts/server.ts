@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
   res.statusCode = 200; // OK
   res.setHeader('Content-Type', 'text/html');
 
-  res.end('Server ready! <a href="https://amblafont.github.io/graph-editor/index.html?server=' 
+  res.end('Server ready! <a href="https://amblafont.github.io/graph-editor-web/index.html?server=' 
             + 'wss://' + req.headers.host
           + '">Connect from the diagram editor</a>.'
           );
