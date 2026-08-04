@@ -36,7 +36,7 @@ server: server.js
 	node server.js
 
 server.js: ts/interface.d.ts ts/server.ts
-	npx tsc --outDir . --downlevelIteration  $^
+	npx tsc --ignoreConfig --module commonjs --outDir .  $^
 
 service-worker:
 	node swbuilder.js
