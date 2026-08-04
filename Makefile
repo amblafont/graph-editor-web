@@ -43,9 +43,6 @@ service-worker:
 
 
 
-site:
-	cp service-worker.js index.html ~/site/graph-editor/
-	cp js/*.js ~/site/graph-editor/js
 
 vscode:
 	cp index.html ~/yade/code-ext-yade/media/
