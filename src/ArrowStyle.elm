@@ -386,6 +386,13 @@ dashedStr = "7, 3"
 
 tikzStyle : Color -> ArrowStyle -> String
 tikzStyle bgColor stl =
+    if stl.headColor == stl.color && stl.tailColor == stl.color then
+        tikzStyleSameColor bgColor stl
+    else
+        tikzStyleDiffColor bgColor stl
+
+tikzStyleSameColor : Color -> ArrowStyle -> String
+tikzStyleSameColor bgColor stl =
     Color.toString stl.color ++ "," ++
       (if stl.kind == DoubleArrow then "double=" ++ Color.toString bgColor ++ "," else "")
     ++ (case (stl.head, stl.kind) of
@@ -406,6 +413,69 @@ tikzStyle bgColor stl =
          Hook -> "into, "
          HookAlt -> "linto, "
          ArrowTail -> ">->, ")
+
+tikzStyleDiffColor : Color -> ArrowStyle -> String
+tikzStyleDiffColor bgColor stl =
+    Color.toString stl.color ++ "," ++
+      (if stl.kind == DoubleArrow then "double=" ++ Color.toString bgColor ++ "," else "")
+    ++ (case (stl.head, stl.kind) of
+            (NoHead, DoubleArrow) -> "identity,"
+            (hd, DoubleArrow) -> "cell=0.05, "
+            (hd, NormalArrow) -> ""
+            (hd, NoneArrow) -> "draw=none, "
+       )
+    ++ (if stl.dashed then "dashed, " else "")
+    ++ (if stl.bend /= 0 then
+           "curve={ratio=" ++ String.fromFloat stl.bend ++ "}, "
+        else "")
+    ++ (if stl.wavy then "decorate,decoration={zigzag, pre length=3px, post length=3px,amplitude=0.05cm, segment length=0.15cm}, " 
+         else "")
+    ++ coloredTipSpec stl
+
+coloredTipSpec : ArrowStyle -> String
+coloredTipSpec stl =
+    if stl.kind == NoneArrow then "" else
+    let startSpec =
+            case startTipName stl of
+                Nothing -> ""
+                Just name -> "{" ++ name ++ tipColor stl.color stl.tailColor ++ "}"
+        endSpec =
+            case endTipName stl of
+                Nothing -> ""
+                Just name -> "{" ++ name ++ tipColor stl.color stl.headColor ++ "}"
+    in
+    case (startSpec, endSpec) of
+        ("", "") -> ""
+        _ ->
+            if startSpec == "" then "-" ++ endSpec ++ ", "
+            else startSpec ++ "-" ++ endSpec ++ ", "
+
+tipColor : Color -> Color -> String
+tipColor mainColor partColor =
+    if partColor == mainColor then "" else "[color=" ++ Color.toString partColor ++ "]"
+
+startTipName : ArrowStyle -> Maybe String
+startTipName stl =
+    case stl.tail of
+        DefaultTail -> Nothing
+        Hook -> Just "right hook"
+        HookAlt -> Just "left hook"
+        Mapsto -> Just "|"
+        ArrowTail -> Just ">"
+
+endTipName : ArrowStyle -> Maybe String
+endTipName stl =
+    if stl.kind == NoneArrow then Nothing
+    else if stl.kind == DoubleArrow then
+        case stl.head of
+            NoHead -> Nothing
+            _ -> if stl.tail == DefaultTail then Just "implies" else Just ">"
+    else if stl.tail /= DefaultTail then Just ">"
+    else
+        case stl.head of
+            NoHead -> Nothing
+            TwoHeads -> Just ">>"
+            DefaultHead -> Just ">"
 
         
 -- the original svg code comes from from https://github.com/yishn/tikzcd-editor/tree/master/img/arrow
