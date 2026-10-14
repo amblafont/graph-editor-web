@@ -512,17 +512,18 @@ function disableInAppInstallPrompt() {
 
          app.ports.openFile.subscribe(openFile);
 
+         function openFileAPI(fileHandle) {
+             currentFileHandle = fileHandle;
+             currentFileHandle.getFile().then(function (file) {
+                 setFileName(file.name);
+                 return file.text();
+             })
+             .then(function (text) {
+                 sendGraphTxtToElm(text);                    
+             });
+         }
+
          if(isFileAPI) {
-            function openFileAPI(fileHandle) {
-                currentFileHandle = fileHandle;
-                currentFileHandle.getFile().then(function (file) {
-                    setFileName(file.name);
-                    return file.text();
-                })
-                .then(function (text) {
-                    sendGraphTxtToElm(text);                    
-                });
-            }
             // open the file picker with showFilePicker and sends the content to Elm
             openFileFun = function() {
                 console.log("Opening file");
@@ -613,66 +614,112 @@ function disableInAppInstallPrompt() {
             return parts[parts.length - 1];
         }
 
+        // Processes a directory handle (obtained either from the
+        // "Open directory" button or from a drag and drop): reads the
+        // yade-config.json file and starts watching the corresponding files.
+        function processDirectoryHandle(dirHandle) {
+            return dirHandle.getFileHandle(configFilename)
+            .then((f) => f.getFile(),(e) => { 
+                  customAlert("Cannot access " + configFilename + ": " + e.toString());
+                 throw (e); })
+           .then((file) => file.text())
+           .then((text) => {
+            var json = JSON.parse(text);
+            if (!json.watchedFile) {
+                customAlert("watchedFile unspecified in the json");
+                return;
+            }
+            var watchedFiles = [];
+            if (typeof json.watchedFile == "string")
+                watchedFiles = [json.watchedFile]
+            else
+                watchedFiles = json.watchedFile;
+            delete json.watchedFile;
+
+            if (watchedFiles == []) {
+                console.log("No file to watch");
+                return;
+            }
+            var configs = [];
+            
+            for (var i = 0; i < watchedFiles.length; i++) {
+                var extension = extractExtensionFromPath(watchedFiles[i]);
+                var config = Object.assign({}, Bundle.defaultConfig);
+                config.watchedFile = watchedFiles[i];
+                if (extension in Bundle.defaultsExt)
+                    Object.assign(config, Bundle.defaultsExt[extension]);
+                else
+                    console.log("Unknown extension " + extension + ".");
+                Object.assign(config, json);
+                configs.push(config);
+            } 
+            
+            var promise = new Promise((resolve) => resolve("") );
+            if (json.preambleFile)
+                promise = Bundle.getTextFromFilepath(dirHandle,json.preambleFile);
+            return promise.then(function(preamble) {
+                if (json.additionalPreamble)
+                    preamble = json.additionalPreamble + "\n" + preamble;
+                app.ports.clear.send({scenario:"watch", preamble:preamble});
+                processWatchedFile(configs,preamble, dirHandle);
+            });
+           });
+        }
+
         app.ports.openDirectory.subscribe(
             function() {
                 if (!isFileAPI) {
                     customAlert("Your browser does not support the File System Access API");
                     return;
                 }
-
-            showDirectoryPicker().then(function (dirHandle) { 
-                dirHandle.getFileHandle(configFilename)
-                .then((f) => f.getFile(),(e) => { 
-                      customAlert("Cannot access " + configFilename + ": " + e.toString());
-                     throw (e); })
-               .then((file) => file.text())
-               .then((text) => {
-                var json = JSON.parse(text);
-                if (!json.watchedFile) {
-                    customAlert("watchedFile unspecified in the json");
-                    return;
-                }
-                var watchedFiles = [];
-                if (typeof json.watchedFile == "string")
-                    watchedFiles = [json.watchedFile]
-                else
-                    watchedFiles = json.watchedFile;
-                delete json.watchedFile;
-
-                if (watchedFiles == []) {
-                    console.log("No file to watch");
-                    return;
-                }
-                var configs = [];
-                
-                for (var i = 0; i < watchedFiles.length; i++) {
-                    var extension = extractExtensionFromPath(watchedFiles[i]);
-                    var config = Object.assign({}, Bundle.defaultConfig);
-                    config.watchedFile = watchedFiles[i];
-                    if (extension in Bundle.defaultsExt)
-                        Object.assign(config, Bundle.defaultsExt[extension]);
-                    else
-                        console.log("Unknown extension " + extension + ".");
-                    Object.assign(config, json);
-                    configs.push(config);
-                } 
-                
-                var promise = new Promise((resolve) => resolve("") );
-                if (json.preambleFile)
-                    promise = Bundle.getTextFromFilepath(dirHandle,json.preambleFile);
-                promise.then(function(preamble) {
-                    if (json.additionalPreamble)
-                        preamble = json.additionalPreamble + "\n" + preamble;
-                    app.ports.clear.send({scenario:"watch", preamble:preamble});
-                    processWatchedFile(configs,preamble, dirHandle);
-                });
-               });
-            })
-            .catch((e) => { console.log(e); customAlert("Cannot access the directory"); });
-            
-             
+                showDirectoryPicker()
+                .then(processDirectoryHandle)
+                .catch((e) => { console.log(e); customAlert("Cannot access the directory"); });
             }
         );
+
+        // Drag and drop a directory (or a diagram file) on the page:
+        // this behaves like the "Open directory" / "Open file" buttons.
+        if (isFileAPI) {
+            function hasFiles(e) {
+                return e.dataTransfer && e.dataTransfer.types &&
+                    Array.prototype.indexOf.call(e.dataTransfer.types, "Files") >= 0;
+            }
+
+            document.addEventListener("dragover", function(e) {
+                if (!hasFiles(e))
+                    return;
+                // Required for the drop event to fire.
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+            });
+
+            document.addEventListener("drop", function(e) {
+                if (!hasFiles(e))
+                    return;
+                // Prevent the browser from opening the dropped file/folder.
+                e.preventDefault();
+                var items = e.dataTransfer.items;
+                for (var i = 0; i < items.length; i++) {
+                    var item = items[i];
+                    if (item.kind !== "file")
+                        continue;
+                    if (typeof item.getAsFileSystemHandle !== "function")
+                        continue;
+                    // getAsFileSystemHandle must be called synchronously,
+                    // while the drop event is being handled.
+                    item.getAsFileSystemHandle().then(function(handle) {
+                        if (!handle)
+                            return;
+                        if (handle.kind === "directory")
+                            return processDirectoryHandle(handle);
+                        return openFileAPI(handle);
+                    }).catch((err) => { console.log(err); customAlert("Cannot open the dropped item"); });
+                    return;
+                }
+                customAlert("Your browser does not support dropping directories");
+            });
+        }
         // load a json graph file, from local storage
         function quickloadGraph() {
             if (!supportStorage) {           

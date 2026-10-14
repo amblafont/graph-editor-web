@@ -24,7 +24,7 @@ If you prefer to run the server manually (on port 8080, cf head of server.ts):
 
 # Easy editing of latex documents
 
-The button "open directory" offers easy editing of diagrams in latex documents (see the directory tools/ for an example). It relies on the files system API, so it does not work (yet?) with Firefox or Safari.
+The button "open directory" offers easy editing of diagrams in latex documents (see the directory tools/ for an example). Instead of using the button, you can also drag and drop the directory directly onto the page (dropping a single `.yade`/`.json` diagram file opens it as a diagram). It relies on the files system API, so it does not work (yet?) with Firefox or Safari.
 You must pick a directory which includes a file "yade-config.json". This file must contain a field "watchedFile" which indicates the files to be watched (if a filename includes a wildcard, it will be expanded to match multiple files). Other fields may be specified: check the top of the file [watcher.ts](ts/watcher.ts).
 
 ## Step-by-step process
