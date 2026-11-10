@@ -1831,7 +1831,7 @@ renderTabs model =
   in
   let newButton = Html.button [Html.Events.onClick NewTab] [Html.text "New tab"] in
   let dupButton = Html.button [Html.Events.onClick DuplicateTab] [Html.text "Duplicate tab"] in
-  let removeButton = Html.button [Html.Events.onClick RemoveTab] [Html.text "Remove tab"] in
+  let removeButton = Html.button [Html.Events.onClick RemoveTab, Html.Attributes.class "red-button"] [Html.text "Remove tab"] in
   
   let renameButton = Html.button [Html.Events.onClick (Do (promptTabTitle activeTab.title))] [Html.text "Rename tab"] in
      [newButton, dupButton, removeButton, renameButton ] 
@@ -1910,7 +1910,7 @@ viewGraph model =
              Html.button [Html.Events.onClick Save, Html.Attributes.id "save-button", 
                Html.Attributes.title "Opens a save dialog box"] 
                [Html.text "Save"]
-           , Html.button [Html.Events.onClick (Clear {scenario = model.scenario, preamble = ""})] [Html.text "Clear"]
+           , Html.button [Html.Events.onClick (Clear {scenario = model.scenario, preamble = ""}), Html.Attributes.class "red-button"] [Html.text "Clear"]
             {- , Html.button [Html.Events.onClick (Do <| computeLayout ()),
                    Html.Attributes.title "Should not be necessary"
             ] [Html.text "Recompute labels"] -}
